@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
+import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
@@ -126,30 +127,94 @@ const submitIncidentAlert = () => {
 const showAddResellerModal = ref(false)
 const newResellerForm = ref({
   name: '',
+  storeName: '',
+  username: '',
+  password: '',
   contactNumber: '',
   cbuAlias: '',
   bankName: '',
   holderName: '',
   cuit: '',
-  balance: 0
+  balance: 0,
+  isActive: true
 })
+
+const generateNewResellerPassword = () => {
+  newResellerForm.value.password = generateSecurePassword(10)
+  if (newResellerForm.value.name.trim() && !newResellerForm.value.username.trim()) {
+    newResellerForm.value.username = newResellerForm.value.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+  }
+}
+
+const openAddResellerModal = () => {
+  newResellerForm.value = {
+    name: '',
+    storeName: '',
+    username: '',
+    password: generateSecurePassword(10),
+    contactNumber: '+54 9 11 ',
+    cbuAlias: '',
+    bankName: 'Mercado Pago / Banco',
+    holderName: '',
+    cuit: '',
+    balance: 0,
+    isActive: true
+  }
+  showAddResellerModal.value = true
+}
 
 const handleAddReseller = () => {
   if (newResellerForm.value.name.trim()) {
-    adminStore.addReseller({ ...newResellerForm.value })
-    toast.add(`Nuevo revendedor [${newResellerForm.value.name}] registrado con éxito`, 'success')
-    showAddResellerModal.value = false
-    newResellerForm.value = {
-      name: '',
-      contactNumber: '',
-      cbuAlias: '',
-      bankName: '',
-      holderName: '',
-      cuit: '',
-      balance: 0
+    if (!newResellerForm.value.username.trim()) {
+      newResellerForm.value.username = newResellerForm.value.name.toLowerCase().replace(/[^a-z0-9]/g, '') || `distribuidor${adminStore.resellers.length + 1}`
     }
+    if (!newResellerForm.value.password.trim()) {
+      newResellerForm.value.password = generateSecurePassword(10)
+    }
+
+    const created = adminStore.addReseller({ ...newResellerForm.value })
+    toast.add(`Distribuidor [${created.name}] registrado con credenciales verídicas`, 'success')
+    showAddResellerModal.value = false
   } else {
     toast.add('El nombre o razón social del revendedor es obligatorio', 'error')
+  }
+}
+
+const copyResellerCredentials = (reseller) => {
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.vercel.app'
+  const text = `👋 *STREAMPRO - CREDENCIALES OFICIALES DE DISTRIBUIDOR*\n\n` +
+    `¡Hola ${reseller.name}!\nTu cuenta de revendedor mayorista ha sido activada en el sistema:\n\n` +
+    `🏪 *Tienda:* ${reseller.storeName || reseller.name}\n` +
+    `🔑 *Código:* ${reseller.id}\n` +
+    `👤 *Usuario:* ${reseller.username}\n` +
+    `🔒 *Contraseña:* ${reseller.password}\n` +
+    `💼 *Billetera Inicial:* $${(reseller.balance || 0).toLocaleString()} ARS\n\n` +
+    `🌐 *Acceso al Portal:* ${origin}/distribuidor\n\n` +
+    `¡Bienvenido al equipo de distribución oficial!`
+
+  navigator.clipboard.writeText(text).then(() => {
+    toast.add(`Credenciales de ${reseller.name} copiadas para WhatsApp`, 'success')
+  })
+}
+
+const handleDeleteReseller = (resellerId) => {
+  if (confirm(`¿Estás seguro de que deseas eliminar este distribuidor (${resellerId}) de la base de datos?`)) {
+    adminStore.deleteReseller(resellerId)
+    toast.add('Distribuidor eliminado de la base de datos', 'info')
+  }
+}
+
+const handleDeleteInventory = (invId) => {
+  if (confirm(`¿Estás seguro de que deseas eliminar este lote del inventario (${invId})?`)) {
+    adminStore.deleteInventoryItem(invId)
+    toast.add('Lote eliminado del inventario', 'info')
+  }
+}
+
+const handleDeletePlatform = (platKey) => {
+  if (confirm(`¿Eliminar la plataforma ${platKey} del catálogo?`)) {
+    adminStore.deletePlatform(platKey)
+    toast.add('Plataforma eliminada del catálogo', 'info')
   }
 }
 
@@ -484,22 +549,16 @@ const handleAdminLogin = () => {
   const u = adminLoginForm.value.username.trim().toLowerCase()
   const p = adminLoginForm.value.password.trim()
 
-  if ((u === 'admin' && p === 'StreamAdmin2026*') ||
-      (u === 'proveedor' && p === 'Mayorista2026*') ||
-      (u === 'operador' && p === 'Operador2026*') ||
-      p === '9988' || u === '9988') {
+  const masterUser = (adminStore.adminAuth?.username || 'admin').toLowerCase()
+  const masterPass = adminStore.adminAuth?.password || 'StreamPro2026*Admin'
+
+  if (u === masterUser && p === masterPass) {
     isAdminAuthenticated.value = true
-    toast.add('¡Bienvenido al Centro Mayorista Proveedor!', 'success')
+    toast.add(`¡Bienvenido al Centro Mayorista Proveedor, ${adminStore.adminAuth?.name || 'Administrador'}!`, 'success')
   } else {
-    adminLoginError.value = 'Credenciales incorrectas. Usa uno de los accesos demo rápidos.'
+    adminLoginError.value = 'Credenciales maestras incorrectas. Verifica tu usuario y contraseña de Administrador.'
     toast.add(adminLoginError.value, 'error')
   }
-}
-
-const quickAdminLoginAs = (user, pass) => {
-  adminLoginForm.value.username = user
-  adminLoginForm.value.password = pass
-  handleAdminLogin()
 }
 
 const handleAdminLogout = () => {
@@ -507,6 +566,149 @@ const handleAdminLogout = () => {
   adminLoginForm.value.username = ''
   adminLoginForm.value.password = ''
   toast.add('Sesión de Administrador cerrada correctamente.', 'info')
+}
+
+// GESTIÓN DE CREDENCIALES MAESTRAS DE ADMINISTRADOR
+const showAdminAuthModal = ref(false)
+const adminAuthForm = ref({
+  username: '',
+  password: '',
+  name: '',
+  whatsapp: ''
+})
+
+const openAdminAuthModal = () => {
+  adminAuthForm.value = {
+    username: adminStore.adminAuth?.username || 'admin',
+    password: adminStore.adminAuth?.password || '',
+    name: adminStore.adminAuth?.name || 'Administrador Principal',
+    whatsapp: adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+  }
+  showAdminAuthModal.value = true
+}
+
+const saveAdminAuth = () => {
+  if (!adminAuthForm.value.username.trim() || !adminAuthForm.value.password.trim()) {
+    toast.add('El usuario y la contraseña no pueden estar vacíos', 'error')
+    return
+  }
+  adminStore.updateAdminAuth(adminAuthForm.value)
+  toast.add('Credenciales maestras de Administrador actualizadas con éxito', 'success')
+  showAdminAuthModal.value = false
+}
+
+// HERRAMIENTAS DE BASE DE DATOS (BACKUP, RESTORE, RESET)
+const handleExportBackup = () => {
+  const json = exportDatabaseBackup()
+  if (!json) {
+    toast.add('Error al exportar base de datos', 'error')
+    return
+  }
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `streampro_db_backup_${new Date().toISOString().split('T')[0]}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.add('Copia de seguridad exportada correctamente (.json)', 'success')
+}
+
+const handleImportBackup = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const success = importDatabaseBackup(event.target.result)
+    if (success) {
+      toast.add('Base de datos restaurada con éxito. Actualizando...', 'success')
+      setTimeout(() => window.location.reload(), 800)
+    } else {
+      toast.add('El archivo de copia de seguridad no es válido', 'error')
+    }
+  }
+  reader.readAsText(file)
+}
+
+const handleResetCleanProduction = () => {
+  const confirmText = prompt('⚠️ ATENCIÓN: Se eliminarán todas las cuentas, pedidos y clientes para dejar la base de datos limpia de producción.\n\nEscribe "LIMPIAR" para confirmar:')
+  if (confirmText === 'LIMPIAR') {
+    adminStore.resetDatabaseToCleanProduction()
+    toast.add('Base de datos reiniciada a PRODUCCIÓN LIMPIA con éxito', 'success')
+  } else if (confirmText !== null) {
+    toast.add('Operación cancelada. El texto no coincidió.', 'info')
+  }
+}
+
+// EDITOR DE PRODUCTOS VIRTUALES Y PRECIOS DEL CATÁLOGO
+const editingPlanModal = ref(false)
+const editingPlatformKey = ref('')
+const editingPlanKey = ref('')
+const planEditForm = ref({
+  label: '',
+  providerCost: 0,
+  resellerProfit: 0,
+  clientPrice: 0
+})
+
+const openPlanEdit = (platKey, pKey, plan) => {
+  editingPlatformKey.value = platKey
+  editingPlanKey.value = pKey
+  planEditForm.value = {
+    label: plan.label || '',
+    providerCost: Number(plan.providerCost || 0),
+    resellerProfit: Number(plan.resellerProfit || 0),
+    clientPrice: Number(plan.clientPrice || 0)
+  }
+  editingPlanModal.value = true
+}
+
+const savePlanEdit = () => {
+  adminStore.updatePricingPlan({
+    platform: editingPlatformKey.value,
+    planKey: editingPlanKey.value,
+    planData: {
+      label: planEditForm.value.label,
+      providerCost: Number(planEditForm.value.providerCost),
+      resellerProfit: Number(planEditForm.value.resellerProfit),
+      clientPrice: Number(planEditForm.value.clientPrice)
+    }
+  })
+  toast.add(`Precios de ${editingPlatformKey.value} (${planEditForm.value.label}) actualizados y guardados en DB`, 'success')
+  editingPlanModal.value = false
+}
+
+const showAddPlatformModal = ref(false)
+const newPlatformForm = ref({
+  key: '',
+  name: '',
+  planLabel: '1 Pantalla / Perfil',
+  providerCost: 3500,
+  resellerProfit: 1500,
+  clientPrice: 5000
+})
+
+const submitAddPlatform = () => {
+  if (!newPlatformForm.value.key.trim() || !newPlatformForm.value.name.trim()) {
+    toast.add('El código y nombre de la plataforma son requeridos', 'error')
+    return
+  }
+  adminStore.addPlatform({
+    key: newPlatformForm.value.key.trim(),
+    name: newPlatformForm.value.name.trim(),
+    plans: {
+      '1_perfil': {
+        label: newPlatformForm.value.planLabel.trim(),
+        units: 1,
+        type: 'perfil',
+        providerCost: Number(newPlatformForm.value.providerCost),
+        resellerProfit: Number(newPlatformForm.value.resellerProfit),
+        clientPrice: Number(newPlatformForm.value.clientPrice)
+      }
+    }
+  })
+  toast.add(`Plataforma ${newPlatformForm.value.name} guardada en el catálogo virtual`, 'success')
+  showAddPlatformModal.value = false
 }
 
 // GESTIÓN Y ARMADO DE PAQUETES & OFERTAS (PROVEEDOR)
@@ -681,37 +883,6 @@ const deletePackageItem = (pkgId) => {
           <span>→</span>
         </button>
       </form>
-
-      <!-- Accesos Rápidos Demo para Administrador -->
-      <div class="pt-4 border-t border-slate-800 space-y-2">
-        <p class="text-[11px] text-slate-500 uppercase font-bold text-center tracking-wider">Accesos Rápidos Demo (Prueba Inmediata)</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button 
-            type="button" 
-            @click="quickAdminLoginAs('admin', 'StreamAdmin2026*')" 
-            class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all"
-          >
-            <div class="text-xs font-bold text-white">Admin Principal</div>
-            <div class="text-[10px] text-amber-400 font-mono">@admin</div>
-          </button>
-          <button 
-            type="button" 
-            @click="quickAdminLoginAs('operador', 'Operador2026*')" 
-            class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all"
-          >
-            <div class="text-xs font-bold text-white">Operador Stock</div>
-            <div class="text-[10px] text-slate-400 font-mono">@operador</div>
-          </button>
-          <button 
-            type="button" 
-            @click="quickAdminLoginAs('admin', '9988')" 
-            class="col-span-2 p-2 bg-slate-950 hover:bg-slate-800 border border-amber-500/40 rounded-xl text-center transition-all"
-          >
-            <div class="text-xs font-black text-amber-300">⚡ Desbloqueo Rápido con PIN Maestro</div>
-            <div class="text-[10px] text-slate-400 font-mono">PIN: 9988</div>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -736,14 +907,36 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
-      <button 
-        @click="handleAdminLogout" 
-        class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 self-end sm:self-auto"
-        title="Cerrar Sesión de Administrador"
-      >
-        <span>🚪</span>
-        <span>Cerrar Sesión</span>
-      </button>
+      <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+        <button 
+          @click="openAdminAuthModal"
+          class="bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          title="Modificar usuario y clave maestra de administración"
+        >
+          <span>🔐 Mis Credenciales</span>
+        </button>
+        <button 
+          @click="handleExportBackup"
+          class="bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          title="Descargar copia de seguridad de la base de datos (.json)"
+        >
+          <span>💾 Backup DB</span>
+        </button>
+        <button 
+          @click="handleResetCleanProduction"
+          class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          title="Reiniciar a base de datos limpia de producción"
+        >
+          <span>🧹 Limpiar DB</span>
+        </button>
+        <button 
+          @click="handleAdminLogout" 
+          class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          title="Cerrar Sesión de Administrador"
+        >
+          <span>🚪 Salir</span>
+        </button>
+      </div>
     </div>
     <!-- Métricas Financieras del Proveedor -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -774,6 +967,12 @@ const deletePackageItem = (pkgId) => {
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'inventory' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
           📦 Inventario & Stock
+        </button>
+        <button 
+          @click="adminTab = 'catalog'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'catalog' ? 'bg-cyan-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+        >
+          🏷️ Catálogo & Precios ({{ Object.keys(adminStore.pricingCatalog).length }})
         </button>
         <button 
           @click="adminTab = 'orders'"
@@ -815,7 +1014,7 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'bank'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'bank' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          🏦 Cuentas Bancarias Proveedor
+          🏦 Datos Bancarios Proveedor
         </button>
       </div>
 
@@ -965,7 +1164,7 @@ const deletePackageItem = (pkgId) => {
           <p class="text-xs text-slate-400">Gestiona las cuentas de distribuidores, sus datos bancarios y su billetera.</p>
         </div>
         <button 
-          @click="showAddResellerModal = true" 
+          @click="openAddResellerModal" 
           class="bg-brand-accent text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow"
         >
           + Agregar Nuevo Revendedor
@@ -1055,36 +1254,50 @@ const deletePackageItem = (pkgId) => {
           <!-- Acciones de Gestión de Revendedor -->
           <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-800/80">
             <button 
+              @click="copyResellerCredentials(res)" 
+              class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
+              title="Copiar credenciales oficiales y enlace para enviar por WhatsApp"
+            >
+              <span>📲 Copiar para WhatsApp</span>
+            </button>
+            <button 
               @click="openResellerAuthModal(res)" 
-              class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+              class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
               title="Configurar usuario, contraseña y estado de activación"
             >
               <span>🔐 Acceso & Clave</span>
             </button>
             <button 
               @click="toggleResellerStatus(res.id)" 
-              :class="['text-xs font-bold px-3.5 py-2 rounded-xl transition-all border flex items-center gap-1.5', res.isActive !== false ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20']"
+              :class="['text-xs font-bold px-3 py-2 rounded-xl transition-all border flex items-center gap-1.5', res.isActive !== false ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20']"
               :title="res.isActive !== false ? 'Desactivar acceso a este revendedor' : 'Activar acceso a este revendedor'"
             >
               <span>{{ res.isActive !== false ? '🚫 Desactivar' : '✅ Activar' }}</span>
             </button>
             <button 
               @click="viewClientsOfReseller(res.id)" 
-              class="bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+              class="bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
             >
-              <span>👤 Ver sus Clientes ({{ resellerStore.clients.filter(c => c.resellerId === res.id).length }})</span>
+              <span>👤 Clientes ({{ resellerStore.clients.filter(c => c.resellerId === res.id).length }})</span>
             </button>
             <button 
               @click="openRechargeModal(res)" 
-              class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-1.5"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-all flex items-center gap-1.5"
             >
-              <span>💰 Cargar Billetera</span>
+              <span>💰 Cargar Saldo</span>
             </button>
             <button 
               @click="openIncidentModal({ resellerId: res.id, customerNumber: 'GENERAL', customerName: res.name })" 
               class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl border border-slate-700"
             >
-              📢 Enviar Alerta
+              📢 Alerta
+            </button>
+            <button 
+              @click="handleDeleteReseller(res.id)" 
+              class="bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 text-xs font-bold px-2.5 py-2 rounded-xl transition-all"
+              title="Eliminar revendedor de la base de datos"
+            >
+              🗑️
             </button>
           </div>
         </div>
@@ -1305,6 +1518,80 @@ const deletePackageItem = (pkgId) => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: CATÁLOGO DE PRODUCTOS VIRTUALES Y CONFIGURACIÓN DE PRECIOS -->
+    <div v-if="adminTab === 'catalog'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-2xl font-black text-white">Catálogo de Productos Virtuales & Planes</h2>
+            <span class="text-xs font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded">
+              BASE DE DATOS EN VIVO
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Edita los costos mayoristas, ganancias de revendedores y precios al cliente de cada suscripción virtual.</p>
+        </div>
+        <button 
+          @click="showAddPlatformModal = true"
+          class="bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition-all shadow flex items-center gap-2"
+        >
+          <span>+ Agregar Nueva Plataforma</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div 
+          v-for="(platData, platKey) in adminStore.pricingCatalog" 
+          :key="platKey"
+          class="bg-[#020617] rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl relative overflow-hidden"
+        >
+          <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-black text-white text-lg">{{ platData.name || platKey }}</span>
+                <span class="text-[10px] font-mono font-bold bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-800">
+                  {{ platKey }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-500">{{ Object.keys(platData.plans || {}).length }} plan(es) configurados</p>
+            </div>
+            <button 
+              @click="handleDeletePlatform(platKey)"
+              class="text-slate-500 hover:text-red-400 text-xs p-1"
+              title="Eliminar plataforma del catálogo"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="space-y-2">
+            <div 
+              v-for="(plan, pKey) in platData.plans" 
+              :key="pKey"
+              class="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs"
+            >
+              <div>
+                <strong class="text-white block">{{ plan.label }}</strong>
+                <span class="text-[11px] text-slate-400 font-mono">Tipo: {{ plan.type }} • Unidades: {{ plan.units }}</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="text-right font-mono">
+                  <div class="text-slate-400 text-[10px]">Costo: <strong class="text-slate-200">${{ plan.providerCost?.toLocaleString() }}</strong></div>
+                  <div class="text-emerald-400 text-[10px]">Ganancia Rev.: <strong>+${{ plan.resellerProfit?.toLocaleString() }}</strong></div>
+                  <div class="text-amber-400 font-bold text-xs">P. Venta: ${{ plan.clientPrice?.toLocaleString() }} ARS</div>
+                </div>
+                <button 
+                  @click="openPlanEdit(platKey, pKey, plan)"
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
+                >
+                  ✏️ Editar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1852,7 +2139,15 @@ const deletePackageItem = (pkgId) => {
       </form>
       
       <!-- Tabla de Lotes con Botón de Modificar Contraseña Privada -->
-      <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
+      <div v-if="adminStore.inventory.length === 0" class="text-center py-12 px-4 bg-[#020617] rounded-2xl border border-slate-800 border-dashed space-y-3">
+        <span class="text-4xl block">📦</span>
+        <h4 class="text-base font-bold text-white">Inventario Mayorista Vacío (Listo para Producción)</h4>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">
+          No hay cuentas de prueba cargadas. Utiliza el formulario superior para registrar tus cuentas de streaming reales con sus perfiles y PINs para comenzar a despachar.
+        </p>
+      </div>
+
+      <div v-else class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider font-bold border-b border-slate-800">
             <tr>
@@ -1876,12 +2171,19 @@ const deletePackageItem = (pkgId) => {
                   {{ item.profiles.filter(p => !p.isAssigned).length }} / {{ item.profiles.length }} libres
                 </span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-4 flex items-center gap-2">
                 <button 
                   @click="openPasswordModal(item)" 
                   class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
                 >
-                  🔒 Cambiar Contraseña Privada
+                  🔒 Clave Privada
+                </button>
+                <button 
+                  @click="handleDeleteInventory(item.id)" 
+                  class="bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                  title="Eliminar lote del inventario"
+                >
+                  🗑️
                 </button>
               </td>
             </tr>
@@ -2237,6 +2539,65 @@ const deletePackageItem = (pkgId) => {
             </div>
           </div>
 
+          <!-- Credenciales Verídicas Generadas para el Distribuidor -->
+          <div class="p-3.5 bg-slate-950 rounded-2xl border border-indigo-500/30 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-black text-indigo-300 uppercase tracking-wider">🔑 Credenciales de Acceso Oficial</span>
+              <button 
+                type="button" 
+                @click="generateNewResellerPassword" 
+                class="text-[11px] font-bold text-amber-300 hover:text-amber-200 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+              >
+                <span>⚡ Generar Clave Segura</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-400 text-[11px] mb-1">Usuario de Login</label>
+                <input 
+                  v-model="newResellerForm.username" 
+                  type="text" 
+                  placeholder="ej: mariano_stream" 
+                  class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-400 rounded-xl p-2.5 text-white font-mono text-xs outline-none" 
+                  required
+                >
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 text-[11px] mb-1">Contraseña de Login</label>
+                <input 
+                  v-model="newResellerForm.password" 
+                  type="text" 
+                  placeholder="Contraseña segura" 
+                  class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-400 rounded-xl p-2.5 text-white font-mono text-xs font-bold outline-none" 
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label class="block font-bold text-slate-400 text-[11px] mb-1">Saldo Inicial Billetera (ARS)</label>
+                <input 
+                  v-model="newResellerForm.balance" 
+                  type="number" 
+                  min="0" 
+                  step="500" 
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-emerald-400 font-mono font-bold text-xs outline-none"
+                >
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 text-[11px] mb-1">Nombre Tienda en Checkout</label>
+                <input 
+                  v-model="newResellerForm.storeName" 
+                  type="text" 
+                  placeholder="ej: TechStream Digital" 
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs outline-none"
+                >
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-3 pt-3">
             <button type="button" @click="showAddResellerModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
               Cancelar
@@ -2393,7 +2754,16 @@ const deletePackageItem = (pkgId) => {
           </div>
 
           <div>
-            <label class="block font-bold uppercase text-slate-400 mb-1">Contraseña de Acceso</label>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block font-bold uppercase text-slate-400 text-xs">Contraseña de Acceso</label>
+              <button 
+                type="button" 
+                @click="resellerAuthForm.password = generateSecurePassword(10)" 
+                class="text-[10px] text-amber-300 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors"
+              >
+                ⚡ Generar Clave Segura
+              </button>
+            </div>
             <input 
               v-model="resellerAuthForm.password" 
               type="text" 
@@ -2413,6 +2783,172 @@ const deletePackageItem = (pkgId) => {
             </button>
             <button type="submit" class="w-2/3 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
               Guardar Credenciales
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE CREDENCIALES MAESTRAS DE ADMINISTRADOR -->
+    <div v-if="showAdminAuthModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-amber-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🛡️</span>
+            <div>
+              <h3 class="text-lg font-black text-white">Credenciales de Administrador</h3>
+              <p class="text-slate-400">Acceso maestro al Centro Mayorista Proveedor.</p>
+            </div>
+          </div>
+          <button @click="showAdminAuthModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <form @submit.prevent="saveAdminAuth" class="space-y-4">
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Usuario Maestro</label>
+            <input 
+              v-model="adminAuthForm.username" 
+              type="text" 
+              class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-3 text-white font-mono font-bold outline-none" 
+              required
+            >
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Contraseña Maestra</label>
+            <input 
+              v-model="adminAuthForm.password" 
+              type="text" 
+              class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-3 text-white font-mono font-bold outline-none" 
+              required
+            >
+            <p class="text-[10px] text-slate-500 mt-1">Guarda esta clave en un lugar seguro. Se almacena cifrada en la base de datos.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Razón Social Administrador</label>
+            <input 
+              v-model="adminAuthForm.name" 
+              type="text" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none"
+            >
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Soporte Mayorista</label>
+            <input 
+              v-model="adminAuthForm.whatsapp" 
+              type="tel" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none"
+            >
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button type="button" @click="showAdminAuthModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
+              Cancelar
+            </button>
+            <button type="submit" class="w-2/3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
+              Guardar Credenciales
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITAR PRECIOS Y COSTOS DE PLAN VIRTUAL -->
+    <div v-if="editingPlanModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-mono font-bold text-cyan-400">{{ editingPlatformKey }}</span>
+            <h3 class="text-lg font-black text-white">Editar Precios y Ganancias</h3>
+          </div>
+          <button @click="editingPlanModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <form @submit.prevent="savePlanEdit" class="space-y-3">
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Etiqueta del Plan</label>
+            <input v-model="planEditForm.label" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Costo Proveedor (ARS)</label>
+              <input v-model="planEditForm.providerCost" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Ganancia Revendedor (ARS)</label>
+              <input v-model="planEditForm.resellerProfit" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-emerald-400 font-mono outline-none" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Precio al Cliente Final (ARS)</label>
+            <input v-model="planEditForm.clientPrice" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl p-3 text-amber-400 font-mono font-black text-base outline-none" required>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button type="button" @click="editingPlanModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
+              Cancelar
+            </button>
+            <button type="submit" class="w-2/3 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
+              Guardar Precios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: AGREGAR NUEVA PLATAFORMA VIRTUAL AL CATÁLOGO -->
+    <div v-if="showAddPlatformModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-lg font-black text-white">Nueva Plataforma Virtual</h3>
+            <p class="text-slate-400">Registra un nuevo servicio de streaming en el catálogo.</p>
+          </div>
+          <button @click="showAddPlatformModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <form @submit.prevent="submitAddPlatform" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Código Único (ej: Crunchyroll)</label>
+              <input v-model="newPlatformForm.key" type="text" placeholder="Crunchyroll" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Comercial</label>
+              <input v-model="newPlatformForm.name" type="text" placeholder="Crunchyroll Mega Fan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Plan Inicial (Etiqueta)</label>
+            <input v-model="newPlatformForm.planLabel" type="text" placeholder="1 Pantalla / Perfil Fan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Costo Prov.</label>
+              <input v-model="newPlatformForm.providerCost" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Ganancia Rev.</label>
+              <input v-model="newPlatformForm.resellerProfit" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">P. Cliente</label>
+              <input v-model="newPlatformForm.clientPrice" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-amber-400 font-mono font-bold" required>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button type="button" @click="showAddPlatformModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
+              Cancelar
+            </button>
+            <button type="submit" class="w-2/3 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
+              Guardar Plataforma
             </button>
           </div>
         </form>

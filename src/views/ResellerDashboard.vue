@@ -266,8 +266,8 @@ const calcProfitMargin = computed(() => {
 
 // Autenticación de Revendedores (Usuario y Contraseña)
 const loginForm = ref({
-  username: 'techstream',
-  password: 'TechStream2026*'
+  username: '',
+  password: ''
 })
 const loginError = ref('')
 
@@ -286,12 +286,6 @@ const handleLogin = () => {
     loginError.value = res.error || 'Credenciales inválidas'
     toast.add(loginError.value, 'error')
   }
-}
-
-const quickLoginAs = (u, p) => {
-  loginForm.value.username = u
-  loginForm.value.password = p
-  handleLogin()
 }
 
 const handleLogout = () => {
@@ -708,37 +702,6 @@ const shareResellerProductWhatsApp = (product) => {
           <span>→</span>
         </button>
       </form>
-
-      <!-- Accesos rápidos Demo / Prueba -->
-      <div class="pt-4 border-t border-slate-800 space-y-2">
-        <p class="text-[11px] text-slate-500 uppercase font-bold text-center tracking-wider">Acceso rápido para demostración</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button 
-            type="button" 
-            @click="quickLoginAs('techstream', 'TechStream2026*')" 
-            class="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all"
-          >
-            <div class="text-xs font-bold text-white">TechStream Digital</div>
-            <div class="text-[10px] text-slate-400 font-mono">@techstream</div>
-          </button>
-          <button 
-            type="button" 
-            @click="quickLoginAs('streamlatam', 'LatamStream2026*')" 
-            class="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all"
-          >
-            <div class="text-xs font-bold text-white">Latam Stream</div>
-            <div class="text-[10px] text-slate-400 font-mono">@streamlatam</div>
-          </button>
-          <button 
-            type="button" 
-            @click="quickLoginAs('mundopro', 'Mundo2026*')" 
-            class="col-span-2 p-2 bg-slate-950 hover:bg-slate-800 border border-brand-accent/30 rounded-xl text-center transition-all"
-          >
-            <div class="text-xs font-bold text-brand-accent">MundoPro Streaming (Demo #03)</div>
-            <div class="text-[10px] text-slate-400 font-mono">@mundopro · Billetera: $5.000 ARS</div>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 

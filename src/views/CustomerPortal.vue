@@ -35,14 +35,14 @@ const unlockVault = () => {
     })
   }
 
-  // Validación de PIN (acepta el PIN universal demo 1234, o el PIN de cualquiera de sus perfiles asignados)
+  // Validación de PIN contra perfiles asignados
   if (matched.length > 0) {
     if (pin) {
       const pinMatches = matched.some(c => 
-        pin === '1234' || (c.profiles && c.profiles.some(p => p.pin === pin))
+        c.profiles && c.profiles.some(p => p.pin === pin)
       )
       if (!pinMatches) {
-        error.value = 'El PIN ingresado no coincide con tu perfil asignado (usa 1234 o tu PIN personal)'
+        error.value = 'El PIN ingresado no coincide con tu perfil asignado. Revisa el PIN enviado en tu comprobante.'
         toast.add('PIN inválido para esta cuenta', 'error')
         return
       }
@@ -50,13 +50,8 @@ const unlockVault = () => {
     authenticatedClients.value = matched
     isUnlocked.value = true
     toast.add(`¡Bienvenido! Se encontraron ${matched.length} servicio(s) asociados a tus datos`, 'success')
-  } else if (pin === '1234') {
-    // Si no puso teléfono pero colocó el PIN de demostración, mostrar sus cuentas activas
-    authenticatedClients.value = resellerStore.clients
-    isUnlocked.value = true
-    toast.add('Bóveda desbloqueada con PIN maestro', 'success')
   } else {
-    error.value = 'No se encontraron servicios activos con esos datos. Verifica tu número de WhatsApp o N° Cliente.'
+    error.value = 'No se encontraron servicios activos con esos datos. Verifica tu número de WhatsApp o N° de Cliente.'
     toast.add('No encontramos tus servicios', 'error')
   }
 }
@@ -150,9 +145,9 @@ const handleCustomerRenewal = (acc) => {
           <div>
             <div class="flex justify-between items-center mb-1">
               <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                PIN de Seguridad Personal
+                PIN de Seguridad de Perfil
               </label>
-              <span class="text-[10px] text-slate-500 font-mono">Demo: 1234 o tu PIN de perfil</span>
+              <span class="text-[10px] text-slate-500 font-mono">PIN asignado en tu compra</span>
             </div>
             <input 
               v-model="masterPin" 
@@ -175,37 +170,6 @@ const handleCustomerRenewal = (acc) => {
             </div>
           </button>
         </form>
-
-        <!-- Accesos rápidos para probar -->
-        <div class="pt-6 border-t border-slate-800/80 mt-6 max-w-md mx-auto">
-          <p class="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-2">Accesos Rápidos Demo (Prueba Inmediata)</p>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <button 
-              type="button" 
-              @click="searchIdentifier = '+54 9 11 9988-1122'; masterPin = '8810'; unlockVault()" 
-              class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-colors"
-            >
-              <div class="font-bold text-white text-xs">Maria Gomez (Netflix)</div>
-              <div class="text-[10px] text-slate-400 font-mono">WhatsApp: ...1122 · PIN: 8810</div>
-            </button>
-            <button 
-              type="button" 
-              @click="searchIdentifier = 'CLI-8492'; masterPin = '1122'; unlockVault()" 
-              class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-colors"
-            >
-              <div class="font-bold text-white text-xs">Carlos Lopez (Streaming & Físico)</div>
-              <div class="text-[10px] text-slate-400 font-mono">CLI-8492 · PIN: 1122</div>
-            </button>
-            <button 
-              type="button" 
-              @click="searchIdentifier = ''; masterPin = '1234'; unlockVault()" 
-              class="col-span-2 p-2.5 bg-slate-950 hover:bg-slate-800 border border-brand-accent/40 rounded-xl text-center transition-colors"
-            >
-              <div class="font-black text-brand-accent text-xs">⚡ Desbloquear con PIN Universal Demo</div>
-              <div class="text-[10px] text-slate-400 font-mono">PIN: 1234</div>
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- Estado Desbloqueado: Mis Servicios y Pedidos -->
