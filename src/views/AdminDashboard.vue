@@ -218,6 +218,36 @@ const handleDeletePlatform = (platKey) => {
   }
 }
 
+// IMPORTACIÓN Y ACTUALIZACIÓN DEL CATÁLOGO FÍSICO DESDE JSON
+const catalogFileInput = ref(null)
+
+const triggerPhysicalCatalogUpload = () => {
+  if (catalogFileInput.value) catalogFileInput.value.click()
+}
+
+const handleImportPhysicalCatalog = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const raw = String(e.target.result).replace(/^\uFEFF/, '')
+      const json = JSON.parse(raw)
+      const res = adminStore.updatePhysicalProductsFromJson(json)
+      if (res.success) {
+        toast.add(`¡Catálogo físico actualizado! ${res.count} productos sincronizados en la base de datos.`, 'success')
+      } else {
+        toast.add(res.error || 'Error al procesar el archivo JSON', 'error')
+      }
+    } catch (err) {
+      toast.add('El archivo seleccionado no es un JSON válido', 'error')
+    }
+    if (event.target) event.target.value = ''
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
 // ACTIVACIÓN DE USUARIO, CONTRASEÑA Y ESTADO PARA REVENDEDORES
 const showResellerAuthModal = ref(false)
 const selectedResellerForAuth = ref(null)
@@ -1659,23 +1689,39 @@ const deletePackageItem = (pkgId) => {
     <div v-if="adminTab === 'physical'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-6">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
         <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-2xl font-black text-white">Pedidos de Productos Físicos</h2>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-2xl font-black text-white">Pedidos & Catálogo Físico</h2>
             <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
-              Catálogo C:\Users\yo\catalogo
+              {{ adminStore.physicalProducts.length }} Productos Físicos Activos
             </span>
           </div>
           <p class="text-xs text-slate-400 mt-1">
-            Aprueba o cancela pedidos. Al aprobar, se acredita automáticamente la comisión del <strong>1% (tienda)</strong> o <strong>3% (link compartido)</strong> en la billetera del revendedor asignado.
+            Sincronizado con el catálogo de C:\Users\yo\catalogo. Comisión del <strong>1% (tienda)</strong> o <strong>3% (link compartido)</strong>.
           </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <input 
+            type="file" 
+            ref="catalogFileInput" 
+            accept=".json" 
+            @change="handleImportPhysicalCatalog" 
+            class="hidden"
+          >
+          <button 
+            @click="triggerPhysicalCatalogUpload" 
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition-all flex items-center gap-1.5"
+            title="Seleccionar el archivo products.json del otro proyecto para actualizar el catálogo al instante"
+          >
+            <span>📥</span>
+            <span>Importar products.json</span>
+          </button>
+
+          <input 
             v-model="physicalOrderSearch" 
             type="text" 
             placeholder="Buscar por ID, cliente, teléfono..." 
-            class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 flex-1 md:w-60"
+            class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 flex-1 md:w-52"
           >
           <select 
             v-model="physicalOrderStatusFilter" 
@@ -1687,6 +1733,22 @@ const deletePackageItem = (pkgId) => {
             <option value="Confirmado">Confirmados ({{ adminStore.confirmedPhysicalOrders.length }})</option>
             <option value="Cancelado">Cancelados ({{ adminStore.cancelledPhysicalOrders.length }})</option>
           </select>
+        </div>
+      </div>
+
+      <!-- BANNER DE SINCRONIZACIÓN CON EL OTRO PROYECTO -->
+      <div class="bg-gradient-to-r from-slate-950 via-amber-950/20 to-slate-950 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-3">
+          <span class="text-xl">🔄</span>
+          <div>
+            <strong class="text-white block font-bold">¿Cómo actualizar este catálogo desde tu otro proyecto?</strong>
+            <p class="text-slate-400 text-[11px]">
+              Ejecuta <code class="bg-slate-900 text-amber-300 px-1.5 py-0.5 rounded font-mono">npm run sync:catalogo</code> en la terminal, o pulsa <strong>Importar products.json</strong> arriba y selecciona el archivo generado en <code class="text-slate-300 font-mono">C:\Users\yo\catalogo\products.json</code>.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+          <span class="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">Categorías: {{ adminStore.physicalCategories.length }}</span>
         </div>
       </div>
 

@@ -15,7 +15,9 @@ export const DB_KEYS = {
   WALLET_TRANSACTIONS: 'wallet_transactions',
   RESELLER_ALERTS: 'reseller_alerts',
   RENEWAL_REQUESTS: 'renewal_requests',
-  PROVIDER_BANK: 'provider_bank'
+  PROVIDER_BANK: 'provider_bank',
+  PHYSICAL_PRODUCTS: 'physical_products',
+  PHYSICAL_CATEGORIES: 'physical_categories'
 }
 
 export function loadDb(key, defaultValue) {

@@ -266,12 +266,12 @@ export const useAdminStore = defineStore('admin', {
     orders: loadDb(DB_KEYS.ORDERS, []),
 
     // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS
-    physicalProducts: physicalProductsData.map(p => ({
+    physicalProducts: loadDb(DB_KEYS.PHYSICAL_PRODUCTS, physicalProductsData.map(p => ({
       ...p,
       image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${p.image}`,
       priceNumeric: parseInt(p.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || 0
-    })),
-    physicalCategories: physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0),
+    }))),
+    physicalCategories: loadDb(DB_KEYS.PHYSICAL_CATEGORIES, physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)),
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
 
     // PAQUETES Y COMBOS VIRTUALES OFICIALES
@@ -391,6 +391,25 @@ export const useAdminStore = defineStore('admin', {
         return { success: true }
       }
       return { error: 'Plataforma no encontrada' }
+    },
+
+    updatePhysicalProductsFromJson(productsList, categoriesList = null) {
+      if (Array.isArray(productsList) && productsList.length > 0) {
+        const formatted = productsList.map(p => ({
+          ...p,
+          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${p.image}`,
+          priceNumeric: p.priceNumeric || (parseInt(p.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || 0)
+        }))
+        this.physicalProducts = formatted
+        this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+
+        if (categoriesList && Array.isArray(categoriesList)) {
+          this.physicalCategories = categoriesList.filter(c => parseInt(c.cantidad || '0') > 0)
+          this.persist(DB_KEYS.PHYSICAL_CATEGORIES)
+        }
+        return { success: true, count: formatted.length }
+      }
+      return { error: 'El archivo JSON no contiene una lista válida de productos.' }
     },
 
     // Carga de Inventario Mayorista Real
