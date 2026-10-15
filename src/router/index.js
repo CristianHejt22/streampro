@@ -38,6 +38,12 @@ const router = createRouter({
       component: AdminDashboard
     },
     {
+      path: '/revendedores',
+      alias: ['/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'],
+      name: 'recruitment',
+      component: () => import('../views/ResellerRecruitmentView.vue')
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/'
     }

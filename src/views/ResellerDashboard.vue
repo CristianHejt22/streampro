@@ -3,8 +3,10 @@ import { ref, computed, watch } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import html2canvas from 'html2canvas'
+import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const tab = ref('crm') 
+const showFlyerModal = ref(false)
 const filterStatus = ref('All')
 const searchQuery = ref('')
 const selectedResellerFilter = ref('All') // Filtrar por Número y Nombre de Revendedor
@@ -727,6 +729,15 @@ const shareResellerProductWhatsApp = (product) => {
       </div>
 
       <div class="flex items-center gap-2 self-end sm:self-auto">
+        <button 
+          @click="showFlyerModal = true"
+          class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
+          title="Crear Flyers y Banners publicitarios para Estados de WhatsApp e Instagram"
+        >
+          <span>🎨</span>
+          <span>Generar Flyer</span>
+        </button>
+
         <div class="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-right">
           <span class="text-[10px] uppercase font-bold text-slate-500 block">Billetera Disponible</span>
           <span class="text-xs font-black text-emerald-400 font-mono">${{ resellerStore.wallet }} ARS</span>
@@ -2631,5 +2642,13 @@ const shareResellerProductWhatsApp = (product) => {
         </div>
       </div>
     </div>
+
+    <!-- MODAL: GENERADOR DE FLYERS PARA ESTADOS & STORIES -->
+    <FlyerGeneratorModal 
+      :show="showFlyerModal" 
+      @close="showFlyerModal = false" 
+      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Mi Tienda Digital'" 
+      :default-phone="resellerStore.sessionUser?.contactNumber || '+54 9 11 0000-0000'" 
+    />
   </div>
 </template>

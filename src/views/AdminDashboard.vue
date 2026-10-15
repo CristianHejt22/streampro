@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
+import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
@@ -246,6 +247,40 @@ const handleImportPhysicalCatalog = (event) => {
     if (event.target) event.target.value = ''
   }
   reader.readAsText(file, 'utf-8')
+}
+
+// GENERADOR DE FLYERS PARA REDES Y ESTADOS DE WHATSAPP
+const showFlyerModal = ref(false)
+
+// RECORDATORIOS PERSUASIVOS DE RENOVACIÓN POR WHATSAPP
+const getClientExpiryDays = (expiryStr) => {
+  if (!expiryStr) return 999
+  const diffTime = new Date(expiryStr) - new Date()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+const sendWhatsAppRenewalReminder = (client) => {
+  const phone = (client.phone || '').replace(/[^0-9]/g, '')
+  const storeTitle = adminStore.providerBankInfo.holderName || 'StreamPro Mayorista'
+  const daysRemaining = getClientExpiryDays(client.expiry)
+  const timeText = daysRemaining <= 0 ? 'hoy' : daysRemaining === 1 ? 'mañana' : `en ${daysRemaining} días`
+
+  const message = 
+    `¡Hola ${client.name}! Te saludamos de ${storeTitle}. 👋\n\n` +
+    `Te recordamos que tu suscripción de *${client.platform}* (${client.planName || 'Plan Oficial'}) vence *${timeText}* (Fecha: ${client.expiry}). 📅\n\n` +
+    `Para conservar tus perfiles, favoritos y no quedarte sin servicio este fin de semana, confírmanos por aquí para renovar tu mes.\n\n` +
+    `🏦 Alias: ${adminStore.providerBankInfo.cbuAlias || 'STREAMPRO.MAYORISTA'}\n` +
+    `💳 Titular: ${adminStore.providerBankInfo.holderName || 'StreamPro'}\n\n` +
+    `¡Respondé a este mensaje para renovar en 1 minuto! ✨`
+
+  if (phone && phone.length >= 8) {
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank')
+    toast.add(`Abriendo WhatsApp con recordatorio para ${client.name}`, 'success')
+  } else {
+    navigator.clipboard.writeText(message).then(() => {
+      toast.add(`Mensaje de recordatorio copiado para ${client.name}. Pégalo en WhatsApp.`, 'success')
+    })
+  }
 }
 
 // ACTIVACIÓN DE USUARIO, CONTRASEÑA Y ESTADO PARA REVENDEDORES
@@ -939,6 +974,13 @@ const deletePackageItem = (pkgId) => {
 
       <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
         <button 
+          @click="showFlyerModal = true"
+          class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
+          title="Crear imágenes publicitarias profesionales para WhatsApp e Instagram"
+        >
+          <span>🎨 Generar Flyer</span>
+        </button>
+        <button 
           @click="openAdminAuthModal"
           class="bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
           title="Modificar usuario y clave maestra de administración"
@@ -1518,8 +1560,15 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 font-mono text-xs text-slate-300">
-                <div>{{ client.expiry }}</div>
+              <td class="px-6 py-4 font-mono text-xs">
+                <div class="text-slate-200 font-bold">{{ client.expiry }}</div>
+                <div v-if="getClientExpiryDays(client.expiry) <= 3 && getClientExpiryDays(client.expiry) >= 0" class="text-[10px] text-amber-400 font-bold flex items-center gap-1 mt-0.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>Vence en {{ getClientExpiryDays(client.expiry) }}d</span>
+                </div>
+                <div v-else-if="getClientExpiryDays(client.expiry) < 0" class="text-[10px] text-red-400 font-bold mt-0.5">
+                  Venció hace {{ Math.abs(getClientExpiryDays(client.expiry)) }}d
+                </div>
               </td>
               <td class="px-6 py-4">
                 <span :class="['px-2.5 py-1 rounded-full text-xs font-bold border inline-block', client.status === 'Activa' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : client.status === 'Por Vencer' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30']">
@@ -1535,6 +1584,14 @@ const deletePackageItem = (pkgId) => {
                   >
                     <span>💬</span>
                     <span>Copiar</span>
+                  </button>
+                  <button 
+                    @click="sendWhatsAppRenewalReminder(client)" 
+                    class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-amber-500/30 transition-all flex items-center gap-1"
+                    title="Enviar recordatorio persuasivo de renovación por WhatsApp"
+                  >
+                    <span>⏰</span>
+                    <span>Recordar</span>
                   </button>
                   <button 
                     @click="openIncidentModal({ resellerId: client.resellerId, customerNumber: client.clientNumber, customerName: client.name })" 
@@ -3016,5 +3073,13 @@ const deletePackageItem = (pkgId) => {
         </form>
       </div>
     </div>
+
+    <!-- MODAL: GENERADOR DE FLYERS Y BANNERS PUBLICITARIOS -->
+    <FlyerGeneratorModal 
+      :show="showFlyerModal" 
+      @close="showFlyerModal = false" 
+      :default-store-name="adminStore.adminAuth.name || 'StreamPro Mayorista'" 
+      :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
+    />
   </div>
 </template>

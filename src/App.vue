@@ -65,6 +65,15 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               <span>🔐</span>
               <span>Bóveda Clientes</span>
             </RouterLink>
+
+            <RouterLink 
+              to="/revendedores" 
+              class="px-3.5 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
+              active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
+            >
+              <span>🚀</span>
+              <span class="hidden sm:inline">Ser Revendedor</span>
+            </RouterLink>
           </nav>
 
           <!-- NAVEGACIÓN CUANDO SE ENCUENTRA EN EL PANEL DE REVENDEDOR -->
