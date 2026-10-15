@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
@@ -107,17 +107,43 @@ const resellerStoreName = computed(() => {
   return r.name.replace(/\s*\(Distribuidor\s*#?\d+\)/gi, '').replace(/^\[.*?\]\s*/, '').trim()
 })
 
+// Base URL canónica oficial para producción (streamepro.me)
+const getBaseOrigin = () => {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return window.location.origin
+  }
+  return 'https://streamepro.me'
+}
+
 // Detección de Parámetros de URL: Afiliado (?ref=RES-01) y Producto compartido (?prod=962)
-onMounted(() => {
-  if (route.query.ref) {
-    const matchedRes = adminStore.resellers.find(r => r.id === route.query.ref)
+const applyRouteParams = () => {
+  const refParam = route.query.ref
+  if (refParam) {
+    const cleanRef = String(refParam).trim().toLowerCase()
+    const matchedRes = adminStore.resellers.find(r => 
+      r.id?.toLowerCase() === cleanRef || 
+      r.username?.toLowerCase() === cleanRef || 
+      r.storeName?.toLowerCase() === cleanRef ||
+      r.id?.replace(/\D/g, '') === cleanRef.replace(/\D/g, '')
+    )
     if (matchedRes) {
       clientForm.value.selectedResellerId = matchedRes.id
+      try {
+        localStorage.setItem('streamepro_referral', matchedRes.id)
+      } catch (e) {}
       toast.add(`Atendido por distribuidor oficial: ${matchedRes.name}`, 'info')
     }
+  } else {
+    // Si no viene en la URL, verificar si tenía referido previo guardado en memoria
+    try {
+      const savedRef = localStorage.getItem('streamepro_referral')
+      if (savedRef && adminStore.resellers.some(r => r.id === savedRef)) {
+        clientForm.value.selectedResellerId = savedRef
+      }
+    } catch (e) {}
   }
 
-  // Si viene con enlace de producto compartido (ej. ?prod=962 o ?p=962) o sección física (?sec=physical)
+  // Redirección y activación de sección física o paquetes
   if (route.query.sec === 'physical') {
     storeSection.value = 'physical'
   } else if (route.query.sec === 'packages' || route.query.pkg) {
@@ -128,17 +154,27 @@ onMounted(() => {
     }
   }
 
+  // Previsualización y apertura automática de producto físico compartido
   const sharedProdId = route.query.prod || route.query.p
   if (sharedProdId) {
     clientForm.value.isSharedUrl = true
     storeSection.value = 'physical'
-    const foundProd = adminStore.physicalProducts.find(p => String(p.id) === String(sharedProdId))
+    const cleanId = String(sharedProdId).trim()
+    const foundProd = adminStore.physicalProducts.find(p => String(p.id).trim() === cleanId)
     if (foundProd) {
       openPhysicalModal(foundProd)
       toast.add(`¡Bienvenido! Mostrando: ${foundProd.name.slice(0, 32)}...`, 'info')
     }
   }
+}
+
+onMounted(() => {
+  applyRouteParams()
 })
+
+watch(() => route.query, () => {
+  applyRouteParams()
+}, { deep: true })
 
 const openConfig = (product) => {
   selectedProduct.value = product
@@ -199,19 +235,22 @@ const addPhysicalToCart = (product, qty = 1) => {
   showPhysicalModal.value = false
 }
 
-const copyShareProductUrl = (product) => {
+const getProductDirectUrl = (product) => {
+  if (!product) return ''
   const resId = clientForm.value.selectedResellerId || 'RES-01'
-  const origin = window.location.origin
-  const shareUrl = `${origin}/?ref=${resId}&prod=${product.id}`
+  const origin = getBaseOrigin()
+  return `${origin}/?ref=${resId}&prod=${product.id}`
+}
+
+const copyShareProductUrl = (product) => {
+  const shareUrl = getProductDirectUrl(product)
   navigator.clipboard.writeText(shareUrl).then(() => {
-    toast.add('¡Enlace copiado! Gracias por ayudar compartiendo.', 'success')
+    toast.add('¡Enlace de producto copiado! Compártelo donde quieras.', 'success')
   })
 }
 
 const shareProductWhatsApp = (product) => {
-  const resId = clientForm.value.selectedResellerId || 'RES-01'
-  const origin = window.location.origin
-  const shareUrl = `${origin}/?ref=${resId}&prod=${product.id}`
+  const shareUrl = getProductDirectUrl(product)
   const msg = `🔥 *MIRA ESTE PRODUCTO EN STREAMPRO*\n📦 *${product.name}*\n💰 Precio: *${product.price}*\n\n👉 Compra directa aquí:\n${shareUrl}`
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
@@ -258,7 +297,7 @@ const addPackageToCart = (pkg) => {
 }
 
 const sharePackageLink = (pkg) => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streampro.digital'
+  const origin = getBaseOrigin()
   const link = `${origin}/?ref=${clientForm.value.selectedResellerId}&pkg=${pkg.id}`
   navigator.clipboard.writeText(link).then(() => {
     toast.add(`¡Enlace copiado! Comparte este combo con tus contactos`, 'success')
@@ -1171,6 +1210,32 @@ const submitOrder = () => {
           <p class="text-slate-300 whitespace-pre-line leading-relaxed">{{ selectedPhysicalProduct.description || 'Sin descripción adicional.' }}</p>
         </div>
 
+        <!-- Previsualización de Enlace Directo del Producto -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-sky-500/30 space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sky-400 flex items-center gap-1.5 text-[11px]">
+              <span>🔗</span> Enlace Directo Oficial del Producto:
+            </span>
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              Ref: {{ clientForm.selectedResellerId || 'RES-01' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input 
+              :value="getProductDirectUrl(selectedPhysicalProduct)" 
+              readonly 
+              class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono outline-none select-all"
+            >
+            <button 
+              @click="copyShareProductUrl(selectedPhysicalProduct)" 
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1"
+              title="Copiar URL"
+            >
+              <span>📋</span> Copiar
+            </button>
+          </div>
+        </div>
+
         <!-- Opción de Compartir Producto: AYUDAR COMPARTIENDO -->
         <div class="bg-gradient-to-r from-amber-950/40 via-slate-950 to-slate-950 p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
           <div class="space-y-0.5">
@@ -1212,8 +1277,9 @@ const submitOrder = () => {
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"
+      :reseller-ref="clientForm.selectedResellerId || 'RES-01'"
       :default-store-name="resellerStoreName"
-      :default-phone="currentReseller?.contactNumber || adminStore.providerBankInfo.whatsapp"
+      website-domain="streamepro.me"
       @close="showFlyerModal = false" 
     />
   </div>

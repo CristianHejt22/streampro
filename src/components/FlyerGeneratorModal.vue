@@ -5,9 +5,10 @@ import { useToastStore } from '../store/toast'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  defaultStoreName: { type: String, default: 'StreamPro Oficial' },
-  defaultPhone: { type: String, default: '+54 9 11 0000-0000' },
-  initialProduct: { type: Object, default: null }
+  defaultStoreName: { type: String, default: 'TechStream Digital' },
+  initialProduct: { type: Object, default: null },
+  resellerRef: { type: String, default: 'RES-01' },
+  websiteDomain: { type: String, default: 'streamepro.me' }
 })
 
 const emit = defineEmits(['close'])
@@ -29,7 +30,7 @@ const selectedPhysicalCat = ref('All')
 
 // Personalización del flyer
 const storeName = ref(props.defaultStoreName)
-const contactPhone = ref(props.defaultPhone)
+const websiteUrl = ref(props.websiteDomain || 'streamepro.me')
 const headlineBadge = ref('🔥 ¡OFERTA EXCLUSIVA!')
 const customPrice = ref(null)
 const customTitle = ref('')
@@ -57,8 +58,8 @@ watch(() => props.defaultStoreName, (val) => {
   if (val) storeName.value = val
 }, { immediate: true })
 
-watch(() => props.defaultPhone, (val) => {
-  if (val) contactPhone.value = val
+watch(() => props.websiteDomain, (val) => {
+  if (val) websiteUrl.value = val
 }, { immediate: true })
 
 // Manejar producto inicial si se abrió desde una tarjeta de producto
@@ -72,7 +73,7 @@ watch(() => props.initialProduct, (prod) => {
     customPrice.value = prod.priceNumeric || (parseInt(prod.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || null)
     bullet1.value = 'Excelente Calidad y Diseño Garantizado'
     bullet2.value = 'Envío Rápido a Todo el País'
-    bullet3.value = 'Compra Segura y Asesoría por WhatsApp'
+    bullet3.value = 'Compra 100% Segura y Garantizada Online'
   } else if (prod.platform) {
     flyerProductType.value = 'streaming'
     selectedPlatform.value = prod.platform
@@ -153,7 +154,7 @@ watch(selectedPhysicalId, (newId) => {
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
     bullet1.value = 'Excelente Calidad y Diseño Garantizado'
     bullet2.value = 'Envío Rápido a Todo el País'
-    bullet3.value = 'Compra Segura y Asesoría por WhatsApp'
+    bullet3.value = 'Compra 100% Segura y Garantizada Online'
   }
 })
 
@@ -417,20 +418,23 @@ function renderCanvasFlyerBlob() {
         ctx.fillText(b.length > 46 ? b.slice(0, 44) + '...' : b, 190, by)
       })
 
-      // 10. Pie de Página con WhatsApp
+      // 10. Pie de Página con Web Oficial de Referencia
       const footerY = 1680
       ctx.textAlign = 'center'
-      ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#94a3b8'
-      ctx.fillText('⚡ ¡PIDE EL TUYO AHORA POR WHATSAPP!', 540, footerY)
+      ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE AHORA!', 540, footerY)
 
-      const waY = footerY + 35
-      ctx.fillStyle = '#10b981'
-      roundRect(ctx, 110, waY, 860, 115, 34, true, false)
+      const webY = footerY + 35
+      const webGrad = ctx.createLinearGradient(110, webY, 970, webY)
+      webGrad.addColorStop(0, '#0284c7') // Sky
+      webGrad.addColorStop(1, '#0ea5e9')
+      ctx.fillStyle = webGrad
+      roundRect(ctx, 110, webY, 860, 115, 34, true, false)
 
-      ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#020617'
-      ctx.fillText(`💬 WhatsApp: ${contactPhone.value}`, 540, waY + 70)
+      ctx.fillText(`🌐 ${websiteUrl.value}`, 540, webY + 74)
 
       canvas.toBlob((blob) => {
         if (!blob) {
@@ -443,6 +447,37 @@ function renderCanvasFlyerBlob() {
       reject(e)
     }
   })
+}
+
+// Enlace de referencia completo para el producto o tienda
+const fullProductReferralUrl = computed(() => {
+  const base = 'https://streamepro.me'
+  const refCode = props.resellerRef || 'RES-01'
+  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
+    return `${base}/?ref=${refCode}&prod=${selectedPhysicalProduct.value.id}`
+  } else {
+    return `${base}/?ref=${refCode}`
+  }
+})
+
+const cleanFriendlyUrl = computed(() => {
+  const base = 'https://streamepro.me'
+  const refCode = props.resellerRef || 'RES-01'
+  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
+    return `${base}/producto/${selectedPhysicalProduct.value.id}?ref=${refCode}`
+  } else {
+    return `${base}/ref/${refCode}`
+  }
+})
+
+const copyProductReferralUrl = () => {
+  navigator.clipboard.writeText(fullProductReferralUrl.value).then(() => {
+    toast.add('¡Enlace de referencia copiado!', 'success')
+  })
+}
+
+const previewProductReferralUrl = () => {
+  window.open(fullProductReferralUrl.value, '_blank')
 }
 
 // Descargar imagen con motor nativo de alta definición
@@ -473,27 +508,33 @@ const downloadFlyerImage = async () => {
 const copySocialCopy = () => {
   const text = 
 `🔥 *${headlineBadge.value}* 🔥\n\n` +
-`🎬 *${displayTitle.value}*\n` +
-`📌 *Plan / Detalle:* ${displaySubtitle.value}\n` +
+`📦 *${displayTitle.value}*\n` +
+`📌 *Detalle:* ${displaySubtitle.value}\n` +
 `💰 *PRECIO EXCLUSIVO:* $${displayPrice.value} ARS\n\n` +
 `✅ ${bullet1.value}\n` +
 `✅ ${bullet2.value}\n` +
 `✅ ${bullet3.value}\n\n` +
-`⚡ *¡Entrega inmediata! Cupos limitados.*\n` +
-`📲 *Pide el tuyo por WhatsApp:* ${contactPhone.value}\n` +
+`⚡ *¡Haz tu pedido 100% online con garantía oficial!*\n` +
+`🌐 *Compra directa aquí:* ${fullProductReferralUrl.value}\n` +
 `🏪 *${storeName.value}*`
 
   navigator.clipboard.writeText(text).then(() => {
-    toast.add('¡Texto de publicación copiado! Pégalo en tu Estado o Historia.', 'success')
+    toast.add('¡Texto con tu enlace de referencia copiado! Pégalo en tu Estado o Historia.', 'success')
   })
 }
 
-// Abrir WhatsApp con el copy
-const shareDirectWhatsApp = () => {
-  const cleanPhone = contactPhone.value.replace(/[^0-9]/g, '')
+// Compartir texto y enlace directo a WhatsApp
+const shareToWhatsAppStatus = () => {
   const text = 
-`¡Hola! Quiero aprovechar la oferta de *${displayTitle.value}* (${displaySubtitle.value}) por $${displayPrice.value} ARS. ¿Tienen disponible para entrega inmediata?`
-  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank')
+`🔥 *${headlineBadge.value}* 🔥\n\n` +
+`📦 *${displayTitle.value}*\n` +
+`💰 *PRECIO EXCLUSIVO:* $${displayPrice.value} ARS\n\n` +
+`✅ ${bullet1.value}\n` +
+`✅ ${bullet2.value}\n` +
+`✅ ${bullet3.value}\n\n` +
+`⚡ *Pide el tuyo online con garantía oficial:*\n` +
+`👉 ${fullProductReferralUrl.value}`
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
 }
 </script>
 
@@ -616,16 +657,55 @@ const shareDirectWhatsApp = () => {
             </div>
           </div>
 
-          <!-- Datos de la Tienda y Contacto -->
+          <!-- Datos de la Tienda y Web Oficial -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Nombre de tu Tienda</label>
               <input v-model="storeName" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none">
             </div>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Pedidos</label>
-              <input v-model="contactPhone" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none font-mono">
+              <label class="block font-bold uppercase text-slate-400 mb-1">Página Web en el Flyer</label>
+              <input v-model="websiteUrl" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-sky-400 outline-none font-mono font-bold" placeholder="streamepro.me">
             </div>
+          </div>
+
+          <!-- Banner Interactivo: Enlace de Referencia Directo del Producto -->
+          <div class="bg-slate-950/90 p-3 rounded-2xl border border-sky-500/30 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-sky-400 flex items-center gap-1.5">
+                <span>🔗</span> Enlace Directo con tu Comisión (3%):
+              </span>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                Ref: {{ resellerRef || 'RES-01' }}
+              </span>
+            </div>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input 
+                :value="fullProductReferralUrl" 
+                readonly 
+                class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono outline-none select-all"
+              >
+              <div class="flex gap-1.5">
+                <button 
+                  @click="copyProductReferralUrl" 
+                  class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1"
+                  title="Copiar URL de Referencia"
+                >
+                  <span>📋</span> Copiar
+                </button>
+                <button 
+                  @click="previewProductReferralUrl" 
+                  class="flex-1 sm:flex-none bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1"
+                  title="Previsualizar en Nueva Pestaña"
+                >
+                  <span>👁️ Ver</span>
+                  <span>↗</span>
+                </button>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              Al hacer clic en <strong>Ver ↗</strong> previsualizas la tienda tal como la verá tu cliente con este producto seleccionado y tu comisión vinculada.
+            </p>
           </div>
 
           <!-- Puntos Clave / Beneficios -->
@@ -679,16 +759,23 @@ const shareDirectWhatsApp = () => {
             <button 
               @click="copySocialCopy" 
               class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-3 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5"
-              title="Copiar texto listo para pegar en la descripción de la historia o estado"
+              title="Copiar texto con enlace listo para pegar en la descripción de la historia o estado"
             >
-              <span>📋 Copiar Texto</span>
+              <span>📋 Copiar Texto + Link</span>
             </button>
             <button 
-              @click="shareDirectWhatsApp" 
-              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-xl shadow transition-all flex items-center justify-center gap-1.5"
-              title="Probar enlace directo de pedido en WhatsApp"
+              @click="previewProductReferralUrl" 
+              class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-3 rounded-xl shadow transition-all flex items-center justify-center gap-1.5"
+              title="Previsualizar cómo verá el cliente este producto en la tienda online"
             >
-              <span>💬 Test WhatsApp</span>
+              <span>👁️ Previsualizar</span>
+            </button>
+            <button 
+              @click="shareToWhatsAppStatus" 
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-3 rounded-xl shadow transition-all flex items-center justify-center"
+              title="Compartir directo a WhatsApp"
+            >
+              <span>📲</span>
             </button>
           </div>
         </div>
@@ -783,14 +870,14 @@ const shareDirectWhatsApp = () => {
               </div>
             </div>
 
-            <!-- PARTE INFERIOR: Llamada a la Acción de WhatsApp -->
+            <!-- PARTE INFERIOR: Llamada a la Acción de la Web Oficial -->
             <div class="relative z-10 text-center space-y-1 pt-2 border-t border-white/10">
               <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
-                ⚡ ¡Pide el tuyo ahora antes de que se agote!
+                ⚡ ¡Haz tu pedido online con garantía oficial!
               </span>
-              <div class="bg-emerald-500 text-slate-950 font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg text-xs">
-                <span>💬 WhatsApp:</span>
-                <span class="font-mono text-xs tracking-tight">{{ contactPhone }}</span>
+              <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg text-xs">
+                <span class="text-sm">🌐</span>
+                <span class="font-mono text-xs font-black tracking-wide">{{ websiteUrl }}</span>
               </div>
             </div>
           </div>

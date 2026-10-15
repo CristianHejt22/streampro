@@ -308,8 +308,16 @@ const currentResellerId = computed(() => {
     : (selectedResellerFilter.value !== 'All' ? selectedResellerFilter.value : resellerStore.activeResellerId)
 })
 
+// Dominio oficial de producción para enlaces de revendedor
+const getBaseOrigin = () => {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return window.location.origin
+  }
+  return 'https://streamepro.me'
+}
+
 const uniqueAffiliateLink = computed(() => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streampro.digital'
+  const origin = getBaseOrigin()
   return `${origin}/?ref=${currentResellerId.value}`
 })
 
@@ -641,21 +649,42 @@ const filteredPhysicalProductsForReseller = computed(() => {
   })
 })
 
+const getProductReferralUrl = (product, clean = false) => {
+  if (!product) return ''
+  const origin = getBaseOrigin()
+  if (clean) {
+    return `${origin}/producto/${product.id}?ref=${currentResellerId.value}`
+  }
+  return `${origin}/?ref=${currentResellerId.value}&prod=${product.id}`
+}
+
 const copyResellerProduct3PercentLink = (product) => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streampro.digital'
-  const link = `${origin}/?ref=${currentResellerId.value}&prod=${product.id}`
+  const link = getProductReferralUrl(product)
   navigator.clipboard.writeText(link).then(() => {
-    toast.add(`¡Link 3% copiado! Ganas 3% ($${Math.round(product.priceNumeric * 0.03).toLocaleString()} ARS) por venta compartida`, 'success')
+    toast.add(`¡Link 3% copiado! Ganas 3% ($${Math.round(product.priceNumeric * 0.03).toLocaleString()} ARS) por venta referida`, 'success')
   }).catch(() => {
     toast.add('Error al copiar link', 'error')
   })
 }
 
 const shareResellerProductWhatsApp = (product) => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streampro.digital'
-  const link = `${origin}/?ref=${currentResellerId.value}&prod=${product.id}`
+  const link = getProductReferralUrl(product)
   const msg = `🔥 *OFERTA ESPECIAL:* *${product.name}*\n💰 Precio Oficial: *${product.price}*\n🚚 ¡Envíos directos a todo el país!\n\n👉 *Haz tu pedido online aquí:* ${link}`
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+// Modal de Previsualización de Producto Físico y sus URLs
+const previewingPhysicalProduct = ref(null)
+const showPhysicalUrlModal = ref(false)
+
+const openProductUrlPreviewModal = (product) => {
+  previewingPhysicalProduct.value = product
+  showPhysicalUrlModal.value = true
+}
+
+const openProductInNewTab = (product) => {
+  const link = getProductReferralUrl(product)
+  window.open(link, '_blank')
 }
 </script>
 
@@ -1674,24 +1703,45 @@ const shareResellerProductWhatsApp = (product) => {
             <div class="flex gap-1.5 pt-1">
               <button 
                 @click="copyResellerProduct3PercentLink(prod)"
-                class="flex-1 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-[11px] font-black py-2 rounded-xl border border-emerald-500/30 transition-all flex items-center justify-center gap-1.5"
+                class="flex-1 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-[11px] font-black py-2 rounded-xl border border-emerald-500/30 transition-all flex items-center justify-center gap-1"
                 title="Copiar enlace preferencial de 3% de comisión"
               >
                 <span>🔗 Link 3%</span>
               </button>
               <button 
+                @click="openProductUrlPreviewModal(prod)"
+                class="bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-sky-500/30 transition-all flex items-center justify-center gap-1 shadow-sm"
+                title="Previsualizar URL de este producto (Ver cómo lo ve el cliente)"
+              >
+                <span>👁️ Ver</span>
+              </button>
+              <button 
                 @click="openFlyerForProduct(prod)"
                 class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-1 shadow"
-                title="Crear Flyer publicitario para WhatsApp e Instagram de este producto"
+                title="Crear Flyer publicitario para redes con streamepro.me"
               >
                 <span>🎨 Flyer</span>
               </button>
               <button 
                 @click="shareResellerProductWhatsApp(prod)"
-                class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-2 rounded-xl transition-all shadow flex items-center justify-center"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2 py-2 rounded-xl transition-all shadow flex items-center justify-center"
                 title="Compartir directo a WhatsApp"
               >
                 <span>📲</span>
+              </button>
+            </div>
+
+            <!-- Barra Rápida de Previsualización de URL -->
+            <div class="bg-slate-950/80 px-2 py-1 rounded-xl border border-slate-800/80 flex items-center justify-between gap-1 text-[10px] mt-1">
+              <span class="text-slate-400 font-mono truncate" :title="getProductReferralUrl(prod)">
+                streamepro.me/?ref={{ currentResellerId }}&prod={{ prod.id }}
+              </span>
+              <button 
+                @click="openProductInNewTab(prod)" 
+                class="text-sky-400 hover:text-sky-300 shrink-0 font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 hover:border-sky-500/30 transition text-[9px]"
+                title="Abrir tienda en vivo con este producto"
+              >
+                Abrir ↗
               </button>
             </div>
           </div>
@@ -2656,13 +2706,123 @@ const shareResellerProductWhatsApp = (product) => {
       </div>
     </div>
 
+    <!-- MODAL: PREVISUALIZADOR DE URL DE PRODUCTO FÍSICO -->
+    <div v-if="showPhysicalUrlModal && previewingPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-sky-500/30 w-full max-w-xl rounded-3xl p-6 shadow-2xl relative space-y-5">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-xl shadow">
+              👁️
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">Previsualizador de URL y Enlace de Referencia</h3>
+              <p class="text-xs text-slate-400">Verifica cómo se abrirá la tienda para tu cliente y prueba la redirección.</p>
+            </div>
+          </div>
+          <button @click="showPhysicalUrlModal = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">✕</button>
+        </div>
+
+        <!-- Ficha Resumen del Producto -->
+        <div class="flex items-center gap-4 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+          <img 
+            :src="previewingPhysicalProduct.image" 
+            :alt="previewingPhysicalProduct.name" 
+            class="w-20 h-20 object-contain rounded-xl bg-white p-1 border border-slate-700 shrink-0"
+          >
+          <div class="space-y-1 flex-1 min-w-0">
+            <h4 class="font-black text-white text-sm truncate">{{ previewingPhysicalProduct.name }}</h4>
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400 font-black text-base">{{ previewingPhysicalProduct.price }}</span>
+              <span class="text-[10px] font-mono text-slate-400">ID: #{{ previewingPhysicalProduct.id }}</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                Tu Comisión (3%): +${{ Math.round(previewingPhysicalProduct.priceNumeric * 0.03).toLocaleString() }} ARS
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enlaces Listos para Compartir -->
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-sky-400 uppercase tracking-wider">URL Principal con Referido Activo:</label>
+              <span class="text-[10px] font-mono text-slate-500">Formato Estándar</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input 
+                :value="getProductReferralUrl(previewingPhysicalProduct, false)" 
+                readonly 
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-sky-300 font-mono outline-none select-all"
+              >
+              <button 
+                @click="copyResellerProduct3PercentLink(previewingPhysicalProduct)" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1 shadow"
+                title="Copiar URL"
+              >
+                <span>📋 Copiar</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">URL Amigable (Redirección Automática):</label>
+              <span class="text-[10px] font-mono text-slate-500">SEO Friendly</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input 
+                :value="getProductReferralUrl(previewingPhysicalProduct, true)" 
+                readonly 
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono outline-none select-all"
+              >
+              <button 
+                @click="navigator.clipboard.writeText(getProductReferralUrl(previewingPhysicalProduct, true)); toast.add('¡URL amigable copiada!', 'success')" 
+                class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-700 transition"
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-sky-950/30 border border-sky-500/20 rounded-xl text-sky-300 text-[11px] leading-relaxed">
+          ℹ️ Cuando un cliente abre este enlace, la tienda en <strong>streamepro.me</strong> abre automáticamente este producto en pantalla grande, asocia la venta a tu código <strong>{{ currentResellerId }}</strong> y si el cliente compra, ganas el <strong>3% de comisión</strong>.
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button 
+            @click="openProductInNewTab(previewingPhysicalProduct)" 
+            class="flex-1 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 px-4 rounded-xl transition shadow flex items-center justify-center gap-2 text-xs"
+          >
+            <span>🌐 Probar en Vivo (Abrir Tienda) ↗</span>
+          </button>
+          <button 
+            @click="showPhysicalUrlModal = false; openFlyerForProduct(previewingPhysicalProduct)" 
+            class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold py-2.5 px-4 rounded-xl border border-amber-500/30 transition flex items-center justify-center gap-1.5 text-xs shadow"
+          >
+            <span>🎨 Crear Flyer</span>
+          </button>
+          <button 
+            @click="shareResellerProductWhatsApp(previewingPhysicalProduct)" 
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1 text-xs shadow"
+          >
+            <span>📲 Compartir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: GENERADOR DE FLYERS PARA ESTADOS & STORIES -->
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"
+      :reseller-ref="currentResellerId"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
-      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Mi Tienda Digital'" 
-      :default-phone="resellerStore.sessionUser?.contactNumber || '+54 9 11 0000-0000'" 
+      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'TechStream Digital'" 
+      website-domain="streamepro.me"
     />
   </div>
 </template>

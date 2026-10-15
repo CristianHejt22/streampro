@@ -182,7 +182,7 @@ const handleAddReseller = () => {
 }
 
 const copyResellerCredentials = (reseller) => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.vercel.app'
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
   const text = `👋 *STREAMPRO - CREDENCIALES OFICIALES DE DISTRIBUIDOR*\n\n` +
     `¡Hola ${reseller.name}!\nTu cuenta de revendedor mayorista ha sido activada en el sistema:\n\n` +
     `🏪 *Tienda:* ${reseller.storeName || reseller.name}\n` +

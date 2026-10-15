@@ -14,9 +14,33 @@ const router = createRouter({
     },
     {
       path: '/p',
+      alias: ['/catalogo', '/tienda', '/productos'],
       redirect: to => ({
         path: '/',
         query: { ...to.query, sec: 'physical' }
+      })
+    },
+    {
+      path: '/producto/:id',
+      alias: ['/p/:id', '/item/:id', '/articulo/:id'],
+      redirect: to => ({
+        path: '/',
+        query: { ...to.query, prod: to.params.id, sec: 'physical' }
+      })
+    },
+    {
+      path: '/producto/:id/:ref',
+      redirect: to => ({
+        path: '/',
+        query: { ...to.query, prod: to.params.id, ref: to.params.ref, sec: 'physical' }
+      })
+    },
+    {
+      path: '/ref/:ref',
+      alias: ['/tienda/:ref', '/r/:ref'],
+      redirect: to => ({
+        path: '/',
+        query: { ...to.query, ref: to.params.ref }
       })
     },
     {
