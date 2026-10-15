@@ -4,11 +4,20 @@ import { useRoute } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
 import { useToastStore } from '../store/toast'
+import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const route = useRoute()
 const cartStore = useCartStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+const showFlyerModal = ref(false)
+const flyerInitialProduct = ref(null)
+
+const openFlyerForPhysical = (prod) => {
+  flyerInitialProduct.value = prod
+  showFlyerModal.value = true
+}
 
 const products = ref([
   { 
@@ -1173,12 +1182,15 @@ const submitOrder = () => {
               El producto que necesitas está aquí. Comparte el enlace directo con quien quieras.
             </div>
           </div>
-          <div class="flex gap-2 shrink-0 w-full sm:w-auto">
+          <div class="flex flex-wrap gap-2 shrink-0 w-full sm:w-auto">
             <button @click="copyShareProductUrl(selectedPhysicalProduct)" class="flex-1 sm:flex-none bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-black px-4 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs">
               <span>🤝 Ayudar Compartiendo</span>
             </button>
-            <button @click="shareProductWhatsApp(selectedPhysicalProduct)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-all">
+            <button @click="shareProductWhatsApp(selectedPhysicalProduct)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-all text-xs">
               <span>WhatsApp</span>
+            </button>
+            <button @click="openFlyerForPhysical(selectedPhysicalProduct)" class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 text-amber-300 font-black px-3.5 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs" title="Crear Flyer publicitario para WhatsApp e Instagram de este producto">
+              <span>🎨 Flyer</span>
             </button>
           </div>
         </div>
@@ -1195,6 +1207,15 @@ const submitOrder = () => {
         </div>
       </div>
     </div>
+
+    <!-- MODAL GENERADOR DE FLYERS -->
+    <FlyerGeneratorModal 
+      :show="showFlyerModal" 
+      :initial-product="flyerInitialProduct"
+      :default-store-name="resellerStoreName"
+      :default-phone="currentReseller?.contactNumber || adminStore.providerBankInfo.whatsapp"
+      @close="showFlyerModal = false" 
+    />
   </div>
 </template>
 

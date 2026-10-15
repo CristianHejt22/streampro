@@ -7,6 +7,12 @@ import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const tab = ref('crm') 
 const showFlyerModal = ref(false)
+const flyerInitialProduct = ref(null)
+
+const openFlyerForProduct = (prod) => {
+  flyerInitialProduct.value = prod
+  showFlyerModal.value = true
+}
 const filterStatus = ref('All')
 const searchQuery = ref('')
 const selectedResellerFilter = ref('All') // Filtrar por Número y Nombre de Revendedor
@@ -1665,17 +1671,24 @@ const shareResellerProductWhatsApp = (product) => {
             </div>
 
             <!-- Acciones de Difusión con 3% de Ganancia -->
-            <div class="flex gap-2 pt-1">
+            <div class="flex gap-1.5 pt-1">
               <button 
                 @click="copyResellerProduct3PercentLink(prod)"
                 class="flex-1 bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-[11px] font-black py-2 rounded-xl border border-emerald-500/30 transition-all flex items-center justify-center gap-1.5"
                 title="Copiar enlace preferencial de 3% de comisión"
               >
-                <span>🔗 Copiar Link 3%</span>
+                <span>🔗 Link 3%</span>
+              </button>
+              <button 
+                @click="openFlyerForProduct(prod)"
+                class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-1 shadow"
+                title="Crear Flyer publicitario para WhatsApp e Instagram de este producto"
+              >
+                <span>🎨 Flyer</span>
               </button>
               <button 
                 @click="shareResellerProductWhatsApp(prod)"
-                class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-2 rounded-xl transition-all shadow flex items-center justify-center"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-2 rounded-xl transition-all shadow flex items-center justify-center"
                 title="Compartir directo a WhatsApp"
               >
                 <span>📲</span>
@@ -2646,7 +2659,8 @@ const shareResellerProductWhatsApp = (product) => {
     <!-- MODAL: GENERADOR DE FLYERS PARA ESTADOS & STORIES -->
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
-      @close="showFlyerModal = false" 
+      :initial-product="flyerInitialProduct"
+      @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Mi Tienda Digital'" 
       :default-phone="resellerStore.sessionUser?.contactNumber || '+54 9 11 0000-0000'" 
     />
