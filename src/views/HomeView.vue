@@ -788,7 +788,7 @@ const submitOrder = () => {
           </div>
 
           <!-- Imagen del Producto -->
-          <div class="w-full h-48 bg-white flex items-center justify-center p-3 overflow-hidden cursor-pointer relative" @click="openPhysicalModal(item)">
+          <div class="w-full h-52 bg-white flex items-center justify-center p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
             <img 
               :src="item.image" 
               :alt="item.name" 
@@ -1193,8 +1193,8 @@ const submitOrder = () => {
         </div>
 
         <div class="flex flex-col sm:flex-row gap-6 items-center">
-          <div class="w-full sm:w-48 h-48 bg-white rounded-2xl p-3 flex items-center justify-center shrink-0 shadow-inner">
-            <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain">
+          <div class="w-full sm:w-64 sm:h-64 h-56 bg-white rounded-3xl p-4 flex items-center justify-center shrink-0 shadow-2xl border-2 border-white/20 overflow-hidden group">
+            <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300">
           </div>
           <div class="space-y-2 flex-1">
             <h3 class="text-lg font-black text-white leading-snug">{{ selectedPhysicalProduct.name }}</h3>

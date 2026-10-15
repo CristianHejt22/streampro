@@ -1,9 +1,19 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
+import { 
+  isBiometricsAvailable, 
+  registerBiometricCredential, 
+  authenticateWithBiometrics, 
+  hasBiometricEnrolled, 
+  removeBiometricEnrollment, 
+  saveRememberedSession, 
+  getRememberedSession, 
+  clearRememberedSession 
+} from '../services/biometrics'
 
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
@@ -608,6 +618,27 @@ const adminLoginForm = ref({
   password: ''
 })
 const adminLoginError = ref('')
+const rememberAdminSession = ref(true)
+const adminBiometricsAvailable = ref(false)
+const hasAdminEnrolledBiometrics = ref(false)
+const isAdminBiometricLoading = ref(false)
+
+onMounted(async () => {
+  adminBiometricsAvailable.value = await isBiometricsAvailable()
+  hasAdminEnrolledBiometrics.value = hasBiometricEnrolled('admin')
+
+  // Auto-restaurar sesión recordada de administrador
+  if (!isAdminAuthenticated.value) {
+    const saved = getRememberedSession('admin')
+    if (saved && (saved.username || saved.id === 'admin')) {
+      const masterUser = (adminStore.adminAuth?.username || 'admin').toLowerCase()
+      if (saved.username?.toLowerCase() === masterUser || saved.id === 'admin') {
+        isAdminAuthenticated.value = true
+        toast.add(`¡Bienvenido de nuevo, ${adminStore.adminAuth?.name || 'Administrador'}! Sesión restaurada.`, 'success')
+      }
+    }
+  }
+})
 
 const handleAdminLogin = () => {
   adminLoginError.value = ''
@@ -619,6 +650,11 @@ const handleAdminLogin = () => {
 
   if (u === masterUser && p === masterPass) {
     isAdminAuthenticated.value = true
+    if (rememberAdminSession.value) {
+      saveRememberedSession('admin', { id: 'admin', username: masterUser, name: adminStore.adminAuth?.name || 'Administrador Principal' })
+    } else {
+      clearRememberedSession('admin')
+    }
     toast.add(`¡Bienvenido al Centro Mayorista Proveedor, ${adminStore.adminAuth?.name || 'Administrador'}!`, 'success')
   } else {
     adminLoginError.value = 'Credenciales maestras incorrectas. Verifica tu usuario y contraseña de Administrador.'
@@ -626,7 +662,54 @@ const handleAdminLogin = () => {
   }
 }
 
+// Inicio Rápido de Administrador con Biometría (Windows Hello / Touch ID / Face ID)
+const handleAdminBiometricLogin = async () => {
+  adminLoginError.value = ''
+  isAdminBiometricLoading.value = true
+  try {
+    const res = await authenticateWithBiometrics('admin')
+    if (res.success) {
+      isAdminAuthenticated.value = true
+      if (rememberAdminSession.value) {
+        saveRememberedSession('admin', { id: 'admin', username: adminStore.adminAuth?.username || 'admin', name: adminStore.adminAuth?.name || 'Administrador Principal' })
+      }
+      toast.add('🔓 ¡Acceso biométrico verificado! Bienvenido Administrador.', 'success')
+    } else {
+      adminLoginError.value = res.error || 'No se pudo verificar la huella o biometría'
+      toast.add(adminLoginError.value, 'error')
+    }
+  } catch (e) {
+    adminLoginError.value = 'Error al activar lector biométrico'
+    toast.add(adminLoginError.value, 'error')
+  } finally {
+    isAdminBiometricLoading.value = false
+  }
+}
+
+// Vincular Biometría de Administrador en este equipo
+const handleAdminEnrollBiometrics = async () => {
+  const user = {
+    id: 'admin',
+    username: adminStore.adminAuth?.username || 'admin',
+    name: adminStore.adminAuth?.name || 'Administrador Principal'
+  }
+  const res = await registerBiometricCredential('admin', user)
+  if (res.success) {
+    hasAdminEnrolledBiometrics.value = true
+    toast.add('✅ ¡Biometría (Huella / Windows Hello / Face ID) configurada para Administrador en este equipo!', 'success')
+  } else {
+    toast.add(res.error || 'No se pudo configurar la biometría', 'error')
+  }
+}
+
+const handleAdminRemoveBiometrics = () => {
+  removeBiometricEnrollment('admin')
+  hasAdminEnrolledBiometrics.value = false
+  toast.add('Biometría de Administrador desvinculada de este equipo.', 'info')
+}
+
 const handleAdminLogout = () => {
+  clearRememberedSession('admin')
   isAdminAuthenticated.value = false
   adminLoginForm.value.username = ''
   adminLoginForm.value.password = ''
@@ -940,6 +1023,17 @@ const deletePackageItem = (pkgId) => {
           >
         </div>
 
+        <div class="flex items-center justify-between text-xs pt-1">
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer select-none hover:text-white transition-colors">
+            <input 
+              v-model="rememberAdminSession" 
+              type="checkbox" 
+              class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer"
+            >
+            <span>Recordar sesión de Administrador</span>
+          </label>
+        </div>
+
         <button 
           type="submit" 
           class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm"
@@ -947,6 +1041,26 @@ const deletePackageItem = (pkgId) => {
           <span>Ingresar a Gestión Mayorista</span>
           <span>→</span>
         </button>
+
+        <!-- Botón de Inicio Rápido con Biometría para Administrador -->
+        <div v-if="hasAdminEnrolledBiometrics || adminBiometricsAvailable" class="pt-2">
+          <div class="relative flex py-2 items-center">
+            <div class="flex-grow border-t border-slate-800"></div>
+            <span class="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-bold tracking-wider">o acceso rápido</span>
+            <div class="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button 
+            type="button" 
+            @click="handleAdminBiometricLogin"
+            :disabled="isAdminBiometricLoading"
+            class="w-full bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/15 hover:from-amber-500/25 hover:to-yellow-500/25 text-amber-300 border border-amber-500/40 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-sm disabled:opacity-50"
+          >
+            <span class="text-base">👆</span>
+            <span v-if="isAdminBiometricLoading">Verificando Biometría / Windows Hello...</span>
+            <span v-else>Iniciar con Huella / Face ID / Windows Hello</span>
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -973,6 +1087,25 @@ const deletePackageItem = (pkgId) => {
       </div>
 
       <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+        <!-- Biometría de Administrador -->
+        <button 
+          v-if="hasAdminEnrolledBiometrics"
+          @click="handleAdminRemoveBiometrics"
+          class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+          title="Huella / Biometría activa para Administrador en este equipo. Clic para desvincular."
+        >
+          <span>🔐</span>
+          <span>Huella Admin Activa ✓</span>
+        </button>
+        <button 
+          v-else
+          @click="handleAdminEnrollBiometrics"
+          class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+          title="Vincular inicio de sesión rápido con Huella / Windows Hello / Face ID para Administrador"
+        >
+          <span>👆</span>
+          <span>Activar Huella Admin</span>
+        </button>
         <button 
           @click="showFlyerModal = true"
           class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"

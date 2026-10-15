@@ -303,15 +303,23 @@ function renderCanvasFlyerBlob() {
       ctx.fillStyle = '#020617'
       ctx.fillText(badgeText, 540, 246)
 
-      // 6. Contenedor de la Imagen / Ícono
-      const boxSize = 440
+      // 6. Contenedor de la Imagen / Ícono (Alta Visibilidad para Productos)
+      const isPhysical = flyerProductType.value === 'physical'
+      const boxSize = isPhysical ? 580 : 460
       const boxX = (1080 - boxSize) / 2
-      const boxY = 320
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'
-      roundRect(ctx, boxX, boxY, boxSize, boxSize, 44, true, true, 'rgba(255, 255, 255, 0.18)', 2.5)
+      const boxY = isPhysical ? 290 : 315
+
+      // Sombra ambiental suave detrás del producto
+      ctx.save()
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
+      ctx.shadowBlur = 35
+      ctx.shadowOffsetY = 15
+      ctx.fillStyle = isPhysical ? '#ffffff' : 'rgba(255, 255, 255, 0.06)'
+      roundRect(ctx, boxX, boxY, boxSize, boxSize, 40, true, true, isPhysical ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.18)', 2.5)
+      ctx.restore()
 
       // Dibujar imagen con proxy CORS o ícono
-      if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.image) {
+      if (isPhysical && selectedPhysicalProduct.value?.image) {
         try {
           const imgUrl = productImageCORS.value || getCORSImageUrl(selectedPhysicalProduct.value.image)
           const img = new Image()
@@ -320,30 +328,35 @@ function renderCanvasFlyerBlob() {
             img.onload = () => res()
             img.onerror = () => rej(new Error('Img load error'))
             img.src = imgUrl
-            setTimeout(() => rej(new Error('Img timeout')), 5000)
+            setTimeout(() => rej(new Error('Img timeout')), 6000)
           })
 
           ctx.save()
           ctx.beginPath()
-          roundRect(ctx, boxX + 16, boxY + 16, boxSize - 32, boxSize - 32, 32, false, false)
+          roundRect(ctx, boxX + 12, boxY + 12, boxSize - 24, boxSize - 24, 32, false, false)
           ctx.clip()
 
-          // Fondo blanco limpio para la foto del producto
+          // Fondo blanco brillante puro para resaltar al 100% el producto
           ctx.fillStyle = '#ffffff'
-          ctx.fillRect(boxX + 16, boxY + 16, boxSize - 32, boxSize - 32)
+          ctx.fillRect(boxX + 12, boxY + 12, boxSize - 24, boxSize - 24)
 
-          const hRatio = (boxSize - 40) / img.width
-          const vRatio = (boxSize - 40) / img.height
+          const padding = 28
+          const availW = boxSize - 24 - padding
+          const availH = boxSize - 24 - padding
+          const hRatio = availW / img.width
+          const vRatio = availH / img.height
           const ratio = Math.min(hRatio, vRatio)
-          const centerShiftX = (boxSize - 32 - img.width * ratio) / 2
-          const centerShiftY = (boxSize - 32 - img.height * ratio) / 2
-          ctx.drawImage(img, 0, 0, img.width, img.height, boxX + 16 + centerShiftX, boxY + 16 + centerShiftY, img.width * ratio, img.height * ratio)
+          const drawW = img.width * ratio
+          const drawH = img.height * ratio
+          const centerShiftX = (boxSize - 24 - drawW) / 2
+          const centerShiftY = (boxSize - 24 - drawH) / 2
+          ctx.drawImage(img, 0, 0, img.width, img.height, boxX + 12 + centerShiftX, boxY + 12 + centerShiftY, drawW, drawH)
           ctx.restore()
         } catch (imgErr) {
           // Si falla la imagen externa por red, dibuja ícono de fallback
-          ctx.font = '160px sans-serif'
+          ctx.font = '180px sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText('📦', 540, boxY + 270)
+          ctx.fillText('📦', 540, boxY + 340)
         }
       } else {
         // Ícono grande para plataformas de streaming
@@ -352,13 +365,13 @@ function renderCanvasFlyerBlob() {
                       selectedPlatform.value === 'Max' ? '🎬' :
                       selectedPlatform.value === 'IPTV' ? '📺' :
                       selectedPlatform.value === 'Spotify' ? '🎵' : '⚡'
-        ctx.font = '170px sans-serif'
+        ctx.font = '180px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(emoji, 540, boxY + 270)
+        ctx.fillText(emoji, 540, boxY + 280)
       }
 
       // 7. Título y Subtítulo
-      let titleY = 820
+      let titleY = isPhysical ? (boxY + boxSize + 60) : 830
       ctx.textAlign = 'center'
       ctx.font = '900 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#ffffff'
@@ -390,26 +403,26 @@ function renderCanvasFlyerBlob() {
       ctx.fillText(displaySubtitle.value, 540, titleY + 60)
 
       // 8. Tarjeta de Precio Gigante
-      const priceBoxY = titleY + 120
+      const priceBoxY = titleY + 115
       ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
-      roundRect(ctx, 130, priceBoxY, 820, 190, 36, true, true, 'rgba(255, 255, 255, 0.16)', 2)
+      roundRect(ctx, 130, priceBoxY, 820, 180, 36, true, true, 'rgba(255, 255, 255, 0.16)', 2)
 
       ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#94a3b8'
-      ctx.fillText('PRECIO EXCLUSIVO', 540, priceBoxY + 45)
+      ctx.fillText('PRECIO EXCLUSIVO', 540, priceBoxY + 42)
 
-      ctx.font = '900 86px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.font = '900 82px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#ffffff'
-      ctx.fillText(`$${displayPrice.value} ARS`, 540, priceBoxY + 130)
+      ctx.fillText(`$${displayPrice.value} ARS`, 540, priceBoxY + 124)
 
       // 9. Puntos Clave / Beneficios
-      const bulletsStartY = priceBoxY + 240
+      const bulletsStartY = priceBoxY + 225
       const bullets = [bullet1.value, bullet2.value, bullet3.value]
       ctx.textAlign = 'left'
 
       bullets.forEach((b, idx) => {
-        const by = bulletsStartY + (idx * 65)
-        ctx.font = 'bold 34px sans-serif'
+        const by = bulletsStartY + (idx * 60)
+        ctx.font = 'bold 32px sans-serif'
         ctx.fillStyle = '#10b981'
         ctx.fillText('✓', 140, by)
 
@@ -640,6 +653,18 @@ const shareToWhatsAppStatus = () => {
                 </option>
               </select>
             </div>
+
+            <!-- Previsualización Inmediata del Producto Seleccionado -->
+            <div v-if="selectedPhysicalProduct" class="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div class="w-14 h-14 bg-white rounded-xl p-1 shrink-0 flex items-center justify-center shadow-sm border border-slate-700">
+                <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain">
+              </div>
+              <div class="flex-1 min-w-0">
+                <h5 class="text-xs font-bold text-white truncate">{{ selectedPhysicalProduct.name }}</h5>
+                <span class="text-emerald-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
+                <span class="text-[10px] text-sky-400 block font-mono">✅ Imagen HD destacada en el flyer</span>
+              </div>
+            </div>
           </div>
 
           <!-- Personalización de Textos -->
@@ -819,17 +844,17 @@ const shareToWhatsAppStatus = () => {
             </div>
 
             <!-- PARTE CENTRAL: Imagen / Icono y Titular -->
-            <div class="relative z-10 text-center space-y-2.5 my-auto">
-              <!-- Icono / Imagen del Producto -->
-              <div class="w-24 h-24 mx-auto rounded-2xl bg-white/5 border border-white/15 flex items-center justify-center p-2 backdrop-blur-md shadow-inner overflow-hidden">
+            <div class="relative z-10 text-center space-y-2 my-auto">
+              <!-- Icono / Imagen del Producto con Alta Visibilidad -->
+              <div :class="['mx-auto rounded-3xl flex items-center justify-center p-2.5 shadow-2xl overflow-hidden transition-all duration-300', flyerProductType === 'physical' ? 'w-36 h-36 sm:w-44 sm:h-44 bg-white border-2 border-white/40' : 'w-24 h-24 bg-white/10 border border-white/20']">
                 <img 
                   v-if="flyerProductType === 'physical' && (productImageCORS || selectedPhysicalProduct?.image)" 
                   :src="productImageCORS || selectedPhysicalProduct.image" 
                   :alt="displayTitle"
-                  class="w-full h-full object-contain rounded-xl bg-white"
+                  class="w-full h-full object-contain filter drop-shadow-md"
                   crossorigin="anonymous"
                 >
-                <div v-else class="text-4xl">
+                <div v-else class="text-5xl">
                   {{ selectedPlatform === 'Netflix' ? '🍿' : selectedPlatform === 'Disney+' ? '✨' : selectedPlatform === 'Max' ? '🎬' : selectedPlatform === 'IPTV' ? '📺' : selectedPlatform === 'Spotify' ? '🎵' : '⚡' }}
                 </div>
               </div>

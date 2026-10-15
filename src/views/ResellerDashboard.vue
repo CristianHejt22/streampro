@@ -1,9 +1,19 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import html2canvas from 'html2canvas'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
+import { 
+  isBiometricsAvailable, 
+  registerBiometricCredential, 
+  authenticateWithBiometrics, 
+  hasBiometricEnrolled, 
+  removeBiometricEnrollment, 
+  saveRememberedSession, 
+  getRememberedSession, 
+  clearRememberedSession 
+} from '../services/biometrics'
 
 const tab = ref('crm') 
 const showFlyerModal = ref(false)
@@ -272,12 +282,37 @@ const calcProfitMargin = computed(() => {
   return Math.round((calcTotalProfit.value / calcTotalClientIncome.value) * 100)
 })
 
-// Autenticación de Revendedores (Usuario y Contraseña)
+// Autenticación de Revendedores (Usuario, Contraseña y Biometría)
 const loginForm = ref({
   username: '',
   password: ''
 })
 const loginError = ref('')
+const rememberSession = ref(true)
+const biometricsAvailable = ref(false)
+const hasEnrolledBiometrics = ref(false)
+const isBiometricLoading = ref(false)
+
+onMounted(async () => {
+  biometricsAvailable.value = await isBiometricsAvailable()
+  hasEnrolledBiometrics.value = hasBiometricEnrolled('reseller')
+
+  // Auto-restaurar sesión recordada
+  if (!resellerStore.isAuthenticated) {
+    const saved = getRememberedSession('reseller')
+    if (saved?.id) {
+      const found = adminStore.resellers.find(r => r.id === saved.id || r.username?.toLowerCase() === saved.username?.toLowerCase())
+      if (found && found.isActive !== false) {
+        resellerStore.isAuthenticated = true
+        resellerStore.activeResellerId = found.id
+        resellerStore.sessionUser = { ...found }
+        resellerStore.wallet = found.balance || 0
+        selectedResellerFilter.value = found.id
+        toast.add(`¡Bienvenido de nuevo, ${found.name}! Sesión recordada.`, 'success')
+      }
+    }
+  }
+})
 
 const handleLogin = () => {
   loginError.value = ''
@@ -289,6 +324,11 @@ const handleLogin = () => {
   const res = resellerStore.login(loginForm.value.username, loginForm.value.password)
   if (res.success) {
     selectedResellerFilter.value = res.reseller.id
+    if (rememberSession.value) {
+      saveRememberedSession('reseller', res.reseller)
+    } else {
+      clearRememberedSession('reseller')
+    }
     toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
   } else {
     loginError.value = res.error || 'Credenciales inválidas'
@@ -296,7 +336,61 @@ const handleLogin = () => {
   }
 }
 
+// Inicio Rápido con Biometría (Huella / Rostro / Windows Hello / Face ID)
+const handleBiometricLogin = async () => {
+  loginError.value = ''
+  isBiometricLoading.value = true
+  try {
+    const bioRes = await authenticateWithBiometrics('reseller')
+    if (bioRes.success && bioRes.bioData) {
+      const found = adminStore.resellers.find(r => 
+        r.id === bioRes.bioData.userId || 
+        r.username?.toLowerCase() === bioRes.bioData.username?.toLowerCase()
+      )
+      if (found && found.isActive !== false) {
+        resellerStore.isAuthenticated = true
+        resellerStore.activeResellerId = found.id
+        resellerStore.sessionUser = { ...found }
+        resellerStore.wallet = found.balance || 0
+        selectedResellerFilter.value = found.id
+        if (rememberSession.value) {
+          saveRememberedSession('reseller', found)
+        }
+        toast.add(`🔓 ¡Acceso biométrico verificado! Bienvenido, ${found.name}`, 'success')
+        return
+      }
+    }
+    loginError.value = bioRes.error || 'No se pudo verificar la autenticación biométrica'
+    toast.add(loginError.value, 'error')
+  } catch (err) {
+    loginError.value = 'Error al activar lector biométrico'
+    toast.add(loginError.value, 'error')
+  } finally {
+    isBiometricLoading.value = false
+  }
+}
+
+// Configurar Biometría desde el panel del revendedor
+const handleEnrollBiometrics = async () => {
+  const user = resellerStore.sessionUser
+  if (!user) return
+  const res = await registerBiometricCredential('reseller', user)
+  if (res.success) {
+    hasEnrolledBiometrics.value = true
+    toast.add('✅ ¡Biometría (Huella / Rostro) configurada para inicio rápido en este equipo!', 'success')
+  } else {
+    toast.add(res.error || 'No se pudo vincular la biometría', 'error')
+  }
+}
+
+const handleRemoveBiometrics = () => {
+  removeBiometricEnrollment('reseller')
+  hasEnrolledBiometrics.value = false
+  toast.add('Biometría desvinculada de este dispositivo.', 'info')
+}
+
 const handleLogout = () => {
+  clearRememberedSession('reseller')
   resellerStore.logout()
   toast.add('Sesión de distribuidor cerrada correctamente.', 'info')
 }
@@ -731,6 +825,17 @@ const openProductInNewTab = (product) => {
           >
         </div>
 
+        <div class="flex items-center justify-between text-xs pt-1">
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer select-none hover:text-white transition-colors">
+            <input 
+              v-model="rememberSession" 
+              type="checkbox" 
+              class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-brand-accent focus:ring-brand-accent focus:ring-offset-slate-900 cursor-pointer"
+            >
+            <span>Recordar inicio de sesión</span>
+          </label>
+        </div>
+
         <button 
           type="submit" 
           class="w-full bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2 text-sm"
@@ -738,6 +843,26 @@ const openProductInNewTab = (product) => {
           <span>Ingresar a Mi Panel</span>
           <span>→</span>
         </button>
+
+        <!-- Botón de Inicio Rápido con Huella / Biometría -->
+        <div v-if="hasEnrolledBiometrics || biometricsAvailable" class="pt-2">
+          <div class="relative flex py-2 items-center">
+            <div class="flex-grow border-t border-slate-800"></div>
+            <span class="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-bold tracking-wider">o acceso rápido</span>
+            <div class="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button 
+            type="button" 
+            @click="handleBiometricLogin"
+            :disabled="isBiometricLoading"
+            class="w-full bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-emerald-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 text-emerald-300 border border-emerald-500/40 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-sm disabled:opacity-50"
+          >
+            <span class="text-base">👆</span>
+            <span v-if="isBiometricLoading">Verificando Huella / Biometría...</span>
+            <span v-else>Iniciar con Huella / Face ID / Windows Hello</span>
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -763,7 +888,27 @@ const openProductInNewTab = (product) => {
         </div>
       </div>
 
-      <div class="flex items-center gap-2 self-end sm:self-auto">
+      <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+        <!-- Botón Configurar / Gestionar Biometría -->
+        <button 
+          v-if="hasEnrolledBiometrics"
+          @click="handleRemoveBiometrics"
+          class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+          title="Huella / Biometría activa en este dispositivo. Clic para desvincular."
+        >
+          <span>🔐</span>
+          <span>Huella Activa ✓</span>
+        </button>
+        <button 
+          v-else
+          @click="handleEnrollBiometrics"
+          class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+          title="Vincular inicio de sesión rápido con Huella dactilar, Windows Hello o Face ID en este dispositivo"
+        >
+          <span>👆</span>
+          <span>Activar Huella / Biometría</span>
+        </button>
+
         <button 
           @click="showFlyerModal = true"
           class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
@@ -1676,14 +1821,25 @@ const openProductInNewTab = (product) => {
             :key="prod.id"
             class="bg-[#020617] border border-slate-800/90 rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-700 transition-all shadow-md"
           >
-            <div class="flex gap-3 items-center">
-              <div class="w-14 h-14 bg-white rounded-xl p-1 shrink-0 flex items-center justify-center">
-                <img :src="prod.image" :alt="prod.name" class="max-h-full max-w-full object-contain">
+            <div class="flex gap-3.5 items-center">
+              <div 
+                @click="openProductUrlPreviewModal(prod)"
+                class="w-24 h-24 sm:w-28 sm:h-28 bg-white rounded-2xl p-2 shrink-0 flex items-center justify-center shadow-lg border border-slate-200/20 cursor-pointer group hover:ring-2 hover:ring-brand-accent transition-all relative overflow-hidden"
+                title="Clic para previsualizar producto en grande"
+              >
+                <img :src="prod.image" :alt="prod.name" class="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300">
+                <span class="absolute bottom-1 right-1 bg-black/60 text-white rounded p-0.5 text-[9px] opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
               </div>
               <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-white text-xs truncate" :title="prod.name">{{ prod.name }}</h4>
-                <div class="text-[11px] text-amber-400 font-black mt-0.5">${{ prod.price }}</div>
-                <div class="text-[10px] text-slate-500 font-mono">ID: #{{ prod.id }}</div>
+                <h4 
+                  @click="openProductUrlPreviewModal(prod)"
+                  class="font-black text-white text-xs sm:text-sm line-clamp-2 hover:text-brand-accent cursor-pointer transition-colors" 
+                  :title="prod.name"
+                >
+                  {{ prod.name }}
+                </h4>
+                <div class="text-sm font-black text-amber-400 mt-1">${{ prod.price }}</div>
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: #{{ prod.id }}</div>
               </div>
             </div>
 
@@ -2722,18 +2878,20 @@ const openProductInNewTab = (product) => {
           <button @click="showPhysicalUrlModal = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">✕</button>
         </div>
 
-        <!-- Ficha Resumen del Producto -->
-        <div class="flex items-center gap-4 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-          <img 
-            :src="previewingPhysicalProduct.image" 
-            :alt="previewingPhysicalProduct.name" 
-            class="w-20 h-20 object-contain rounded-xl bg-white p-1 border border-slate-700 shrink-0"
-          >
-          <div class="space-y-1 flex-1 min-w-0">
-            <h4 class="font-black text-white text-sm truncate">{{ previewingPhysicalProduct.name }}</h4>
-            <div class="flex items-center gap-2">
-              <span class="text-amber-400 font-black text-base">{{ previewingPhysicalProduct.price }}</span>
-              <span class="text-[10px] font-mono text-slate-400">ID: #{{ previewingPhysicalProduct.id }}</span>
+        <!-- Ficha Resumen del Producto con Alta Visibilidad -->
+        <div class="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <div class="w-32 h-32 sm:w-40 sm:h-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shrink-0 border-2 border-white/20 shadow-xl overflow-hidden">
+            <img 
+              :src="previewingPhysicalProduct.image" 
+              :alt="previewingPhysicalProduct.name" 
+              class="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-300"
+            >
+          </div>
+          <div class="space-y-1.5 flex-1 min-w-0 text-center sm:text-left">
+            <h4 class="font-black text-white text-base leading-snug">{{ previewingPhysicalProduct.name }}</h4>
+            <div class="flex items-center justify-center sm:justify-start gap-2">
+              <span class="text-amber-400 font-black text-xl">${{ previewingPhysicalProduct.price }}</span>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">ID: #{{ previewingPhysicalProduct.id }}</span>
             </div>
             <div class="flex items-center gap-2 text-[11px]">
               <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
