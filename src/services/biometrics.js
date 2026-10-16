@@ -20,6 +20,18 @@ export async function isBiometricsAvailable() {
   }
 }
 
+function getRpConfig() {
+  const rp = { name: 'StreamPro Digital' }
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const host = window.location.hostname
+    // WebAuthn only accepts valid domain names or 'localhost', NOT raw IPv4 addresses
+    if (host === 'localhost' || (!/^(\d{1,3}\.){3}\d{1,3}$/.test(host) && !host.includes(':'))) {
+      rp.id = host
+    }
+  }
+  return rp
+}
+
 /**
  * Registra las credenciales biométricas del usuario en este dispositivo
  */
@@ -37,7 +49,7 @@ export async function registerBiometricCredential(role, userObj) {
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge,
-          rp: { name: 'StreamPro Digital', id: window.location.hostname || 'streamepro.me' },
+          rp: getRpConfig(),
           user: {
             id: userId,
             name: userObj.username || userObj.id || role,
@@ -92,13 +104,19 @@ export async function authenticateWithBiometrics(role) {
       const challenge = new Uint8Array(32)
       window.crypto.getRandomValues(challenge)
 
-      await navigator.credentials.get({
+      const getOptions = {
         publicKey: {
           challenge,
           timeout: 60000,
           userVerification: 'preferred'
         }
-      })
+      }
+      const rpConfig = getRpConfig()
+      if (rpConfig.id) {
+        getOptions.publicKey.rpId = rpConfig.id
+      }
+
+      await navigator.credentials.get(getOptions)
     }
 
     return { success: true, bioData }

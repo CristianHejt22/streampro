@@ -1276,8 +1276,8 @@ export const useResellerStore = defineStore('reseller', {
       const p = password.trim()
       
       const found = adminStore.resellers.find(r => 
-        (r.username?.toLowerCase() === u || r.id.toLowerCase() === u) &&
-        r.password === p
+        (r.username?.toLowerCase() === u || r.id?.toLowerCase() === u) &&
+        (r.password || '').trim() === p
       )
 
       if (!found) {

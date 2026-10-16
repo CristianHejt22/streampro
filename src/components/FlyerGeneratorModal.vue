@@ -122,8 +122,10 @@ const filteredPhysicalProducts = computed(() => {
 })
 
 const selectedPhysicalProduct = computed(() => {
-  if (!selectedPhysicalId.value) return adminStore.physicalProducts[0] || null
-  return adminStore.physicalProducts.find(p => String(p.id) === String(selectedPhysicalId.value)) || adminStore.physicalProducts[0]
+  const list = adminStore.physicalProducts || []
+  if (list.length === 0) return null
+  if (!selectedPhysicalId.value) return list[0]
+  return list.find(p => String(p.id) === String(selectedPhysicalId.value)) || list[0]
 })
 
 // Imagen con CORS para el flyer del producto seleccionado
@@ -210,9 +212,9 @@ const displayPrice = computed(() => {
 
 // Título principal a mostrar
 const displayTitle = computed(() => {
-  if (customTitle.value.trim()) return customTitle.value
+  if (customTitle.value?.trim()) return customTitle.value.trim()
   if (flyerProductType.value === 'streaming') {
-    return currentPlatformData.value.name || selectedPlatform.value
+    return currentPlatformData.value?.name || selectedPlatform.value || 'Streaming'
   } else {
     return selectedPhysicalProduct.value?.name || 'Producto Tecnológico'
   }
@@ -220,13 +222,84 @@ const displayTitle = computed(() => {
 
 // Subtítulo
 const displaySubtitle = computed(() => {
-  if (customSubtitle.value.trim()) return customSubtitle.value
+  if (customSubtitle.value?.trim()) return customSubtitle.value.trim()
   if (flyerProductType.value === 'streaming') {
-    return currentPlanData.value.label || 'Suscripción Oficial'
+    return currentPlanData.value?.label || 'Suscripción Oficial'
   } else {
     return 'Tecnología & Accesorios de Alta Calidad'
   }
 })
+
+// Enlace de referencia directo del producto o tienda con atribución de comisión (3%)
+const fullProductReferralUrl = computed(() => {
+  const origin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? window.location.origin
+    : `https://${websiteUrl.value || props.websiteDomain || 'streamepro.me'}`
+  const refCode = props.resellerRef || 'RES-01'
+  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.id) {
+    return `${origin}/?ref=${refCode}&prod=${selectedPhysicalProduct.value.id}`
+  }
+  return `${origin}/?ref=${refCode}`
+})
+
+const copyProductReferralUrl = () => {
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(fullProductReferralUrl.value).then(() => {
+      toast.add('¡Enlace de referencia con tu comisión copiado!', 'success')
+    }).catch(() => {
+      toast.add('Error al copiar el enlace', 'error')
+    })
+  } else {
+    toast.add('Portapapeles no disponible en este dispositivo', 'error')
+  }
+}
+
+const previewProductReferralUrl = () => {
+  if (fullProductReferralUrl.value) {
+    window.open(fullProductReferralUrl.value, '_blank')
+  }
+}
+
+// Carga resiliente de imagen para Canvas con triple fallback
+const loadFlyerImage = (rawUrl) => {
+  return new Promise((resolve) => {
+    if (!rawUrl) return resolve(null)
+    const fullUrl = rawUrl.startsWith('http') ? rawUrl : `https://tua.ar/${rawUrl}`
+    const sources = [
+      `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=800&output=jpg`,
+      `https://images.weserv.nl/?url=${encodeURIComponent(fullUrl)}&w=800&output=jpg`,
+      fullUrl
+    ]
+    let currentIdx = 0
+
+    const tryNextSource = () => {
+      if (currentIdx >= sources.length) {
+        return resolve(null)
+      }
+      const testSrc = sources[currentIdx++]
+      const imageEl = new Image()
+      imageEl.crossOrigin = 'anonymous'
+      let timer = null
+
+      imageEl.onload = () => {
+        if (timer) clearTimeout(timer)
+        resolve(imageEl)
+      }
+      imageEl.onerror = () => {
+        if (timer) clearTimeout(timer)
+        tryNextSource()
+      }
+      timer = setTimeout(() => {
+        imageEl.src = ''
+        tryNextSource()
+      }, 3500)
+
+      imageEl.src = testSrc
+    }
+
+    tryNextSource()
+  })
+}
 
 // ==========================================
 // RENDERIZADOR NATIVO DE CANVAS 2D MULTI-FORMATO
@@ -321,20 +394,12 @@ function renderCanvasFlyerBlob() {
       // 3. Marco exterior elegante
       roundRect(ctx, 35, 35, width - 70, height - 70, 44, false, true, 'rgba(255, 255, 255, 0.12)', 2)
 
-      // 4. Carga de imagen si es producto físico
+      // 4. Carga de imagen si es producto físico con fallback automático
       const isPhysical = flyerProductType.value === 'physical'
       let img = null
       if (isPhysical && selectedPhysicalProduct.value?.image) {
         try {
-          const imgUrl = productImageCORS.value || getCORSImageUrl(selectedPhysicalProduct.value.image)
-          img = new Image()
-          img.crossOrigin = 'anonymous'
-          await new Promise((res, rej) => {
-            img.onload = () => res()
-            img.onerror = () => rej(new Error('Img load error'))
-            img.src = imgUrl
-            setTimeout(() => rej(new Error('Img timeout')), 6000)
-          })
+          img = await loadFlyerImage(selectedPhysicalProduct.value.image)
         } catch (e) {
           img = null
         }
@@ -861,6 +926,48 @@ const shareToWhatsAppStatus = () => {
                 <span class="text-emerald-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
                 <span class="text-[10px] text-sky-400 block font-mono">✅ Imagen HD destacada en el flyer</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Personalización de Título y Subtítulo -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#020617] p-3 rounded-2xl border border-slate-800">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-[11px]">Título / Nombre en Flyer</label>
+                <button 
+                  v-if="customTitle" 
+                  type="button"
+                  @click="customTitle = ''" 
+                  class="text-[10px] text-amber-400 hover:underline"
+                >
+                  Restablecer
+                </button>
+              </div>
+              <input 
+                v-model="customTitle" 
+                type="text" 
+                :placeholder="displayTitle" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold outline-none focus:border-amber-400"
+              >
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-[11px]">Subtítulo / Bajada en Flyer</label>
+                <button 
+                  v-if="customSubtitle" 
+                  type="button"
+                  @click="customSubtitle = ''" 
+                  class="text-[10px] text-amber-400 hover:underline"
+                >
+                  Restablecer
+                </button>
+              </div>
+              <input 
+                v-model="customSubtitle" 
+                type="text" 
+                :placeholder="displaySubtitle" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-amber-300 font-semibold outline-none focus:border-amber-400"
+              >
             </div>
           </div>
 

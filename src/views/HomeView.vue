@@ -244,9 +244,15 @@ const getProductDirectUrl = (product) => {
 
 const copyShareProductUrl = (product) => {
   const shareUrl = getProductDirectUrl(product)
-  navigator.clipboard.writeText(shareUrl).then(() => {
-    toast.add('¡Enlace de producto copiado! Compártelo donde quieras.', 'success')
-  })
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      toast.add('¡Enlace de producto copiado! Compártelo donde quieras.', 'success')
+    }).catch(() => {
+      toast.add('Error al copiar enlace', 'error')
+    })
+  } else {
+    toast.add('Portapapeles no disponible en este dispositivo', 'error')
+  }
 }
 
 const shareProductWhatsApp = (product) => {
