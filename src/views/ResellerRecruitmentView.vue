@@ -2,9 +2,75 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '../store/admin'
+import { useToastStore } from '../store/toast'
 
 const router = useRouter()
 const adminStore = useAdminStore()
+const toast = useToastStore()
+
+// Formulario de solicitud de revendedor
+const applicationForm = ref({
+  fullName: '',
+  whatsapp: '',
+  email: '',
+  city: '',
+  storeName: '',
+  experience: 'Quiero empezar desde cero',
+  notes: ''
+})
+const isSubmitting = ref(false)
+const submittedApplication = ref(null)
+
+const scrollToForm = () => {
+  const el = document.getElementById('formulario-solicitud')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+const submitApplication = async () => {
+  if (!applicationForm.value.fullName.trim()) {
+    toast.add('Por favor ingresa tu nombre completo', 'error')
+    return
+  }
+  if (!applicationForm.value.whatsapp.trim()) {
+    toast.add('Por favor ingresa tu número de WhatsApp para enviarte tus credenciales', 'error')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    const res = adminStore.submitResellerApplication(applicationForm.value)
+    if (res && res.success) {
+      submittedApplication.value = res.application
+      toast.add('¡Solicitud enviada con éxito! La revisaremos en breve.', 'success')
+    }
+  } catch (e) {
+    toast.add('Hubo un inconveniente al enviar la solicitud', 'error')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const resetForm = () => {
+  submittedApplication.value = null
+  applicationForm.value = {
+    fullName: '',
+    whatsapp: '',
+    email: '',
+    city: '',
+    storeName: '',
+    experience: 'Quiero empezar desde cero',
+    notes: ''
+  }
+}
+
+const contactPriorityWhatsApp = () => {
+  const cleanPhone = providerWhatsApp.value.replace(/[^0-9]/g, '')
+  const name = submittedApplication.value?.fullName || applicationForm.value.fullName || 'Revendedor'
+  const text = `¡Hola! Acabo de enviar mi solicitud de registro como REVENDEDOR OFICIAL en la web de StreamPro a nombre de *${name}*. ¿Podrían habilitar mi panel prioritariamente?`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank')
+}
 
 // Calculadora interactiva de ganancias
 const monthlyStreamingClients = ref(30)
@@ -26,7 +92,7 @@ const totalEstimatedMonthlyProfit = computed(() => {
 
 // WhatsApp de contacto con el proveedor
 const providerWhatsApp = computed(() => {
-  return adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '+54 9 11 0000-0000'
+  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
 })
 
 const contactProviderWhatsApp = () => {
@@ -98,10 +164,10 @@ const faqs = [
             🔑 Ya soy Revendedor
           </button>
           <button 
-            @click="contactProviderWhatsApp" 
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5"
+            @click="scrollToForm" 
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2 rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <span>📲 Solicitar Cuenta</span>
+            <span>📝 Solicitar Panel</span>
           </button>
         </div>
       </div>
@@ -130,10 +196,10 @@ const faqs = [
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <button 
-            @click="contactProviderWhatsApp" 
-            class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2"
+            @click="scrollToForm" 
+            class="w-full sm:w-auto bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-xl shadow-amber-500/25 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>💬 Registrarme por WhatsApp</span>
+            <span>📝 Solicitar Panel de Revendedor</span>
             <span>→</span>
           </button>
           <a 
@@ -254,13 +320,197 @@ const faqs = [
               </div>
 
               <button 
-                @click="contactProviderWhatsApp" 
+                @click="scrollToForm" 
                 class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3 rounded-xl shadow transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>🚀 Comenzar a Ganar Esto Ahora</span>
+                <span>🚀 Solicitar mi Panel y Empezar a Ganar</span>
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN: FORMULARIO DE SOLICITUD DE REVENDEDOR -->
+      <section id="formulario-solicitud" class="max-w-3xl mx-auto px-4 sm:px-6 scroll-mt-24">
+        <div class="bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 p-6 sm:p-10 rounded-3xl border border-amber-500/40 shadow-2xl relative overflow-hidden">
+          <div class="absolute -left-20 -top-20 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <!-- Cabecera del formulario -->
+          <div class="text-center space-y-2 mb-8 relative z-10">
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+              ALTA DE DISTRIBUIDOR OFICIAL
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-black text-white">Solicita tu Panel de Revendedor</h2>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
+              Completa tus datos para que el proveedor central evalúe tu perfil y te active tu cuenta con catálogo mayorista oficial.
+            </p>
+          </div>
+
+          <!-- Estado de éxito al enviar -->
+          <div v-if="submittedApplication" class="relative z-10 bg-slate-950/80 border border-emerald-500/40 rounded-2xl p-6 sm:p-8 text-center space-y-5 animate-fade-in">
+            <div class="w-16 h-16 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-lg shadow-emerald-500/10">
+              ✓
+            </div>
+
+            <div class="space-y-2">
+              <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                SOLICITUD REGISTRADA #{{ submittedApplication.id }}
+              </span>
+              <h3 class="text-xl sm:text-2xl font-black text-white">¡Muchas gracias, {{ submittedApplication.fullName }}!</h3>
+              <p class="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                Tu solicitud ha ingresado directamente al <strong class="text-white">Panel del Proveedor Central</strong>. Nos comunicaremos a tu WhatsApp <span class="text-amber-400 font-mono font-bold">{{ submittedApplication.whatsapp }}</span> con tus credenciales de acceso.
+              </p>
+            </div>
+
+            <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400 max-w-lg mx-auto text-left space-y-1.5 font-mono">
+              <div class="flex justify-between">
+                <span>Estado:</span>
+                <span class="text-amber-400 font-bold">Pendiente de Aprobación</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Fecha y Hora:</span>
+                <span class="text-slate-300">{{ submittedApplication.submittedAt }}</span>
+              </div>
+              <div v-if="submittedApplication.storeName" class="flex justify-between">
+                <span>Tienda:</span>
+                <span class="text-slate-300">{{ submittedApplication.storeName }}</span>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <button 
+                @click="contactPriorityWhatsApp" 
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-6 py-3 rounded-xl shadow-lg shadow-emerald-500/20 text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>⚡ Avisar por WhatsApp para Activación Rápida</span>
+              </button>
+              <button 
+                @click="resetForm" 
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-5 py-3 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Enviar otra solicitud
+              </button>
+            </div>
+          </div>
+
+          <!-- Formulario de carga -->
+          <form v-else @submit.prevent="submitApplication" class="relative z-10 space-y-4 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Nombre y Apellido -->
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="block font-bold text-slate-200">
+                  Nombre Completo <span class="text-amber-400">*</span>
+                </label>
+                <input 
+                  v-model="applicationForm.fullName" 
+                  type="text" 
+                  placeholder="Ej: Carlos Gómez" 
+                  required
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                />
+              </div>
+
+              <!-- WhatsApp -->
+              <div class="space-y-1.5">
+                <label class="block font-bold text-slate-200">
+                  Número de WhatsApp <span class="text-amber-400">*</span>
+                </label>
+                <input 
+                  v-model="applicationForm.whatsapp" 
+                  type="tel" 
+                  placeholder="Ej: +54 9 11 1234-5678" 
+                  required
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors font-mono"
+                />
+                <span class="text-[10px] text-slate-500">Aquí te enviaremos el usuario y contraseña de tu panel</span>
+              </div>
+
+              <!-- Email -->
+              <div class="space-y-1.5">
+                <label class="block font-bold text-slate-200">
+                  Correo Electrónico <span class="text-slate-500 font-normal">(Opcional)</span>
+                </label>
+                <input 
+                  v-model="applicationForm.email" 
+                  type="email" 
+                  placeholder="ejemplo@gmail.com" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                />
+              </div>
+
+              <!-- Ciudad / Provincia -->
+              <div class="space-y-1.5">
+                <label class="block font-bold text-slate-200">
+                  Ciudad y Provincia
+                </label>
+                <input 
+                  v-model="applicationForm.city" 
+                  type="text" 
+                  placeholder="Ej: Córdoba, Argentina" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                />
+              </div>
+
+              <!-- Nombre Propuesto de Tienda -->
+              <div class="space-y-1.5">
+                <label class="block font-bold text-slate-200">
+                  Nombre de tu Marca o Tienda <span class="text-slate-500 font-normal">(Opcional)</span>
+                </label>
+                <input 
+                  v-model="applicationForm.storeName" 
+                  type="text" 
+                  placeholder="Ej: Carlos Digital Play" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                />
+              </div>
+
+              <!-- Experiencia Previa -->
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="block font-bold text-slate-200">
+                  ¿Cuál es tu experiencia actual vendiendo cuentas o tecnología?
+                </label>
+                <select 
+                  v-model="applicationForm.experience"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
+                >
+                  <option value="Quiero empezar desde cero">Quiero empezar desde cero (sin experiencia previa)</option>
+                  <option value="Tengo experiencia básica">Tengo experiencia básica vendiendo por redes / amigos</option>
+                  <option value="Tengo cartera activa de clientes">Tengo cartera activa de clientes recurrentes</option>
+                  <option value="Tengo local físico o tienda online">Tengo local comercial físico o tienda online</option>
+                </select>
+              </div>
+
+              <!-- Notas o Mensaje -->
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="block font-bold text-slate-200">
+                  ¿Alguna consulta o comentario para el proveedor? <span class="text-slate-500 font-normal">(Opcional)</span>
+                </label>
+                <textarea 
+                  v-model="applicationForm.notes" 
+                  rows="2" 
+                  placeholder="Escribe si te interesa algún servicio en particular (Netflix, IPTV, productos físicos, etc.)" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Privacidad y Garantía -->
+            <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-center gap-3 text-[11px] text-slate-400">
+              <span class="text-base text-amber-400">🔒</span>
+              <span>Tus datos son seguros y se utilizarán exclusivamente para habilitar y dar soporte a tu cuenta de distribuidor StreamPro.</span>
+            </div>
+
+            <!-- Botón de Envío -->
+            <button 
+              type="submit" 
+              :disabled="isSubmitting"
+              class="w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-4 rounded-xl shadow-xl shadow-amber-500/20 text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <span v-if="isSubmitting" class="animate-spin inline-block">⏳</span>
+              <span v-else>🚀</span>
+              <span>{{ isSubmitting ? 'Enviando solicitud...' : 'Enviar Solicitud de Distribuidor Oficial' }}</span>
+            </button>
+          </form>
         </div>
       </section>
 
@@ -343,15 +593,21 @@ const faqs = [
               ¿Listo para empezar a generar ingresos hoy?
             </h2>
             <p class="text-slate-950/80 font-bold max-w-xl mx-auto text-sm">
-              Escríbenos por WhatsApp ahora mismo. Te habilitamos tu panel y te enviamos el catálogo mayorista en menos de 5 minutos.
+              Completa el formulario de solicitud o contáctanos para habilitar tu panel con catálogo mayorista en menos de 5 minutos.
             </p>
-            <div class="pt-3">
+            <div class="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button 
+                @click="scrollToForm" 
+                class="bg-slate-950 hover:bg-slate-900 text-white font-black text-sm px-8 py-4 rounded-2xl shadow-xl transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <span>📝 Completar Formulario de Registro</span>
+                <span>→</span>
+              </button>
               <button 
                 @click="contactProviderWhatsApp" 
-                class="bg-slate-950 hover:bg-slate-900 text-white font-black text-sm px-8 py-4 rounded-2xl shadow-xl transition-all flex items-center gap-2 mx-auto cursor-pointer"
+                class="bg-slate-900/10 hover:bg-slate-900/20 text-slate-950 border border-slate-950/30 font-bold text-sm px-6 py-4 rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
               >
-                <span>📲 Hablar con Asesor Mayorista por WhatsApp</span>
-                <span>→</span>
+                <span>📲 WhatsApp Directo</span>
               </button>
             </div>
           </div>

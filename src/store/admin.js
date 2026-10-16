@@ -274,6 +274,9 @@ export const useAdminStore = defineStore('admin', {
     physicalCategories: loadDb(DB_KEYS.PHYSICAL_CATEGORIES, physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)),
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
 
+    // SOLICITUDES DE POSTULACIÓN DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
+    resellerApplications: loadDb(DB_KEYS.RESELLER_APPLICATIONS, []),
+
     // PAQUETES Y COMBOS VIRTUALES OFICIALES
     packages: loadDb(DB_KEYS.PACKAGES, [
       {
@@ -325,7 +328,11 @@ export const useAdminStore = defineStore('admin', {
     receivedPhysicalOrders: (state) => state.physicalOrders.filter(o => o.status === 'Recibido'),
     confirmedPhysicalOrders: (state) => state.physicalOrders.filter(o => o.status === 'Confirmado' || o.status === 'Aprobado'),
     approvedPhysicalOrders: (state) => state.physicalOrders.filter(o => o.status === 'Confirmado' || o.status === 'Aprobado'),
-    cancelledPhysicalOrders: (state) => state.physicalOrders.filter(o => o.status === 'Cancelado')
+    cancelledPhysicalOrders: (state) => state.physicalOrders.filter(o => o.status === 'Cancelado'),
+    pendingResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'pending'),
+    approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
+    directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
+    resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT')
   },
   actions: {
     // Sincronización forzada a Base de Datos
@@ -793,15 +800,65 @@ export const useAdminStore = defineStore('admin', {
       return updatedCount
     },
 
+    // CREAR PEDIDO STREAMING DIGITAL (DIRECTO O POR REVENDEDOR)
+    createStreamingOrder(orderData) {
+      const isDirect = !orderData.resellerId || orderData.resellerId === 'DIRECT'
+      const resellerObj = isDirect ? null : this.resellers.find(r => r.id === orderData.resellerId)
+      
+      const newOrder = {
+        id: orderData.id || `ORD-${Date.now().toString().slice(-4)}`,
+        customerNumber: orderData.customerNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerName: orderData.customerName || 'Cliente',
+        customerPhone: orderData.customerPhone || '',
+        platform: orderData.platform,
+        devices: orderData.devices || 1,
+        pinPreference: orderData.pinPreference || 'same',
+        planKey: orderData.planKey,
+        planLabel: orderData.planLabel,
+        providerCost: orderData.providerCost || 0,
+        resellerProfit: isDirect ? 0 : (orderData.resellerProfit || 0),
+        clientPrice: orderData.clientPrice || 0,
+        resellerId: isDirect ? 'DIRECT' : orderData.resellerId,
+        resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (resellerObj?.name || orderData.resellerName || 'Distribuidor Asignado'),
+        voucher: orderData.voucher || 'Sin comprobante adjunto',
+        paymentMethod: orderData.paymentMethod || 'Transferencia Bancaria',
+        profileSelections: (orderData.profileSelections || []).map(p => ({
+          name: p.name
+        })),
+        status: 'Waiting Provider',
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdDate: new Date().toISOString()
+      }
+
+      this.orders.unshift(newOrder)
+      this.persist(DB_KEYS.ORDERS)
+
+      // Alertar al revendedor solo si la venta provino de su enlace
+      if (!isDirect && resellerObj) {
+        this.sendAlertToReseller({
+          resellerId: resellerObj.id,
+          clientId: null,
+          clientNumber: newOrder.customerNumber,
+          clientName: newOrder.customerName,
+          type: 'general',
+          title: `Nuevo Pedido Streaming (${newOrder.platform})`,
+          message: `El cliente ${newOrder.customerName} realizó un pedido de ${newOrder.platform} (${newOrder.planLabel}). Ganancia referida: $${newOrder.resellerProfit.toLocaleString()} ARS. En proceso de despacho por Proveedor.`
+        })
+      }
+
+      return { success: true, order: newOrder }
+    },
+
     // PEDIDOS FÍSICOS
     createPhysicalOrder({ customerNumber, customerName, customerPhone, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria' }) {
-      const targetResellerId = resellerId || (this.resellers[0]?.id || 'RES-01')
-      const resellerObj = this.resellers.find(r => r.id === targetResellerId)
-      const isSharedUrl = source === 'shared_url'
-      const commissionRate = isSharedUrl ? 0.03 : 0.01
+      const isDirect = !resellerId || resellerId === 'DIRECT'
+      const targetResellerId = isDirect ? 'DIRECT' : resellerId
+      const resellerObj = isDirect ? null : this.resellers.find(r => r.id === targetResellerId)
+      const isSharedUrl = !isDirect && source === 'shared_url'
+      const commissionRate = isDirect ? 0 : (isSharedUrl ? 0.03 : 0.01)
       
       const totalAmount = items.reduce((sum, item) => sum + (item.priceNumeric * item.quantity), 0)
-      const commissionAmount = Math.round(totalAmount * commissionRate)
+      const commissionAmount = isDirect ? 0 : Math.round(totalAmount * commissionRate)
       const orderId = `PED-FIS-${Date.now().toString().slice(-4)}`
 
       const newOrder = {
@@ -811,8 +868,8 @@ export const useAdminStore = defineStore('admin', {
         customerPhone: customerPhone || '+54 9 11 0000-0000',
         shippingAddress: shippingAddress || 'Retiro en punto acordado / Envío a coordinar',
         resellerId: targetResellerId,
-        resellerName: resellerObj?.name || 'Distribuidor Asignado',
-        source,
+        resellerName: isDirect ? 'StreamPro Tienda Oficial (Venta Directa)' : (resellerObj?.name || 'Distribuidor Asignado'),
+        source: isDirect ? 'direct_store' : source,
         commissionRate,
         commissionAmount,
         totalAmount,
@@ -831,15 +888,17 @@ export const useAdminStore = defineStore('admin', {
 
       this.physicalOrders.unshift(newOrder)
 
-      this.sendAlertToReseller({
-        resellerId: targetResellerId,
-        clientId: null,
-        clientNumber: newOrder.customerNumber,
-        clientName: newOrder.customerName,
-        type: 'general',
-        title: `Nuevo Pedido Físico Pendiente (${isSharedUrl ? '3% Link Compartido' : '1% Tienda'})`,
-        message: `El cliente ${newOrder.customerName} realizó el pedido ${orderId} por $${totalAmount.toLocaleString()} ARS. Comisión estimada: +$${commissionAmount.toLocaleString()} ARS (${commissionRate * 100}%). En espera de aprobación por Administración.`
-      })
+      if (!isDirect && resellerObj) {
+        this.sendAlertToReseller({
+          resellerId: targetResellerId,
+          clientId: null,
+          clientNumber: newOrder.customerNumber,
+          clientName: newOrder.customerName,
+          type: 'general',
+          title: `Nuevo Pedido Físico Pendiente (${isSharedUrl ? '3% Link Compartido' : '1% Tienda'})`,
+          message: `El cliente ${newOrder.customerName} realizó el pedido ${orderId} por $${totalAmount.toLocaleString()} ARS. Comisión estimada: +$${commissionAmount.toLocaleString()} ARS (${commissionRate * 100}%). En espera de aprobación por Administración.`
+        })
+      }
 
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
       return { success: true, order: newOrder }
@@ -1017,6 +1076,96 @@ export const useAdminStore = defineStore('admin', {
       return { error: 'Paquete no encontrado' }
     },
 
+    // GESTIÓN DE SOLICITUDES DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
+    submitResellerApplication(applicationData) {
+      const newApp = {
+        id: `APP-${Date.now().toString().slice(-4)}`,
+        fullName: applicationData.fullName?.trim() || '',
+        whatsapp: applicationData.whatsapp?.trim() || '',
+        email: applicationData.email?.trim() || '',
+        city: applicationData.city?.trim() || '',
+        storeName: applicationData.storeName?.trim() || '',
+        experience: applicationData.experience || 'Quiero empezar desde cero',
+        notes: applicationData.notes?.trim() || '',
+        status: 'pending', // 'pending' | 'approved' | 'rejected'
+        submittedAt: new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        submittedDate: new Date().toISOString(),
+        createdResellerId: null
+      }
+      this.resellerApplications.unshift(newApp)
+      this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+      return { success: true, application: newApp }
+    },
+
+    approveResellerApplication(appId, customData = {}) {
+      const app = this.resellerApplications.find(a => a.id === appId)
+      if (!app) return { error: 'Solicitud no encontrada' }
+
+      // Obtener el próximo ID numérico correlativo (RES-02, RES-03...)
+      const existingNums = this.resellers
+        .map(r => parseInt(r.id?.replace(/\D/g, '') || '0'))
+        .filter(n => !isNaN(n))
+      const nextNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1
+      const newResellerId = `RES-${String(nextNum).padStart(2, '0')}`
+
+      // Generar usuario base amigable
+      const baseUser = app.fullName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 14) || `dist_${nextNum}`
+      const initialPassword = customData.password?.trim() || `StreamPro${Math.floor(1000 + Math.random() * 9000)}*`
+      const username = customData.username?.trim().toLowerCase() || baseUser
+
+      const newReseller = {
+        id: newResellerId,
+        name: app.fullName,
+        storeName: app.storeName?.trim() || `${app.fullName} Digital`,
+        username: username,
+        password: initialPassword,
+        isActive: true,
+        contactNumber: app.whatsapp,
+        cbuAlias: customData.cbuAlias?.trim() || '',
+        bankName: customData.bankName?.trim() || 'Mercado Pago / Banco',
+        holderName: app.fullName,
+        cuit: customData.cuit?.trim() || '',
+        balance: 0,
+        walletHistory: []
+      }
+
+      this.resellers.push(newReseller)
+      this.persist(DB_KEYS.RESELLERS)
+
+      app.status = 'approved'
+      app.createdResellerId = newResellerId
+      app.reviewedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+
+      return { 
+        success: true, 
+        reseller: newReseller, 
+        application: app,
+        credentialsMessage: `🎉 ¡Felicitaciones ${newReseller.name}! Tu solicitud como distribuidor en StreamPro ha sido aprobada.\n\n` +
+          `🔐 *Tus datos de acceso al Panel Oficial:*\n` +
+          `🌐 *Enlace:* https://streamepro.me/crm\n` +
+          `👤 *Usuario:* ${newReseller.username} (o ${newReseller.id})\n` +
+          `🔑 *Contraseña:* ${newReseller.password}\n\n` +
+          `📦 Ya puedes ingresar, ver los costos mayoristas, usar el Generador de Flyers y comenzar a despachar cuentas y tecnología.`
+      }
+    },
+
+    rejectResellerApplication(appId) {
+      const app = this.resellerApplications.find(a => a.id === appId)
+      if (app) {
+        app.status = 'rejected'
+        app.reviewedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+      }
+      return { success: true }
+    },
+
+    deleteResellerApplication(appId) {
+      this.resellerApplications = this.resellerApplications.filter(a => a.id !== appId)
+      this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+      return { success: true }
+    },
+
     // Resetear a Base de Datos Limpia de Producción
     resetDatabaseToCleanProduction() {
       clearDbAll()
@@ -1026,6 +1175,7 @@ export const useAdminStore = defineStore('admin', {
       this.resellerAlerts = []
       this.renewalRequests = []
       this.physicalOrders = []
+      this.resellerApplications = []
       this.pricingCatalog = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS))
       this.resellers = JSON.parse(JSON.stringify(DEFAULT_INITIAL_RESELLERS))
       this.adminAuth = {

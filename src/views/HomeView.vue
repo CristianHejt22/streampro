@@ -88,21 +88,30 @@ const clientForm = ref({
   fullName: '',
   whatsapp: '',
   shippingAddress: '',
-  selectedResellerId: 'RES-01',
+  selectedResellerId: 'DIRECT', // Por defecto Venta Directa Oficial (Proveedor)
   paymentMethod: 'Transferencia Bancaria / CBU',
   transferVoucher: '',
   isSharedUrl: false
 })
 
-// Datos del Revendedor Seleccionado para confirmación de pago
+// Determina si es venta directa oficial (sin intermediario) o referida por revendedor
+const isDirectSale = computed(() => {
+  return !clientForm.value.selectedResellerId || clientForm.value.selectedResellerId === 'DIRECT'
+})
+
+// Datos del Revendedor Seleccionado (si es venta referida)
 const currentReseller = computed(() => {
-  return adminStore.resellers.find(r => r.id === clientForm.value.selectedResellerId) || adminStore.resellers[0]
+  if (isDirectSale.value) return null
+  return adminStore.resellers.find(r => r.id === clientForm.value.selectedResellerId) || null
 })
 
 // Nombre comercial limpio de la tienda para los clientes
 const resellerStoreName = computed(() => {
+  if (isDirectSale.value) {
+    return 'StreamPro Tienda Oficial'
+  }
   const r = currentReseller.value
-  if (!r) return 'TechStream Digital'
+  if (!r) return 'StreamPro Tienda Oficial'
   if (r.storeName) return r.storeName
   return r.name.replace(/\s*\(Distribuidor\s*#?\d+\)/gi, '').replace(/^\[.*?\]\s*/, '').trim()
 })
@@ -115,32 +124,77 @@ const getBaseOrigin = () => {
   return 'https://streamepro.me'
 }
 
+// Resolver revendedor con máxima flexibilidad (ID, username, tienda o número correlativo)
+const resolveReseller = (param) => {
+  if (!param) return null
+  const q = String(param).trim().toLowerCase()
+  if (!q || q === 'direct' || q === 'oficial' || q === 'null' || q === 'undefined') return null
+
+  // 1. Coincidencia exacta de ID (RES-01, res-01)
+  let found = adminStore.resellers.find(r => r.id?.toLowerCase() === q)
+  if (found) return found
+
+  // 2. Coincidencia por username (distribuidor, carlos)
+  found = adminStore.resellers.find(r => r.username?.toLowerCase() === q)
+  if (found) return found
+
+  // 3. Coincidencia por storeName o nombre
+  found = adminStore.resellers.find(r => 
+    r.storeName?.toLowerCase() === q || 
+    r.name?.toLowerCase() === q
+  )
+  if (found) return found
+
+  // 4. Coincidencia por número correlativo (ej: ?ref=1 o ?ref=01 -> RES-01)
+  const digits = q.replace(/\D/g, '')
+  if (digits.length > 0) {
+    found = adminStore.resellers.find(r => {
+      const rDigits = r.id?.replace(/\D/g, '')
+      return rDigits && parseInt(rDigits, 10) === parseInt(digits, 10)
+    })
+    if (found) return found
+  }
+
+  return null
+}
+
 // Detección de Parámetros de URL: Afiliado (?ref=RES-01) y Producto compartido (?prod=962)
 const applyRouteParams = () => {
   const refParam = route.query.ref
   if (refParam) {
     const cleanRef = String(refParam).trim().toLowerCase()
-    const matchedRes = adminStore.resellers.find(r => 
-      r.id?.toLowerCase() === cleanRef || 
-      r.username?.toLowerCase() === cleanRef || 
-      r.storeName?.toLowerCase() === cleanRef ||
-      r.id?.replace(/\D/g, '') === cleanRef.replace(/\D/g, '')
-    )
-    if (matchedRes) {
-      clientForm.value.selectedResellerId = matchedRes.id
+    if (cleanRef === 'direct' || cleanRef === 'oficial') {
+      clientForm.value.selectedResellerId = 'DIRECT'
       try {
-        localStorage.setItem('streamepro_referral', matchedRes.id)
+        localStorage.removeItem('streamepro_referral')
       } catch (e) {}
-      toast.add(`Atendido por distribuidor oficial: ${matchedRes.name}`, 'info')
+    } else {
+      const matchedRes = resolveReseller(cleanRef)
+      if (matchedRes) {
+        clientForm.value.selectedResellerId = matchedRes.id
+        try {
+          localStorage.setItem('streamepro_referral', matchedRes.id)
+        } catch (e) {}
+        toast.add(`Atendido por distribuidor oficial: ${matchedRes.name}`, 'info')
+      }
     }
   } else {
     // Si no viene en la URL, verificar si tenía referido previo guardado en memoria
     try {
       const savedRef = localStorage.getItem('streamepro_referral')
-      if (savedRef && adminStore.resellers.some(r => r.id === savedRef)) {
-        clientForm.value.selectedResellerId = savedRef
+      if (savedRef) {
+        const matchedRes = resolveReseller(savedRef)
+        if (matchedRes) {
+          clientForm.value.selectedResellerId = matchedRes.id
+        } else {
+          clientForm.value.selectedResellerId = 'DIRECT'
+        }
+      } else {
+        clientForm.value.selectedResellerId = 'DIRECT'
       }
-    } catch (e) {}
+    } catch (e) {
+      clientForm.value.selectedResellerId = 'DIRECT'
+    }
   }
 
   // Redirección y activación de sección física o paquetes
@@ -237,8 +291,11 @@ const addPhysicalToCart = (product, qty = 1) => {
 
 const getProductDirectUrl = (product) => {
   if (!product) return ''
-  const resId = clientForm.value.selectedResellerId || 'RES-01'
   const origin = getBaseOrigin()
+  if (isDirectSale.value) {
+    return `${origin}/?prod=${product.id}`
+  }
+  const resId = clientForm.value.selectedResellerId
   return `${origin}/?ref=${resId}&prod=${product.id}`
 }
 
@@ -329,11 +386,11 @@ const submitOrder = () => {
 
   const digitalItems = cartStore.items.filter(i => i.itemType !== 'physical')
   const physicalItems = cartStore.items.filter(i => i.itemType === 'physical')
+  const isDirect = isDirectSale.value
 
-  // Registrar órdenes digitales de streaming
+  // Registrar órdenes digitales de streaming usando la acción persistente
   digitalItems.forEach(item => {
-    adminStore.orders.push({
-      id: `ORD-${Date.now().toString().slice(-4)}`,
+    adminStore.createStreamingOrder({
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
@@ -343,21 +400,19 @@ const submitOrder = () => {
       planKey: item.planKey,
       planLabel: item.planLabel,
       providerCost: item.providerCost,
-      resellerProfit: item.resellerProfit,
+      resellerProfit: isDirect ? 0 : item.resellerProfit,
       clientPrice: item.clientPrice,
-      resellerId: clientForm.value.selectedResellerId,
-      resellerName: currentReseller.value.name,
+      resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
+      resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (currentReseller.value?.name || 'Distribuidor Asignado'),
       voucher: clientForm.value.transferVoucher || 'Sin comprobante adjunto',
       paymentMethod: clientForm.value.paymentMethod,
       profileSelections: (item.profiles || []).map(p => ({
         name: p.name
-      })),
-      status: 'Waiting Provider',
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }))
     })
   })
 
-  // Registrar orden de productos físicos con comisión (1% desde tienda, 3% por link compartido)
+  // Registrar orden de productos físicos
   if (physicalItems.length > 0) {
     const source = clientForm.value.isSharedUrl ? 'shared_url' : 'store'
     adminStore.createPhysicalOrder({
@@ -365,7 +420,7 @@ const submitOrder = () => {
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
       shippingAddress: clientForm.value.shippingAddress || 'A coordinar por WhatsApp',
-      resellerId: clientForm.value.selectedResellerId,
+      resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
       source,
       items: physicalItems,
       paymentMethod: clientForm.value.paymentMethod
@@ -375,21 +430,22 @@ const submitOrder = () => {
   cartStore.clearCart()
   showCheckoutModal.value = false
   const prevNum = clientForm.value.clientNumber
+  const currentRef = clientForm.value.selectedResellerId
   clientForm.value = {
     clientNumber: `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: '',
     whatsapp: '',
     shippingAddress: '',
-    selectedResellerId: 'RES-01',
+    selectedResellerId: currentRef, // Mantener estado de sesión actual
     paymentMethod: 'Transferencia Bancaria / CBU',
     transferVoucher: '',
     isSharedUrl: false
   }
 
   if (physicalItems.length > 0 && digitalItems.length === 0) {
-    toast.add(`¡Pedido físico registrado como PENDIENTE (#${prevNum})! No transfieras dinero: un vendedor oficial se comunicará contigo por WhatsApp para confirmar stock y coordinar el pago.`, 'success')
+    toast.add(`¡Pedido físico registrado como PENDIENTE (#${prevNum})! No transfieras dinero: un asesor oficial se comunicará contigo por WhatsApp para confirmar stock y coordinar el pago.`, 'success')
   } else if (physicalItems.length > 0 && digitalItems.length > 0) {
-    toast.add(`¡Orden enviada (#${prevNum})! Suscripción digital en proceso. Para los productos físicos, un vendedor oficial te contactará por WhatsApp antes de transferir.`, 'success')
+    toast.add(`¡Orden enviada (#${prevNum})! Suscripción digital en proceso. Para los productos físicos, un asesor oficial te contactará por WhatsApp antes de transferir.`, 'success')
   } else {
     toast.add(`¡Orden enviada con éxito! Tu número de cliente asignado es ${prevNum}.`, 'success')
   }
@@ -430,6 +486,33 @@ const submitOrder = () => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- BANNER DE CANAL ACTIVO: DISTRIBUIDOR OFICIAL vs TIENDA DIRECTA -->
+    <div v-if="!isDirectSale && currentReseller" class="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0">
+          🏪
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-black text-white text-sm tracking-tight">{{ resellerStoreName }}</span>
+            <span class="text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
+              Distribuidor Autorizado ({{ currentReseller.id }})
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-300">
+            Estás realizando tu compra a través de este canal oficial con garantía directa y soporte garantizado.
+          </p>
+        </div>
+      </div>
+      <button 
+        type="button"
+        @click="clientForm.selectedResellerId = 'DIRECT'; localStorage.removeItem('streamepro_referral'); toast.add('Comprando ahora directamente en StreamPro Tienda Oficial', 'info')" 
+        class="text-[11px] font-bold text-slate-400 hover:text-white underline self-end sm:self-auto shrink-0 transition-colors"
+      >
+        Ir a Tienda Principal Directa →
+      </button>
     </div>
 
     <!-- Selector Principal de Sección: Streaming Digital vs Paquetes vs Productos Físicos -->
@@ -1084,14 +1167,22 @@ const submitOrder = () => {
             </div>
           </div>
 
-          <!-- Canal Oficial de Despacho Verificado (Sin datos técnicos internos de revendedores) -->
+          <!-- Canal Oficial de Despacho Verificado -->
           <div class="flex items-center justify-between p-3.5 bg-slate-950 rounded-xl border border-slate-800">
             <div>
-              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Canal Oficial Asignado</span>
+              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                {{ isDirectSale ? 'Canal Oficial de Compra' : 'Canal Autorizado Asignado' }}
+              </span>
               <span class="text-xs font-bold text-white">{{ resellerStoreName }}</span>
+              <span v-if="!isDirectSale" class="text-[10px] text-amber-400 block font-mono">
+                Distribuidor: {{ currentReseller?.name }} ({{ currentReseller?.id }})
+              </span>
+              <span v-else class="text-[10px] text-sky-400 block font-mono">
+                Compra Directa Oficial • Proveedor StreamPro Central
+              </span>
             </div>
-            <span class="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-              <span>✓</span> Canal Oficial
+            <span :class="['text-[10px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1', isDirectSale ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30']">
+              <span>✓</span> {{ isDirectSale ? 'Oficial Directo' : 'Distribuidor' }}
             </span>
           </div>
 
@@ -1124,16 +1215,31 @@ const submitOrder = () => {
           <!-- TARJETA CON DATOS OFICIALES PARA TRANSFERENCIA (SOLO SI TIENE SERVICIOS DIGITALES) -->
           <div v-if="cartStore.hasDigitalItems" class="bg-gradient-to-br from-slate-950 to-indigo-950/40 p-4 rounded-xl border border-brand-accent/30 space-y-2">
             <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-              <span class="text-[10px] font-black uppercase tracking-wider text-brand-accent">Datos Oficiales para Transferencia (Suscripciones Digitales)</span>
+              <span class="text-[10px] font-black uppercase tracking-wider text-brand-accent">
+                {{ isDirectSale ? 'Datos Oficiales del Proveedor Central (Venta Directa)' : 'Datos para Transferencia (Distribuidor Oficial)' }}
+              </span>
               <span class="text-[11px] font-mono text-emerald-400">Verificado</span>
             </div>
-            <div class="space-y-1 text-slate-300 font-mono text-xs">
-              <p>Titular: <strong class="text-white">{{ currentReseller.holderName }}</strong></p>
-              <p>Entidad: <span class="text-slate-300">{{ currentReseller.bankName }}</span></p>
-              <p>CUIT/CUIL: <span class="text-slate-300">{{ currentReseller.cuit }}</span></p>
+            
+            <!-- CASO 1: VENTA DIRECTA OFICIAL (PROVEEDOR CENTRAL RECIBE PAGO) -->
+            <div v-if="isDirectSale" class="space-y-1 text-slate-300 font-mono text-xs">
+              <p>Titular Oficial: <strong class="text-white">{{ adminStore.providerBankInfo?.holderName || 'StreamPro Mayorista Central' }}</strong></p>
+              <p>Entidad: <span class="text-slate-300">{{ adminStore.providerBankInfo?.bankName || 'Mercado Pago / Banco' }}</span></p>
+              <p>CUIT/CUIL: <span class="text-slate-300">{{ adminStore.providerBankInfo?.cuit || '20-00000000-0' }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
-                <span class="text-amber-300 font-bold">Alias/CBU: {{ currentReseller.cbuAlias }}</span>
-                <span class="text-[11px] text-slate-300 font-sans">WhatsApp: {{ currentReseller.contactNumber }}</span>
+                <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMPRO.MAYORISTA' }}</span>
+                <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000' }}</span>
+              </div>
+            </div>
+
+            <!-- CASO 2: VENTA POR REVENDEDOR REFERIDO -->
+            <div v-else class="space-y-1 text-slate-300 font-mono text-xs">
+              <p>Titular: <strong class="text-white">{{ currentReseller?.holderName || currentReseller?.name }}</strong></p>
+              <p>Entidad: <span class="text-slate-300">{{ currentReseller?.bankName || 'Mercado Pago / Banco' }}</span></p>
+              <p>CUIT/CUIL: <span class="text-slate-300">{{ currentReseller?.cuit || '20-00000000-0' }}</span></p>
+              <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
+                <span class="text-amber-300 font-bold">Alias/CBU: {{ currentReseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR' }}</span>
+                <span class="text-[11px] text-slate-300 font-sans">WhatsApp: {{ currentReseller?.contactNumber }}</span>
               </div>
             </div>
           </div>

@@ -611,6 +611,63 @@ const confirmDispatch = () => {
   }
 }
 
+// Contactar directamente al cliente de una venta oficial por WhatsApp
+const contactDirectCustomerWhatsApp = (order) => {
+  const cleanPhone = (order.customerPhone || '').replace(/[^0-9]/g, '')
+  const msg = `¡Hola ${order.customerName}! Te contactamos desde StreamPro Oficial respecto a tu pedido de ${order.platform} (${order.customerNumber}). Estamos preparando tu activación.`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+// GESTIÓN DE SOLICITUDES DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
+const applicationFilter = ref('pending') // 'pending' | 'approved' | 'rejected' | 'all'
+const showApprovedCredentialsModal = ref(false)
+const approvedCredentialsData = ref(null)
+
+const filteredApplications = computed(() => {
+  const apps = adminStore.resellerApplications || []
+  if (applicationFilter.value === 'all') return apps
+  return apps.filter(a => a.status === applicationFilter.value)
+})
+
+const handleApproveApplication = (app) => {
+  const res = adminStore.approveResellerApplication(app.id)
+  if (res.success) {
+    approvedCredentialsData.value = {
+      reseller: res.reseller,
+      application: res.application,
+      message: res.credentialsMessage
+    }
+    showApprovedCredentialsModal.value = true
+    toast.add(`¡Revendedor ${res.reseller.name} (${res.reseller.id}) creado y aprobado con éxito!`, 'success')
+  } else {
+    toast.add(res.error || 'Error al aprobar solicitud', 'error')
+  }
+}
+
+const handleRejectApplication = (app) => {
+  adminStore.rejectResellerApplication(app.id)
+  toast.add(`Solicitud de ${app.fullName} marcada como rechazada`, 'info')
+}
+
+const handleDeleteApplication = (app) => {
+  if (confirm(`¿Eliminar la solicitud de ${app.fullName}?`)) {
+    adminStore.deleteResellerApplication(app.id)
+    toast.add('Solicitud eliminada', 'info')
+  }
+}
+
+const sendCredentialsWhatsApp = (data) => {
+  if (!data?.reseller?.contactNumber) return
+  const cleanPhone = data.reseller.contactNumber.replace(/[^0-9]/g, '')
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(data.message)}`, '_blank')
+}
+
+const contactApplicantWhatsApp = (app) => {
+  const cleanPhone = (app.whatsapp || '').replace(/[^0-9]/g, '')
+  const msg = `¡Hola ${app.fullName}! Te contactamos desde el Panel de Proveedor Mayorista de StreamPro respecto a tu postulación como distribuidor oficial.`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 // Control de Sesión y Autenticación de Administrador / Proveedor Mayorista
 const isAdminAuthenticated = ref(false)
 const adminLoginForm = ref({
@@ -1196,6 +1253,9 @@ const deletePackageItem = (pkgId) => {
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'resellers' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
           👥 Revendedores ({{ adminStore.resellers.length }})
+          <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow">
+            {{ adminStore.pendingResellerApplications.length }} solicitudes
+          </span>
         </button>
         <button 
           @click="adminTab = 'clients'"
@@ -1326,7 +1386,12 @@ const deletePackageItem = (pkgId) => {
               </div>
               <div class="text-xs text-slate-400 space-y-0.5">
                 <p>Cliente: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerPhone }})</p>
-                <p>Revendedor: <strong class="text-amber-400">[{{ order.resellerId }}] {{ order.resellerName || '' }}</strong></p>
+                <p v-if="order.resellerId === 'DIRECT' || !order.resellerId" class="pt-0.5">
+                  <span class="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                    <span>🛒</span> VENTA DIRECTA OFICIAL (PROVEEDOR)
+                  </span>
+                </p>
+                <p v-else>Revendedor: <strong class="text-amber-400">[{{ order.resellerId }}] {{ order.resellerName || '' }}</strong></p>
                 <p>Plan: <strong class="text-slate-200">{{ order.planLabel }}</strong> • {{ order.pinPreference === 'same' ? 'Mismo PIN' : 'PINs distintos' }}</p>
               </div>
             </div>
@@ -1334,13 +1399,22 @@ const deletePackageItem = (pkgId) => {
             <div class="flex flex-col gap-2">
               <button 
                 @click="openDispatchModal(order)" 
-                class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2.5 font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2.5 font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Despachar Cuenta</span>
               </button>
               <button 
+                v-if="order.resellerId === 'DIRECT' || !order.resellerId"
+                @click="contactDirectCustomerWhatsApp(order)" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 font-bold text-[11px] rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                title="Contactar al cliente directamente por WhatsApp"
+              >
+                <span>💬 WhatsApp Cliente</span>
+              </button>
+              <button 
+                v-else
                 @click="openIncidentModal(order)" 
-                class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 font-bold text-[11px] rounded-lg border border-slate-700 transition-colors"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 font-bold text-[11px] rounded-lg border border-slate-700 transition-colors cursor-pointer"
                 title="Avisar novedad de este cliente al revendedor"
               >
                 📢 Avisar Revendedor
@@ -1374,6 +1448,170 @@ const deletePackageItem = (pkgId) => {
         >
           + Agregar Nuevo Revendedor
         </button>
+      </div>
+
+      <!-- SECCIÓN: SOLICITUDES DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE -->
+      <div class="bg-gradient-to-b from-[#020617] via-slate-950 to-[#020617] rounded-2xl border border-amber-500/30 p-6 space-y-5 shadow-2xl relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-slate-950 font-black text-lg shadow">
+              📥
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white flex items-center gap-2">
+                Solicitudes de Nuevos Revendedores
+                <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
+                  {{ adminStore.resellerApplications?.length || 0 }} Totales • {{ adminStore.pendingResellerApplications?.length || 0 }} Pendientes
+                </span>
+              </h3>
+              <p class="text-xs text-slate-400">Postulaciones enviadas en tiempo real desde el formulario del landing page (/revendedores).</p>
+            </div>
+          </div>
+
+          <!-- Filtro de Solicitudes -->
+          <div class="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+            <button 
+              type="button"
+              @click="applicationFilter = 'pending'"
+              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'pending' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+            >
+              Pendientes ({{ adminStore.pendingResellerApplications?.length || 0 }})
+            </button>
+            <button 
+              type="button"
+              @click="applicationFilter = 'approved'"
+              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'approved' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+            >
+              Aprobadas ({{ adminStore.approvedResellerApplications?.length || 0 }})
+            </button>
+            <button 
+              type="button"
+              @click="applicationFilter = 'all'"
+              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white']"
+            >
+              Todas ({{ adminStore.resellerApplications?.length || 0 }})
+            </button>
+          </div>
+        </div>
+
+        <!-- Estado vacío si no hay solicitudes -->
+        <div v-if="filteredApplications.length === 0" class="text-center py-10 text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800/80 border-dashed">
+          <span class="text-2xl block mb-1">📭</span>
+          No hay solicitudes de revendedores con el filtro seleccionado.
+        </div>
+
+        <!-- Grid de Solicitudes -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div 
+            v-for="app in filteredApplications" 
+            :key="app.id"
+            :class="[
+              'p-4 rounded-xl border space-y-3 relative transition-all shadow-md flex flex-col justify-between',
+              app.status === 'pending' ? 'bg-slate-950 border-amber-500/30 hover:border-amber-500/60' :
+              app.status === 'approved' ? 'bg-slate-950 border-emerald-500/30' :
+              'bg-slate-950/60 border-slate-800 opacity-60'
+            ]"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                  {{ app.id }}
+                </span>
+                <span :class="[
+                  'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border',
+                  app.status === 'pending' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse' :
+                  app.status === 'approved' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                  'bg-red-500/15 text-red-300 border-red-500/30'
+                ]">
+                  {{ app.status === 'pending' ? '● Pendiente' : app.status === 'approved' ? '✓ Aprobado' : '✕ Rechazado' }}
+                </span>
+              </div>
+
+              <h4 class="font-black text-white text-base leading-snug">{{ app.fullName }}</h4>
+              <span class="text-[11px] font-mono text-slate-400 block">{{ app.city || 'Ciudad no especificada' }}</span>
+              <span v-if="app.storeName" class="text-[11px] text-amber-300 font-bold block mt-0.5">
+                🏪 Tienda propuesta: {{ app.storeName }}
+              </span>
+
+              <div class="space-y-1 text-xs text-slate-300 mt-2.5 pt-2.5 border-t border-slate-800/80">
+                <p class="flex items-center gap-1.5">
+                  <span class="text-slate-500">WhatsApp:</span>
+                  <strong class="text-white font-mono">{{ app.whatsapp }}</strong>
+                </p>
+                <p v-if="app.email" class="truncate flex items-center gap-1.5">
+                  <span class="text-slate-500">Email:</span>
+                  <span class="text-slate-300 font-mono text-[11px]">{{ app.email }}</span>
+                </p>
+                <p class="text-[11px] text-slate-400">
+                  <span class="text-slate-500">Experiencia:</span> {{ app.experience }}
+                </p>
+                <p v-if="app.notes" class="text-[11px] text-slate-400 italic bg-slate-900 p-2 rounded-lg border border-slate-800 mt-1">
+                  "{{ app.notes }}"
+                </p>
+                <span class="text-[10px] text-slate-500 font-mono block mt-1">
+                  Enviado: {{ app.submittedAt }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Botones de Acción de la Solicitud -->
+            <div class="pt-3 border-t border-slate-800 space-y-2">
+              <div v-if="app.status === 'pending'" class="flex gap-2">
+                <button 
+                  @click="handleApproveApplication(app)" 
+                  class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs py-2 rounded-xl shadow transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  title="Dar de alta como revendedor oficial y generar credenciales de acceso"
+                >
+                  <span>✅ Aprobar & Crear</span>
+                </button>
+                <button 
+                  @click="contactApplicantWhatsApp(app)" 
+                  class="bg-slate-800 hover:bg-slate-700 text-emerald-400 p-2 rounded-xl border border-slate-700 transition-colors"
+                  title="Contactar al postulante por WhatsApp"
+                >
+                  💬
+                </button>
+                <button 
+                  @click="handleRejectApplication(app)" 
+                  class="bg-slate-800 hover:bg-red-950/60 text-slate-400 hover:text-red-400 p-2 rounded-xl border border-slate-700 transition-colors"
+                  title="Rechazar solicitud"
+                >
+                  ✕
+                </button>
+              </div>
+              <div v-else-if="app.status === 'approved'" class="flex items-center justify-between text-xs">
+                <span class="text-emerald-400 font-mono font-bold text-[11px] flex items-center gap-1">
+                  <span>✓</span> Asignado: [{{ app.createdResellerId }}]
+                </span>
+                <div class="flex gap-1.5">
+                  <button 
+                    @click="contactApplicantWhatsApp(app)" 
+                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded-lg border border-slate-700 font-bold"
+                  >
+                    💬 WhatsApp
+                  </button>
+                  <button 
+                    @click="handleDeleteApplication(app)" 
+                    class="text-slate-500 hover:text-red-400 text-xs px-2 py-1 rounded"
+                    title="Eliminar registro"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+              <div v-else class="flex justify-between items-center text-xs">
+                <span class="text-slate-500 text-[11px] italic">Solicitud rechazada</span>
+                <button 
+                  @click="handleDeleteApplication(app)" 
+                  class="text-slate-500 hover:text-red-400 text-xs px-2 py-1 rounded"
+                  title="Eliminar registro"
+                >
+                  🗑️ Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3204,6 +3442,60 @@ const deletePackageItem = (pkgId) => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- MODAL: CREDENCIALES GENERADAS PARA NUEVO REVENDEDOR APROBADO -->
+    <div v-if="showApprovedCredentialsModal && approvedCredentialsData" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative">
+        <div class="text-center space-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto border border-emerald-500/30 shadow-inner">
+            🎉
+          </div>
+          <h3 class="text-xl font-black text-white">¡Revendedor Creado y Aprobado!</h3>
+          <p class="text-xs text-slate-400">
+            La cuenta para <strong>{{ approvedCredentialsData.reseller.name }}</strong> ha sido dada de alta en el sistema.
+          </p>
+        </div>
+
+        <!-- Ficha de Credenciales Generadas -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 font-mono text-xs">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span class="text-slate-500 font-sans">Identificador:</span>
+            <span class="text-amber-400 font-bold text-sm">[{{ approvedCredentialsData.reseller.id }}]</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span class="text-slate-500 font-sans">Usuario de Acceso:</span>
+            <span class="text-white font-bold">{{ approvedCredentialsData.reseller.username }}</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span class="text-slate-500 font-sans">Contraseña Temporal:</span>
+            <span class="text-emerald-400 font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ approvedCredentialsData.reseller.password }}</span>
+          </div>
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <span class="text-slate-500 font-sans">WhatsApp Registrado:</span>
+            <span class="text-slate-300 font-sans">{{ approvedCredentialsData.reseller.contactNumber }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-500 font-sans">Enlace de Inicio:</span>
+            <span class="text-sky-400">streamepro.me/crm</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button 
+            @click="sendCredentialsWhatsApp(approvedCredentialsData)" 
+            class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black py-3 rounded-xl shadow-lg transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>📲 Enviar Credenciales por WhatsApp</span>
+          </button>
+          <button 
+            @click="showApprovedCredentialsModal = false; approvedCredentialsData = null" 
+            class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-5 rounded-xl text-xs"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
 

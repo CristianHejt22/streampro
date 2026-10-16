@@ -17,7 +17,8 @@ export const DB_KEYS = {
   RENEWAL_REQUESTS: 'renewal_requests',
   PROVIDER_BANK: 'provider_bank',
   PHYSICAL_PRODUCTS: 'physical_products',
-  PHYSICAL_CATEGORIES: 'physical_categories'
+  PHYSICAL_CATEGORIES: 'physical_categories',
+  RESELLER_APPLICATIONS: 'reseller_applications'
 }
 
 export function loadDb(key, defaultValue) {
