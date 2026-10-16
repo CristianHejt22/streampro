@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const route = useRoute()
+const router = useRouter()
 const cartStore = useCartStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
@@ -378,6 +379,68 @@ const openCheckoutForm = () => {
   showCheckoutModal.value = true
 }
 
+const showOrderSuccessModal = ref(false)
+const lastPlacedOrder = ref(null)
+
+const copyBankDetails = () => {
+  if (!lastPlacedOrder.value) return
+  const info = lastPlacedOrder.value.isDirect 
+    ? lastPlacedOrder.value.providerBankInfo 
+    : lastPlacedOrder.value.reseller
+  
+  const text = `DATOS PARA TRANSFERENCIA BANCARIA - STREAMPRO\n` +
+    `• Titular: ${info?.holderName || info?.name || 'StreamPro'}\n` +
+    `• Banco/Entidad: ${info?.bankName || 'Mercado Pago'}\n` +
+    `• CUIT/CUIL: ${info?.cuit || '20-00000000-0'}\n` +
+    `• CBU/Alias: ${info?.cbuAlias || 'STREAMPRO.PAGOS'}\n` +
+    `• Monto Total: $${lastPlacedOrder.value.total.toFixed(2)} ARS\n` +
+    `• N° de Pedido: ${lastPlacedOrder.value.clientNumber}`
+
+  navigator.clipboard.writeText(text).then(() => {
+    toast.add('¡Datos bancarios copiados al portapapeles!', 'success')
+  }).catch(() => {
+    toast.add('No se pudo copiar automáticamente', 'error')
+  })
+}
+
+const sendOrderToWhatsApp = () => {
+  if (!lastPlacedOrder.value) return
+  const ord = lastPlacedOrder.value
+  const targetPhone = ord.isDirect
+    ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000')
+    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 11 0000-0000')
+
+  const cleanPhone = targetPhone.replace(/[^0-9]/g, '')
+
+  const itemsList = ord.items.map(i => {
+    const name = i.name || i.platform || 'Item'
+    const qty = i.quantity || i.units || 1
+    const price = i.clientPrice || (i.priceNumeric || (parseInt(String(i.price || '0').replace(/[$. ]/g, '')) || 0))
+    return `• ${name} (x${qty}): $${(price * qty).toLocaleString()} ARS`
+  }).join('\n')
+
+  let message = `¡Hola! Acabo de registrar mi pedido en la web de *StreamPro* 🚀\n\n` +
+    `📋 *N° de Pedido:* ${ord.clientNumber}\n` +
+    `👤 *Cliente:* ${ord.customerName}\n` +
+    `📱 *WhatsApp:* ${ord.customerPhone}\n\n` +
+    `🛒 *Detalle de la compra:*\n${itemsList}\n\n` +
+    `💰 *Total:* $${ord.total.toFixed(2)} ARS\n`
+
+  if (ord.digitalItems.length > 0) {
+    message += `\n📎 Adjunto mi comprobante de transferencia bancaria para activar mis servicios y recibir mis perfiles y PINs de seguridad.`
+  }
+  if (ord.physicalItems.length > 0) {
+    message += `\n📦 Dirección de envío informada: ${ord.shippingAddress || 'A coordinar'}\nConsulto disponibilidad y costo final de envío.`
+  }
+
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank')
+}
+
+const goToCustomerPortal = () => {
+  showOrderSuccessModal.value = false
+  router.push('/portal')
+}
+
 const submitOrder = () => {
   if (!clientForm.value.fullName.trim() || !clientForm.value.whatsapp.trim()) {
     toast.add('Por favor completa Nombre y WhatsApp para el envío', 'error')
@@ -387,6 +450,27 @@ const submitOrder = () => {
   const digitalItems = cartStore.items.filter(i => i.itemType !== 'physical')
   const physicalItems = cartStore.items.filter(i => i.itemType === 'physical')
   const isDirect = isDirectSale.value
+
+  // Snapshot del pedido antes de vaciar el carrito
+  const prevNum = clientForm.value.clientNumber
+  const currentRef = clientForm.value.selectedResellerId
+  const orderSnapshot = {
+    clientNumber: prevNum,
+    customerName: clientForm.value.fullName,
+    customerPhone: clientForm.value.whatsapp,
+    shippingAddress: clientForm.value.shippingAddress || 'A coordinar por WhatsApp',
+    isDirect: isDirect,
+    reseller: currentReseller.value ? { ...currentReseller.value } : null,
+    providerBankInfo: { ...adminStore.providerBankInfo },
+    items: [...cartStore.items],
+    digitalItems: [...digitalItems],
+    physicalItems: [...physicalItems],
+    subtotal: cartStore.subtotal,
+    discountPercentage: cartStore.discountPercentage,
+    total: cartStore.total,
+    paymentMethod: clientForm.value.paymentMethod,
+    date: new Date().toLocaleString()
+  }
 
   // Registrar órdenes digitales de streaming usando la acción persistente
   digitalItems.forEach(item => {
@@ -427,10 +511,11 @@ const submitOrder = () => {
     })
   }
 
-  cartStore.clearCart()
+  lastPlacedOrder.value = orderSnapshot
   showCheckoutModal.value = false
-  const prevNum = clientForm.value.clientNumber
-  const currentRef = clientForm.value.selectedResellerId
+  showOrderSuccessModal.value = true
+  cartStore.clearCart()
+
   clientForm.value = {
     clientNumber: `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: '',
@@ -443,11 +528,9 @@ const submitOrder = () => {
   }
 
   if (physicalItems.length > 0 && digitalItems.length === 0) {
-    toast.add(`¡Pedido físico registrado como PENDIENTE (#${prevNum})! No transfieras dinero: un asesor oficial se comunicará contigo por WhatsApp para confirmar stock y coordinar el pago.`, 'success')
-  } else if (physicalItems.length > 0 && digitalItems.length > 0) {
-    toast.add(`¡Orden enviada (#${prevNum})! Suscripción digital en proceso. Para los productos físicos, un asesor oficial te contactará por WhatsApp antes de transferir.`, 'success')
+    toast.add(`¡Pedido registrado como PENDIENTE (#${prevNum})! Un asesor te contactará para coordinar stock y envío.`, 'success')
   } else {
-    toast.add(`¡Orden enviada con éxito! Tu número de cliente asignado es ${prevNum}.`, 'success')
+    toast.add(`¡Pedido registrado (#${prevNum})! Envía tu comprobante por WhatsApp para entrega inmediata.`, 'success')
   }
 }
 </script>
@@ -1382,6 +1465,134 @@ const submitOrder = () => {
             <span>Agregar al Pedido ({{ physicalQuantity }} un.)</span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE PEDIDO Y ENVÍO DE COMPROBANTE POR WHATSAPP -->
+    <div v-if="showOrderSuccessModal && lastPlacedOrder" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        
+        <!-- Header con ícono de éxito -->
+        <div class="text-center space-y-3">
+          <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-xl shadow-emerald-500/10">
+            ✓
+          </div>
+          <div>
+            <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              PEDIDO REGISTRADO CON ÉXITO
+            </span>
+            <h3 class="text-2xl font-black text-white mt-2">¡Gracias por tu compra, {{ lastPlacedOrder.customerName }}!</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Tu identificador de pedido es <span class="text-brand-accent font-mono font-bold text-sm">#{{ lastPlacedOrder.clientNumber }}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- PASO 1: RESUMEN DEL PEDIDO -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs font-mono">
+          <div class="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-2">
+            <span class="font-bold uppercase tracking-wider text-[10px]">Detalle de Artículos</span>
+            <span class="text-white font-bold">{{ lastPlacedOrder.items.length }} ítem(s)</span>
+          </div>
+
+          <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            <div v-for="(item, idx) in lastPlacedOrder.items" :key="idx" class="flex justify-between items-center text-slate-300">
+              <span class="truncate max-w-[220px] sm:max-w-[300px]">
+                {{ item.name || item.platform }} <span class="text-slate-500">(x{{ item.quantity || item.units || 1 }})</span>
+              </span>
+              <span class="text-white font-bold shrink-0">
+                ${{ ((item.clientPrice || item.priceNumeric || 0) * (item.quantity || item.units || 1)).toLocaleString() }} ARS
+              </span>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800/80 pt-2 flex justify-between items-center text-sm font-sans font-bold">
+            <span class="text-slate-300">Total a Abonar:</span>
+            <span class="text-emerald-400 text-xl font-mono font-black">${{ lastPlacedOrder.total.toLocaleString() }} ARS</span>
+          </div>
+        </div>
+
+        <!-- PASO 2: DATOS BANCARIOS (SI TIENE STREAMING / DIGITAL) -->
+        <div v-if="lastPlacedOrder.digitalItems.length > 0" class="bg-gradient-to-br from-indigo-950/40 via-slate-950 to-slate-950 p-5 rounded-2xl border border-brand-accent/40 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-brand-accent uppercase tracking-wider flex items-center gap-1.5">
+              <span>💳</span>
+              <span>Datos Oficiales para Transferir</span>
+            </span>
+            <button 
+              @click="copyBankDetails" 
+              class="bg-brand-accent/20 hover:bg-brand-accent/30 text-brand-accent font-bold px-2.5 py-1 rounded-lg text-[10px] transition-colors border border-brand-accent/30 cursor-pointer flex items-center gap-1"
+            >
+              <span>📋 Copiar Datos</span>
+            </button>
+          </div>
+
+          <div class="space-y-1.5 text-xs font-mono text-slate-300">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Titular:</span>
+              <strong class="text-white">
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.holderName || 'StreamPro Mayorista Central') : (lastPlacedOrder.reseller?.holderName || lastPlacedOrder.reseller?.name) }}
+              </strong>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Banco / Billetera:</span>
+              <span class="text-slate-200">
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.bankName || 'Mercado Pago / Banco') : (lastPlacedOrder.reseller?.bankName || 'Mercado Pago') }}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">CUIT / CUIL:</span>
+              <span class="text-slate-200">
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cuit || '20-00000000-0') : (lastPlacedOrder.reseller?.cuit || '20-00000000-0') }}
+              </span>
+            </div>
+            <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
+              <span class="text-slate-400 text-[11px]">CBU / Alias:</span>
+              <span class="text-amber-300 font-bold text-sm tracking-wide">
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cbuAlias || 'STREAMPRO.MAYORISTA') : (lastPlacedOrder.reseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AVISO DE PRODUCTO FÍSICO (SI TIENE PRODUCTOS FÍSICOS) -->
+        <div v-if="lastPlacedOrder.physicalItems.length > 0" class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-xs text-amber-300 space-y-1">
+          <div class="font-bold flex items-center gap-1.5 text-amber-400">
+            <span>📦</span>
+            <span>Productos Físicos en Estado PENDIENTE</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            Un asesor oficial se comunicará contigo por WhatsApp para confirmar stock disponible y acordar el costo final de entrega a tu domicilio antes de solicitar cualquier pago.
+          </p>
+        </div>
+
+        <!-- BOTÓN PRINCIPAL: ENVIAR COMPROBANTE POR WHATSAPP -->
+        <div class="space-y-3 pt-1">
+          <button 
+            @click="sendOrderToWhatsApp" 
+            class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2.5 cursor-pointer"
+          >
+            <span class="text-lg">📲</span>
+            <span>Enviar Comprobante por WhatsApp</span>
+            <span>→</span>
+          </button>
+          
+          <div class="flex gap-2">
+            <button 
+              @click="goToCustomerPortal" 
+              class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              🔑 Ir al Portal de Clientes
+            </button>
+            <button 
+              @click="showOrderSuccessModal = false" 
+              class="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-bold px-5 py-2.5 rounded-xl text-xs border border-slate-800 transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 
