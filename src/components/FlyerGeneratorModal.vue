@@ -36,6 +36,13 @@ const customPrice = ref(null)
 const customTitle = ref('')
 const customSubtitle = ref('')
 const flyerTheme = ref('cinema') // 'cinema' | 'cyber' | 'emerald' | 'blue'
+const flyerFormat = ref('story') // 'story' (9:16) | 'feed' (4:5) | 'square' (1:1) | 'banner' (16:9)
+const flyerFormatLabels = {
+  story: '9:16 Historia / Estado',
+  feed: '4:5 Feed Instagram',
+  square: '1:1 Post Cuadrado',
+  banner: '16:9 Banner Horizontal'
+}
 const isExporting = ref(false)
 const flyerPreviewRef = ref(null)
 
@@ -149,12 +156,43 @@ watch(selectedPlatform, (newPlat) => {
   }
 })
 
-// Actualizar bullets al cambiar producto físico
+// Actualizar datos completos al cambiar producto físico
 watch(selectedPhysicalId, (newId) => {
-  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
-    bullet1.value = 'Excelente Calidad y Diseño Garantizado'
-    bullet2.value = 'Envío Rápido a Todo el País'
-    bullet3.value = 'Compra 100% Segura y Garantizada Online'
+  if (flyerProductType.value === 'physical') {
+    const prod = adminStore.physicalProducts.find(p => String(p.id) === String(newId))
+    if (prod) {
+      customTitle.value = prod.name || ''
+      customSubtitle.value = 'Tecnología & Accesorios de Alta Calidad'
+      customPrice.value = prod.priceNumeric || null
+      bullet1.value = 'Excelente Calidad y Diseño Garantizado'
+      bullet2.value = 'Envío Rápido a Todo el País'
+      bullet3.value = 'Compra 100% Segura y Garantizada Online'
+    }
+  }
+})
+
+// Sincronizar al alternar entre streaming y físicos
+watch(flyerProductType, (newType) => {
+  if (newType === 'physical') {
+    if (!selectedPhysicalId.value && adminStore.physicalProducts.length > 0) {
+      selectedPhysicalId.value = String(adminStore.physicalProducts[0].id)
+    }
+    const prod = selectedPhysicalProduct.value
+    if (prod) {
+      customTitle.value = prod.name || ''
+      customSubtitle.value = 'Tecnología & Accesorios de Alta Calidad'
+      customPrice.value = prod.priceNumeric || null
+      bullet1.value = 'Excelente Calidad y Diseño Garantizado'
+      bullet2.value = 'Envío Rápido a Todo el País'
+      bullet3.value = 'Compra 100% Segura y Garantizada Online'
+    }
+  } else {
+    customTitle.value = ''
+    customSubtitle.value = ''
+    customPrice.value = null
+    bullet1.value = 'Calidad Ultra HD 4K Sin Caídas'
+    bullet2.value = 'Perfil Privado con PIN de Seguridad'
+    bullet3.value = 'Soporte & Garantía Directa 24/7'
   }
 })
 
@@ -191,20 +229,55 @@ const displaySubtitle = computed(() => {
 })
 
 // ==========================================
-// RENDERIZADOR NATIVO DE CANVAS 2D (1080x1920)
+// RENDERIZADOR NATIVO DE CANVAS 2D MULTI-FORMATO
+// (Story 9:16 | Feed 4:5 | Cuadrado 1:1 | Banner 16:9)
 // ==========================================
-// 100% inmune a errores de CSS, CORS y navegadores móviles
 function renderCanvasFlyerBlob() {
   return new Promise(async (resolve, reject) => {
     try {
+      const format = flyerFormat.value
+      let width = 1080
+      let height = 1920
+
+      if (format === 'feed') {
+        width = 1080
+        height = 1350
+      } else if (format === 'square') {
+        width = 1080
+        height = 1080
+      } else if (format === 'banner') {
+        width = 1920
+        height = 1080
+      }
+
       const canvas = document.createElement('canvas')
-      canvas.width = 1080
-      canvas.height = 1920
+      canvas.width = width
+      canvas.height = height
       const ctx = canvas.getContext('2d')
+
+      function roundRect(ctx, x, y, w, h, radius, fill, stroke, strokeColor = '#fff', lineWidth = 1) {
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y)
+        ctx.lineTo(x + w - radius, y)
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+        ctx.lineTo(x + w, y + h - radius)
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+        ctx.lineTo(x + radius, y + h)
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+        ctx.lineTo(x, y + radius)
+        ctx.quadraticCurveTo(x, y, x + radius, y)
+        ctx.closePath()
+        if (fill) ctx.fill()
+        if (stroke) {
+          ctx.lineWidth = lineWidth
+          ctx.strokeStyle = strokeColor
+          ctx.stroke()
+        }
+      }
 
       // 1. Fondo degradado según tema
       const theme = flyerTheme.value
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, 1920)
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height)
       if (theme === 'cinema') {
         bgGrad.addColorStop(0, '#030306')
         bgGrad.addColorStop(0.35, '#1e0409')
@@ -227,102 +300,34 @@ function renderCanvasFlyerBlob() {
         bgGrad.addColorStop(1, '#020914')
       }
       ctx.fillStyle = bgGrad
-      ctx.fillRect(0, 0, 1080, 1920)
+      ctx.fillRect(0, 0, width, height)
 
       // 2. Luces ambientales suaves de fondo
-      const glow1 = ctx.createRadialGradient(920, 240, 20, 920, 240, 480)
-      glow1.addColorStop(0, theme === 'cinema' ? 'rgba(239, 68, 68, 0.28)' : theme === 'cyber' ? 'rgba(168, 85, 247, 0.28)' : theme === 'emerald' ? 'rgba(16, 185, 129, 0.28)' : 'rgba(14, 165, 233, 0.28)')
+      const glowColor = theme === 'cinema' ? 'rgba(239, 68, 68, 0.28)' :
+                        theme === 'cyber' ? 'rgba(168, 85, 247, 0.28)' :
+                        theme === 'emerald' ? 'rgba(16, 185, 129, 0.28)' : 'rgba(14, 165, 233, 0.28)'
+      const glow1 = ctx.createRadialGradient(width - 160, 200, 20, width - 160, 200, 480)
+      glow1.addColorStop(0, glowColor)
       glow1.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = glow1
-      ctx.fillRect(440, 0, 640, 680)
+      ctx.fillRect(width / 2, 0, width / 2, height / 2)
 
-      const glow2 = ctx.createRadialGradient(160, 1680, 20, 160, 1680, 480)
+      const glow2 = ctx.createRadialGradient(160, height - 200, 20, 160, height - 200, 480)
       glow2.addColorStop(0, 'rgba(245, 158, 11, 0.22)')
       glow2.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = glow2
-      ctx.fillRect(0, 1200, 640, 720)
-
-      // Función auxiliar para dibujar rectángulos redondeados
-      function roundRect(ctx, x, y, width, height, radius, fill, stroke, strokeColor = '#fff', lineWidth = 1) {
-        ctx.beginPath()
-        ctx.moveTo(x + radius, y)
-        ctx.lineTo(x + width - radius, y)
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-        ctx.lineTo(x + width, y + height - radius)
-        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-        ctx.lineTo(x + radius, y + height)
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-        ctx.lineTo(x, y + radius)
-        ctx.quadraticCurveTo(x, y, x + radius, y)
-        ctx.closePath()
-        if (fill) ctx.fill()
-        if (stroke) {
-          ctx.lineWidth = lineWidth
-          ctx.strokeStyle = strokeColor
-          ctx.stroke()
-        }
-      }
+      ctx.fillRect(0, height / 2, width / 2, height / 2)
 
       // 3. Marco exterior elegante
-      roundRect(ctx, 40, 40, 1000, 1840, 48, false, true, 'rgba(255, 255, 255, 0.12)', 2)
+      roundRect(ctx, 35, 35, width - 70, height - 70, 44, false, true, 'rgba(255, 255, 255, 0.12)', 2)
 
-      // 4. Encabezado de la Tienda
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#fbbf24' // Dorado
-      ctx.fillText(storeName.value.toUpperCase().slice(0, 28), 90, 120)
-
-      // Badge "OFICIAL"
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
-      roundRect(ctx, 840, 94, 150, 52, 26, true, true, 'rgba(255, 255, 255, 0.2)', 1.5)
-      ctx.textAlign = 'center'
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#f1f5f9'
-      ctx.fillText('OFICIAL', 915, 120)
-
-      // Línea divisoria
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(90, 170)
-      ctx.lineTo(990, 170)
-      ctx.stroke()
-
-      // 5. Badge de Impacto (Pill naranja/dorado)
-      const badgeText = headlineBadge.value.toUpperCase()
-      ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      const badgeWidth = Math.min(ctx.measureText(badgeText).width + 64, 900)
-      const badgeX = (1080 - badgeWidth) / 2
-      const badgeGrad = ctx.createLinearGradient(badgeX, 210, badgeX + badgeWidth, 210)
-      badgeGrad.addColorStop(0, '#f59e0b')
-      badgeGrad.addColorStop(1, '#ea580c')
-      ctx.fillStyle = badgeGrad
-      roundRect(ctx, badgeX, 210, badgeWidth, 70, 35, true, false)
-      ctx.textAlign = 'center'
-      ctx.fillStyle = '#020617'
-      ctx.fillText(badgeText, 540, 246)
-
-      // 6. Contenedor de la Imagen / Ícono (Alta Visibilidad para Productos)
+      // 4. Carga de imagen si es producto físico
       const isPhysical = flyerProductType.value === 'physical'
-      const boxSize = isPhysical ? 580 : 460
-      const boxX = (1080 - boxSize) / 2
-      const boxY = isPhysical ? 290 : 315
-
-      // Sombra ambiental suave detrás del producto
-      ctx.save()
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
-      ctx.shadowBlur = 35
-      ctx.shadowOffsetY = 15
-      ctx.fillStyle = isPhysical ? '#ffffff' : 'rgba(255, 255, 255, 0.06)'
-      roundRect(ctx, boxX, boxY, boxSize, boxSize, 40, true, true, isPhysical ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.18)', 2.5)
-      ctx.restore()
-
-      // Dibujar imagen con proxy CORS o ícono
+      let img = null
       if (isPhysical && selectedPhysicalProduct.value?.image) {
         try {
           const imgUrl = productImageCORS.value || getCORSImageUrl(selectedPhysicalProduct.value.image)
-          const img = new Image()
+          img = new Image()
           img.crossOrigin = 'anonymous'
           await new Promise((res, rej) => {
             img.onload = () => res()
@@ -330,124 +335,297 @@ function renderCanvasFlyerBlob() {
             img.src = imgUrl
             setTimeout(() => rej(new Error('Img timeout')), 6000)
           })
+        } catch (e) {
+          img = null
+        }
+      }
 
+      // Función auxiliar para dibujar la imagen / icono del producto ajustado armónicamente
+      function drawProductBox(bx, by, bSize, rCorner = 36) {
+        ctx.save()
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
+        ctx.shadowBlur = 30
+        ctx.shadowOffsetY = 12
+        ctx.fillStyle = isPhysical ? '#ffffff' : 'rgba(255, 255, 255, 0.08)'
+        roundRect(ctx, bx, by, bSize, bSize, rCorner, true, true, isPhysical ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.2)', 2)
+        ctx.restore()
+
+        if (isPhysical && img) {
           ctx.save()
           ctx.beginPath()
-          roundRect(ctx, boxX + 12, boxY + 12, boxSize - 24, boxSize - 24, 32, false, false)
+          roundRect(ctx, bx + 10, by + 10, bSize - 20, bSize - 20, rCorner - 8, false, false)
           ctx.clip()
 
-          // Fondo blanco brillante puro para resaltar al 100% el producto
           ctx.fillStyle = '#ffffff'
-          ctx.fillRect(boxX + 12, boxY + 12, boxSize - 24, boxSize - 24)
+          ctx.fillRect(bx + 10, by + 10, bSize - 20, bSize - 20)
 
-          const padding = 28
-          const availW = boxSize - 24 - padding
-          const availH = boxSize - 24 - padding
-          const hRatio = availW / img.width
-          const vRatio = availH / img.height
-          const ratio = Math.min(hRatio, vRatio)
+          const padding = 20
+          const availW = bSize - 20 - padding
+          const availH = bSize - 20 - padding
+          const ratio = Math.min(availW / img.width, availH / img.height)
           const drawW = img.width * ratio
           const drawH = img.height * ratio
-          const centerShiftX = (boxSize - 24 - drawW) / 2
-          const centerShiftY = (boxSize - 24 - drawH) / 2
-          ctx.drawImage(img, 0, 0, img.width, img.height, boxX + 12 + centerShiftX, boxY + 12 + centerShiftY, drawW, drawH)
+          const shiftX = (bSize - 20 - drawW) / 2
+          const shiftY = (bSize - 20 - drawH) / 2
+          ctx.drawImage(img, 0, 0, img.width, img.height, bx + 10 + shiftX, by + 10 + shiftY, drawW, drawH)
           ctx.restore()
-        } catch (imgErr) {
-          // Si falla la imagen externa por red, dibuja ícono de fallback
-          ctx.font = '180px sans-serif'
+        } else if (isPhysical) {
+          ctx.font = `${Math.round(bSize * 0.45)}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('📦', 540, boxY + 340)
+          ctx.textBaseline = 'middle'
+          ctx.fillText('📦', bx + bSize / 2, by + bSize / 2)
+        } else {
+          const emoji = selectedPlatform.value === 'Netflix' ? '🍿' :
+                        selectedPlatform.value === 'Disney+' ? '✨' :
+                        selectedPlatform.value === 'Max' ? '🎬' :
+                        selectedPlatform.value === 'IPTV' ? '📺' :
+                        selectedPlatform.value === 'Spotify' ? '🎵' : '⚡'
+          ctx.font = `${Math.round(bSize * 0.45)}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(emoji, bx + bSize / 2, by + bSize / 2)
         }
-      } else {
-        // Ícono grande para plataformas de streaming
-        const emoji = selectedPlatform.value === 'Netflix' ? '🍿' :
-                      selectedPlatform.value === 'Disney+' ? '✨' :
-                      selectedPlatform.value === 'Max' ? '🎬' :
-                      selectedPlatform.value === 'IPTV' ? '📺' :
-                      selectedPlatform.value === 'Spotify' ? '🎵' : '⚡'
-        ctx.font = '180px sans-serif'
+      }
+
+      // =====================================
+      // RENDERIZADO FORMATO BANNER (16:9 - 1920x1080)
+      // =====================================
+      if (format === 'banner') {
+        // Encabezado
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(storeName.value.toUpperCase().slice(0, 32), 80, 85)
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
+        roundRect(ctx, width - 230, 60, 150, 50, 25, true, true, 'rgba(255, 255, 255, 0.2)', 1.5)
         ctx.textAlign = 'center'
-        ctx.fillText(emoji, 540, boxY + 280)
-      }
-
-      // 7. Título y Subtítulo
-      let titleY = isPhysical ? (boxY + boxSize + 60) : 830
-      ctx.textAlign = 'center'
-      ctx.font = '900 56px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#ffffff'
-      
-      const rawTitle = displayTitle.value
-      const maxTitleWidth = 920
-      if (ctx.measureText(rawTitle).width > maxTitleWidth) {
-        const words = rawTitle.split(' ')
-        let line1 = ''
-        let line2 = ''
-        for (const w of words) {
-          if (ctx.measureText(line1 + ' ' + w).width < maxTitleWidth && !line2) {
-            line1 += (line1 ? ' ' : '') + w
-          } else {
-            line2 += (line2 ? ' ' : '') + w
-          }
-        }
-        ctx.fillText(line1, 540, titleY)
-        ctx.fillText(line2.slice(0, 38) + (line2.length > 38 ? '...' : ''), 540, titleY + 70)
-        titleY += 90
-      } else {
-        ctx.fillText(rawTitle, 540, titleY)
-        titleY += 20
-      }
-
-      // Subtítulo
-      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#fbbf24'
-      ctx.fillText(displaySubtitle.value, 540, titleY + 60)
-
-      // 8. Tarjeta de Precio Gigante
-      const priceBoxY = titleY + 115
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
-      roundRect(ctx, 130, priceBoxY, 820, 180, 36, true, true, 'rgba(255, 255, 255, 0.16)', 2)
-
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#94a3b8'
-      ctx.fillText('PRECIO EXCLUSIVO', 540, priceBoxY + 42)
-
-      ctx.font = '900 82px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#ffffff'
-      ctx.fillText(`$${displayPrice.value} ARS`, 540, priceBoxY + 124)
-
-      // 9. Puntos Clave / Beneficios
-      const bulletsStartY = priceBoxY + 225
-      const bullets = [bullet1.value, bullet2.value, bullet3.value]
-      ctx.textAlign = 'left'
-
-      bullets.forEach((b, idx) => {
-        const by = bulletsStartY + (idx * 60)
-        ctx.font = 'bold 32px sans-serif'
-        ctx.fillStyle = '#10b981'
-        ctx.fillText('✓', 140, by)
-
-        ctx.font = '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         ctx.fillStyle = '#f1f5f9'
-        ctx.fillText(b.length > 46 ? b.slice(0, 44) + '...' : b, 190, by)
-      })
+        ctx.fillText('OFICIAL', width - 155, 85)
 
-      // 10. Pie de Página con Web Oficial de Referencia
-      const footerY = 1680
-      ctx.textAlign = 'center'
-      ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#94a3b8'
-      ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE AHORA!', 540, footerY)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(80, 130)
+        ctx.lineTo(width - 80, 130)
+        ctx.stroke()
 
-      const webY = footerY + 35
-      const webGrad = ctx.createLinearGradient(110, webY, 970, webY)
-      webGrad.addColorStop(0, '#0284c7') // Sky
-      webGrad.addColorStop(1, '#0ea5e9')
-      ctx.fillStyle = webGrad
-      roundRect(ctx, 110, webY, 860, 115, 34, true, false)
+        // Columna Izquierda: Producto
+        const bSize = 520
+        const bx = 110
+        const by = 210
+        drawProductBox(bx, by, bSize, 40)
 
-      ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#020617'
-      ctx.fillText(`🌐 ${websiteUrl.value}`, 540, webY + 74)
+        // Columna Derecha: Información
+        const rightX = 700
+        const badgeText = headlineBadge.value.toUpperCase()
+        ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        const bWidth = Math.min(ctx.measureText(badgeText).width + 50, 600)
+        const bGrad = ctx.createLinearGradient(rightX, 175, rightX + bWidth, 175)
+        bGrad.addColorStop(0, '#f59e0b')
+        bGrad.addColorStop(1, '#ea580c')
+        ctx.fillStyle = bGrad
+        roundRect(ctx, rightX, 175, bWidth, 54, 27, true, false)
+        ctx.textAlign = 'center'
+        ctx.fillStyle = '#020617'
+        ctx.fillText(badgeText, rightX + bWidth / 2, 203)
+
+        // Título y Subtítulo
+        ctx.textAlign = 'left'
+        ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        const rawTitle = displayTitle.value
+        if (ctx.measureText(rawTitle).width > 1100) {
+          ctx.fillText(rawTitle.slice(0, 42) + '...', rightX, 290)
+        } else {
+          ctx.fillText(rawTitle, rightX, 290)
+        }
+
+        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(displaySubtitle.value, rightX, 345)
+
+        // Tarjeta de Precio
+        roundRect(ctx, rightX, 395, 1140, 145, 28, true, true, 'rgba(255, 255, 255, 0.16)', 2)
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'
+        roundRect(ctx, rightX, 395, 1140, 145, 28, true, false)
+        ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#94a3b8'
+        ctx.fillText('PRECIO EXCLUSIVO', rightX + 40, 435)
+        ctx.font = '900 70px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(`$${displayPrice.value} ARS`, rightX + 40, 505)
+
+        // Bullets
+        const bullets = [bullet1.value, bullet2.value, bullet3.value]
+        bullets.forEach((b, idx) => {
+          const byy = 615 + (idx * 50)
+          ctx.font = 'bold 26px sans-serif'
+          ctx.fillStyle = '#10b981'
+          ctx.fillText('✓', rightX + 10, byy)
+          ctx.font = '600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#f1f5f9'
+          ctx.fillText(b.length > 55 ? b.slice(0, 53) + '...' : b, rightX + 50, byy)
+        })
+
+        // Web Footer
+        const webGrad = ctx.createLinearGradient(rightX, 810, rightX + 1140, 810)
+        webGrad.addColorStop(0, '#0284c7')
+        webGrad.addColorStop(1, '#0ea5e9')
+        ctx.fillStyle = webGrad
+        roundRect(ctx, rightX, 810, 1140, 105, 30, true, false)
+        ctx.textAlign = 'center'
+        ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#020617'
+        ctx.fillText(`🌐 ${websiteUrl.value}`, rightX + 570, 874)
+
+      } else {
+        // =====================================
+        // RENDERIZADO VERTICAL (Story 9:16 | Feed 4:5 | Cuadrado 1:1)
+        // =====================================
+        const isStory = format === 'story'
+        const isFeed = format === 'feed'
+
+        const headerY = isStory ? 115 : isFeed ? 85 : 65
+        const lineY = isStory ? 165 : isFeed ? 125 : 95
+        const badgeY = isStory ? 205 : isFeed ? 150 : 115
+        const badgeH = isStory ? 66 : isFeed ? 54 : 48
+        const badgeFontSize = isStory ? 30 : isFeed ? 24 : 22
+
+        const bSize = isStory ? 440 : isFeed ? 340 : 270
+        const bx = (width - bSize) / 2
+        const by = isStory ? 300 : isFeed ? 225 : 180
+
+        // Encabezado
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.font = `bold ${isStory ? 36 : isFeed ? 30 : 28}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(storeName.value.toUpperCase().slice(0, 28), 90, headerY)
+
+        // Badge Oficial
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
+        const ofW = isStory ? 150 : 130
+        const ofH = isStory ? 52 : 44
+        roundRect(ctx, width - 90 - ofW, headerY - ofH / 2, ofW, ofH, ofH / 2, true, true, 'rgba(255, 255, 255, 0.2)', 1.5)
+        ctx.textAlign = 'center'
+        ctx.font = `bold ${isStory ? 22 : 18}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#f1f5f9'
+        ctx.fillText('OFICIAL', width - 90 - ofW / 2, headerY)
+
+        // Línea
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(90, lineY)
+        ctx.lineTo(width - 90, lineY)
+        ctx.stroke()
+
+        // Badge Oferta
+        const badgeText = headlineBadge.value.toUpperCase()
+        ctx.font = `900 ${badgeFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        const badgeWidth = Math.min(ctx.measureText(badgeText).width + 60, width - 180)
+        const badgeX = (width - badgeWidth) / 2
+        const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeWidth, badgeY)
+        badgeGrad.addColorStop(0, '#f59e0b')
+        badgeGrad.addColorStop(1, '#ea580c')
+        ctx.fillStyle = badgeGrad
+        roundRect(ctx, badgeX, badgeY, badgeWidth, badgeH, badgeH / 2, true, false)
+        ctx.textAlign = 'center'
+        ctx.fillStyle = '#020617'
+        ctx.fillText(badgeText, width / 2, badgeY + badgeH / 2 + 1)
+
+        // Dibujar Foto / Icono
+        drawProductBox(bx, by, bSize, isStory ? 36 : isFeed ? 32 : 28)
+
+        // Título y Subtítulo
+        let titleY = by + bSize + (isStory ? 55 : isFeed ? 42 : 36)
+        ctx.textAlign = 'center'
+        ctx.font = `900 ${isStory ? 50 : isFeed ? 42 : 36}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#ffffff'
+
+        const rawTitle = displayTitle.value
+        const maxTitleWidth = width - 180
+        if (ctx.measureText(rawTitle).width > maxTitleWidth) {
+          const words = rawTitle.split(' ')
+          let line1 = ''
+          let line2 = ''
+          for (const w of words) {
+            if (ctx.measureText(line1 + ' ' + w).width < maxTitleWidth && !line2) {
+              line1 += (line1 ? ' ' : '') + w
+            } else {
+              line2 += (line2 ? ' ' : '') + w
+            }
+          }
+          ctx.fillText(line1, width / 2, titleY)
+          ctx.fillText(line2.slice(0, 36) + (line2.length > 36 ? '...' : ''), width / 2, titleY + (isStory ? 58 : isFeed ? 48 : 40))
+          titleY += (isStory ? 65 : isFeed ? 50 : 42)
+        } else {
+          ctx.fillText(rawTitle, width / 2, titleY)
+        }
+
+        // Subtítulo
+        ctx.font = `bold ${isStory ? 32 : isFeed ? 26 : 24}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(displaySubtitle.value, width / 2, titleY + (isStory ? 56 : isFeed ? 46 : 40))
+
+        // Tarjeta de Precio
+        const priceBoxY = titleY + (isStory ? 115 : isFeed ? 95 : 78)
+        const priceBoxW = isStory ? 820 : isFeed ? 780 : 740
+        const priceBoxH = isStory ? 170 : isFeed ? 135 : 115
+        const priceBoxX = (width - priceBoxW) / 2
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
+        roundRect(ctx, priceBoxX, priceBoxY, priceBoxW, priceBoxH, isStory ? 34 : 26, true, true, 'rgba(255, 255, 255, 0.16)', 2)
+
+        ctx.font = `bold ${isStory ? 20 : isFeed ? 18 : 16}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#94a3b8'
+        ctx.fillText('PRECIO EXCLUSIVO', width / 2, priceBoxY + (isStory ? 40 : isFeed ? 34 : 28))
+
+        ctx.font = `900 ${isStory ? 78 : isFeed ? 66 : 58}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(`$${displayPrice.value} ARS`, width / 2, priceBoxY + (isStory ? 118 : isFeed ? 96 : 82))
+
+        // Puntos Clave / Beneficios
+        const bulletsStartY = priceBoxY + priceBoxH + (isStory ? 45 : isFeed ? 35 : 28)
+        const bullets = [bullet1.value, bullet2.value, bullet3.value]
+        ctx.textAlign = 'left'
+        bullets.forEach((b, idx) => {
+          const byy = bulletsStartY + (idx * (isStory ? 55 : isFeed ? 44 : 36))
+          ctx.font = `bold ${isStory ? 30 : isFeed ? 25 : 22}px sans-serif`
+          ctx.fillStyle = '#10b981'
+          ctx.fillText('✓', 140, byy)
+
+          ctx.font = `600 ${isStory ? 30 : isFeed ? 25 : 22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.fillStyle = '#f1f5f9'
+          ctx.fillText(b.length > 46 ? b.slice(0, 44) + '...' : b, 190, byy)
+        })
+
+        // Pie de Página
+        const footerY = isStory ? 1675 : isFeed ? 1155 : 915
+        if (isStory || isFeed) {
+          ctx.textAlign = 'center'
+          ctx.font = `bold ${isStory ? 24 : 20}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE AHORA!', width / 2, footerY)
+        }
+
+        const webY = isStory ? 1715 : isFeed ? 1190 : 940
+        const webH = isStory ? 110 : isFeed ? 85 : 78
+        const webW = isStory ? 860 : isFeed ? 800 : 740
+        const webX = (width - webW) / 2
+        const webGrad = ctx.createLinearGradient(webX, webY, webX + webW, webY)
+        webGrad.addColorStop(0, '#0284c7')
+        webGrad.addColorStop(1, '#0ea5e9')
+        ctx.fillStyle = webGrad
+        roundRect(ctx, webX, webY, webW, webH, webH / 3, true, false)
+
+        ctx.textAlign = 'center'
+        ctx.font = `900 ${isStory ? 46 : isFeed ? 38 : 34}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#020617'
+        ctx.fillText(`🌐 ${websiteUrl.value}`, width / 2, webY + webH / 2 + 2)
+      }
 
       canvas.toBlob((blob) => {
         if (!blob) {
@@ -462,53 +640,22 @@ function renderCanvasFlyerBlob() {
   })
 }
 
-// Enlace de referencia completo para el producto o tienda
-const fullProductReferralUrl = computed(() => {
-  const base = 'https://streamepro.me'
-  const refCode = props.resellerRef || 'RES-01'
-  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
-    return `${base}/?ref=${refCode}&prod=${selectedPhysicalProduct.value.id}`
-  } else {
-    return `${base}/?ref=${refCode}`
-  }
-})
-
-const cleanFriendlyUrl = computed(() => {
-  const base = 'https://streamepro.me'
-  const refCode = props.resellerRef || 'RES-01'
-  if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value) {
-    return `${base}/producto/${selectedPhysicalProduct.value.id}?ref=${refCode}`
-  } else {
-    return `${base}/ref/${refCode}`
-  }
-})
-
-const copyProductReferralUrl = () => {
-  navigator.clipboard.writeText(fullProductReferralUrl.value).then(() => {
-    toast.add('¡Enlace de referencia copiado!', 'success')
-  })
-}
-
-const previewProductReferralUrl = () => {
-  window.open(fullProductReferralUrl.value, '_blank')
-}
-
 // Descargar imagen con motor nativo de alta definición
 const downloadFlyerImage = async () => {
   isExporting.value = true
-  toast.add('Generando flyer en alta definición (1080x1920)...', 'info')
+  toast.add(`Generando flyer en formato ${flyerFormatLabels[flyerFormat.value]}...`, 'info')
 
   try {
     const blob = await renderCanvasFlyerBlob()
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const safeName = displayTitle.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24)
-    link.download = `flyer_${safeName}_${Date.now()}.png`
+    link.download = `flyer_${safeName}_${flyerFormat.value}.png`
     link.href = url
     link.click()
     URL.revokeObjectURL(url)
 
-    toast.add('¡Flyer descargado con éxito! Listo para tu Estado de WhatsApp o Instagram Stories.', 'success')
+    toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
   } catch (err) {
     console.error('Error generando flyer:', err)
     toast.add('Ocurrió un error al generar el flyer. Inténtalo de nuevo.', 'error')
@@ -564,10 +711,10 @@ const shareToWhatsAppStatus = () => {
             <h3 class="text-lg font-black text-white flex items-center gap-2">
               Generador de Flyers & Banners de Oferta
               <span class="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
-                ESTADOS & STORIES (9:16)
+                MULTI-FORMATO REDES (9:16 · 4:5 · 1:1 · 16:9)
               </span>
             </h3>
-            <p class="text-xs text-slate-400">Crea imágenes publicitarias profesionales para WhatsApp e Instagram en 1 segundo y multiplica tus ventas.</p>
+            <p class="text-xs text-slate-400">Crea imágenes publicitarias profesionales para WhatsApp, Instagram, TikTok y Facebook en múltiples tamaños.</p>
           </div>
         </div>
         <button @click="emit('close')" class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
@@ -597,6 +744,56 @@ const shareToWhatsAppStatus = () => {
               <span>📦</span>
               <span>Tecnología & Físicos ({{ adminStore.physicalProducts.length }})</span>
             </button>
+          </div>
+
+          <!-- Selector de Formato para Redes Sociales -->
+          <div class="space-y-1.5 bg-[#020617] p-3 rounded-2xl border border-slate-800">
+            <div class="flex justify-between items-center">
+              <label class="block font-bold uppercase text-slate-400 text-[11px]">
+                📐 Formato / Tamaño para Redes Sociales
+              </label>
+              <span class="text-[10px] font-mono text-amber-400 font-bold">
+                {{ flyerFormat === 'story' ? '1080 × 1920 (9:16)' : flyerFormat === 'feed' ? '1080 × 1350 (4:5)' : flyerFormat === 'square' ? '1080 × 1080 (1:1)' : '1920 × 1080 (16:9)' }}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button 
+                type="button"
+                @click="flyerFormat = 'story'"
+                :class="['p-2 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center gap-0.5', flyerFormat === 'story' ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="text-base">📱</span>
+                <span class="font-black text-[11px]">Historias / Estados</span>
+                <span class="text-[9px] text-slate-500 font-mono">9:16 (WhatsApp/IG)</span>
+              </button>
+              <button 
+                type="button"
+                @click="flyerFormat = 'feed'"
+                :class="['p-2 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center gap-0.5', flyerFormat === 'feed' ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="text-base">📸</span>
+                <span class="font-black text-[11px]">Feed Instagram</span>
+                <span class="text-[9px] text-slate-500 font-mono">4:5 (Retrato HD)</span>
+              </button>
+              <button 
+                type="button"
+                @click="flyerFormat = 'square'"
+                :class="['p-2 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center gap-0.5', flyerFormat === 'square' ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="text-base">⏹️</span>
+                <span class="font-black text-[11px]">Post Cuadrado</span>
+                <span class="text-[9px] text-slate-500 font-mono">1:1 (Feed/Catálogo)</span>
+              </button>
+              <button 
+                type="button"
+                @click="flyerFormat = 'banner'"
+                :class="['p-2 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center gap-0.5', flyerFormat === 'banner' ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="text-base">🖥️</span>
+                <span class="font-black text-[11px]">Banner Horizontal</span>
+                <span class="text-[9px] text-slate-500 font-mono">16:9 (Facebook/Web)</span>
+              </button>
+            </div>
           </div>
 
           <!-- Si es Streaming -->
@@ -779,7 +976,7 @@ const shareToWhatsAppStatus = () => {
               :disabled="isExporting"
               class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer disabled:opacity-50"
             >
-              <span>{{ isExporting ? '⏳ Generando Flyer HD...' : '⬇️ Descargar Flyer (PNG 9:16)' }}</span>
+              <span>{{ isExporting ? '⏳ Generando Flyer HD...' : `⬇️ Descargar Flyer (${flyerFormatLabels[flyerFormat]})` }}</span>
             </button>
             <button 
               @click="copySocialCopy" 
@@ -805,17 +1002,26 @@ const shareToWhatsAppStatus = () => {
           </div>
         </div>
 
-        <!-- COLUMNA DERECHA: VISTA PREVIA DEL FLYER (FORMATO STORIES 9:16) -->
+        <!-- COLUMNA DERECHA: VISTA PREVIA DEL FLYER (ADAPTABLE A CADA FORMATO) -->
         <div class="lg:col-span-5 flex flex-col items-center justify-center bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-          <span class="text-[11px] font-mono text-slate-400 mb-2 font-bold uppercase tracking-wider">
-            Vista Previa de Estado / Story
-          </span>
+          <div class="flex items-center justify-between w-full mb-2">
+            <span class="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+              Vista Previa en Vivo ({{ flyerFormatLabels[flyerFormat] }})
+            </span>
+            <span class="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+              {{ flyerFormat === 'story' ? '9:16' : flyerFormat === 'feed' ? '4:5' : flyerFormat === 'square' ? '1:1' : '16:9' }}
+            </span>
+          </div>
 
-          <!-- CONTENEDOR FLYER CAPTURABLE (Ratio 9:16) -->
+          <!-- CONTENEDOR FLYER CAPTURABLE (Dinámico según formato) -->
           <div 
             ref="flyerPreviewRef" 
             :class="[
-              'w-full max-w-[320px] aspect-[9/16] rounded-3xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl border transition-all text-white select-none',
+              'w-full rounded-3xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl border transition-all text-white select-none',
+              flyerFormat === 'story' ? 'max-w-[280px] sm:max-w-[310px] aspect-[9/16]' :
+              flyerFormat === 'feed' ? 'max-w-[290px] sm:max-w-[320px] aspect-[4/5]' :
+              flyerFormat === 'square' ? 'max-w-[300px] sm:max-w-[320px] aspect-square' :
+              'max-w-[430px] aspect-[16/9]',
               flyerTheme === 'cinema' ? 'bg-gradient-to-b from-black via-red-950/40 to-slate-950 border-red-500/30' :
               flyerTheme === 'cyber' ? 'bg-gradient-to-b from-slate-950 via-purple-950/50 to-cyan-950/30 border-purple-500/40' :
               flyerTheme === 'emerald' ? 'bg-gradient-to-b from-slate-950 via-emerald-950/40 to-amber-950/30 border-emerald-500/40' :
@@ -827,8 +1033,8 @@ const shareToWhatsAppStatus = () => {
             <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-purple-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
             <!-- PARTE SUPERIOR: Marca de la Tienda & Badge -->
-            <div class="relative z-10 text-center space-y-2">
-              <div class="flex items-center justify-between border-b border-white/10 pb-2">
+            <div class="relative z-10 text-center space-y-1.5">
+              <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
                 <span class="text-[11px] font-mono font-black uppercase tracking-widest text-amber-300 truncate max-w-[190px]">
                   {{ storeName }}
                 </span>
@@ -837,49 +1043,92 @@ const shareToWhatsAppStatus = () => {
                 </span>
               </div>
 
-              <!-- Badge Dinámico -->
-              <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[11px] font-black px-3.5 py-1 rounded-full shadow-lg uppercase tracking-wider">
+              <!-- Badge Dinámico (oculto en banner para ahorrar espacio en cabecera) -->
+              <div v-if="flyerFormat !== 'banner'" class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[10px] font-black px-3 py-0.5 rounded-full shadow-lg uppercase tracking-wider">
                 {{ headlineBadge }}
               </div>
             </div>
 
-            <!-- PARTE CENTRAL: Imagen / Icono y Titular -->
-            <div class="relative z-10 text-center space-y-2 my-auto">
-              <!-- Icono / Imagen del Producto con Alta Visibilidad -->
-              <div :class="['mx-auto rounded-3xl flex items-center justify-center p-2.5 shadow-2xl overflow-hidden transition-all duration-300', flyerProductType === 'physical' ? 'w-36 h-36 sm:w-44 sm:h-44 bg-white border-2 border-white/40' : 'w-24 h-24 bg-white/10 border border-white/20']">
+            <!-- CONTENIDO PARA FORMATO BANNER (16:9 Horizontal) -->
+            <div v-if="flyerFormat === 'banner'" class="relative z-10 flex items-center gap-3 my-auto">
+              <!-- Foto / Icono en la izquierda -->
+              <div :class="['w-28 h-28 rounded-2xl flex items-center justify-center p-2 shadow-xl shrink-0 overflow-hidden', flyerProductType === 'physical' ? 'bg-white border border-white/40' : 'bg-white/10 border border-white/20']">
                 <img 
                   v-if="flyerProductType === 'physical' && (productImageCORS || selectedPhysicalProduct?.image)" 
                   :src="productImageCORS || selectedPhysicalProduct.image" 
                   :alt="displayTitle"
-                  class="w-full h-full object-contain filter drop-shadow-md"
+                  class="w-full h-full object-contain filter drop-shadow-sm"
                   crossorigin="anonymous"
                 >
-                <div v-else class="text-5xl">
+                <div v-else class="text-3xl">
+                  {{ selectedPlatform === 'Netflix' ? '🍿' : selectedPlatform === 'Disney+' ? '✨' : selectedPlatform === 'Max' ? '🎬' : selectedPlatform === 'IPTV' ? '📺' : selectedPlatform === 'Spotify' ? '🎵' : '⚡' }}
+                </div>
+              </div>
+
+              <!-- Info a la derecha -->
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {{ headlineBadge }}
+                </div>
+                <h2 class="text-sm font-black tracking-tight leading-tight text-white line-clamp-1">
+                  {{ displayTitle }}
+                </h2>
+                <div class="text-[10px] font-semibold text-amber-300 font-mono truncate">
+                  {{ displaySubtitle }}
+                </div>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-amber-400 font-bold text-xs">$</span>
+                  <span class="font-black text-lg text-white font-mono">{{ displayPrice }}</span>
+                  <span class="text-[9px] font-bold text-slate-400 font-mono">ARS</span>
+                </div>
+                <div class="text-[9px] text-slate-300 truncate">
+                  <span class="text-emerald-400 font-bold">✓</span> {{ bullet1 }}
+                </div>
+              </div>
+            </div>
+
+            <!-- CONTENIDO PARA FORMATOS VERTICALES (Story 9:16, Feed 4:5, Cuadrado 1:1) -->
+            <div v-else class="relative z-10 text-center space-y-1.5 my-auto">
+              <!-- Icono / Imagen del Producto con Ajuste Armónico -->
+              <div :class="[
+                'mx-auto rounded-2xl flex items-center justify-center p-2 shadow-xl overflow-hidden transition-all duration-300',
+                flyerProductType === 'physical' ? 'bg-white border border-white/40' : 'bg-white/10 border border-white/20',
+                flyerFormat === 'story' ? 'w-28 h-28 sm:w-32 sm:h-32' :
+                flyerFormat === 'feed' ? 'w-24 h-24 sm:w-26 sm:h-26' : 'w-20 h-20 sm:w-22 sm:h-22'
+              ]">
+                <img 
+                  v-if="flyerProductType === 'physical' && (productImageCORS || selectedPhysicalProduct?.image)" 
+                  :src="productImageCORS || selectedPhysicalProduct.image" 
+                  :alt="displayTitle"
+                  class="w-full h-full object-contain filter drop-shadow-sm"
+                  crossorigin="anonymous"
+                >
+                <div v-else :class="flyerFormat === 'square' ? 'text-3xl' : 'text-4xl'">
                   {{ selectedPlatform === 'Netflix' ? '🍿' : selectedPlatform === 'Disney+' ? '✨' : selectedPlatform === 'Max' ? '🎬' : selectedPlatform === 'IPTV' ? '📺' : selectedPlatform === 'Spotify' ? '🎵' : '⚡' }}
                 </div>
               </div>
 
               <div>
-                <h2 class="text-xl font-black tracking-tight leading-tight drop-shadow-md text-white line-clamp-2">
+                <h2 :class="['font-black tracking-tight leading-tight drop-shadow-md text-white line-clamp-2', flyerFormat === 'square' ? 'text-sm' : 'text-base sm:text-lg']">
                   {{ displayTitle }}
                 </h2>
-                <p class="text-xs font-semibold text-amber-300/90 font-mono mt-0.5 truncate">
+                <p class="text-[10px] font-semibold text-amber-300/90 font-mono mt-0.5 truncate">
                   {{ displaySubtitle }}
                 </p>
               </div>
 
               <!-- Precio Gigante -->
-              <div class="py-2 px-3.5 rounded-2xl bg-black/50 border border-white/10 backdrop-blur-md inline-block shadow-xl">
-                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider block">PRECIO EXCLUSIVO</span>
+              <div class="py-1 px-3 rounded-xl bg-black/50 border border-white/10 backdrop-blur-md inline-block shadow-lg">
+                <span class="text-[8px] uppercase font-bold text-slate-400 tracking-wider block">PRECIO EXCLUSIVO</span>
                 <div class="flex items-baseline justify-center gap-1">
-                  <span class="text-sm font-black text-amber-400">$</span>
-                  <span class="text-2xl font-black tracking-tight text-white">{{ displayPrice }}</span>
-                  <span class="text-[11px] font-bold text-slate-400 font-mono">ARS</span>
+                  <span class="text-xs font-black text-amber-400">$</span>
+                  <span :class="['font-black tracking-tight text-white', flyerFormat === 'square' ? 'text-lg' : 'text-xl sm:text-2xl']">{{ displayPrice }}</span>
+                  <span class="text-[10px] font-bold text-slate-400 font-mono">ARS</span>
                 </div>
               </div>
 
               <!-- Bullets / Beneficios -->
-              <div class="space-y-0.5 text-left text-[11px] px-2 font-medium text-slate-200">
+              <div :class="['space-y-0.5 text-left px-2 font-medium text-slate-200', flyerFormat === 'square' ? 'text-[9px]' : 'text-[10px]']">
                 <div class="flex items-center gap-1.5 truncate">
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span class="truncate">{{ bullet1 }}</span>
@@ -888,7 +1137,7 @@ const shareToWhatsAppStatus = () => {
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span class="truncate">{{ bullet2 }}</span>
                 </div>
-                <div class="flex items-center gap-1.5 truncate">
+                <div v-if="flyerFormat !== 'square'" class="flex items-center gap-1.5 truncate">
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span class="truncate">{{ bullet3 }}</span>
                 </div>
@@ -896,13 +1145,13 @@ const shareToWhatsAppStatus = () => {
             </div>
 
             <!-- PARTE INFERIOR: Llamada a la Acción de la Web Oficial -->
-            <div class="relative z-10 text-center space-y-1 pt-2 border-t border-white/10">
-              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+            <div class="relative z-10 text-center space-y-1 pt-1.5 border-t border-white/10">
+              <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">
                 ⚡ ¡Haz tu pedido online con garantía oficial!
               </span>
-              <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg text-xs">
-                <span class="text-sm">🌐</span>
-                <span class="font-mono text-xs font-black tracking-wide">{{ websiteUrl }}</span>
+              <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black py-1.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md text-xs">
+                <span class="text-xs">🌐</span>
+                <span class="font-mono text-[11px] font-black tracking-wide">{{ websiteUrl }}</span>
               </div>
             </div>
           </div>
