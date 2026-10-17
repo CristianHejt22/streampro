@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
+import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 
 // Catálogo Base Oficial de Planes de Productos Virtuales
 export const DEFAULT_PLATFORM_PLANS = {
@@ -226,16 +227,36 @@ export const useAdminStore = defineStore('admin', {
     // Historial global de transacciones de billetera cargadas desde Admin (Inicia limpio en producción)
     walletTransactions: loadDb(DB_KEYS.WALLET_TRANSACTIONS, []),
 
-    // Datos de transferencia bancaria oficial del PROVEEDOR
+    // Cuentas Bancarias registradas del PROVEEDOR (Multi-Cuenta con opción de cambiar de cuenta activa)
+    providerBankAccounts: loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [
+      {
+        id: 'acc_mp_principal',
+        name: 'Mercado Pago Principal',
+        isActive: true,
+        holderName: 'StreamPro Mayorista Central',
+        bankName: 'Mercado Pago',
+        cuit: '20-00000000-0',
+        cbuAlias: 'STREAMPRO.MAYORISTA',
+        cbuNumber: '0000000000000000000000',
+        whatsapp: '+54 9 11 0000-0000',
+        email: 'pagos@streampro.com',
+        notifyEmail: 'cobros.streampro@gmail.com'
+      }
+    ]),
+
+    // Datos de transferencia bancaria oficial del PROVEEDOR (Sincronizado con la cuenta activa)
     providerBankInfo: loadDb(DB_KEYS.PROVIDER_BANK, {
       holderName: 'StreamPro Mayorista Central',
-      bankName: 'Banco / Billetera Virtual',
+      bankName: 'Mercado Pago',
       cuit: '20-00000000-0',
       cbuAlias: 'STREAMPRO.MAYORISTA',
       cbuNumber: '0000000000000000000000',
       whatsapp: '+54 9 11 0000-0000',
       email: 'pagos@streampro.com'
     }),
+
+    // Transferencias detectadas por correo (Estilo Wanderlust)
+    bankTransfers: loadDb(DB_KEYS.BANK_TRANSFERS, []),
 
     // Alertas emitidas por el Proveedor hacia los Revendedores (Limpio en producción)
     resellerAlerts: loadDb(DB_KEYS.RESELLER_ALERTS, []),
@@ -333,6 +354,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.RESELLER_ALERTS, this.resellerAlerts)
         saveDb(DB_KEYS.RENEWAL_REQUESTS, this.renewalRequests)
         saveDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+        saveDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, this.providerBankAccounts)
+        saveDb(DB_KEYS.BANK_TRANSFERS, this.bankTransfers)
         saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
         saveDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
       }
@@ -348,10 +371,169 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    // Actualizar Datos Bancarios del Proveedor
+    // Actualizar Datos Bancarios del Proveedor (Sincroniza con la cuenta activa)
     updateProviderBankInfo(bankData) {
       Object.assign(this.providerBankInfo, bankData)
+      const active = this.providerBankAccounts.find(a => a.isActive)
+      if (active) {
+        Object.assign(active, bankData)
+        this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+      }
       this.persist(DB_KEYS.PROVIDER_BANK)
+      return { success: true }
+    },
+
+    // GESTIÓN MULTI-CUENTA BANCARIA DEL PROVEEDOR
+    setActiveBankAccount(accountId) {
+      this.providerBankAccounts.forEach(acc => {
+        acc.isActive = (acc.id === accountId)
+      })
+      const active = this.providerBankAccounts.find(a => a.isActive)
+      if (active) {
+        this.providerBankInfo = {
+          holderName: active.holderName,
+          bankName: active.bankName,
+          cuit: active.cuit,
+          cbuAlias: active.cbuAlias,
+          cbuNumber: active.cbuNumber,
+          whatsapp: active.whatsapp,
+          email: active.email
+        }
+        this.persist(DB_KEYS.PROVIDER_BANK)
+        this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+      }
+      return { success: true, activeAccount: active }
+    },
+
+    addProviderBankAccount(accountData) {
+      const newId = `acc_${Date.now()}`
+      const isFirst = this.providerBankAccounts.length === 0
+      const newAcc = {
+        id: newId,
+        name: accountData.name || 'Nueva Cuenta Bancaria',
+        isActive: isFirst,
+        holderName: accountData.holderName || '',
+        bankName: accountData.bankName || '',
+        cuit: accountData.cuit || '',
+        cbuAlias: accountData.cbuAlias || '',
+        cbuNumber: accountData.cbuNumber || '',
+        whatsapp: accountData.whatsapp || '',
+        email: accountData.email || '',
+        notifyEmail: accountData.notifyEmail || accountData.email || ''
+      }
+      this.providerBankAccounts.push(newAcc)
+      if (isFirst) {
+        this.setActiveBankAccount(newId)
+      } else {
+        this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+      }
+      return { success: true, account: newAcc }
+    },
+
+    updateProviderBankAccount(accountData) {
+      const idx = this.providerBankAccounts.findIndex(a => a.id === accountData.id)
+      if (idx !== -1) {
+        Object.assign(this.providerBankAccounts[idx], accountData)
+        if (this.providerBankAccounts[idx].isActive) {
+          this.setActiveBankAccount(accountData.id)
+        } else {
+          this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+        }
+        return { success: true }
+      }
+      return { error: 'Cuenta no encontrada' }
+    },
+
+    deleteProviderBankAccount(accountId) {
+      if (this.providerBankAccounts.length <= 1) {
+        return { error: 'No puedes eliminar la única cuenta bancaria configurada.' }
+      }
+      const target = this.providerBankAccounts.find(a => a.id === accountId)
+      const wasActive = target?.isActive
+      this.providerBankAccounts = this.providerBankAccounts.filter(a => a.id !== accountId)
+      if (wasActive && this.providerBankAccounts.length > 0) {
+        this.setActiveBankAccount(this.providerBankAccounts[0].id)
+      } else {
+        this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+      }
+      return { success: true }
+    },
+
+    // RECONOCIMIENTO Y CONCILIACIÓN DE TRANSFERENCIAS BANCARIAS (ESTILO WANDERLUST)
+    processBankTransferNotification(rawEmailText, subject = '') {
+      const parsed = parseBankEmail(rawEmailText, subject)
+      if (!parsed.amount) {
+        return { error: 'No se detectó un monto válido en el texto de la notificación' }
+      }
+
+      // Buscar coincidencia en órdenes pendientes
+      const matches = matchTransferWithOrders(parsed, this.pendingOrders)
+      const bestMatch = matches.length > 0 ? matches[0] : null
+
+      const transferRecord = {
+        id: `TR-${Date.now().toString().slice(-6)}`,
+        ...parsed,
+        matchedOrderId: bestMatch ? bestMatch.order.id : null,
+        matchedOrderClientNumber: bestMatch ? bestMatch.order.customerNumber : null,
+        matchedCustomerName: bestMatch ? bestMatch.order.customerName : null,
+        confidence: bestMatch ? bestMatch.confidence : 'none',
+        reasons: bestMatch ? bestMatch.reasons : [],
+        status: bestMatch ? 'matched' : 'unmatched',
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdDate: new Date().toISOString()
+      }
+
+      this.bankTransfers.unshift(transferRecord)
+
+      // Si la coincidencia es exacta o alta, actualizar la orden
+      if (bestMatch && (bestMatch.confidence === 'exact' || bestMatch.confidence === 'high')) {
+        const order = this.orders.find(o => o.id === bestMatch.order.id)
+        if (order) {
+          order.bankTransferVerified = true
+          order.bankTransferId = transferRecord.id
+          order.bankTransferDetails = {
+            bankName: parsed.bankName,
+            amount: parsed.amount,
+            sender: parsed.sender,
+            operationId: parsed.operationId,
+            verifiedAt: new Date().toLocaleString()
+          }
+          this.persist(DB_KEYS.ORDERS)
+        }
+      }
+
+      this.persist(DB_KEYS.BANK_TRANSFERS)
+      return { success: true, transfer: transferRecord, bestMatch }
+    },
+
+    confirmOrderPaymentWithTransfer(orderId, transferId) {
+      const order = this.orders.find(o => o.id === orderId)
+      const transfer = this.bankTransfers.find(t => t.id === transferId)
+      if (!order) return { error: 'Orden no encontrada' }
+
+      order.bankTransferVerified = true
+      order.bankTransferId = transferId
+      if (transfer) {
+        transfer.status = 'confirmed'
+        transfer.matchedOrderId = order.id
+        transfer.matchedOrderClientNumber = order.customerNumber
+        order.bankTransferDetails = {
+          bankName: transfer.bankName,
+          amount: transfer.amount,
+          sender: transfer.sender,
+          operationId: transfer.operationId,
+          verifiedAt: new Date().toLocaleString()
+        }
+        this.persist(DB_KEYS.BANK_TRANSFERS)
+      }
+
+      this.persist(DB_KEYS.ORDERS)
+      return { success: true, order }
+    },
+
+    deleteBankTransfer(transferId) {
+      this.bankTransfers = this.bankTransfers.filter(t => t.id !== transferId)
+      this.persist(DB_KEYS.BANK_TRANSFERS)
       return { success: true }
     },
 

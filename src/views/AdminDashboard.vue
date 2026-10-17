@@ -476,14 +476,143 @@ const confirmRechargeWallet = () => {
   }
 }
 
-// DATOS BANCARIOS DEL PROVEEDOR (Para que los revendedores le transfieran o los clientes de su revendedor)
+// GESTIÓN MULTI-CUENTA BANCARIA & VALIDADOR DE TRANSFERENCIAS (ESTILO WANDERLUST)
+const bankSubTab = ref('accounts') // 'accounts' | 'validator' | 'webhook_guide'
 const isEditingProviderBank = ref(false)
-const providerBankForm = ref({ ...adminStore.providerBankInfo })
+const showAddAccountModal = ref(false)
+const editingAccountId = ref(null)
 
+const newAccountForm = ref({
+  name: '',
+  holderName: '',
+  bankName: 'Mercado Pago',
+  cuit: '',
+  cbuAlias: '',
+  cbuNumber: '',
+  whatsapp: '',
+  email: '',
+  notifyEmail: ''
+})
+
+const handleSetActiveAccount = (accId) => {
+  const res = adminStore.setActiveBankAccount(accId)
+  if (res.success) {
+    toast.add(`¡Cuenta activa cambiada a "${res.activeAccount.name}"! Los clientes y revendedores ahora verán estos datos para transferir.`, 'success')
+  }
+}
+
+const openAddAccountModal = (acc = null) => {
+  if (acc) {
+    editingAccountId.value = acc.id
+    newAccountForm.value = { ...acc }
+  } else {
+    editingAccountId.value = null
+    newAccountForm.value = {
+      name: `Cuenta #${(adminStore.providerBankAccounts?.length || 0) + 1}`,
+      holderName: adminStore.providerBankInfo.holderName || '',
+      bankName: 'Mercado Pago',
+      cuit: adminStore.providerBankInfo.cuit || '',
+      cbuAlias: '',
+      cbuNumber: '',
+      whatsapp: adminStore.providerBankInfo.whatsapp || '',
+      email: adminStore.providerBankInfo.email || '',
+      notifyEmail: ''
+    }
+  }
+  showAddAccountModal.value = true
+}
+
+const saveAccountModal = () => {
+  if (!newAccountForm.value.holderName || !newAccountForm.value.cbuAlias) {
+    toast.add('Por favor completa Titular y Alias CBU', 'error')
+    return
+  }
+  if (editingAccountId.value) {
+    adminStore.updateProviderBankAccount({ id: editingAccountId.value, ...newAccountForm.value })
+    toast.add('Cuenta bancaria actualizada correctamente', 'success')
+  } else {
+    adminStore.addProviderBankAccount(newAccountForm.value)
+    toast.add('Nueva cuenta bancaria registrada con éxito', 'success')
+  }
+  showAddAccountModal.value = false
+}
+
+const handleDeleteAccount = (accId) => {
+  if (confirm('¿Estás seguro de eliminar esta cuenta bancaria?')) {
+    const res = adminStore.deleteProviderBankAccount(accId)
+    if (res.success) {
+      toast.add('Cuenta eliminada', 'success')
+    } else {
+      toast.add(res.error, 'error')
+    }
+  }
+}
+
+const providerBankForm = ref({ ...adminStore.providerBankInfo })
 const saveProviderBankInfo = () => {
   Object.assign(adminStore.providerBankInfo, providerBankForm.value)
   isEditingProviderBank.value = false
   toast.add('Datos de transferencia bancaria del Proveedor actualizados con éxito', 'success')
+}
+
+// VALIDADOR MANUAL DE CORREO / COMPROBANTE (ESTILO WANDERLUST)
+const testEmailText = ref('')
+const testEmailSubject = ref('')
+const isScanningEmail = ref(false)
+
+const loadSampleEmail = (type) => {
+  const pending = adminStore.pendingOrders[0]
+  const amountToUse = pending ? (pending.clientPrice || 7700) : 7700
+  const nameToUse = pending ? pending.customerName : 'Juan Carlos Martinez'
+  const prevNum = pending ? pending.customerNumber : 'CLI-5421'
+
+  if (type === 'mp') {
+    testEmailSubject.value = `Te transfirieron $ ${amountToUse.toLocaleString()} a tu cuenta`
+    testEmailText.value = `¡Buenas noticias!\n\n${nameToUse} te transfirió $ ${amountToUse.toLocaleString()} a tu cuenta de Mercado Pago.\n\nDetalle de la transferencia:\nMotivo: Varios / ${prevNum}\nOperación: #8945621345\nFecha: ${new Date().toLocaleDateString()}\n\nEl dinero ya se encuentra disponible en tu cuenta.`
+  } else if (type === 'galicia') {
+    testEmailSubject.value = 'Aviso de Acreditación de Transferencia - Banco Galicia'
+    testEmailText.value = `Estimado cliente:\n\nLe informamos que ha recibido una acreditación en su cuenta.\n\nImporte: $ ${amountToUse.toLocaleString()},00\nOrdenante: ${nameToUse}\nConcepto: Pago orden ${prevNum}\nN° de Comprobante: 78423910\nFecha de Operación: ${new Date().toLocaleString()}`
+  } else if (type === 'brubank') {
+    testEmailSubject.value = `Recibiste $ ${amountToUse.toLocaleString()} de ${nameToUse}`
+    testEmailText.value = `¡Hola! Recibiste $ ${amountToUse.toLocaleString()} de ${nameToUse} en tu cuenta de Brubank.\nReferencia: ${prevNum}\nID de Operación: BRU-${Math.floor(100000 + Math.random() * 900000)}`
+  }
+}
+
+const scanPastedEmail = () => {
+  if (!testEmailText.value.trim()) {
+    toast.add('Pega el texto del correo bancario o aviso de transferencia para analizar', 'error')
+    return
+  }
+
+  isScanningEmail.value = true
+  setTimeout(() => {
+    const res = adminStore.processBankTransferNotification(testEmailText.value, testEmailSubject.value)
+    isScanningEmail.value = false
+
+    if (res.error) {
+      toast.add(res.error, 'error')
+    } else {
+      if (res.bestMatch && (res.bestMatch.confidence === 'exact' || res.bestMatch.confidence === 'high')) {
+        toast.add(`¡Transferencia de $${res.transfer.amount.toLocaleString()} reconocida y vinculada a la orden #${res.bestMatch.order.customerNumber} (${res.bestMatch.order.customerName})!`, 'success')
+      } else {
+        toast.add(`Transferencia de $${res.transfer.amount.toLocaleString()} (${res.transfer.bankName}) registrada en la bandeja. No se halló orden pendiente idéntica.`, 'info')
+      }
+      testEmailText.value = ''
+      testEmailSubject.value = ''
+    }
+  }, 400)
+}
+
+const handleConfirmTransferWithOrder = (orderId, transferId) => {
+  const res = adminStore.confirmOrderPaymentWithTransfer(orderId, transferId)
+  if (res.success) {
+    toast.add(`¡Pago confirmado para el pedido #${res.order.customerNumber}! Listo para despachar cuentas.`, 'success')
+  }
+}
+
+const handleDeleteTransfer = (transferId) => {
+  adminStore.deleteBankTransfer(transferId)
+  toast.add('Transferencia eliminada del historial', 'success')
 }
 
 // GESTIÓN DE RENOVACIONES: Renovar misma cuenta o cambiar datos de cuenta
@@ -1279,7 +1408,10 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'bank'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'bank' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          🏦 Datos Bancarios Proveedor
+          🏦 Cuentas & Validador de Pagos
+          <span v-if="adminStore.bankTransfers?.length > 0" class="bg-emerald-500 text-slate-950 font-mono text-[10px] px-2 py-0.5 rounded-full font-black">
+            {{ adminStore.bankTransfers.length }}
+          </span>
         </button>
       </div>
 
@@ -1382,6 +1514,9 @@ const deletePackageItem = (pkgId) => {
                 </span>
                 <span v-if="order.paymentMethod" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                   {{ order.paymentMethod }}
+                </span>
+                <span v-if="order.bankTransferVerified" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                  <span>✓</span> Acreditada en {{ order.bankTransferDetails?.bankName || 'Banco' }} (${{ (order.bankTransferDetails?.amount || order.clientPrice).toLocaleString() }})
                 </span>
               </div>
               <div class="text-xs text-slate-400 space-y-0.5">
@@ -2053,64 +2188,364 @@ const deletePackageItem = (pkgId) => {
       </div>
     </div>
 
-    <!-- SECCIÓN: DATOS BANCARIOS DEL PROVEEDOR (Para que el revendedor o clientes le transfieran) -->
-    <div v-if="adminTab === 'bank'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-6">
-      <div class="flex justify-between items-start border-b border-slate-800 pb-4">
+    <!-- SECCIÓN: CENTRO DE COBRANZAS, MULTI-CUENTA BANCARIA Y VALIDADOR WANDERLUST -->
+    <div v-if="adminTab === 'bank'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
+      
+      <!-- Encabezado con Navegación de Sub-Pestañas -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-5">
         <div>
-          <h2 class="text-2xl font-black text-white">Datos de Transferencia Bancaria del Proveedor</h2>
-          <p class="text-xs text-slate-400">Estos son los datos de cobro oficiales que aparecerán en los paneles de revendedores y compras directas.</p>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🏦</span>
+            <h2 class="text-2xl font-black text-white">Centro de Cobranzas & Validador de Transferencias</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Administra tus cuentas bancarias, alterna la cuenta activa con 1 clic y verifica acreditaciones automáticas por correo estilo Wanderlust.
+          </p>
         </div>
-        <button 
-          v-if="!isEditingProviderBank" 
-          @click="isEditingProviderBank = true" 
-          class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow"
-        >
-          Editar Datos de Cuenta
-        </button>
+
+        <!-- Sub-Pestañas -->
+        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs font-bold">
+          <button 
+            @click="bankSubTab = 'accounts'"
+            :class="['px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer', bankSubTab === 'accounts' ? 'bg-brand-accent text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+          >
+            <span>💳 Cuentas Bancarias</span>
+            <span class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded font-mono">{{ adminStore.providerBankAccounts?.length || 1 }}</span>
+          </button>
+          <button 
+            @click="bankSubTab = 'validator'"
+            :class="['px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer', bankSubTab === 'validator' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+          >
+            <span>⚡ Validador de Correos</span>
+            <span v-if="adminStore.bankTransfers?.length > 0" class="text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded font-mono font-bold">
+              {{ adminStore.bankTransfers.length }}
+            </span>
+          </button>
+          <button 
+            @click="bankSubTab = 'webhook_guide'"
+            :class="['px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer', bankSubTab === 'webhook_guide' ? 'bg-indigo-500 text-white font-black' : 'text-slate-400 hover:text-white']"
+          >
+            <span>🤖 Conexión Gmail / IMAP</span>
+          </button>
+        </div>
       </div>
 
-      <div v-if="!isEditingProviderBank" class="max-w-xl bg-[#020617] p-6 rounded-2xl border border-slate-800 space-y-3 font-mono text-xs">
-        <p class="text-slate-400">Razón Social: <strong class="text-white text-sm">{{ adminStore.providerBankInfo.holderName }}</strong></p>
-        <p class="text-slate-400">Entidad Bancaria: <strong class="text-white">{{ adminStore.providerBankInfo.bankName }}</strong></p>
-        <p class="text-slate-400">CUIT: <strong class="text-white">{{ adminStore.providerBankInfo.cuit }}</strong></p>
-        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-          <p class="text-amber-400 font-bold text-sm">Alias CBU: {{ adminStore.providerBankInfo.cbuAlias }}</p>
-          <p class="text-slate-400 mt-1">CBU N°: {{ adminStore.providerBankInfo.cbuNumber }}</p>
+      <!-- SUB-TAB 1: GESTIÓN MULTI-CUENTA BANCARIA -->
+      <div v-if="bankSubTab === 'accounts'" class="space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <div>
+            <span class="text-xs font-bold text-white block">Selector de Cuenta Bancaria Activa</span>
+            <p class="text-[11px] text-slate-400">
+              La cuenta marcada como <strong class="text-emerald-400">ACTIVA</strong> es la que se muestra en el Checkout a los clientes y en los paneles de revendedores.
+            </p>
+          </div>
+          <button 
+            @click="openAddAccountModal()" 
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-2 cursor-pointer shrink-0"
+          >
+            <span>+ Agregar Otra Cuenta</span>
+          </button>
         </div>
-        <p class="text-slate-400">WhatsApp Mayorista: <span class="text-slate-200">{{ adminStore.providerBankInfo.whatsapp }}</span></p>
-        <p class="text-slate-400">Email de Cobranzas: <span class="text-slate-200">{{ adminStore.providerBankInfo.email }}</span></p>
+
+        <!-- Grid de Cuentas Bancarias Registradas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div 
+            v-for="acc in adminStore.providerBankAccounts" 
+            :key="acc.id"
+            :class="['p-5 rounded-2xl border transition-all relative flex flex-col justify-between space-y-4 shadow-xl', acc.isActive ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border-emerald-500/50 shadow-emerald-500/5 ring-1 ring-emerald-500/30' : 'bg-[#020617] border-slate-800 hover:border-slate-700']"
+          >
+            <div class="space-y-3">
+              <!-- Header de Cuenta -->
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <span class="text-[10px] font-mono uppercase text-slate-500 block">{{ acc.bankName || 'Banco' }}</span>
+                  <h3 class="text-base font-black text-white flex items-center gap-2">
+                    <span>{{ acc.name }}</span>
+                  </h3>
+                </div>
+                <span 
+                  v-if="acc.isActive" 
+                  class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow"
+                >
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>CUENTA ACTIVA</span>
+                </span>
+                <span v-else class="text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                  Secundaria
+                </span>
+              </div>
+
+              <!-- Detalles de la Cuenta -->
+              <div class="space-y-1.5 text-xs font-mono text-slate-300 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+                <p><span class="text-slate-500">Titular:</span> <strong class="text-white">{{ acc.holderName }}</strong></p>
+                <p><span class="text-slate-500">CUIT:</span> <span class="text-slate-200">{{ acc.cuit }}</span></p>
+                <div class="pt-1 border-t border-slate-800/60">
+                  <p class="text-amber-400 font-bold text-xs truncate">Alias: {{ acc.cbuAlias }}</p>
+                  <p class="text-slate-400 text-[11px] truncate">CBU: {{ acc.cbuNumber }}</p>
+                </div>
+                <p v-if="acc.notifyEmail" class="text-[11px] text-sky-400 pt-0.5 truncate">
+                  📧 Notificaciones: {{ acc.notifyEmail }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Botones de Acción de Cuenta -->
+            <div class="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+              <button 
+                v-if="!acc.isActive" 
+                @click="handleSetActiveAccount(acc.id)" 
+                class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2 rounded-xl transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>⚡ Activar para Cobros</span>
+              </button>
+              <div v-else class="flex-1 text-center py-2 text-xs font-bold text-emerald-400 flex items-center justify-center gap-1.5">
+                <span>✓ Cobrando por esta cuenta</span>
+              </div>
+
+              <button 
+                @click="openAddAccountModal(acc)" 
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs transition-colors cursor-pointer"
+                title="Editar datos de esta cuenta"
+              >
+                ✏️
+              </button>
+              <button 
+                v-if="adminStore.providerBankAccounts.length > 1" 
+                @click="handleDeleteAccount(acc.id)" 
+                class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 p-2 rounded-xl text-xs transition-colors cursor-pointer"
+                title="Eliminar esta cuenta"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <form v-else @submit.prevent="saveProviderBankInfo" class="max-w-xl bg-[#020617] p-6 rounded-2xl border border-slate-800 space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-bold text-slate-400 uppercase mb-1">Titular</label>
-            <input v-model="providerBankForm.holderName" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white" required>
+      <!-- SUB-TAB 2: VALIDADOR DE TRANSFERENCIAS POR CORREO (ESTILO WANDERLUST) -->
+      <div v-if="bankSubTab === 'validator'" class="space-y-6">
+        
+        <!-- Banner Explicativo -->
+        <div class="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-slate-900 border border-amber-500/30 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <span class="text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20">
+              ⚡ MOTOR WANDERLUST DE CONCILIACIÓN
+            </span>
+            <h3 class="text-base font-black text-white">Reconocimiento Automático de Acreditaciones</h3>
+            <p class="text-xs text-slate-300 max-w-2xl">
+              Cuando un cliente transfiere, Mercado Pago o tu Banco envían un correo de aviso. Este motor extrae el importe, remitente y N° de operación y lo vincula inmediatamente con la orden pendiente.
+            </p>
           </div>
-          <div>
-            <label class="block font-bold text-slate-400 uppercase mb-1">Banco</label>
-            <input v-model="providerBankForm.bankName" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white" required>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-bold text-slate-400 uppercase mb-1">Alias</label>
-            <input v-model="providerBankForm.cbuAlias" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white" required>
-          </div>
-          <div>
-            <label class="block font-bold text-slate-400 uppercase mb-1">CUIT</label>
-            <input v-model="providerBankForm.cuit" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white" required>
+          <div class="text-right shrink-0">
+            <span class="text-2xl font-black text-emerald-400 font-mono block">{{ adminStore.bankTransfers?.length || 0 }}</span>
+            <span class="text-[11px] text-slate-400">Transferencias Procesadas</span>
           </div>
         </div>
-        <div>
-          <label class="block font-bold text-slate-400 uppercase mb-1">CBU (22 dígitos)</label>
-          <input v-model="providerBankForm.cbuNumber" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono" required>
+
+        <!-- Escáner / Probador Manual de Correos y Comprobantes -->
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🔍</span>
+                <span>Escanear Notificación de Correo o Comprobante Bancario</span>
+              </h4>
+              <p class="text-xs text-slate-400">Pega el correo o texto de Mercado Pago, Galicia, Santander, etc., para analizarlo en tiempo real.</p>
+            </div>
+            
+            <!-- Botones de Ejemplo Rápido -->
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="text-[11px] text-slate-500 font-semibold self-center hidden sm:inline">Probar con:</span>
+              <button 
+                type="button" 
+                @click="loadSampleEmail('mp')" 
+                class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-[11px] font-bold"
+              >
+                💙 Mercado Pago
+              </button>
+              <button 
+                type="button" 
+                @click="loadSampleEmail('galicia')" 
+                class="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-[11px] font-bold"
+              >
+                🧡 Galicia
+              </button>
+              <button 
+                type="button" 
+                @click="loadSampleEmail('brubank')" 
+                class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-[11px] font-bold"
+              >
+                💜 Brubank
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Asunto del Correo (Opcional)</label>
+              <input 
+                v-model="testEmailSubject" 
+                type="text" 
+                placeholder="Ej: Te transfirieron $ 7.700 a tu cuenta de Mercado Pago" 
+                class="w-full bg-[#020617] border border-slate-800 rounded-xl p-3 text-white text-xs outline-none focus:border-amber-400"
+              >
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Cuerpo / Texto del Correo o Notificación</label>
+              <textarea 
+                v-model="testEmailText" 
+                rows="4" 
+                placeholder="Pega aquí el contenido del aviso de transferencia recibido por correo..." 
+                class="w-full bg-[#020617] border border-slate-800 rounded-xl p-3 text-white text-xs outline-none focus:border-amber-400 font-mono"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-1">
+            <button 
+              type="button" 
+              @click="testEmailText = ''; testEmailSubject = ''" 
+              class="bg-slate-900 hover:bg-slate-800 text-slate-400 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Limpiar
+            </button>
+            <button 
+              type="button" 
+              @click="scanPastedEmail" 
+              :disabled="isScanningEmail"
+              class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-400/20 flex items-center gap-2 cursor-pointer"
+            >
+              <span>{{ isScanningEmail ? 'Analizando...' : '⚡ Analizar y Cruzar con Pedidos' }}</span>
+            </button>
+          </div>
         </div>
-        <div class="flex gap-2 pt-2">
-          <button type="button" @click="isEditingProviderBank = false" class="bg-slate-800 text-slate-300 font-bold px-4 py-2 rounded-lg">Cancelar</button>
-          <button type="submit" class="bg-brand-accent text-slate-950 font-black px-6 py-2 rounded-lg">Guardar Datos Bancarios</button>
+
+        <!-- Lista de Transferencias Procesadas -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>📋</span>
+              <span>Bandeja de Transferencias Ingresadas ({{ adminStore.bankTransfers?.length || 0 }})</span>
+            </h4>
+            <span class="text-xs text-slate-400">Últimos avisos detectados</span>
+          </div>
+
+          <div v-if="!adminStore.bankTransfers || adminStore.bankTransfers.length === 0" class="text-slate-500 text-center py-10 bg-slate-950 rounded-2xl border border-slate-800 border-dashed text-xs">
+            No hay transferencias registradas todavía. Pega un correo de prueba arriba o conecta tu cuenta de Gmail.
+          </div>
+
+          <div v-else class="space-y-3">
+            <div 
+              v-for="t in adminStore.bankTransfers" 
+              :key="t.id"
+              class="bg-[#020617] p-4 sm:p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs"
+            >
+              <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl shrink-0">
+                  {{ t.bankIcon || '🏦' }}
+                </div>
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-black text-white text-sm">{{ t.bankName }}</span>
+                    <span class="font-mono font-black text-emerald-400 text-sm bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      +${{ Number(t.amount).toLocaleString() }} ARS
+                    </span>
+                    <span class="text-slate-500 text-[10px] font-mono">{{ t.createdAt || 'Hoy' }}</span>
+                  </div>
+                  <p class="text-slate-300">
+                    Remitente: <strong class="text-white">{{ t.sender }}</strong> • Op: <span class="font-mono text-slate-400">#{{ t.operationId }}</span>
+                  </p>
+
+                  <!-- ESTADO DE COINCIDENCIA CON PEDIDO -->
+                  <div v-if="t.matchedOrderId" class="pt-1">
+                    <div class="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[11px] font-medium">
+                      <span>✓ Coincide con Pedido</span>
+                      <strong class="font-mono font-bold text-white">#{{ t.matchedOrderClientNumber }}</strong>
+                      <span>({{ t.matchedCustomerName }})</span>
+                      <span v-if="t.reasons?.length" class="text-slate-400 text-[10px] hidden sm:inline">• {{ t.reasons[0] }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="pt-1">
+                    <span class="inline-block bg-slate-900 text-slate-400 border border-slate-800 px-2.5 py-0.5 rounded-lg text-[10px]">
+                      Sin pedido pendiente vinculado
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Acciones de la Transferencia -->
+              <div class="flex items-center gap-2 shrink-0 self-end md:self-center">
+                <button 
+                  v-if="t.matchedOrderId && t.status !== 'confirmed'" 
+                  @click="handleConfirmTransferWithOrder(t.matchedOrderId, t.id)" 
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl transition-all shadow text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>✓ Aprobar Pedido</span>
+                </button>
+                <span v-else-if="t.status === 'confirmed'" class="text-emerald-400 font-bold text-xs font-mono px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                  ✓ Verificado
+                </span>
+
+                <button 
+                  @click="handleDeleteTransfer(t.id)" 
+                  class="text-slate-500 hover:text-rose-400 p-2 rounded-lg hover:bg-slate-900 transition-colors cursor-pointer"
+                  title="Eliminar registro"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </form>
+      </div>
+
+      <!-- SUB-TAB 3: GUÍA DE CONEXIÓN GMAIL & WEBHOOK -->
+      <div v-if="bankSubTab === 'webhook_guide'" class="space-y-6">
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
+          <div class="border-b border-slate-800 pb-3">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">Automatización 100% Manos Libres</span>
+            <h3 class="text-xl font-black text-white mt-1">Cómo Conectar tu Correo (Estilo Wanderlust)</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Al igual que el plugin de Wanderlust en WooCommerce, puedes conectar tu cuenta de Gmail para que lea en tiempo real los correos de transferencias entrantes sin pagar suscripciones.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">1</div>
+              <h4 class="font-bold text-white">Google Apps Script (Gratis)</h4>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Abre <a href="https://script.google.com" target="_blank" class="text-brand-accent underline">script.google.com</a> con la cuenta de Gmail donde recibes las notificaciones de Mercado Pago o Bancos.
+              </p>
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">2</div>
+              <h4 class="font-bold text-white">Pega el Script Incluido</h4>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Copia el script listo que dejamos en <code class="text-amber-300">scripts/google-apps-script-email-watcher.gs</code>.
+              </p>
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">3</div>
+              <h4 class="font-bold text-white">Disparador Cada 2 Minutos</h4>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Configura el temporizador automático. Cada vez que entre una transferencia, se analizará y conciliará con tus pedidos al instante.
+              </p>
+            </div>
+          </div>
+
+          <!-- Archivo de Script para Descargar / Visualizar -->
+          <div class="p-4 bg-[#020617] rounded-xl border border-slate-800 text-xs font-mono space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400 text-[11px]">📁 Script oficial incluido en el proyecto:</span>
+              <span class="text-emerald-400 font-bold text-[10px]">scripts/google-apps-script-email-watcher.gs</span>
+            </div>
+            <p class="text-slate-400 text-[11px]">
+              También cuentas con el microservicio IMAP en <code class="text-amber-300 font-sans">scripts/bank-email-watcher.js</code> si prefieres correrlo en tu propio servidor VPS o Node.js.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- SECCIÓN: GESTIÓN DE PEDIDOS DE PRODUCTOS FÍSICOS (APROBAR / CANCELAR / COMISIONES 1% & 3%) -->
@@ -3496,6 +3931,73 @@ const deletePackageItem = (pkgId) => {
             Cerrar
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL AGREGAR / EDITAR CUENTA BANCARIA -->
+    <div v-if="showAddAccountModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xl font-black text-white">{{ editingAccountId ? 'Editar Cuenta Bancaria' : 'Nueva Cuenta Bancaria' }}</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Ingresa los datos para cobrar transferencias bancarias o virtuales.</p>
+          </div>
+          <button @click="showAddAccountModal = false" class="text-slate-400 hover:text-white p-1 cursor-pointer">✕</button>
+        </div>
+
+        <form @submit.prevent="saveAccountModal" class="space-y-3.5">
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Identificatorio de la Cuenta</label>
+            <input v-model="newAccountForm.name" type="text" placeholder="Ej: Mercado Pago Principal, Banco Galicia, etc." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Titular de la Cuenta</label>
+              <input v-model="newAccountForm.holderName" type="text" placeholder="Ej: StreamPro Central" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Entidad Bancaria</label>
+              <input v-model="newAccountForm.bankName" type="text" placeholder="Ej: Mercado Pago, Galicia, BBVA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Alias CBU / CVU</label>
+              <input v-model="newAccountForm.cbuAlias" type="text" placeholder="Ej: STREAMPRO.MAYORISTA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono font-bold text-amber-300" required>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">CUIT / CUIL</label>
+              <input v-model="newAccountForm.cuit" type="text" placeholder="Ej: 20-00000000-0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">CBU / CVU Numérico (22 dígitos)</label>
+            <input v-model="newAccountForm.cbuNumber" type="text" placeholder="0000000000000000000000" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Soporte</label>
+              <input v-model="newAccountForm.whatsapp" type="text" placeholder="+54 9 11 0000-0000" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Correo de Notificaciones</label>
+              <input v-model="newAccountForm.notifyEmail" type="email" placeholder="notificaciones@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-3">
+            <button type="button" @click="showAddAccountModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl cursor-pointer">
+              Cancelar
+            </button>
+            <button type="submit" class="w-2/3 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all cursor-pointer">
+              {{ editingAccountId ? 'Guardar Cambios' : 'Registrar Cuenta Bancaria' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

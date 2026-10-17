@@ -36,6 +36,8 @@ export const DB_KEYS = {
   RESELLER_ALERTS: 'reseller_alerts',
   RENEWAL_REQUESTS: 'renewal_requests',
   PROVIDER_BANK: 'provider_bank',
+  PROVIDER_BANK_ACCOUNTS: 'provider_bank_accounts',
+  BANK_TRANSFERS: 'bank_transfers',
   PHYSICAL_PRODUCTS: 'physical_products',
   PHYSICAL_CATEGORIES: 'physical_categories',
   RESELLER_APPLICATIONS: 'reseller_applications'
