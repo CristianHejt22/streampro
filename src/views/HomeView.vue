@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
 import { useToastStore } from '../store/toast'
+import { sendLocalNotification } from '../services/notifications'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const route = useRoute()
@@ -515,6 +516,13 @@ const submitOrder = () => {
   showCheckoutModal.value = false
   showOrderSuccessModal.value = true
   cartStore.clearCart()
+
+  // Enviar notificación local/push del sistema si está habilitada
+  sendLocalNotification(`🎉 Pedido #${prevNum} Registrado con Éxito`, {
+    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS ha sido guardado. Envía tu comprobante por WhatsApp para entrega inmediata de tus credenciales.`,
+    icon: '/pwa-192x192.png',
+    tag: `streampro-order-${prevNum}`
+  })
 
   clientForm.value = {
     clientNumber: `CLI-${Math.floor(1000 + Math.random() * 9000)}`,

@@ -14,12 +14,15 @@ export default defineConfig({
         enabled: false
       },
       manifest: {
-        name: 'StreamPro',
+        name: 'StreamPro | Streaming & Tecnología Oficial',
         short_name: 'StreamPro',
-        description: 'Plataforma de Streaming Inteligente',
-        theme_color: '#000000',
-        background_color: '#000000',
+        description: 'Plataforma oficial de Cuentas de Streaming y Tecnología en Argentina. Perfiles privados, PIN exclusivo y entrega inmediata.',
+        theme_color: '#020617',
+        background_color: '#020617',
         display: 'standalone',
+        orientation: 'portrait-primary',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -30,6 +33,12 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
