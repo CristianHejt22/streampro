@@ -44,7 +44,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
         <div class="flex items-center gap-3">
           <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Garantía & Entrega Inmediata</span>
+            <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
           </div>
 
           <!-- NAVEGACIÓN PARA CLIENTES (Al cliente NO le sale la opción de revendedor ni admin) -->
@@ -136,8 +136,8 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               <span class="text-[10px] font-mono font-bold bg-slate-900 text-slate-300 border border-slate-800 px-2 py-1 rounded-lg flex items-center gap-1">
                 🔒 SSL 256-Bit
               </span>
-              <span class="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-lg flex items-center gap-1">
-                ⚡ Entrega Inmediata
+              <span class="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-1 rounded-lg flex items-center gap-1">
+                ⏱️ Entrega: 10 min a 1 hora
               </span>
               <span class="text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-1 rounded-lg flex items-center gap-1">
                 🛡️ Garantía 100%
@@ -193,8 +193,8 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
                 <span>Garantía de Reposición Oficial</span>
               </li>
               <li class="flex items-center gap-1.5">
-                <span>⚡</span>
-                <span>Activación Inmediata del Servicio</span>
+                <span>⏱️</span>
+                <span>Entrega: 10 min a 1 hora (con comprobante)</span>
               </li>
               <li class="flex items-center gap-1.5">
                 <span>🔄</span>
@@ -222,7 +222,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               </div>
             </div>
             <p class="text-[11px] text-slate-500">
-              Entrega inmediata automatizada de credenciales y perfiles con PIN de protección tras verificación de orden.
+              La entrega de las cuentas puede demorar de 10 minutos a 1 hora. Carga tu comprobante para agilizar la entrega.
             </p>
           </div>
 

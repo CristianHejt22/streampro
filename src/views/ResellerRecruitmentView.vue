@@ -191,7 +191,7 @@ const faqs = [
         </h1>
 
         <p class="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-          Accede a precios mayoristas en <strong class="text-white">Netflix, Max, Disney+, IPTV, Spotify</strong> y más de 360 productos físicos. Entrega inmediata con perfiles y PINs automáticos, y cobra tus ganancias en el acto por WhatsApp.
+          Accede a precios mayoristas en <strong class="text-white">Netflix, Max, Disney+, IPTV, Spotify</strong> y más de 360 productos físicos. Entrega de 10 minutos a 1 hora con comprobante de pago, perfiles y PINs de seguridad, y cobra tus ganancias en el acto por WhatsApp.
         </p>
 
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">

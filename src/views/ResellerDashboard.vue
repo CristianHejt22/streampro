@@ -428,7 +428,7 @@ const showQrModal = ref(false)
 const shareStoreToWhatsApp = () => {
   const currentRes = adminStore.resellers.find(r => r.id === currentResellerId.value)
   const name = currentRes?.name || 'Distribuidor Oficial'
-  const text = `👋 ¡Hola! Te comparto nuestra tienda oficial de streaming de *${name}* 🎬🍿\n\n✅ Netflix, Max, Disney+, Spotify e IPTV al mejor precio garantizado\n✅ Cuentas 100% oficiales y entrega inmediata con PIN propio\n\n🛒 *Haz tu pedido directamente acá:*\n👉 ${uniqueAffiliateLink.value}\n\n¡Cualquier duda avísame para coordinar tu entrega!`
+  const text = `👋 ¡Hola! Te comparto nuestra tienda oficial de streaming de *${name}* 🎬🍿\n\n✅ Netflix, Max, Disney+, Spotify e IPTV al mejor precio garantizado\n✅ Cuentas 100% oficiales y entrega en 10 min a 1 hora con PIN propio (carga tu comprobante para agilizar)\n\n🛒 *Haz tu pedido directamente acá:*\n👉 ${uniqueAffiliateLink.value}\n\n¡Cualquier duda avísame para coordinar tu entrega!`
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
 }
 
@@ -649,7 +649,7 @@ const shareFlyerOfferToWhatsApp = () => {
     const msg = `🔥 *${comboMarketingData.value.badge} - ${comboMarketingData.value.title.toUpperCase()}* 🔥\n\n📦 *Cuentas incluidas en el combo:*\n${srvText}\n\n💰 *Precio Oferta:* $${comboMarketingData.value.promoPrice.toLocaleString()} ARS *(Antes: ~$${comboMarketingData.value.originalPrice.toLocaleString()} ARS)*\n✅ Cuentas 100% oficiales con PIN personal y garantía.\n\n🛒 *Pide el tuyo en mi tienda oficial:*\n👉 ${uniqueAffiliateLink.value}\n\n¡Escríbeme antes de agotar cupos!`
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   } else {
-    const msg = `🔥 *OFERTA EXCLUSIVA EN ${selectedPlatform.value.toUpperCase()}* 🔥\n\n📺 Modalidad: *${devicesToPromo.value === 1 ? '1 Perfil individual' : devicesToPromo.value + ' Dispositivos simultáneos'}*\n💰 Precio especial: *$${priceToShow.value} ARS*\n✅ Cuenta oficial con PIN privado y garantía total.\n\n🛒 *Compra directa en mi tienda:* ${uniqueAffiliateLink.value}\n\n¡Consultame para entregártela de inmediato!`
+    const msg = `🔥 *OFERTA EXCLUSIVA EN ${selectedPlatform.value.toUpperCase()}* 🔥\n\n📺 Modalidad: *${devicesToPromo.value === 1 ? '1 Perfil individual' : devicesToPromo.value + ' Dispositivos simultáneos'}*\n💰 Precio especial: *$${priceToShow.value} ARS*\n✅ Cuenta oficial con PIN privado y garantía total.\n\n🛒 *Compra directa en mi tienda:* ${uniqueAffiliateLink.value}\n\n¡Consultame para coordinar tu entrega!`
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 }
@@ -677,19 +677,19 @@ const generatedSocialCopy = computed(() => {
 
     if (socialNetwork.value === 'whatsapp') {
       if (promoTone.value === 'urgente') {
-        return `⚡ *¡OFERTA RELÁMPAGO: COMBO STREAMING EN OFERTA!* ⚡\n\n🎁 *${title.toUpperCase()}*\n🏷️ *${badge}*\n\n🍿 *Cuentas Oficiales Incluidas:*\n${platformsList}\n\n🔥 *Solo por tiempo limitado:* *$${promo} ARS*\n(Precio regular individual: ~$${regular} ARS)\n\n✅ Perfil privado con PIN exclusivo por servicio\n✅ Activación inmediata en 2 minutos\n✅ 0 caídas - Cuentas 100% oficiales con garantía\n\n📲 *Pedí tu combo directo en mi tienda:*\n👉 ${link}\n\n¡Escríbeme antes de que se agoten los cupos disponibles! 🚀`
+        return `⚡ *¡OFERTA RELÁMPAGO: COMBO STREAMING EN OFERTA!* ⚡\n\n🎁 *${title.toUpperCase()}*\n🏷️ *${badge}*\n\n🍿 *Cuentas Oficiales Incluidas:*\n${platformsList}\n\n🔥 *Solo por tiempo limitado:* *$${promo} ARS*\n(Precio regular individual: ~$${regular} ARS)\n\n✅ Perfil privado con PIN exclusivo por servicio\n✅ Entrega en 10 min a 1 hora con comprobante\n✅ 0 caídas - Cuentas 100% oficiales con garantía\n\n📲 *Pedí tu combo directo en mi tienda:*\n👉 ${link}\n\n¡Escríbeme antes de que se agoten los cupos disponibles! 🚀`
       } else if (promoTone.value === 'vip') {
-        return `👑 *DISFRUTA DEL MÁXIMO ENTRETENIMIENTO EN ALTA DEFINICIÓN* 👑\n\n¿Cansado de contratar plataformas por separado? Pásate a nuestro *${title}*.\n\n✨ *Todo en un solo paquete:* \n${platformsList}\n\n💎 *Tarifa Especial Todo Incluido:* $${promo} ARS al mes\n(Ahorras frente a contratar por separado: ~$${regular} ARS)\n\n🛡️ PIN personal, perfiles privados y soporte VIP 24/7.\n🛒 *Catálogo online y pedidos directos:* ${link}\n\n¡Escríbeme para activártelo al instante!`
+        return `👑 *DISFRUTA DEL MÁXIMO ENTRETENIMIENTO EN ALTA DEFINICIÓN* 👑\n\n¿Cansado de contratar plataformas por separado? Pásate a nuestro *${title}*.\n\n✨ *Todo en un solo paquete:* \n${platformsList}\n\n💎 *Tarifa Especial Todo Incluido:* $${promo} ARS al mes\n(Ahorras frente a contratar por separado: ~$${regular} ARS)\n\n🛡️ PIN personal, perfiles privados y soporte VIP 24/7.\n🛒 *Catálogo online y pedidos directos:* ${link}\n\n¡Escríbeme para coordinar tu entrega!`
       } else {
-        return `💰 *¡DEJA DE PAGAR DE MÁS EN STREAMING!* 💰\n\nAhorra a lo grande combinando tus plataformas favoritas con el combo *${title}*.\n\n🎉 *Incluye en un solo combo:*\n${platformsList}\n\n🏷️ *Precio Promocional:* solo *$${promo} ARS* al mes (Antes: ~$${regular} ARS).\n\n🔒 PIN personal | ⚡ Activación al instante | 🛡️ Garantía total por 30 días renovables.\n\nComprá directo acá:\n👉 ${link}\n\n¡Consultame antes de que termine la promoción!`
+        return `💰 *¡DEJA DE PAGAR DE MÁS EN STREAMING!* 💰\n\nAhorra a lo grande combinando tus plataformas favoritas con el combo *${title}*.\n\n🎉 *Incluye en un solo combo:*\n${platformsList}\n\n🏷️ *Precio Promocional:* solo *$${promo} ARS* al mes (Antes: ~$${regular} ARS).\n\n🔒 PIN personal | ⏱️ Entrega: 10 min a 1 hora | 🛡️ Garantía total por 30 días renovables.\n\nComprá directo acá:\n👉 ${link}\n\n¡Consultame antes de que termine la promoción!`
       }
     } else if (socialNetwork.value === 'instagram') {
-      return `🔥 ¡Tu entretenimiento resuelto en un solo combo! 🔥\n\n¿Querés tener ${platNames} sin gastar de más? 🍿📺🎧\n\nConocé nuestro *${title}*:\n${platformsList}\n\n✔️ Perfiles privados con PIN exclusivo\n✔️ Calidad 4K Ultra HD y audio premium\n✔️ Activación rápida en minutos\n✔️ Soporte y garantía 24/7\n\n💳 Precio promo exclusivo: $${promo} ARS (Antes: ~$${regular} ARS)\n\n🔗 Link en bio para pedir el tuyo directo:\n${link}\n\n#streaming #series #peliculas #combos #ofertas #netflix #spotify #disneyplus #iptv`
+      return `🔥 ¡Tu entretenimiento resuelto en un solo combo! 🔥\n\n¿Querés tener ${platNames} sin gastar de más? 🍿📺🎧\n\nConocé nuestro *${title}*:\n${platformsList}\n\n✔️ Perfiles privados con PIN exclusivo\n✔️ Calidad 4K Ultra HD y audio premium\n✔️ Entrega en 10 min a 1 hora con comprobante\n✔️ Soporte y garantía 24/7\n\n💳 Precio promo exclusivo: $${promo} ARS (Antes: ~$${regular} ARS)\n\n🔗 Link en bio para pedir el tuyo directo:\n${link}\n\n#streaming #series #peliculas #combos #ofertas #netflix #spotify #disneyplus #iptv`
     } else if (socialNetwork.value === 'tiktok') {
       return `POV: Encontraste el mejor combo de ${platNames} oficial a precio mayorista 😱🍿✨\n\n${title} a solo $${promo} ARS al mes 🚀\n\nComprobá stock y pedilo directo en el link de mi perfil: ${link} 💎\n\n#trucostreaming #cineencasa #combos #ahorro #series #peliculas`
     } else {
       // Facebook
-      return `🎬 COMBO DE STREAMING OFICIAL - ${title.toUpperCase()} 🎬\n\n¡Ahorra contratando tus servicios combinados en un solo paquete con garantía oficial!\n\n📦 Incluye:\n${platformsList}\n\n💲 PRECIO PROMO: $${promo} ARS (Precio regular: ~$${regular} ARS).\n🛡️ Garantía durante los 30 días con renovación garantizada.\n\n🌐 Tienda Online Oficial: ${link}\n📩 Envíame un mensaje al privado para entregarte tus accesos de inmediato!`
+      return `🎬 COMBO DE STREAMING OFICIAL - ${title.toUpperCase()} 🎬\n\n¡Ahorra contratando tus servicios combinados en un solo paquete con garantía oficial!\n\n📦 Incluye:\n${platformsList}\n\n💲 PRECIO PROMO: $${promo} ARS (Precio regular: ~$${regular} ARS).\n🛡️ Garantía durante los 30 días con renovación garantizada.\n\n🌐 Tienda Online Oficial: ${link}\n📩 Envíame un mensaje al privado con tu comprobante para entregarte tus accesos!`
     }
   }
 
@@ -700,19 +700,19 @@ const generatedSocialCopy = computed(() => {
 
   if (socialNetwork.value === 'whatsapp') {
     if (promoTone.value === 'urgente') {
-      return `⚡ *¡OFERTA RELÁMPAGO STREAMING!* ⚡\n\n🍿 *${pName.toUpperCase()}* (${screens})\n🔥 Solo por hoy: *$${price} ARS*\n\n✅ Perfil privado con PIN exclusivo\n✅ Entrega inmediata y garantía total\n✅ 0 caídas - Cuentas 100% oficiales\n\n📲 *Pide la tuya directo en mi tienda:*\n👉 ${link}\n\n¡Escríbeme antes de que se agoten los slots! 🚀`
+      return `⚡ *¡OFERTA RELÁMPAGO STREAMING!* ⚡\n\n🍿 *${pName.toUpperCase()}* (${screens})\n🔥 Solo por hoy: *$${price} ARS*\n\n✅ Perfil privado con PIN exclusivo\n✅ Entrega en 10 min a 1 hora y garantía total\n✅ 0 caídas - Cuentas 100% oficiales\n\n📲 *Pide la tuya directo en mi tienda:*\n👉 ${link}\n\n¡Escríbeme antes de que se agoten los slots! 🚀`
     } else if (promoTone.value === 'vip') {
-      return `👑 *DISFRUTA DEL MEJOR STREAMING EN ALTA DEFINICIÓN* 👑\n\n¿Cansado de cuentas que se caen? Pasa al servicio VIP de *${pName}*.\n\n✨ Calidad 4K Ultra HD HDR\n✨ ${screens} con tu propio PIN\n✨ Garantía activa durante todo el mes\n\n💎 *Precio Especial:* $${price} ARS\n🛒 *Accede a mi catálogo online:* ${link}\n\n¡Escríbeme y actívalo en 2 minutos!`
+      return `👑 *DISFRUTA DEL MEJOR STREAMING EN ALTA DEFINICIÓN* 👑\n\n¿Cansado de cuentas que se caen? Pasa al servicio VIP de *${pName}*.\n\n✨ Calidad 4K Ultra HD HDR\n✨ ${screens} con tu propio PIN\n✨ Garantía activa durante todo el mes\n\n💎 *Precio Especial:* $${price} ARS\n🛒 *Accede a mi catálogo online:* ${link}\n\n¡Escríbeme y envíame tu comprobante para agilizar tu entrega!`
     } else {
-      return `💰 *¡DEJA DE PAGAR DE MÁS EN TUS SERIES FAVORITAS!* 💰\n\nAhorra hasta un 70% contratando *${pName}* (${screens}).\n🏷️ *Precio accesible:* solo *$${price} ARS* al mes.\n\n🔒 PIN personal | ⚡ Activación al instante | 🛡️ Soporte postventa\n\nComprá directo acá:\n👉 ${link}\n\n¡Consultame por combos familiares!`
+      return `💰 *¡DEJA DE PAGAR DE MÁS EN TUS SERIES FAVORITAS!* 💰\n\nAhorra hasta un 70% contratando *${pName}* (${screens}).\n🏷️ *Precio accesible:* solo *$${price} ARS* al mes.\n\n🔒 PIN personal | ⏱️ Entrega: 10 min a 1 hora | 🛡️ Soporte postventa\n\nComprá directo acá:\n👉 ${link}\n\n¡Consultame por combos familiares!`
     }
   } else if (socialNetwork.value === 'instagram') {
-    return `🔥 ¡Tu finde de series asegurado con ${pName.toUpperCase()}! 🔥\n\n¿Querés maratonear en 4K sin pagar fortunas? 🍿📺\n\nAccedé a tu cuenta oficial con:\n✔️ ${screens}\n✔️ PIN personalizado y perfil privado\n✔️ Activación rápida en minutos\n✔️ Garantía y soporte 24/7\n\n💳 Precio exclusivo: $${price} ARS\n\n🔗 Link en bio o compralo en mi tienda:\n${link}\n\n#streaming #series #peliculas #${pName.toLowerCase()} #maraton #ofertas`
+    return `🔥 ¡Tu finde de series asegurado con ${pName.toUpperCase()}! 🔥\n\n¿Querés maratonear en 4K sin pagar fortunas? 🍿📺\n\nAccedé a tu cuenta oficial con:\n✔️ ${screens}\n✔️ PIN personalizado y perfil privado\n✔️ Entrega en 10 min a 1 hora con comprobante\n✔️ Garantía y soporte 24/7\n\n💳 Precio exclusivo: $${price} ARS\n\n🔗 Link en bio o compralo en mi tienda:\n${link}\n\n#streaming #series #peliculas #${pName.toLowerCase()} #maraton #ofertas`
   } else if (socialNetwork.value === 'tiktok') {
     return `POV: Encontraste las cuentas de ${pName} más baratas y que nunca se caen 😱🍿\n\n${screens} con PIN propio a solo $${price} ARS 🚀\n\nComprobá stock en el link de mi perfil: ${link} ✨\n\n#trucostreaming #cineencasa #${pName.toLowerCase()} #ahorro #series`
   } else {
     // Facebook
-    return `🎬 SERVICIO DE STREAMING OFICIAL - ${pName.toUpperCase()} 🎬\n\nDisponible entrega inmediata para ${screens}.\nIncluye PIN exclusivo de seguridad y soporte durante todo el período contratado.\n\n💲 PRECIO PROMO: $${price} ARS\n🛡️ Garantía por 30 días renovables.\n\n🌐 Tienda Online Oficial: ${link}\n📩 Envíame un mensaje al privado para coordinar tu entrega al instante!`
+    return `🎬 SERVICIO DE STREAMING OFICIAL - ${pName.toUpperCase()} 🎬\n\nDisponible entrega en 10 min a 1 hora para ${screens}.\nIncluye PIN exclusivo de seguridad y soporte durante todo el período contratado.\n\n💲 PRECIO PROMO: $${price} ARS\n🛡️ Garantía por 30 días renovables.\n\n🌐 Tienda Online Oficial: ${link}\n📩 Envíame un mensaje al privado con tu comprobante para agilizar tu entrega!`
   }
 })
 
@@ -2355,7 +2355,7 @@ const openProductInNewTab = (product) => {
             <div class="relative z-10 flex items-center justify-between w-full text-[9px] font-black uppercase tracking-wider opacity-90 border-t border-white/20 pt-2 text-slate-300">
               <span>🔒 PIN Provisto</span>
               <span>🛡️ Cero Caídas</span>
-              <span>⚡ Entrega 2 Min</span>
+              <span>⏱️ 10 min a 1 h</span>
             </div>
           </div>
 

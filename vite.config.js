@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: 'StreamPro | Streaming & Tecnología Oficial',
         short_name: 'StreamPro',
-        description: 'Plataforma oficial de Cuentas de Streaming y Tecnología en Argentina. Perfiles privados, PIN exclusivo y entrega inmediata.',
+        description: 'Plataforma oficial de Cuentas de Streaming y Tecnología en Argentina. Perfiles privados, PIN exclusivo y entrega de 10 min a 1 hora con comprobante.',
         theme_color: '#020617',
         background_color: '#020617',
         display: 'standalone',

@@ -49,7 +49,7 @@ const flyerPreviewRef = ref(null)
 // Badges sugeridos
 const suggestedBadges = [
   '🔥 ¡OFERTA EXCLUSIVA!',
-  '⚡ ENTREGA INMEDIATA',
+  '⏱️ ENTREGA 10 MIN A 1 HORA',
   '🍿 CINE EN CASA',
   '🚀 100% GARANTIZADO',
   '💎 CALIDAD ULTRA HD 4K',

@@ -428,7 +428,7 @@ const sendOrderToWhatsApp = () => {
     `💰 *Total:* $${ord.total.toFixed(2)} ARS\n`
 
   if (ord.digitalItems.length > 0) {
-    message += `\n📎 Adjunto mi comprobante de transferencia bancaria para activar mis servicios y recibir mis perfiles y PINs de seguridad.`
+    message += `\n📎 Adjunto mi comprobante de transferencia bancaria para agilizar la entrega de mis cuentas (Tiempo estimado: 10 min a 1 hora).`
   }
   if (ord.physicalItems.length > 0) {
     message += `\n📦 Dirección de envío informada: ${ord.shippingAddress || 'A coordinar'}\nConsulto disponibilidad y costo final de envío.`
@@ -519,7 +519,7 @@ const submitOrder = () => {
 
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado con Éxito`, {
-    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS ha sido guardado. Envía tu comprobante por WhatsApp para entrega inmediata de tus credenciales.`,
+    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS fue guardado. La entrega demora de 10 min a 1 hora. Envía tu comprobante por WhatsApp para agilizarla.`,
     icon: '/pwa-192x192.png',
     tag: `streampro-order-${prevNum}`
   })
@@ -538,7 +538,7 @@ const submitOrder = () => {
   if (physicalItems.length > 0 && digitalItems.length === 0) {
     toast.add(`¡Pedido registrado como PENDIENTE (#${prevNum})! Un asesor te contactará para coordinar stock y envío.`, 'success')
   } else {
-    toast.add(`¡Pedido registrado (#${prevNum})! Envía tu comprobante por WhatsApp para entrega inmediata.`, 'success')
+    toast.add(`¡Pedido registrado (#${prevNum})! La entrega demora de 10 min a 1 hora. Envía tu comprobante por WhatsApp para agilizarla.`, 'success')
   }
 }
 </script>
@@ -551,7 +551,7 @@ const submitOrder = () => {
       <div class="max-w-3xl relative z-10">
         <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/25 text-sky-400 text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
           <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-          Entrega Automatizada & Stock 100% Garantizado
+          Entrega: 10 min a 1 hora • Stock 100% Garantizado
         </div>
         <h2 class="text-3xl sm:text-5xl font-black mb-3 text-white tracking-tight leading-tight">
           Streaming Premium al Mejor Costo.
@@ -564,8 +564,8 @@ const submitOrder = () => {
         <!-- Trust Metrics -->
         <div class="mt-6 flex flex-wrap items-center gap-3 text-xs font-semibold">
           <div class="flex items-center gap-2 bg-slate-900/80 px-3.5 py-2 rounded-xl border border-white/[0.08]">
-            <span class="text-emerald-400 text-sm">✓</span>
-            <span class="text-slate-200">Activación Inmediata</span>
+            <span class="text-emerald-400 text-sm">⏱️</span>
+            <span class="text-slate-200">Entrega en 10 min a 1 hora</span>
           </div>
           <div class="flex items-center gap-2 bg-slate-900/80 px-3.5 py-2 rounded-xl border border-white/[0.08]">
             <span class="text-sky-400 text-sm">🔒</span>
@@ -794,7 +794,7 @@ const submitOrder = () => {
               <span class="text-xs font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded border border-pink-500/30">
                 Ahorro Inteligente
               </span>
-              <span class="text-xs text-slate-300 font-mono">Entrega y PINs Inmediatos</span>
+              <span class="text-xs text-slate-300 font-mono">Entrega: 10 min a 1 hora con PIN</span>
             </div>
             <h3 class="text-xl font-black text-white mt-1">Paquetes Combinados & Ofertas Exclusivas</h3>
             <p class="text-xs text-slate-400">Contrata múltiples servicios en un solo pago con tarifas promocionales y soporte integral continuo.</p>
@@ -1347,10 +1347,20 @@ const submitOrder = () => {
             >
           </div>
 
+          <!-- AVISO DE TIEMPO DE ENTREGA PARA STREAMING -->
+          <div v-if="cartStore.hasDigitalItems" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-200">
+            <span class="text-base shrink-0">⏱️</span>
+            <div>
+              <strong class="font-bold text-amber-300 block">Tiempo estimado de entrega:</strong>
+              <span>La entrega de las cuentas puede demorar de 10 minutos a 1 hora. Carga tu comprobante para agilizar la entrega.</span>
+            </div>
+          </div>
+
           <!-- Comprobante de Pago (Solo para Items Digitales) -->
-          <div v-if="cartStore.hasDigitalItems">
+          <div v-if="cartStore.hasDigitalItems" class="space-y-1">
             <label class="block font-bold uppercase text-slate-400 mb-1">Número de Comprobante / Transacción (Opcional)</label>
             <input v-model="clientForm.transferVoucher" type="text" placeholder="Ej: OP-9843217" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-mono">
+            <p class="text-[11px] text-amber-300/90 font-medium">💡 Carga tu comprobante para poder entregar más rápida e inmediatamente tus accesos.</p>
           </div>
 
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm">
@@ -1571,6 +1581,17 @@ const submitOrder = () => {
           </div>
           <p class="text-slate-300 text-[11px] leading-relaxed">
             Un asesor oficial se comunicará contigo por WhatsApp para confirmar stock disponible y acordar el costo final de entrega a tu domicilio antes de solicitar cualquier pago.
+          </p>
+        </div>
+
+        <!-- AVISO DE TIEMPO DE ENTREGA Y COMPROBANTE (STREAMING) -->
+        <div v-if="lastPlacedOrder.digitalItems.length > 0" class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-xs space-y-1.5 shadow-inner">
+          <div class="font-bold flex items-center gap-2 text-amber-300">
+            <span class="text-base">⏱️</span>
+            <span>Tiempo Estimado de Entrega de Cuentas:</span>
+          </div>
+          <p class="text-slate-200 text-xs leading-relaxed">
+            La entrega de las cuentas puede demorar de <strong class="text-amber-300 font-bold">10 minutos a 1 hora</strong>. Carga tu comprobante enviándolo por WhatsApp para que la entrega sea lo más inmediata posible.
           </p>
         </div>
 
