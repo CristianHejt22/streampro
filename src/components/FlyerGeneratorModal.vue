@@ -5,9 +5,9 @@ import { useToastStore } from '../store/toast'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  defaultStoreName: { type: String, default: 'TechStream Digital' },
+  defaultStoreName: { type: String, default: 'StreamPro Oficial' },
   initialProduct: { type: Object, default: null },
-  resellerRef: { type: String, default: 'RES-01' },
+  resellerRef: { type: String, default: 'DIRECT' },
   websiteDomain: { type: String, default: 'streamepro.me' }
 })
 
@@ -235,11 +235,14 @@ const fullProductReferralUrl = computed(() => {
   const origin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? window.location.origin
     : `https://${websiteUrl.value || props.websiteDomain || 'streamepro.me'}`
-  const refCode = props.resellerRef || 'RES-01'
+  const refCode = props.resellerRef && props.resellerRef !== 'DIRECT' ? props.resellerRef : null
+  
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.id) {
-    return `${origin}/?ref=${refCode}&prod=${selectedPhysicalProduct.value.id}`
+    return refCode 
+      ? `${origin}/?ref=${refCode}&prod=${selectedPhysicalProduct.value.id}`
+      : `${origin}/?prod=${selectedPhysicalProduct.value.id}`
   }
-  return `${origin}/?ref=${refCode}`
+  return refCode ? `${origin}/?ref=${refCode}` : `${origin}/`
 })
 
 const copyProductReferralUrl = () => {
@@ -1005,7 +1008,7 @@ const shareToWhatsAppStatus = () => {
                 <span>🔗</span> Enlace Directo con tu Comisión (3%):
               </span>
               <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                Ref: {{ resellerRef || 'RES-01' }}
+                Ref: {{ resellerRef || 'DIRECT' }}
               </span>
             </div>
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

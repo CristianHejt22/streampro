@@ -204,24 +204,8 @@ export const DEFAULT_PLATFORM_PLANS = {
 
 export const PLATFORM_PLANS = DEFAULT_PLATFORM_PLANS
 
-// Configuración Inicial de Revendedor Oficial Base para Producción
-const DEFAULT_INITIAL_RESELLERS = [
-  { 
-    id: 'RES-01', 
-    name: 'TechStream Digital', 
-    storeName: 'TechStream Digital',
-    username: 'distribuidor',
-    password: 'StreamDistribuidor2026*',
-    isActive: true,
-    contactNumber: '+54 9 11 0000-0000',
-    cbuAlias: 'TECHSTREAM.PAGOS.MP',
-    bankName: 'Mercado Pago / Banco',
-    holderName: 'TechStream Distribución',
-    cuit: '20-00000000-0',
-    balance: 0,
-    walletHistory: []
-  }
-]
+// Configuración Inicial de Revendedor Oficial Base para Producción (Limpio para arrancar)
+const DEFAULT_INITIAL_RESELLERS = []
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
@@ -477,7 +461,7 @@ export const useAdminStore = defineStore('admin', {
         clientName: clientName || 'Cliente',
         platform: platform || 'Streaming',
         planName: planName || 'Plan Oficial',
-        resellerId: resellerId || 'RES-01',
+        resellerId: resellerId || 'DIRECT',
         status: 'Pending Provider',
         dateRequested: new Date().toISOString().split('T')[0],
         newCredentials: {
@@ -1177,15 +1161,27 @@ export const useAdminStore = defineStore('admin', {
       this.physicalOrders = []
       this.resellerApplications = []
       this.pricingCatalog = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS))
-      this.resellers = JSON.parse(JSON.stringify(DEFAULT_INITIAL_RESELLERS))
+      this.resellers = []
       this.adminAuth = {
         username: 'admin',
         password: 'StreamPro2026*Admin',
         name: 'Administrador Principal',
         whatsapp: '+54 9 11 0000-0000'
       }
+      this.providerBankInfo = {
+        holderName: 'StreamPro Mayorista Central',
+        bankName: 'Banco / Billetera Virtual',
+        cuit: '20-00000000-0',
+        cbuAlias: 'STREAMPRO.MAYORISTA',
+        cbuNumber: '0000000000000000000000',
+        whatsapp: '+54 9 11 0000-0000',
+        email: 'pagos@streampro.com'
+      }
       
       const resellerStore = useResellerStore()
+      resellerStore.activeResellerId = null
+      resellerStore.isAuthenticated = false
+      resellerStore.sessionUser = null
       resellerStore.clients = []
       resellerStore.wallet = 0
       resellerStore.persist()
@@ -1198,7 +1194,7 @@ export const useAdminStore = defineStore('admin', {
 
 export const useResellerStore = defineStore('reseller', {
   state: () => ({
-    activeResellerId: 'RES-01',
+    activeResellerId: null,
     isAuthenticated: false,
     sessionUser: null,
     // Base de datos de clientes y suscripciones entregadas (Limpio en producción)

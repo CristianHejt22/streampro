@@ -97,7 +97,7 @@ const handleCustomerRenewal = (acc) => {
     clientName: acc.name,
     platform: acc.platform,
     planName: acc.planName || `${acc.devices} Pantallas`,
-    resellerId: acc.resellerId || 'RES-01',
+    resellerId: acc.resellerId || 'DIRECT',
     currentCredentials: {
       account: acc.account,
       pass: acc.pass,

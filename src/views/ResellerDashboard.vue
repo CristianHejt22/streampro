@@ -185,7 +185,7 @@ const handleRenew = (client) => {
     clientName: client.name,
     platform: client.platform,
     planName: client.planName || `${client.devices} Pantallas`,
-    resellerId: client.resellerId || 'RES-01',
+    resellerId: client.resellerId || resellerStore.activeResellerId || 'DIRECT',
     currentCredentials: {
       account: client.account,
       pass: client.pass,
@@ -808,7 +808,7 @@ const openProductInNewTab = (product) => {
           <input 
             v-model="loginForm.username" 
             type="text" 
-            placeholder="ej. techstream" 
+            placeholder="ej. mi_usuario" 
             required 
             class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-accent transition-all"
           >
@@ -2979,7 +2979,7 @@ const openProductInNewTab = (product) => {
       :initial-product="flyerInitialProduct"
       :reseller-ref="currentResellerId"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
-      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'TechStream Digital'" 
+      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamPro Distribuidor'" 
       website-domain="streamepro.me"
     />
   </div>

@@ -1412,7 +1412,7 @@ const submitOrder = () => {
               <span>🔗</span> Enlace Directo Oficial del Producto:
             </span>
             <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-              Ref: {{ clientForm.selectedResellerId || 'RES-01' }}
+              Ref: {{ clientForm.selectedResellerId || 'DIRECT' }}
             </span>
           </div>
           <div class="flex items-center gap-2">
@@ -1600,7 +1600,7 @@ const submitOrder = () => {
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"
-      :reseller-ref="clientForm.selectedResellerId || 'RES-01'"
+      :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
       :default-store-name="resellerStoreName"
       website-domain="streamepro.me"
       @close="showFlyerModal = false" 

@@ -101,7 +101,7 @@ const confirmPasswordUpdate = () => {
 // GESTIÓN DE EVENTUALIDADES CON CLIENTES: Alertar al revendedor con badge "YA FUE AVISADO"
 const showIncidentModal = ref(false)
 const incidentForm = ref({
-  resellerId: 'RES-01',
+  resellerId: 'ALL',
   clientNumber: '',
   clientName: '',
   title: 'Aviso Importante sobre Servicio',
@@ -3081,7 +3081,7 @@ const deletePackageItem = (pkgId) => {
                 <input 
                   v-model="newResellerForm.storeName" 
                   type="text" 
-                  placeholder="ej: TechStream Digital" 
+                  placeholder="ej: Tienda Digital Play" 
                   class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs outline-none"
                 >
               </div>

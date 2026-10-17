@@ -1,7 +1,27 @@
-// Servicio de Base de Datos Persistente para StreamPro (Producción)
+// Servicio de Base de Datos Persistente para StreamPro (Producción Limpia)
 // Almacena de forma persistente productos virtuales, inventario, revendedores, credenciales y pedidos
 
-const STORAGE_PREFIX = 'streampro_db_prod_'
+const STORAGE_PREFIX = 'streampro_prod_v2_'
+
+// Purga automática inicial de registros y revendedores de prueba anteriores
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    const cleanDone = localStorage.getItem('streampro_clean_v2_done')
+    if (!cleanDone) {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && (k.startsWith('streampro_db_prod_') || k.startsWith('streamepro_') || k.startsWith('streampro_db_'))) {
+          keysToRemove.push(k)
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k))
+      localStorage.setItem('streampro_clean_v2_done', 'true')
+    }
+  } catch (e) {
+    console.warn('[DB] Purga de datos de prueba:', e)
+  }
+}
 
 export const DB_KEYS = {
   ADMIN_AUTH: 'admin_auth',
@@ -49,6 +69,9 @@ export function clearDbAll() {
     Object.values(DB_KEYS).forEach(k => {
       localStorage.removeItem(STORAGE_PREFIX + k)
     })
+    // Remover también llaves antiguas y de sesión
+    const legacyKeys = ['streamepro_referral', 'streamepro_bio_admin', 'streamepro_bio_reseller', 'streamepro_session_admin', 'streamepro_session_reseller']
+    legacyKeys.forEach(k => localStorage.removeItem(k))
     return true
   } catch (e) {
     console.error('[DB] Error al resetear base de datos:', e)
