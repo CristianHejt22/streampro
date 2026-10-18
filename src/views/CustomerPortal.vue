@@ -14,6 +14,7 @@ const toast = useToastStore()
 
 // Cuentas filtradas del cliente que ingresó su número de teléfono, ID de cliente o PIN
 const authenticatedClients = ref([])
+const authenticatedPendingOrders = ref([])
 
 const unlockVault = () => {
   error.value = ''
@@ -25,13 +26,24 @@ const unlockVault = () => {
     return
   }
 
-  // Buscar clientes coincidentes en servicios streaming
+  // Buscar clientes coincidentes en servicios streaming activos
   let matched = []
   if (query) {
     matched = resellerStore.clients.filter(c => {
       const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
       const cleanId = (c.clientNumber || c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       return cleanPhone.includes(query) || cleanId.includes(query) || query.includes(cleanPhone)
+    })
+  }
+
+  // Buscar pedidos virtuales de streaming pendientes o en proceso
+  let matchedOrders = []
+  if (query) {
+    matchedOrders = adminStore.orders.filter(o => {
+      const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '')
+      const cleanId = (o.customerNumber || o.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const isPending = o.status === 'Waiting Provider' || o.status === 'Pendiente'
+      return isPending && ((cleanPhone && (cleanPhone.includes(query) || query.includes(cleanPhone))) || (cleanId && cleanId.includes(query)))
     })
   }
 
@@ -45,7 +57,7 @@ const unlockVault = () => {
     })
   }
 
-  // Validación de PIN contra perfiles asignados
+  // Validación de PIN contra perfiles asignados si hay servicios activos
   if (matched.length > 0) {
     if (pin) {
       const pinMatches = matched.some(c => 
@@ -58,11 +70,19 @@ const unlockVault = () => {
       }
     }
     authenticatedClients.value = matched
+    authenticatedPendingOrders.value = matchedOrders
     isUnlocked.value = true
     portalTab.value = 'streaming'
-    toast.add(`¡Bienvenido! Se encontraron ${matched.length} servicio(s) asociados a tus datos`, 'success')
+    toast.add(`¡Bienvenido! Se encontraron tus servicios y accesos oficiales`, 'success')
+  } else if (matchedOrders.length > 0) {
+    authenticatedClients.value = []
+    authenticatedPendingOrders.value = matchedOrders
+    isUnlocked.value = true
+    portalTab.value = 'streaming'
+    toast.add(`¡Bienvenido! Tu pedido está en preparación y entrega oficial`, 'info')
   } else if (matchedPhysical.length > 0) {
     authenticatedClients.value = []
+    authenticatedPendingOrders.value = []
     isUnlocked.value = true
     portalTab.value = 'physical'
     toast.add(`¡Bienvenido! Se encontraron ${matchedPhysical.length} pedido(s) físicos asociados`, 'success')
@@ -84,6 +104,12 @@ const copyToClipboard = (text, field) => {
 const customerAccounts = computed(() => {
   if (!isUnlocked.value) return []
   return authenticatedClients.value
+})
+
+// Pedidos virtuales de streaming en proceso de activación / preparación
+const customerPendingOrders = computed(() => {
+  if (!isUnlocked.value) return []
+  return authenticatedPendingOrders.value
 })
 
 const getRemainingDays = (dateStr) => {
@@ -237,7 +263,49 @@ const handleCustomerRenewal = (acc) => {
         </div>
 
         <!-- PESTAÑA 1: SUSCRIPCIONES STREAMING DIGITALES -->
-        <div v-if="portalTab === 'streaming'" class="grid gap-6">
+        <div v-if="portalTab === 'streaming'" class="space-y-6">
+          <!-- PEDIDOS DE STREAMING EN CURSO / ESPERA DE ENTREGA (SLA 10m - 1h) -->
+          <div v-if="customerPendingOrders.length > 0" class="space-y-3">
+            <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              <span>Pedidos en Proceso de Activación ({{ customerPendingOrders.length }})</span>
+            </h4>
+            <div 
+              v-for="order in customerPendingOrders" 
+              :key="order.id"
+              class="bg-[#020617] border border-amber-500/40 p-5 rounded-2xl space-y-3 shadow-xl"
+            >
+              <div class="flex flex-wrap justify-between items-start gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
+                      Orden #{{ order.id }}
+                    </span>
+                    <h4 class="text-white font-bold text-sm">{{ order.platform }} - {{ order.planLabel || order.devices + ' Pantalla(s)' }}</h4>
+                  </div>
+                  <p class="text-xs text-slate-300 mt-1">
+                    Registrado a nombre de: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerNumber }})
+                  </p>
+                </div>
+                <span class="text-xs font-bold bg-amber-400 text-slate-950 px-3 py-1 rounded-full shadow flex items-center gap-1.5 animate-pulse">
+                  <span>⏳</span>
+                  <span>En Preparación (10 min a 1 hora)</span>
+                </span>
+              </div>
+
+              <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5">
+                <div class="flex items-center gap-2 text-emerald-400 font-bold">
+                  <span>✓</span>
+                  <span>{{ order.hasReceipt || order.receiptStatus ? 'Comprobante recibido en la mini nube (en verificación por el proveedor)' : 'Pedido registrado en el sistema oficial' }}</span>
+                </div>
+                <p class="text-slate-400 text-[11px] leading-relaxed">
+                  Tus credenciales (correo, contraseña y PIN asignado) aparecerán en esta misma pantalla en cuanto el proveedor complete la activación.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- CUENTAS ACTIVAS ENTREGADAS -->
           <div v-for="acc in customerAccounts" :key="acc.id" class="bg-slate-900/60 rounded-2xl border border-slate-700/50 overflow-hidden relative group backdrop-blur-md shadow-xl">
             
             <div class="bg-slate-950/70 px-6 py-4 border-b border-slate-800 flex justify-between items-center">

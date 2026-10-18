@@ -130,3 +130,12 @@ export function generateSecurePassword(length = 12) {
   // Mezclar caracteres
   return pwd.split('').sort(() => 0.5 - Math.random()).join('')
 }
+
+export { 
+  CLEAN_PRICING_CATALOG, 
+  getCleanDatabaseSeed, 
+  getCleanStarterInventory, 
+  createStarterAccountForPlatform, 
+  applyPristineDatabase, 
+  getDatabaseHealthStatus 
+} from './cleanDatabaseSeed'

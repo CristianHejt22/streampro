@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
+import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
 import { 
@@ -756,6 +757,38 @@ const generateDeliveryMatches = (inventory, order) => {
   })
 }
 
+// MODAL DE RESULTADO DE ENTREGA & ENVÍO POR WHATSAPP
+const showDeliveryResultModal = ref(false)
+const deliveredOrderData = ref(null)
+const deliveryWhatsAppText = ref('')
+
+const handleSmartDispatch = (order) => {
+  const result = adminStore.smartDispatchOrder(order.id)
+  if (result && result.success) {
+    deliveredOrderData.value = result.order
+    deliveryWhatsAppText.value = result.deliveryMessage
+    showDeliveryResultModal.value = true
+    toast.add(`¡Pedido #${order.id} despachado exitosamente con auto-asignación!`, 'success')
+  } else {
+    toast.add(result?.error || 'No se pudo realizar el despacho inteligente', 'error')
+  }
+}
+
+const copyDeliveryMessage = () => {
+  if (!deliveryWhatsAppText.value) return
+  navigator.clipboard.writeText(deliveryWhatsAppText.value).then(() => {
+    toast.add('¡Mensaje con credenciales y PINs copiado al portapapeles!', 'success')
+  }).catch(() => {
+    toast.add('Error al copiar al portapapeles', 'error')
+  })
+}
+
+const sendDeliveryMessageWhatsApp = () => {
+  if (!deliveredOrderData.value || !deliveryWhatsAppText.value) return
+  const cleanPhone = (deliveredOrderData.value.customerPhone || '').replace(/\D/g, '')
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(deliveryWhatsAppText.value)}`, '_blank')
+}
+
 const confirmDispatch = () => {
   if (!selectedInventoryId.value) {
     toast.add('Debes seleccionar una cuenta disponible para la entrega', 'error')
@@ -769,11 +802,88 @@ const confirmDispatch = () => {
   )
 
   if (result && !result.error) {
-    toast.add(`¡Entrega confirmada! Cuenta y PINs despachados a ${selectedOrder.value.customerName} (${selectedOrder.value.customerNumber}).`, 'success')
     showDispatchModal.value = false
+    deliveredOrderData.value = result.order
+    deliveryWhatsAppText.value = result.deliveryMessage
+    showDeliveryResultModal.value = true
+    toast.add(`¡Entrega confirmada! Cuenta y PINs despachados a ${selectedOrder.value.customerName}.`, 'success')
   } else {
     toast.add(result?.error || 'Error al realizar el despacho de la cuenta', 'error')
   }
+}
+
+// RESTAURACIÓN Y AUDITORÍA DE BASE DE DATOS DEPURADA
+const isResettingDb = ref(false)
+
+const handleResetToCleanDatabase = async () => {
+  if (!confirm('⚠️ ¿Estás seguro de que deseas RESTAURAR LA BASE DE DATOS DEPURADA?\n\nEsta acción eliminará registros de prueba, reseteará órdenes, pedidos físicos y comprobantes temporales, e inicializará el catálogo oficial y el stock inicial de cuentas.')) {
+    return
+  }
+
+  isResettingDb.value = true
+  try {
+    await adminStore.resetDatabaseToCleanSeed()
+    toast.add('¡Base de datos restaurada y depurada con éxito para producción!', 'success')
+  } catch (err) {
+    toast.add('Error al restaurar base de datos: ' + err.message, 'error')
+  } finally {
+    isResettingDb.value = false
+  }
+}
+
+const handleQuickReplenish = (platform) => {
+  adminStore.replenishPlatformStock(platform, 1)
+  toast.add(`¡+1 Cuenta máster agregada para ${platform} con perfiles y PINs!`, 'success')
+}
+
+const handleReplenishAll = () => {
+  const res = adminStore.replenishAllStarterStock()
+  toast.add(`¡Stock inicial completo abastecido (${res.added} cuentas máster)!`, 'success')
+}
+
+// Respaldo del Sistema (Backup JSON)
+const backupFileInput = ref(null)
+
+const triggerImportBackup = () => {
+  backupFileInput.value?.click()
+}
+
+const handleBackupFile = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const ok = importDatabaseBackup(e.target.result)
+      if (ok) {
+        toast.add('Backup importado con éxito. Recargando página...', 'success')
+        setTimeout(() => window.location.reload(), 1000)
+      } else {
+        toast.add('El archivo de backup no tiene un formato válido', 'error')
+      }
+    } catch (err) {
+      toast.add('Error al procesar el archivo de backup', 'error')
+    }
+  }
+  reader.readAsText(file)
+}
+
+const downloadBackupFile = () => {
+  const backup = exportDatabaseBackup()
+  if (!backup) {
+    toast.add('Error al generar backup', 'error')
+    return
+  }
+  const blob = new Blob([backup], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `streampro_backup_${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  toast.add('Backup descargado exitosamente', 'info')
 }
 
 // Contactar directamente al cliente de una venta oficial por WhatsApp
@@ -1449,6 +1559,12 @@ const deletePackageItem = (pkgId) => {
             {{ adminStore.bankTransfers.length }}
           </span>
         </button>
+        <button 
+          @click="adminTab = 'database'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'database' ? 'bg-rose-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+        >
+          💾 Sistema & Base de Datos
+        </button>
       </div>
 
       <!-- Botón para Notificar Eventualidad al Revendedor (YA FUE AVISADO) -->
@@ -1581,10 +1697,18 @@ const deletePackageItem = (pkgId) => {
             
             <div class="flex flex-col gap-2">
               <button 
-                @click="openDispatchModal(order)" 
-                class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2.5 font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                @click="handleSmartDispatch(order)" 
+                class="bg-brand-accent hover:bg-sky-400 text-slate-950 px-4 py-2.5 font-black text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Auto-asignar stock disponible y generar credenciales de inmediato"
               >
-                <span>Despachar Cuenta</span>
+                <span>⚡ Despacho Rápido (1-Clic)</span>
+              </button>
+              <button 
+                @click="openDispatchModal(order)" 
+                class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 font-bold text-[11px] rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                title="Seleccionar cuenta y PINs manualmente"
+              >
+                <span>⚙️ Despacho Manual</span>
               </button>
               <button 
                 v-if="order.resellerId === 'DIRECT' || !order.resellerId"
@@ -3081,6 +3205,62 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
+      <!-- PANEL DINÁMICO DE STOCK EN VIVO POR PLATAFORMA -->
+      <div class="mb-8 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <div>
+            <h3 class="text-sm font-black text-white flex items-center gap-2">
+              <span>📊</span>
+              <span>Disponibilidad de Stock por Plataforma (Tiempo Real)</span>
+            </h3>
+            <p class="text-xs text-slate-400">Capacidad total y perfiles libres listos para entrega inmediata a clientes.</p>
+          </div>
+          <button 
+            @click="handleReplenishAll" 
+            class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow cursor-pointer"
+          >
+            <span>⚡ Reabastecer Todas (Stock Base)</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div 
+            v-for="(stock, plat) in adminStore.platformStockSummary" 
+            :key="plat"
+            class="bg-[#020617] p-4 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3"
+          >
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-mono font-bold text-slate-400 block">{{ plat }}</span>
+                <span class="text-xl font-black text-white">
+                  {{ stock.freeProfiles }}
+                  <span class="text-xs text-slate-500 font-normal">/ {{ stock.totalProfiles }} perfiles</span>
+                </span>
+              </div>
+              <span :class="[
+                'text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono',
+                stock.status === 'in_stock' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                stock.status === 'low_stock' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse' :
+                'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse'
+              ]">
+                {{ stock.status === 'in_stock' ? '🟢 Stock Óptimo' : (stock.status === 'low_stock' ? '🟡 Stock Bajo' : '🔴 Agotado') }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-900">
+              <span class="text-[11px] text-slate-400">{{ stock.availableAccounts }} cuenta(s) con cupo</span>
+              <button 
+                @click="handleQuickReplenish(plat)"
+                class="text-[11px] font-bold text-brand-accent hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 px-2 py-1 rounded-lg border border-sky-500/20 transition-all flex items-center gap-1 cursor-pointer"
+                title="Generar 1 cuenta máster nueva con perfiles y PINs para esta plataforma"
+              >
+                <span>⚡ +1 Cuenta</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <form @submit.prevent="handleAddStock" class="bg-[#020617] p-6 rounded-2xl border border-slate-800 space-y-4 mb-8">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
@@ -3091,6 +3271,8 @@ const deletePackageItem = (pkgId) => {
               <option>Spotify</option>
               <option>Disney+</option>
               <option>IPTV</option>
+              <option>Prime Video</option>
+              <option>YouTube Premium</option>
             </select>
           </div>
           <div>
@@ -3175,6 +3357,142 @@ const deletePackageItem = (pkgId) => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- PESTAÑA: SISTEMA & BASE DE DATOS DEPURADA (PRODUCCIÓN LIMPIA) -->
+    <div v-if="adminTab === 'database'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-8">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 border border-rose-500/20 text-lg">
+            💾
+          </div>
+          <div>
+            <h2 class="text-2xl font-black text-white">Sistema & Base de Datos Depurada</h2>
+            <p class="text-xs text-slate-400">Supervisión, salud y restauración inmaculada de todas las dependencias del ecosistema StreamPro.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button 
+            @click="handleResetToCleanDatabase"
+            :disabled="isResettingDb"
+            class="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-2 cursor-pointer"
+          >
+            <span>🧹</span>
+            <span>{{ isResettingDb ? 'Restaurando...' : 'Restaurar Base de Datos Depurada' }}</span>
+          </button>
+          <button 
+            @click="downloadBackupFile"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📥 Exportar Backup JSON</span>
+          </button>
+          <button 
+            @click="triggerImportBackup"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📤 Importar Backup JSON</span>
+          </button>
+          <input 
+            ref="backupFileInput" 
+            type="file" 
+            accept=".json" 
+            class="hidden" 
+            @change="handleBackupFile"
+          >
+        </div>
+      </div>
+
+      <!-- ESTADO Y DIAGNÓSTICO EN TIEMPO REAL DE LAS 16 COLECCIONES -->
+      <div class="space-y-4">
+        <h3 class="text-sm font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <span>🛡️</span>
+          <span>Estado de las 16 Dependencias del Ecosistema</span>
+        </h3>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">1. INVENTARIO VIRTUAL</span>
+            <span class="text-lg font-black text-white">{{ adminStore.inventory.length }} cuentas</span>
+            <span class="text-[11px] text-emerald-400 block font-mono">Stock de streaming activo</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">2. CATÁLOGO DE PLANES</span>
+            <span class="text-lg font-black text-white">{{ Object.keys(adminStore.pricingCatalog).length }} plataformas</span>
+            <span class="text-[11px] text-blue-400 block font-mono">Precios mayoristas/clientes</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">3. REVENDEDORES</span>
+            <span class="text-lg font-black text-white">{{ adminStore.resellers.length }} distribuidores</span>
+            <span class="text-[11px] text-amber-400 block font-mono">Cuentas con billetera</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">4. PEDIDOS VIRTUALES</span>
+            <span class="text-lg font-black text-white">{{ adminStore.orders.length }} órdenes</span>
+            <span class="text-[11px] text-sky-400 block font-mono">{{ adminStore.pendingOrders.length }} pendientes de entrega</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">5. CLIENTES & BÓVEDA</span>
+            <span class="text-lg font-black text-white">{{ resellerStore.clients.length }} servicios</span>
+            <span class="text-[11px] text-indigo-400 block font-mono">SLA y fechas de vencimiento</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">6. CATÁLOGO FÍSICO</span>
+            <span class="text-lg font-black text-white">{{ adminStore.physicalProducts.length }} productos</span>
+            <span class="text-[11px] text-purple-400 block font-mono">TV Boxes, Remotos, Smart</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">7. CATEGORÍAS FÍSICAS</span>
+            <span class="text-lg font-black text-white">{{ adminStore.physicalCategories.length }} categorías</span>
+            <span class="text-[11px] text-teal-400 block font-mono">Filtros de hardware</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">8. PEDIDOS FÍSICOS</span>
+            <span class="text-lg font-black text-white">{{ adminStore.physicalOrders.length }} órdenes</span>
+            <span class="text-[11px] text-amber-400 block font-mono">Envíos y comisiones (1% vs 3%)</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">9. COMBOS & PAQUETES</span>
+            <span class="text-lg font-black text-white">{{ adminStore.packages.length }} paquetes</span>
+            <span class="text-[11px] text-pink-400 block font-mono">Cine Total 4K, Dúo Series</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">10. CUENTAS BANCARIAS</span>
+            <span class="text-lg font-black text-white">{{ adminStore.providerBankAccounts.length }} cuentas</span>
+            <span class="text-[11px] text-emerald-400 block font-mono">Multi-cuenta con switch activo</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">11. TRANSFERENCIAS CORREO</span>
+            <span class="text-lg font-black text-white">{{ adminStore.bankTransfers.length }} registros</span>
+            <span class="text-[11px] text-blue-400 block font-mono">Reconocimiento Wanderlust</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">12. BILLETERA VIRTUAL</span>
+            <span class="text-lg font-black text-white">{{ adminStore.walletTransactions.length }} movimientos</span>
+            <span class="text-[11px] text-cyan-400 block font-mono">Historial de saldo distribuidores</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">13. POSTULACIONES REVENDEDOR</span>
+            <span class="text-lg font-black text-white">{{ adminStore.resellerApplications.length }} recibidas</span>
+            <span class="text-[11px] text-amber-400 block font-mono">{{ adminStore.pendingResellerApplications.length }} por revisar</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">14. ALERTAS Y AUDITORÍA</span>
+            <span class="text-lg font-black text-white">{{ adminStore.resellerAlerts.length }} comunicados</span>
+            <span class="text-[11px] text-indigo-400 block font-mono">Estado: YA FUE AVISADO</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">15. RENOVACIONES CLIENTE</span>
+            <span class="text-lg font-black text-white">{{ adminStore.renewalRequests.length }} solicitudes</span>
+            <span class="text-[11px] text-red-400 block font-mono">{{ adminStore.pendingRenewals.length }} pendientes</span>
+          </div>
+          <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-mono text-slate-500 block">16. MINI NUBE COMPROBANTES</span>
+            <span class="text-lg font-black text-white">IndexedDB</span>
+            <span class="text-[11px] text-emerald-400 block font-mono">JPG & PDF con depuración al cierre</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3418,6 +3736,82 @@ const deletePackageItem = (pkgId) => {
               class="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs transition-all shadow-lg"
             >
               Completar Despacho
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE ÉXITO DE ENTREGA Y ENVÍO POR WHATSAPP -->
+    <div v-if="showDeliveryResultModal && deliveredOrderData" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 text-white">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl font-black">
+              ✓
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">¡Entrega Confirmada con Éxito!</h3>
+              <p class="text-xs text-slate-400">Orden {{ deliveredOrderData.id }} • {{ deliveredOrderData.customerName }} ({{ deliveredOrderData.customerNumber }})</p>
+            </div>
+          </div>
+          <button @click="showDeliveryResultModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Credenciales Asignadas -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3 font-mono text-xs">
+            <div class="flex justify-between items-center text-slate-400 border-b border-slate-900 pb-2">
+              <span class="text-slate-200 font-bold">{{ deliveredOrderData.platform }}</span>
+              <span class="text-emerald-400 font-bold">Estado: ACTIVA</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px] uppercase">Usuario / Email:</span>
+              <span class="text-white font-bold text-sm">{{ deliveredOrderData.accountDetails?.email }}</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px] uppercase">Contraseña:</span>
+              <span class="text-amber-300 font-bold text-sm">{{ deliveredOrderData.accountDetails?.pass }}</span>
+            </div>
+            <div v-if="deliveredOrderData.accountDetails?.profiles?.length" class="pt-1 space-y-1.5">
+              <span class="text-slate-500 block text-[10px] uppercase font-sans">Perfiles y PINs asignados:</span>
+              <div v-for="(p, i) in deliveredOrderData.accountDetails.profiles" :key="i" class="flex justify-between items-center bg-slate-900 p-2 rounded-xl text-xs">
+                <span class="text-white font-semibold">👤 {{ p.name }}</span>
+                <span class="bg-amber-400/10 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded font-bold">🔒 PIN: {{ p.pin }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensaje listo para WhatsApp -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-400 font-bold">Formato Oficial de Entrega:</span>
+              <button @click="copyDeliveryMessage" class="text-brand-accent hover:underline font-bold text-xs flex items-center gap-1 cursor-pointer">
+                <span>📋 Copiar Todo</span>
+              </button>
+            </div>
+            <pre class="text-[11px] text-slate-300 whitespace-pre-wrap font-sans bg-slate-900/80 p-3 rounded-xl border border-slate-800 max-h-36 overflow-y-auto leading-relaxed">{{ deliveryWhatsAppText }}</pre>
+          </div>
+
+          <!-- Acciones de Cierre -->
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button 
+              @click="sendDeliveryMessageWhatsApp" 
+              class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-3 px-4 rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>📲 Abrir WhatsApp y Enviar al Cliente</span>
+            </button>
+            <button 
+              @click="copyDeliveryMessage" 
+              class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>📋 Copiar</span>
+            </button>
+            <button 
+              @click="showDeliveryResultModal = false" 
+              class="bg-brand-accent hover:bg-sky-400 text-slate-950 font-black text-xs py-3 px-5 rounded-xl transition-all shadow cursor-pointer"
+            >
+              <span>Listo</span>
             </button>
           </div>
         </div>

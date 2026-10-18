@@ -4,6 +4,7 @@ import physicalProductsData from '../assets/physicalProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
+import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 
 // Catálogo Base Oficial de Planes de Productos Virtuales
 export const DEFAULT_PLATFORM_PLANS = {
@@ -370,7 +371,54 @@ export const useAdminStore = defineStore('admin', {
     pendingResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'pending'),
     approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
     directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
-    resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT')
+    resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
+
+    // Métricas Dinámicas de Stock por Plataforma y Pantallas
+    getPlatformStock: (state) => (platform) => {
+      const accounts = (state.inventory || []).filter(i => i.platform === platform)
+      let totalProfiles = 0
+      let freeProfiles = 0
+      accounts.forEach(acc => {
+        const max = acc.maxProfiles || acc.profiles?.length || 4
+        totalProfiles += max
+        const free = (acc.profiles || []).filter(p => !p.isAssigned).length
+        freeProfiles += free
+      })
+      const availableAccounts = accounts.filter(acc => (acc.profiles || []).some(p => !p.isAssigned))
+      return {
+        platform,
+        totalAccounts: accounts.length,
+        availableAccounts: availableAccounts.length,
+        totalProfiles,
+        freeProfiles,
+        status: freeProfiles >= 3 ? 'in_stock' : (freeProfiles > 0 ? 'low_stock' : 'out_of_stock')
+      }
+    },
+
+    platformStockSummary: (state) => {
+      const platforms = ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium']
+      const summary = {}
+      platforms.forEach(plat => {
+        const accounts = (state.inventory || []).filter(i => i.platform === plat)
+        let totalProfiles = 0
+        let freeProfiles = 0
+        accounts.forEach(acc => {
+          const max = acc.maxProfiles || acc.profiles?.length || 4
+          totalProfiles += max
+          const free = (acc.profiles || []).filter(p => !p.isAssigned).length
+          freeProfiles += free
+        })
+        const availableAccounts = accounts.filter(acc => (acc.profiles || []).some(p => !p.isAssigned))
+        summary[plat] = {
+          totalAccounts: accounts.length,
+          availableAccounts: availableAccounts.length,
+          totalProfiles,
+          freeProfiles,
+          status: freeProfiles >= 3 ? 'in_stock' : (freeProfiles > 0 ? 'low_stock' : 'out_of_stock')
+        }
+      })
+      return summary
+    }
   },
   actions: {
     // Sincronización forzada a Base de Datos
@@ -829,7 +877,178 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.INVENTORY)
       this.persist(DB_KEYS.ORDERS)
 
-      return { success: true, order }
+      const deliveryMessage = this.generateDeliveryWhatsAppMessage(order)
+      return { success: true, order, deliveryMessage }
+    },
+
+    // Despacho Manual con selección de Inventario y Perfiles
+    dispatchOrderWithInventory(orderId, inventoryId, deliveryMatches = []) {
+      const order = this.orders.find(o => o.id === orderId)
+      const inv = this.inventory.find(i => i.id === inventoryId)
+
+      if (!order || !inv) return { error: 'Orden o Cuenta no encontrada' }
+
+      const freeSlots = inv.profiles.filter(p => !p.isAssigned)
+      const requiredDevices = deliveryMatches.length || order.devices
+      if (freeSlots.length < requiredDevices) {
+        return { error: `La cuenta seleccionada solo tiene ${freeSlots.length} perfiles libres (se requieren ${requiredDevices}).` }
+      }
+
+      const deliveredProfiles = []
+      let matchIdx = 0
+      inv.profiles.forEach(p => {
+        if (!p.isAssigned && matchIdx < deliveryMatches.length) {
+          const match = deliveryMatches[matchIdx]
+          p.isAssigned = true
+          p.assignedTo = `${order.customerName} (${order.customerNumber})`
+          p.name = match.name || `PERFIL ${matchIdx + 1}`
+          p.pin = match.pin || String(Math.floor(1000 + Math.random() * 9000))
+          deliveredProfiles.push({
+            name: p.name,
+            pin: p.pin
+          })
+          matchIdx++
+        }
+      })
+
+      const remainingFree = inv.profiles.filter(p => !p.isAssigned).length
+      if (remainingFree === 0) {
+        inv.status = 'Fully Assigned'
+      } else {
+        inv.status = 'Partially Assigned'
+      }
+
+      order.status = 'Dispatched'
+      order.accountId = inv.id
+      order.accountDetails = {
+        email: inv.account,
+        pass: inv.pass,
+        platform: inv.platform,
+        devicesCount: order.devices,
+        profiles: deliveredProfiles,
+        dispatchedAt: new Date().toLocaleString()
+      }
+
+      // Al confirmar cierre y entrega, purgar el comprobante de la mini nube para liberar espacio
+      if (order.hasReceipt || order.receiptStatus === 'pending_verification') {
+        order.hasReceipt = false
+        order.receiptStatus = 'verified_and_purged'
+        order.voucher = order.voucher && order.voucher !== 'Sin comprobante adjunto'
+          ? `${order.voucher} (Verificado y depurado)`
+          : 'Comprobante verificado y depurado'
+        deleteReceipt(order.id).catch(() => {})
+      }
+
+      const resellerStore = useResellerStore()
+      resellerStore.addDeliveredOrderToClients(order)
+
+      this.persist(DB_KEYS.INVENTORY)
+      this.persist(DB_KEYS.ORDERS)
+
+      const deliveryMessage = this.generateDeliveryWhatsAppMessage(order)
+
+      return { success: true, order, deliveryMessage }
+    },
+
+    // Despacho Inteligente en 1 Clic (Auto-asignación según stock disponible)
+    smartDispatchOrder(orderId) {
+      const order = this.orders.find(o => o.id === orderId)
+      if (!order) return { error: 'Orden no encontrada' }
+
+      // Buscar cuenta compatible con suficientes perfiles libres
+      const compatible = this.inventory.find(i => 
+        i.platform === order.platform && 
+        (i.profiles || []).filter(p => !p.isAssigned).length >= order.devices
+      )
+
+      if (!compatible) {
+        return { 
+          error: `Sin stock disponible para ${order.platform} (${order.devices} perfil/es requerido/s). Reabastece o agrega una cuenta primero.` 
+        }
+      }
+
+      const freeSlots = compatible.profiles.filter(p => !p.isAssigned)
+      const basePin = freeSlots[0]?.pin || String(Math.floor(1000 + Math.random() * 9000))
+
+      const matches = (order.profileSelections && order.profileSelections.length > 0)
+        ? order.profileSelections.map((req, idx) => ({
+            name: req.name || `PERFIL ${idx + 1}`,
+            pin: order.pinPreference === 'same' ? basePin : (freeSlots[idx]?.pin || String(Math.floor(1000 + Math.random() * 9000)))
+          }))
+        : Array.from({ length: order.devices }, (_, idx) => ({
+            name: `PERFIL ${idx + 1}`,
+            pin: order.pinPreference === 'same' ? basePin : (freeSlots[idx]?.pin || String(Math.floor(1000 + Math.random() * 9000)))
+          }))
+
+      return this.dispatchOrderWithInventory(order.id, compatible.id, matches)
+    },
+
+    // Generador de Mensaje de Entrega Oficial para WhatsApp
+    generateDeliveryWhatsAppMessage(order) {
+      if (!order || !order.accountDetails) return ''
+      const details = order.accountDetails
+      const profilesText = (details.profiles || []).map((p, i) => `  👤 *Perfil ${i + 1}:* ${p.name} (PIN: 🔒 ${p.pin})`).join('\n')
+      
+      return `🎉 *¡Tu pedido en StreamPro ha sido ENTREGADO con éxito!* 🍿🎬\n\n` +
+        `📦 *Orden:* #${order.id} | *Cliente:* ${order.customerName} (${order.customerNumber})\n` +
+        `📺 *Servicio:* ${order.platform} - ${order.planLabel || order.devices + ' Pantalla(s)'}\n\n` +
+        `🔐 *Credenciales Oficiales:*\n` +
+        `📧 *Usuario / Email:* ${details.email}\n` +
+        `🔑 *Contraseña:* ${details.pass}\n\n` +
+        `👥 *Tus Perfiles & PINs asignados:*\n` +
+        `${profilesText}\n\n` +
+        `⏳ *Garantía & Vigencia:* 30 días con soporte prioritario.\n\n` +
+        `🛡️ *Consulta tu Bóveda Privada de Accesos en cualquier momento:*\n` +
+        `👉 https://streamepro.me/boveda\n` +
+        `(Ingresa con tu número ${order.customerPhone} o tu código ${order.customerNumber})\n\n` +
+        `¡Que disfrutes tu servicio!`
+    },
+
+    // Reabastecimiento Dinámico de Stock por Plataforma
+    replenishPlatformStock(platform, count = 1) {
+      const added = []
+      for (let i = 0; i < count; i++) {
+        const newAcc = createStarterAccountForPlatform(platform, this.inventory.length + 1 + i)
+        this.inventory.push(newAcc)
+        added.push(newAcc)
+      }
+      this.persist(DB_KEYS.INVENTORY)
+      return { success: true, count, added }
+    },
+
+    // Reabastecimiento Completo de Stock Inicial
+    replenishAllStarterStock() {
+      const starter = getCleanStarterInventory()
+      this.inventory.push(...starter)
+      this.persist(DB_KEYS.INVENTORY)
+      return { success: true, added: starter.length }
+    },
+
+    // Restauración Integral a Base de Datos Depurada de Producción
+    async resetDatabaseToCleanSeed() {
+      const res = await applyPristineDatabase()
+      
+      this.adminAuth = loadDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
+      this.pricingCatalog = loadDb(DB_KEYS.PRICING_CATALOG, CLEAN_PRICING_CATALOG)
+      this.inventory = loadDb(DB_KEYS.INVENTORY, [])
+      this.resellers = loadDb(DB_KEYS.RESELLERS, [])
+      this.resellerApplications = []
+      this.orders = []
+      this.physicalOrders = []
+      this.packages = loadDb(DB_KEYS.PACKAGES, [])
+      this.providerBankAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [])
+      this.providerBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+      this.bankTransfers = []
+      this.walletTransactions = []
+      this.resellerAlerts = []
+      this.renewalRequests = []
+      
+      const resellerStore = useResellerStore()
+      resellerStore.clients = []
+      resellerStore.wallet = 50000
+      resellerStore.persist()
+      
+      return res
     },
 
     // Administrar Revendedores desde el Panel Proveedor

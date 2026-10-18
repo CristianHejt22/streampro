@@ -93,6 +93,22 @@ const products = ref([
     description: '+1200 canales en vivo, FHD, 24/7 y eventos deportivos.',
     plans: PLATFORM_PLANS.IPTV.plans
   },
+  { 
+    id: 6, 
+    name: 'Amazon Prime Video 4K', 
+    category: 'Streaming', 
+    platform: 'Prime Video',
+    description: 'Series Amazon Originals, estrenos y películas en 4K UHD.',
+    plans: PLATFORM_PLANS['Prime Video']?.plans || {}
+  },
+  { 
+    id: 7, 
+    name: 'YouTube Premium & Music', 
+    category: 'Streaming', 
+    platform: 'YouTube Premium',
+    description: 'Videos sin publicidad, descargas y YouTube Music en segundo plano.',
+    plans: PLATFORM_PLANS['YouTube Premium']?.plans || {}
+  }
 ])
 
 // Modal de Configuración
@@ -820,9 +836,18 @@ const submitOrder = async () => {
         <div v-for="product in filteredProducts" :key="product.id" class="glass-panel glass-panel-hover rounded-3xl p-6 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group">
           <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div>
-            <div class="flex justify-between items-start mb-3">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
               <span class="text-[10px] font-black text-sky-300 tracking-widest uppercase bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/20">{{ product.category }}</span>
-              <span class="text-xs text-slate-400 font-medium">Hasta 4 dispositivos</span>
+              <span 
+                :class="[
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono',
+                  adminStore.getPlatformStock(product.platform).status === 'in_stock' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                  adminStore.getPlatformStock(product.platform).status === 'low_stock' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                  'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                ]"
+              >
+                <span>{{ adminStore.getPlatformStock(product.platform).status === 'in_stock' ? '🟢 Stock 10-15m' : (adminStore.getPlatformStock(product.platform).status === 'low_stock' ? '🟡 Últimos cupos' : '⏱️ 10m a 1h') }}</span>
+              </span>
             </div>
             <h3 class="text-xl font-bold text-white mb-2">{{ product.name }}</h3>
             <p class="text-xs text-slate-400 mb-4 line-clamp-2 leading-relaxed">{{ product.description }}</p>
