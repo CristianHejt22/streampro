@@ -4,6 +4,7 @@ import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
+import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
 import { 
   isBiometricsAvailable, 
   registerBiometricCredential, 
@@ -18,6 +19,31 @@ import {
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
 const toast = useToastStore()
+
+// MODAL DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF)
+const showReceiptModal = ref(false)
+const selectedReceiptOrder = ref(null)
+const isPhysicalReceipt = ref(false)
+
+const openReceiptViewer = (order, isPhysical = false) => {
+  selectedReceiptOrder.value = order
+  isPhysicalReceipt.value = isPhysical
+  showReceiptModal.value = true
+}
+
+const handleConfirmCloseFromReceipt = (order) => {
+  showReceiptModal.value = false
+  if (isPhysicalReceipt.value) {
+    handleConfirmPhysicalOrder(order)
+  } else {
+    openDispatchModal(order)
+  }
+}
+
+const handleReceiptPurged = (orderId) => {
+  adminStore.purgeOrderReceipt(orderId, isPhysicalReceipt.value)
+  toast.add('Comprobante depurado de la mini nube con éxito', 'info')
+}
 
 // Formulario de Carga de Lotes
 const newStock = ref({ 
@@ -1525,6 +1551,18 @@ const deletePackageItem = (pkgId) => {
                 <span v-if="order.paymentMethod" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                   {{ order.paymentMethod }}
                 </span>
+                <button 
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  @click="openReceiptViewer(order, false)"
+                  class="text-[10px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                  title="Ver comprobante adjunto en mini nube (JPG/PDF)"
+                >
+                  <span>☁️</span>
+                  <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
+                </button>
+                <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono">
+                  ✓ Comprobante depurado
+                </span>
                 <span v-if="order.bankTransferVerified" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
                   <span>✓</span> Acreditada en {{ order.bankTransferDetails?.bankName || 'Banco' }} (${{ (order.bankTransferDetails?.amount || order.clientPrice).toLocaleString() }})
                 </span>
@@ -2675,6 +2713,19 @@ const deletePackageItem = (pkgId) => {
 
               <!-- Acciones de Administrador -->
               <div class="flex items-center gap-2">
+                <!-- Botón Ver Comprobante en Mini Nube -->
+                <button 
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  @click="openReceiptViewer(order, true)"
+                  class="bg-sky-600/25 hover:bg-sky-600 text-sky-200 hover:text-white border border-sky-500/40 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+                  title="Ver comprobante en la mini nube (JPG/PDF)"
+                >
+                  <span>☁️</span>
+                  <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
+                </button>
+                <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[10px] text-slate-400 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-xl font-mono">
+                  ✓ Comprobante depurado
+                </span>
                 <!-- Si está Pendiente: Botón Marcar como Recibido -->
                 <button 
                   v-if="order.status === 'Pendiente'"
@@ -4017,6 +4068,15 @@ const deletePackageItem = (pkgId) => {
       @close="showFlyerModal = false" 
       :default-store-name="adminStore.adminAuth.name || 'StreamPro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
+    />
+
+    <!-- MODAL: VISUALIZADOR DE COMPROBANTES EN MINI NUBE (JPG / PDF) -->
+    <ReceiptViewerModal 
+      :show="showReceiptModal"
+      :order="selectedReceiptOrder"
+      @close="showReceiptModal = false"
+      @confirmed-close="handleConfirmCloseFromReceipt"
+      @receipt-purged="handleReceiptPurged"
     />
   </div>
 </template>

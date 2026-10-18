@@ -4,6 +4,8 @@ import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import html2canvas from 'html2canvas'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
+import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
+import { deleteReceipt } from '../services/receiptCloudStorage'
 import { 
   isBiometricsAvailable, 
   registerBiometricCredential, 
@@ -19,6 +21,47 @@ const tab = ref('crm')
 const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
 
+const resellerStore = useResellerStore()
+const adminStore = useAdminStore()
+const toast = useToastStore()
+
+// MODAL DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF)
+const showReceiptModal = ref(false)
+const selectedReceiptOrder = ref(null)
+
+const openReceiptViewer = (order) => {
+  selectedReceiptOrder.value = order
+  showReceiptModal.value = true
+}
+
+const handleConfirmCloseFromResellerReceipt = async (order) => {
+  showReceiptModal.value = false
+  if (confirm(`¿Confirmar recepción de pago y cerrar el comprobante del pedido #${order.id}? El comprobante se eliminará de la nube para liberar memoria.`)) {
+    await deleteReceipt(order.id)
+    if (order.hasReceipt) order.hasReceipt = false
+    order.receiptStatus = 'verified_and_purged'
+    order.voucher = 'Comprobante verificado y depurado'
+    adminStore.persist()
+    toast.add('Comprobante verificado y depurado con éxito de la mini nube', 'success')
+  }
+}
+
+const handleReceiptPurgedReseller = async (orderId) => {
+  await deleteReceipt(orderId)
+  const sOrder = adminStore.orders.find(o => o.id === orderId)
+  if (sOrder) {
+    sOrder.hasReceipt = false
+    sOrder.receiptStatus = 'verified_and_purged'
+  }
+  const pOrder = adminStore.physicalOrders.find(o => o.id === orderId)
+  if (pOrder) {
+    pOrder.hasReceipt = false
+    pOrder.receiptStatus = 'verified_and_purged'
+  }
+  adminStore.persist()
+  toast.add('Comprobante eliminado de la mini nube', 'info')
+}
+
 const openFlyerForProduct = (prod) => {
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
@@ -33,10 +76,6 @@ const showDetailModal = ref(false)
 const showWalletModal = ref(false)
 const topUpAmount = ref(1000)
 const topUpReason = ref('Carga de saldo a favor / Devolución')
-
-const resellerStore = useResellerStore()
-const adminStore = useAdminStore()
-const toast = useToastStore()
 
 // Alertas de Renovaciones pendientes que el Proveedor actualizó con nuevos datos de cuenta
 const pendingRenewalsAlert = computed(() => {
@@ -410,6 +449,20 @@ const currentResellerId = computed(() => {
   return resellerStore.isAuthenticated && resellerStore.sessionUser?.id 
     ? resellerStore.sessionUser.id 
     : (selectedResellerFilter.value !== 'All' ? selectedResellerFilter.value : resellerStore.activeResellerId)
+})
+
+// Pedidos web de streaming entrantes para este revendedor
+const myIncomingStreamingOrders = computed(() => {
+  const targetId = currentResellerId.value
+  return adminStore.orders.filter(o => 
+    selectedResellerFilter.value === 'All'
+      ? (o.resellerId === targetId || o.resellerId === resellerStore.activeResellerId)
+      : o.resellerId === selectedResellerFilter.value
+  )
+})
+
+const myPendingStreamingOrders = computed(() => {
+  return myIncomingStreamingOrders.value.filter(o => o.status === 'Waiting Provider')
 })
 
 // Dominio oficial de producción para enlaces de revendedor
@@ -1144,6 +1197,113 @@ const openProductInNewTab = (product) => {
         </div>
       </div>
 
+      <!-- SECCIÓN: PEDIDOS WEB ENTRANTES DE TUS CLIENTES (STREAMING) -->
+      <div class="bg-gradient-to-b from-[#020617] via-slate-950 to-[#020617] rounded-3xl border border-sky-500/30 p-6 space-y-4 shadow-xl">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow">
+              ⚡
+            </div>
+            <div>
+              <h3 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                Pedidos Web Entrantes de Streaming
+                <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
+                  {{ myPendingStreamingOrders.length }} Pendiente(s) • {{ myIncomingStreamingOrders.length }} Totales
+                </span>
+              </h3>
+              <p class="text-xs text-slate-400">
+                Compras realizadas por tus clientes desde tu link de tienda o catálogo web con comprobantes en mini nube.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="myIncomingStreamingOrders.length === 0" class="text-center py-8 text-slate-500 text-xs italic bg-slate-950/80 rounded-2xl border border-slate-800">
+          No hay pedidos web de streaming registrados para este revendedor aún. Cuando tus clientes compren con tu link único, ingresarán directamente aquí y al panel del proveedor.
+        </div>
+
+        <div v-else class="space-y-3">
+          <div 
+            v-for="order in myIncomingStreamingOrders" 
+            :key="order.id"
+            class="bg-[#020617] rounded-2xl border border-slate-800/90 p-4 space-y-3 shadow-md hover:border-slate-700 transition-all"
+          >
+            <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-800/80 pb-3">
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs font-mono font-bold text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded border border-sky-400/30">
+                    {{ order.id }}
+                  </span>
+                  <span class="text-xs font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded">
+                    {{ order.customerNumber }}
+                  </span>
+                  <h4 class="font-bold text-white text-sm">{{ order.customerName }}</h4>
+                  <span class="text-xs text-slate-500 font-mono">{{ order.createdAt }}</span>
+                </div>
+                <div class="text-xs text-slate-400 flex flex-wrap items-center gap-3">
+                  <span>WhatsApp: <a :href="`https://wa.me/${(order.customerPhone || '').replace(/\D/g, '')}`" target="_blank" class="text-brand-accent hover:underline font-bold">{{ order.customerPhone }}</a></span>
+                  <span class="text-slate-600">•</span>
+                  <span>Medio de Pago: <strong class="text-slate-200">{{ order.paymentMethod || 'Transferencia' }}</strong></span>
+                </div>
+              </div>
+
+              <!-- Estado & Botón Comprobante Mini Nube -->
+              <div class="flex flex-wrap items-center gap-2">
+                <!-- Botón Ver Comprobante si existe o pendiente -->
+                <button 
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  @click="openReceiptViewer(order)"
+                  class="text-xs bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-3 py-1.5 rounded-xl font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
+                  title="Ver comprobante adjunto en mini nube (JPG/PDF)"
+                >
+                  <span>☁️</span>
+                  <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
+                </button>
+                <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-xs bg-slate-800/80 text-slate-400 border border-slate-700 px-3 py-1.5 rounded-xl font-mono flex items-center gap-1">
+                  <span>✓</span> Comprobante depurado
+                </span>
+
+                <!-- Badge de Estado de Orden -->
+                <span :class="[
+                  'text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5',
+                  order.status === 'Waiting Provider' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                  order.status === 'Dispatched' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                  'bg-slate-800 text-slate-300 border-slate-700'
+                ]">
+                  <span :class="[
+                    'w-1.5 h-1.5 rounded-full',
+                    order.status === 'Waiting Provider' ? 'bg-amber-400 animate-ping' :
+                    order.status === 'Dispatched' ? 'bg-emerald-400' : 'bg-slate-400'
+                  ]"></span>
+                  {{ order.status === 'Waiting Provider' ? 'En Espera de Proveedor' : (order.status === 'Dispatched' ? 'Despachado / Activo' : order.status) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Detalle del Plan / Servicio & Finanzas -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex flex-wrap justify-between items-center gap-3 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white text-sm">{{ order.platform }}</span>
+                <span class="text-slate-400">· {{ order.planLabel || `${order.devices} Pantalla(s)` }}</span>
+                <span v-if="order.pinPreference" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
+                  PIN: {{ order.pinPreference }}
+                </span>
+              </div>
+              <div class="flex items-center gap-4">
+                <div>
+                  <span class="text-[10px] text-slate-400 uppercase block">Total Cliente:</span>
+                  <span class="text-sm font-bold text-white">${{ (order.clientPrice || 0).toLocaleString() }} ARS</span>
+                </div>
+                <div class="bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 text-right">
+                  <span class="text-[10px] text-emerald-400 uppercase font-bold block">Tu Ganancia:</span>
+                  <span class="text-sm font-black text-emerald-400">+${{ (order.resellerProfit || 0).toLocaleString() }} ARS</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Buscador y Barra de Acciones Pro del Revendedor -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
         <!-- Selector de Revendedor por Número y Nombre -->
@@ -1713,6 +1873,19 @@ const openProductInNewTab = (product) => {
               </div>
 
               <div class="flex items-center gap-2">
+                <button 
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  @click="openReceiptViewer(order)"
+                  class="text-[11px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-3 py-1 rounded-xl font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
+                  title="Ver comprobante adjunto en mini nube (JPG/PDF)"
+                >
+                  <span>☁️</span>
+                  <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
+                </button>
+                <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[11px] bg-slate-800/80 text-slate-400 border border-slate-700 px-3 py-1 rounded-xl font-mono flex items-center gap-1">
+                  <span>✓</span> Comprobante depurado
+                </span>
+
                 <span :class="[
                   'text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5',
                   (order.status === 'Confirmado' || order.status === 'Aprobado') ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
@@ -2991,6 +3164,15 @@ const openProductInNewTab = (product) => {
       @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamPro Distribuidor'" 
       website-domain="streamepro.me"
+    />
+
+    <!-- MODAL DE VISUALIZACIÓN Y CONFIRMACIÓN DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF) -->
+    <ReceiptViewerModal 
+      :show="showReceiptModal"
+      :order="selectedReceiptOrder"
+      @close="showReceiptModal = false; selectedReceiptOrder = null"
+      @confirmed-close="handleConfirmCloseFromResellerReceipt"
+      @receipt-purged="handleReceiptPurgedReseller"
     />
   </div>
 </template>

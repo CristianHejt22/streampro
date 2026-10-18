@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { sendLocalNotification } from '../services/notifications'
+import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 
 const route = useRoute()
@@ -19,6 +20,36 @@ const flyerInitialProduct = ref(null)
 const openFlyerForPhysical = (prod) => {
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
+}
+
+// Comprobante de Pago en Mini Nube (JPG, PNG, WEBP, PDF)
+const receiptFile = ref(null) // { fileName, fileType, fileSize, dataUrl }
+const isProcessingReceipt = ref(false)
+
+const handleReceiptFileChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (file.size > 15 * 1024 * 1024) {
+    toast.add('El archivo es demasiado grande (máximo 15 MB)', 'error')
+    return
+  }
+
+  isProcessingReceipt.value = true
+  try {
+    const processed = await processReceiptFile(file)
+    receiptFile.value = processed
+    toast.add(`✓ Comprobante cargado a la mini nube: ${processed.fileName}`, 'success')
+  } catch (err) {
+    toast.add(err.message || 'Error al procesar el archivo de comprobante', 'error')
+    receiptFile.value = null
+  } finally {
+    isProcessingReceipt.value = false
+  }
+}
+
+const removeReceiptFile = () => {
+  receiptFile.value = null
 }
 
 const products = ref([
@@ -452,7 +483,7 @@ const goToCustomerPortal = () => {
   router.push('/portal')
 }
 
-const submitOrder = () => {
+const submitOrder = async () => {
   if (!clientForm.value.fullName.trim() || !clientForm.value.whatsapp.trim()) {
     toast.add('Por favor completa Nombre y WhatsApp para el envío', 'error')
     return
@@ -465,6 +496,9 @@ const submitOrder = () => {
   // Snapshot del pedido antes de vaciar el carrito
   const prevNum = clientForm.value.clientNumber
   const currentRef = clientForm.value.selectedResellerId
+  const hasUploadedReceipt = Boolean(receiptFile.value)
+  const receiptMeta = receiptFile.value || {}
+
   const orderSnapshot = {
     clientNumber: prevNum,
     customerName: clientForm.value.fullName,
@@ -480,12 +514,49 @@ const submitOrder = () => {
     discountPercentage: cartStore.discountPercentage,
     total: cartStore.total,
     paymentMethod: clientForm.value.paymentMethod,
+    hasReceipt: hasUploadedReceipt,
+    receiptFileName: receiptMeta.fileName || null,
+    receiptFileType: receiptMeta.fileType || null,
+    receiptFileSize: receiptMeta.fileSize || 0,
     date: new Date().toLocaleString()
+  }
+
+  // Guardar comprobante en la Mini Nube (IndexedDB) para consulta directa del Proveedor y Revendedor
+  if (hasUploadedReceipt) {
+    try {
+      await saveReceipt(prevNum, {
+        fileName: receiptMeta.fileName,
+        fileType: receiptMeta.fileType,
+        fileSize: receiptMeta.fileSize,
+        dataUrl: receiptMeta.dataUrl,
+        customerName: clientForm.value.fullName,
+        customerPhone: clientForm.value.whatsapp,
+        amount: cartStore.total
+      })
+    } catch (e) {
+      console.warn('Error al guardar comprobante en mini nube:', e)
+    }
   }
 
   // Registrar órdenes digitales de streaming usando la acción persistente
   digitalItems.forEach(item => {
+    const streamingOrderId = `ORD-${Date.now().toString().slice(-4)}`
+    
+    // Si subió comprobante, también indexar con el ID específico del streaming
+    if (hasUploadedReceipt) {
+      saveReceipt(streamingOrderId, {
+        fileName: receiptMeta.fileName,
+        fileType: receiptMeta.fileType,
+        fileSize: receiptMeta.fileSize,
+        dataUrl: receiptMeta.dataUrl,
+        customerName: clientForm.value.fullName,
+        customerPhone: clientForm.value.whatsapp,
+        amount: item.clientPrice
+      }).catch(() => {})
+    }
+
     adminStore.createStreamingOrder({
+      id: streamingOrderId,
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
@@ -499,7 +570,11 @@ const submitOrder = () => {
       clientPrice: item.clientPrice,
       resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
       resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (currentReseller.value?.name || 'Distribuidor Asignado'),
-      voucher: clientForm.value.transferVoucher || 'Sin comprobante adjunto',
+      voucher: clientForm.value.transferVoucher || (hasUploadedReceipt ? `Comprobante en Nube (${receiptMeta.fileName})` : 'Sin comprobante adjunto'),
+      hasReceipt: hasUploadedReceipt,
+      receiptFileName: receiptMeta.fileName || null,
+      receiptFileType: receiptMeta.fileType || null,
+      receiptFileSize: receiptMeta.fileSize || 0,
       paymentMethod: clientForm.value.paymentMethod,
       profileSelections: (item.profiles || []).map(p => ({
         name: p.name
@@ -518,7 +593,12 @@ const submitOrder = () => {
       resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
       source,
       items: physicalItems,
-      paymentMethod: clientForm.value.paymentMethod
+      paymentMethod: clientForm.value.paymentMethod,
+      voucher: clientForm.value.transferVoucher || (hasUploadedReceipt ? `Comprobante en Nube (${receiptMeta.fileName})` : 'Sin comprobante adjunto'),
+      hasReceipt: hasUploadedReceipt,
+      receiptFileName: receiptMeta.fileName || null,
+      receiptFileType: receiptMeta.fileType || null,
+      receiptFileSize: receiptMeta.fileSize || 0
     })
   }
 
@@ -528,8 +608,8 @@ const submitOrder = () => {
   cartStore.clearCart()
 
   // Enviar notificación local/push del sistema si está habilitada
-  sendLocalNotification(`🎉 Pedido #${prevNum} Registrado con Éxito`, {
-    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS fue guardado. La entrega demora de 10 min a 1 hora. Envía tu comprobante por WhatsApp para agilizarla.`,
+  sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
+    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS fue enviado a los paneles de atención. Tiempo de entrega: 10 min a 1 hora.`,
     icon: '/pwa-192x192.png',
     tag: `streampro-order-${prevNum}`
   })
@@ -544,11 +624,12 @@ const submitOrder = () => {
     transferVoucher: '',
     isSharedUrl: false
   }
+  receiptFile.value = null
 
   if (physicalItems.length > 0 && digitalItems.length === 0) {
-    toast.add(`¡Pedido registrado como PENDIENTE (#${prevNum})! Un asesor te contactará para coordinar stock y envío.`, 'success')
+    toast.add(`¡Pedido registrado directamente en el panel (#${prevNum})! Un asesor coordinará tu envío.`, 'success')
   } else {
-    toast.add(`¡Pedido registrado (#${prevNum})! La entrega demora de 10 min a 1 hora. Envía tu comprobante por WhatsApp para agilizarla.`, 'success')
+    toast.add(`¡Pedido y comprobante recibidos en el panel (#${prevNum})! Tiempo estimado de entrega: 10 min a 1 hora.`, 'success')
   }
 }
 </script>
@@ -1366,11 +1447,82 @@ const submitOrder = () => {
             </div>
           </div>
 
-          <!-- Comprobante de Pago (Solo para Items Digitales) -->
-          <div v-if="cartStore.hasDigitalItems" class="space-y-1">
-            <label class="block font-bold uppercase text-slate-400 mb-1">Número de Comprobante / Transacción (Opcional)</label>
-            <input v-model="clientForm.transferVoucher" type="text" placeholder="Ej: OP-9843217" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-mono">
-            <p class="text-[11px] text-amber-300/90 font-medium">💡 Carga tu comprobante para poder entregar más rápida e inmediatamente tus accesos.</p>
+          <!-- Comprobante de Pago en JPG / PNG o PDF con Mini Nube -->
+          <div class="space-y-2 pt-1">
+            <div class="flex justify-between items-center">
+              <label class="block font-bold uppercase text-slate-300 text-xs">
+                Adjuntar Comprobante de Pago (JPG, PNG o PDF)
+              </label>
+              <span class="text-[10px] text-sky-400 font-mono flex items-center gap-1 font-bold">
+                <span>☁️</span> Mini Nube Temporal
+              </span>
+            </div>
+
+            <!-- Zona de Subida de Archivo -->
+            <div 
+              v-if="!receiptFile"
+              class="border-2 border-dashed border-slate-700 hover:border-brand-accent/60 bg-slate-950/70 rounded-2xl p-4 text-center transition-all cursor-pointer relative group"
+            >
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                @change="handleReceiptFileChange"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div class="space-y-1.5 pointer-events-none">
+                <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-brand-accent flex items-center justify-center mx-auto text-xl group-hover:scale-110 transition-transform">
+                  📁
+                </div>
+                <p class="text-xs font-bold text-slate-200">
+                  Haz clic o arrastra tu comprobante en <span class="text-brand-accent font-black">JPG, PNG o PDF</span>
+                </p>
+                <p class="text-[10px] text-slate-400">
+                  Llegará directamente al panel del revendedor y proveedor para verificar el pago y se eliminará al confirmar la entrega.
+                </p>
+              </div>
+            </div>
+
+            <!-- Vista previa del comprobante cargado -->
+            <div 
+              v-else 
+              class="bg-slate-950 p-3 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-lg"
+            >
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div v-if="receiptFile.fileType === 'application/pdf'" class="w-10 h-10 rounded-xl bg-red-950/50 border border-red-500/30 text-red-400 flex items-center justify-center text-lg shrink-0">
+                  📄
+                </div>
+                <div v-else class="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/30 shrink-0 bg-black flex items-center justify-center">
+                  <img :src="receiptFile.dataUrl" alt="Comprobante" class="w-full h-full object-cover" />
+                </div>
+                <div class="overflow-hidden">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-emerald-400 text-xs font-black truncate max-w-[190px]">{{ receiptFile.fileName }}</span>
+                    <span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-mono px-1.5 py-0.2 rounded font-bold">☁️ En Nube</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400">
+                    {{ receiptFile.fileType === 'application/pdf' ? 'Documento PDF' : 'Imagen' }} • {{ Math.round(receiptFile.fileSize / 1024) }} KB
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                @click="removeReceiptFile" 
+                class="px-2.5 py-1.5 bg-slate-900 hover:bg-red-950/60 text-slate-400 hover:text-red-300 text-xs font-bold rounded-xl border border-slate-800 transition-colors cursor-pointer shrink-0"
+                title="Quitar comprobante"
+              >
+                ✕ Quitar
+              </button>
+            </div>
+
+            <!-- Número de Operación Opcional -->
+            <div class="pt-1">
+              <input 
+                v-model="clientForm.transferVoucher" 
+                type="text" 
+                placeholder="N° de Operación o Referencia de Transferencia (Opcional)" 
+                class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl px-3 py-2.5 text-xs text-white outline-none font-mono"
+              />
+            </div>
           </div>
 
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm">
@@ -1594,40 +1746,55 @@ const submitOrder = () => {
           </p>
         </div>
 
-        <!-- AVISO DE TIEMPO DE ENTREGA Y COMPROBANTE (STREAMING) -->
-        <div v-if="lastPlacedOrder.digitalItems.length > 0" class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl text-xs space-y-1.5 shadow-inner">
-          <div class="font-bold flex items-center gap-2 text-amber-300">
-            <span class="text-base">⏱️</span>
-            <span>Tiempo Estimado de Entrega de Cuentas:</span>
+        <!-- AVISO DE TIEMPO DE ENTREGA Y ESTADO DIRECTO EN PANEL -->
+        <div class="bg-gradient-to-br from-emerald-950/40 via-slate-900 to-sky-950/40 border border-emerald-500/30 p-4 rounded-2xl text-xs space-y-2 shadow-lg">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>¡Pedido Registrado Directamente en el Panel Oficial!</span>
           </div>
-          <p class="text-slate-200 text-xs leading-relaxed">
-            La entrega de las cuentas puede demorar de <strong class="text-amber-300 font-bold">10 minutos a 1 hora</strong>. Carga tu comprobante enviándolo por WhatsApp para que la entrega sea lo más inmediata posible.
+          <p class="text-slate-300 text-xs leading-relaxed">
+            Tu orden ha ingresado de forma instantánea al <strong class="text-white">Panel del {{ lastPlacedOrder.isDirect ? 'Proveedor Mayorista' : 'Revendedor y Proveedor' }}</strong>.
+            Tiempo estimado de entrega de accesos: <strong class="text-amber-300 font-bold">10 minutos a 1 hora</strong>.
           </p>
+
+          <!-- Estado del Comprobante en Mini Nube -->
+          <div v-if="lastPlacedOrder.hasReceipt" class="bg-sky-500/10 border border-sky-500/20 p-2.5 rounded-xl flex items-center justify-between gap-2 text-[11px] text-sky-200 font-mono">
+            <div class="flex items-center gap-2 truncate">
+              <span>☁️</span>
+              <span class="truncate">Comprobante en Mini Nube: <strong>{{ lastPlacedOrder.receiptFileName || 'Archivo cargado' }}</strong></span>
+            </div>
+            <span class="text-emerald-400 font-bold shrink-0">✓ Verificando</span>
+          </div>
+          <div v-else class="text-[11px] text-amber-300/90 flex items-center gap-1.5">
+            <span>ℹ️</span>
+            <span>No adjuntaste comprobante. Puedes consultarlo o reportarlo desde tu Bóveda de Clientes.</span>
+          </div>
         </div>
 
-        <!-- BOTÓN PRINCIPAL: ENVIAR COMPROBANTE POR WHATSAPP -->
-        <div class="space-y-3 pt-1">
+        <!-- ACCIONES PRINCIPALES: PORTAL DE CLIENTES Y NAVEGACIÓN -->
+        <div class="space-y-2.5 pt-1">
           <button 
-            @click="sendOrderToWhatsApp" 
-            class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2.5 cursor-pointer"
+            @click="goToCustomerPortal" 
+            class="w-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 hover:opacity-95 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition-all text-sm flex items-center justify-center gap-2.5 cursor-pointer"
           >
-            <span class="text-lg">📲</span>
-            <span>Enviar Comprobante por WhatsApp</span>
+            <span class="text-base">🔐</span>
+            <span>Ir a mi Bóveda y Consultar Mis Accesos</span>
             <span>→</span>
           </button>
           
           <div class="flex gap-2">
             <button 
-              @click="goToCustomerPortal" 
+              @click="showOrderSuccessModal = false" 
               class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
             >
-              🔑 Ir al Portal de Clientes
+              🛒 Seguir en la Tienda
             </button>
             <button 
-              @click="showOrderSuccessModal = false" 
-              class="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-bold px-5 py-2.5 rounded-xl text-xs border border-slate-800 transition-colors cursor-pointer"
+              @click="sendOrderToWhatsApp" 
+              class="px-4 py-2.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Opcional: Si requieres asistencia directa por WhatsApp"
             >
-              Cerrar
+              <span>💬 Soporte</span>
             </button>
           </div>
         </div>

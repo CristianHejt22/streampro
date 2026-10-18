@@ -3,6 +3,7 @@ import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
+import { deleteReceipt } from '../services/receiptCloudStorage'
 
 // Catálogo Base Oficial de Planes de Productos Virtuales
 export const DEFAULT_PLATFORM_PLANS = {
@@ -812,6 +813,16 @@ export const useAdminStore = defineStore('admin', {
         profiles: deliveredProfiles
       }
 
+      // Al confirmar cierre y entrega, purgar el comprobante de la mini nube para liberar espacio
+      if (order.hasReceipt || order.receiptStatus === 'pending_verification') {
+        order.hasReceipt = false
+        order.receiptStatus = 'verified_and_purged'
+        order.voucher = order.voucher && order.voucher !== 'Sin comprobante adjunto'
+          ? `${order.voucher} (Verificado y depurado)`
+          : 'Comprobante verificado y depurado'
+        deleteReceipt(order.id).catch(() => {})
+      }
+
       const resellerStore = useResellerStore()
       resellerStore.addDeliveredOrderToClients(order)
 
@@ -1027,6 +1038,11 @@ export const useAdminStore = defineStore('admin', {
         resellerId: isDirect ? 'DIRECT' : orderData.resellerId,
         resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (resellerObj?.name || orderData.resellerName || 'Distribuidor Asignado'),
         voucher: orderData.voucher || 'Sin comprobante adjunto',
+        hasReceipt: Boolean(orderData.hasReceipt),
+        receiptFileName: orderData.receiptFileName || null,
+        receiptFileType: orderData.receiptFileType || null,
+        receiptFileSize: orderData.receiptFileSize || 0,
+        receiptStatus: orderData.hasReceipt ? 'pending_verification' : 'no_receipt',
         paymentMethod: orderData.paymentMethod || 'Transferencia Bancaria',
         profileSelections: (orderData.profileSelections || []).map(p => ({
           name: p.name
@@ -1056,7 +1072,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // PEDIDOS FÍSICOS
-    createPhysicalOrder({ customerNumber, customerName, customerPhone, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria' }) {
+    createPhysicalOrder({ customerNumber, customerName, customerPhone, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria', voucher = '', hasReceipt = false, receiptFileName = null, receiptFileType = null, receiptFileSize = 0 }) {
       const isDirect = !resellerId || resellerId === 'DIRECT'
       const targetResellerId = isDirect ? 'DIRECT' : resellerId
       const resellerObj = isDirect ? null : this.resellers.find(r => r.id === targetResellerId)
@@ -1080,6 +1096,12 @@ export const useAdminStore = defineStore('admin', {
         commissionAmount,
         totalAmount,
         paymentMethod,
+        hasReceipt: Boolean(hasReceipt),
+        receiptFileName: receiptFileName || null,
+        receiptFileType: receiptFileType || null,
+        receiptFileSize: receiptFileSize || 0,
+        receiptStatus: hasReceipt ? 'pending_verification' : 'no_receipt',
+        voucher: voucher || 'Sin comprobante adjunto',
         status: 'Pendiente',
         createdAt: new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
         items: items.map(i => ({
@@ -1183,8 +1205,45 @@ export const useAdminStore = defineStore('admin', {
         this.persist(DB_KEYS.WALLET_TRANSACTIONS)
       }
 
+      // Al confirmar cierre del pedido físico, purgar el comprobante de la mini nube para liberar espacio
+      if (order.hasReceipt || order.receiptStatus === 'pending_verification') {
+        order.hasReceipt = false
+        order.receiptStatus = 'verified_and_purged'
+        order.voucher = order.voucher && order.voucher !== 'Sin comprobante adjunto'
+          ? `${order.voucher} (Verificado y depurado)`
+          : 'Comprobante verificado y depurado'
+        deleteReceipt(order.id).catch(() => {})
+      }
+
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
       return { success: true, order }
+    },
+
+    // Purga definitiva de comprobante desde la interfaz para liberar almacenamiento
+    async purgeOrderReceipt(orderId, isPhysical = false) {
+      if (isPhysical) {
+        const pOrder = this.physicalOrders.find(o => o.id === orderId)
+        if (pOrder) {
+          pOrder.hasReceipt = false
+          pOrder.receiptStatus = 'verified_and_purged'
+          pOrder.voucher = pOrder.voucher && pOrder.voucher !== 'Sin comprobante adjunto'
+            ? `${pOrder.voucher} (Depurado)`
+            : 'Comprobante verificado y depurado'
+          this.persist(DB_KEYS.PHYSICAL_ORDERS)
+        }
+      } else {
+        const order = this.orders.find(o => o.id === orderId)
+        if (order) {
+          order.hasReceipt = false
+          order.receiptStatus = 'verified_and_purged'
+          order.voucher = order.voucher && order.voucher !== 'Sin comprobante adjunto'
+            ? `${order.voucher} (Depurado)`
+            : 'Comprobante verificado y depurado'
+          this.persist(DB_KEYS.ORDERS)
+        }
+      }
+      await deleteReceipt(orderId)
+      return { success: true }
     },
 
     approvePhysicalOrder(orderId) {
@@ -1465,6 +1524,20 @@ export const useResellerStore = defineStore('reseller', {
     myCustomPackages: (state) => {
       const adminStore = useAdminStore()
       return adminStore.packages.filter(p => p.resellerId === state.activeResellerId)
+    },
+    myStreamingOrders: (state) => {
+      const adminStore = useAdminStore()
+      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId)
+    },
+    myPendingStreamingOrders: (state) => {
+      const adminStore = useAdminStore()
+      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId && o.status === 'Waiting Provider')
+    },
+    myIncomingOrdersWithReceipt: (state) => {
+      const adminStore = useAdminStore()
+      const streaming = adminStore.orders.filter(o => o.resellerId === state.activeResellerId && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
+      const physical = adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
+      return [...streaming, ...physical]
     }
   },
   actions: {
