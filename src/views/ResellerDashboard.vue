@@ -68,7 +68,6 @@ const openFlyerForProduct = (prod) => {
 }
 const filterStatus = ref('All')
 const searchQuery = ref('')
-const selectedResellerFilter = ref('All') // Filtrar por Número y Nombre de Revendedor
 const selectedClient = ref(null)
 const showDetailModal = ref(false)
 
@@ -77,18 +76,20 @@ const showWalletModal = ref(false)
 const topUpAmount = ref(1000)
 const topUpReason = ref('Carga de saldo a favor / Devolución')
 
-// Alertas de Renovaciones pendientes que el Proveedor actualizó con nuevos datos de cuenta
+// Alertas de Renovaciones pendientes que el Proveedor actualizó con nuevos datos de cuenta (Estricto por Revendedor)
 const pendingRenewalsAlert = computed(() => {
   return adminStore.renewalRequests.filter(r => 
     r.status === 'Provider Updated' && 
-    (selectedResellerFilter.value === 'All' || r.resellerId === selectedResellerFilter.value)
+    r.resellerId === currentResellerId.value &&
+    r.resellerId !== 'DIRECT'
   )
 })
 
 // Alertas prioritarias enviadas por el Proveedor (Novedades, Cambios de clave, Eventualidades)
 const resellerAlerts = computed(() => {
   return adminStore.resellerAlerts.filter(a => 
-    (selectedResellerFilter.value === 'All' || a.resellerId === selectedResellerFilter.value)
+    (a.resellerId === currentResellerId.value || a.resellerId === 'ALL') &&
+    a.resellerId !== 'DIRECT'
   )
 })
 
@@ -160,15 +161,18 @@ const submitManualPurchase = () => {
 
 const filteredClients = computed(() => {
   return resellerStore.clients.filter(c => {
+    // ESTRICTO: Solo clientes del revendedor autenticado, NUNCA clientes directos ni de terceros
+    const belongsToMe = c.resellerId === currentResellerId.value && c.resellerId !== 'DIRECT'
+    if (!belongsToMe) return false
+
     const matchesStatus = filterStatus.value === 'All' || c.status === filterStatus.value
-    const matchesReseller = selectedResellerFilter.value === 'All' || c.resellerId === selectedResellerFilter.value
-    const query = searchQuery.value.toLowerCase()
-    const matchesSearch = c.name.toLowerCase().includes(query) ||
+    const query = searchQuery.value.toLowerCase().trim()
+    const matchesSearch = !query ||
+                          (c.name && c.name.toLowerCase().includes(query)) ||
                           (c.clientNumber && c.clientNumber.toLowerCase().includes(query)) ||
-                          c.account.toLowerCase().includes(query) ||
-                          c.id.toLowerCase().includes(query) ||
-                          c.platform.toLowerCase().includes(query)
-    return matchesStatus && matchesReseller && matchesSearch
+                          (c.id && c.id.toLowerCase().includes(query)) ||
+                          (c.platform && c.platform.toLowerCase().includes(query))
+    return matchesStatus && matchesSearch
   })
 })
 
@@ -214,7 +218,7 @@ const handleReportFailure = (client) => {
 // Confirmar nuevas cuentas actualizadas por el Proveedor en renovación
 const confirmRenewalFromProvider = (renewal) => {
   resellerStore.confirmRenewalUpdate(renewal.id)
-  toast.add(`Nuevas credenciales de ${renewal.clientName} confirmadas y activadas`, 'success')
+  toast.add(`Renovación de ${renewal.clientName} (${renewal.platform}) confirmada y activada`, 'success')
 }
 
 const handleRenew = (client) => {
@@ -224,43 +228,9 @@ const handleRenew = (client) => {
     clientName: client.name,
     platform: client.platform,
     planName: client.planName || `${client.devices} Pantallas`,
-    resellerId: client.resellerId || resellerStore.activeResellerId || 'DIRECT',
-    currentCredentials: {
-      account: client.account,
-      pass: client.pass,
-      profiles: client.profiles
-    }
+    resellerId: client.resellerId || currentResellerId.value
   })
   toast.add(`Solicitud de renovación para ${client.name} enviada al Proveedor (ID: ${result.renewal.id})`, 'success')
-}
-
-const formatWaPhone = (phone) => {
-  if (!phone) return ''
-  let cleaned = String(phone).replace(/[^0-9]/g, '')
-  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1)
-  if (cleaned.length === 10) cleaned = `549${cleaned}`
-  else if (cleaned.length === 11 && cleaned.startsWith('15')) cleaned = `54911${cleaned.substring(2)}`
-  else if (cleaned.length === 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) cleaned = `549${cleaned.substring(2)}`
-  return cleaned
-}
-
-const formatWhatsAppReminder = (client) => {
-  const days = getExpiryDays(client.expiry)
-  let text = ''
-  if (days <= 2) {
-    text = `🚨 *AVISO DE VENCIMIENTO STREAMPRO*\nHola ${client.name} (N° ${client.clientNumber || client.id}), tu suscripción de *${client.platform}* (${client.planName || client.devices + ' pantallas'}) vence pronto (${client.expiry}).\n¿Deseas renovar hoy para mantener tus perfiles guardados? Responde a este mensaje para confirmar tu renovación.`
-  } else {
-    const profilesList = (client.profiles || []).map(p => `• ${p.name} (PIN: ${p.pin})`).join('\n')
-    text = `🎬 *STREAMPRO - TUS CREDENCIALES OFICIALES*\nHola ${client.name}!\nN° Cliente: ${client.clientNumber || client.id}\nPlataforma: *${client.platform}*\nPlan: *${client.planName || client.devices + ' pantallas'}*\nCorreo: ${client.account}\nClave: ${client.pass}\nVence: ${client.expiry}\n\n*Perfiles asignados:*\n${profilesList}\n\n¡Gracias por tu compra!`
-  }
-  return `https://wa.me/${formatWaPhone(client.phone)}?text=${encodeURIComponent(text)}`
-}
-
-// Alerta Automática de Vencimiento con 1 Clic
-const sendUrgentRenewalReminder = (client) => {
-  const text = `🚨 *STREAMPRO - RENOVACIÓN URGENTE*\nHola ${client.name}!\nTu servicio de *${client.platform}* (${client.planName || client.devices + ' pantallas'}) vence el *${client.expiry}*.\n\n⚠️ Renueva ahora para no perder tu historial, favoritos y perfiles configurados.\n\n💳 Puedes renovar respondiendo directamente a este mensaje o desde nuestra tienda oficial:\n👉 ${uniqueAffiliateLink.value}`
-  window.open(`https://wa.me/${formatWaPhone(client.phone)}?text=${encodeURIComponent(text)}`, '_blank')
-  toast.add(`Aviso de renovación enviado a WhatsApp de ${client.name}`, 'success')
 }
 
 // Comprobante Digital de Entrega en Imagen / Tarjeta
@@ -288,12 +258,18 @@ const downloadVoucherImage = async () => {
   }
 }
 
-const shareVoucherWhatsApp = () => {
+// Copiar enlace seguro de Bóveda para el cliente sin exponer credenciales maestras ni WhatsApp
+const copyVaultAccessForClient = () => {
   if (!selectedVoucherClient.value) return
   const c = selectedVoucherClient.value
-  const profilesList = (c.profiles || []).map(p => `• ${p.name} (PIN: ${p.pin})`).join('\n')
-  const msg = `🧾 *COMPROBANTE OFICIAL DE ENTREGA - STREAMPRO*\n━━━━━━━━━━━━━━━━━━━━\n👤 Cliente: *${c.name}*\n🏷️ N° Cliente: *${c.clientNumber || c.id}*\n🍿 Servicio: *${c.platform}* (${c.planName || c.devices + ' pantallas'})\n📧 Cuenta: *${c.account}*\n🔑 Clave: *${c.pass}*\n📅 Vence: *${c.expiry}*\n\n*Perfiles asignados:*\n${profilesList}\n━━━━━━━━━━━━━━━━━━━━\n✅ Garantía activa y soporte directo.\n¡Disfruta de tu streaming!`
-  window.open(`https://wa.me/${formatWaPhone(c.phone)}?text=${encodeURIComponent(msg)}`, '_blank')
+  const origin = getBaseOrigin()
+  const msg = `🧾 *STREAMPRO - CERTIFICADO OFICIAL DE SUSCRIPCIÓN*\n━━━━━━━━━━━━━━━━━━━━\n👤 Cliente: *${c.name}*\n🏷️ N° Cliente: *${c.clientNumber || c.id}*\n🍿 Servicio: *${c.platform}* (${c.planName || c.devices + ' pantallas'})\n📅 Vencimiento: *${c.expiry}*\n\n🔐 *Acceso a tus credenciales y perfiles asignados:*\nPuedes consultar tus accesos de forma 100% segura en tu Bóveda Privada:\n👉 ${origin}/boveda\n(Ingresa con tu N° de Cliente: *${c.clientNumber || c.id}*)\n━━━━━━━━━━━━━━━━━━━━\n🛡️ Garantía oficial y soporte prioritario activo.\n¡Que disfrutes tu servicio!`
+  
+  navigator.clipboard.writeText(msg).then(() => {
+    toast.add('¡Texto del comprobante y link de Bóveda copiado para tu cliente!', 'success')
+  }).catch(() => {
+    toast.add('Error al copiar comprobante', 'error')
+  })
 }
 
 // Simulador y Calculadora de Ganancias Mayoristas
@@ -356,7 +332,6 @@ onMounted(async () => {
         resellerStore.activeResellerId = found.id
         resellerStore.sessionUser = { ...found }
         resellerStore.wallet = found.balance || 0
-        selectedResellerFilter.value = found.id
         toast.add(`¡Bienvenido de nuevo, ${found.name}! Sesión recordada.`, 'success')
       }
     }
@@ -372,7 +347,6 @@ const handleLogin = () => {
   }
   const res = resellerStore.login(loginForm.value.username, loginForm.value.password)
   if (res.success) {
-    selectedResellerFilter.value = res.reseller.id
     if (rememberSession.value) {
       saveRememberedSession('reseller', res.reseller)
     } else {
@@ -401,7 +375,6 @@ const handleBiometricLogin = async () => {
         resellerStore.activeResellerId = found.id
         resellerStore.sessionUser = { ...found }
         resellerStore.wallet = found.balance || 0
-        selectedResellerFilter.value = found.id
         if (rememberSession.value) {
           saveRememberedSession('reseller', found)
         }
@@ -444,20 +417,16 @@ const handleLogout = () => {
   toast.add('Sesión de distribuidor cerrada correctamente.', 'info')
 }
 
-// Link único por revendedor & Acciones de compartir
+// Link único por revendedor & Acciones de compartir (Aislamiento de Revendedor)
 const currentResellerId = computed(() => {
-  return resellerStore.isAuthenticated && resellerStore.sessionUser?.id 
-    ? resellerStore.sessionUser.id 
-    : (selectedResellerFilter.value !== 'All' ? selectedResellerFilter.value : resellerStore.activeResellerId)
+  return resellerStore.sessionUser?.id || resellerStore.activeResellerId || 'RES-01'
 })
 
-// Pedidos web de streaming entrantes para este revendedor
+// Pedidos web de streaming entrantes para este revendedor (Estricto: NUNCA DIRECT ni de otros)
 const myIncomingStreamingOrders = computed(() => {
   const targetId = currentResellerId.value
   return adminStore.orders.filter(o => 
-    selectedResellerFilter.value === 'All'
-      ? (o.resellerId === targetId || o.resellerId === resellerStore.activeResellerId)
-      : o.resellerId === selectedResellerFilter.value
+    o.resellerId === targetId && o.resellerId !== 'DIRECT'
   )
 })
 
@@ -1049,7 +1018,7 @@ const openProductInNewTab = (product) => {
             @click="confirmRenewalFromProvider(ren)"
             class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black transition-all shadow"
           >
-            Aceptar cuenta de {{ ren.clientName }} ({{ ren.newCredentials.account }})
+            Aceptar renovación de {{ ren.clientName }} ({{ ren.platform }})
           </button>
         </div>
       </div>
@@ -1241,9 +1210,11 @@ const openProductInNewTab = (product) => {
                   <span class="text-xs text-slate-500 font-mono">{{ order.createdAt }}</span>
                 </div>
                 <div class="text-xs text-slate-400 flex flex-wrap items-center gap-3">
-                  <span>WhatsApp: <a :href="`https://wa.me/${(order.customerPhone || '').replace(/\D/g, '')}`" target="_blank" class="text-brand-accent hover:underline font-bold">{{ order.customerPhone }}</a></span>
+                  <span>Identificador Cliente: <strong class="text-brand-accent font-mono">{{ order.customerNumber }}</strong></span>
                   <span class="text-slate-600">•</span>
                   <span>Medio de Pago: <strong class="text-slate-200">{{ order.paymentMethod || 'Transferencia' }}</strong></span>
+                  <span class="text-slate-600">•</span>
+                  <span class="text-emerald-400 font-bold">Comisión: +${{ (order.resellerProfit || 0).toLocaleString() }} ARS</span>
                 </div>
               </div>
 
@@ -1306,15 +1277,13 @@ const openProductInNewTab = (product) => {
 
       <!-- Buscador y Barra de Acciones Pro del Revendedor -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        <!-- Selector de Revendedor por Número y Nombre -->
-        <div class="flex items-center gap-2">
-          <span class="text-xs text-slate-400 font-bold uppercase whitespace-nowrap">Revendedor:</span>
-          <select v-model="selectedResellerFilter" class="bg-[#020617] border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-semibold outline-none focus:border-brand-accent">
-            <option value="All">Todos los Revendedores</option>
-            <option v-for="res in adminStore.resellers" :key="res.id" :value="res.id">
-              [{{ res.id }}] {{ res.name }}
-            </option>
-          </select>
+        <!-- Identificador y Estado de Sesión del Revendedor (Privacidad Estricta) -->
+        <div class="flex items-center gap-2 bg-[#020617] border border-slate-800 rounded-xl px-3.5 py-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-xs text-slate-400 font-bold uppercase whitespace-nowrap">Mi Distribución:</span>
+          <span class="text-xs font-mono font-bold text-brand-accent">
+            [{{ currentResellerId }}] {{ resellerStore.sessionUser?.name || 'Distribuidor Oficial' }}
+          </span>
         </div>
 
         <div class="relative flex-1">
@@ -1322,7 +1291,7 @@ const openProductInNewTab = (product) => {
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="Buscar por Número de Cliente (CLI-...), Nombre, Plataforma o Cuenta..." 
+            placeholder="Buscar por N° de Cliente (CLI-...), Nombre o Plataforma..." 
             class="w-full bg-[#020617] border border-slate-800 focus:border-brand-accent rounded-xl py-2.5 pl-10 pr-4 text-xs text-white outline-none"
           >
         </div>
@@ -1401,7 +1370,7 @@ const openProductInNewTab = (product) => {
             <thead class="bg-slate-950/80 text-slate-400 text-xs uppercase tracking-wider font-bold border-b border-slate-800">
               <tr>
                 <th class="px-6 py-4">N° Cliente / Nombre</th>
-                <th class="px-6 py-4">Revendedor Asignado</th>
+                <th class="px-6 py-4 text-emerald-400">Tu Ganancia</th>
                 <th class="px-6 py-4">Servicio & Pantallas</th>
                 <th class="px-6 py-4">Perfiles Asignados</th>
                 <th class="px-6 py-4">Vencimiento SLA</th>
@@ -1411,7 +1380,7 @@ const openProductInNewTab = (product) => {
             </thead>
             <tbody class="divide-y divide-slate-800">
               <tr v-for="client in filteredClients" :key="client.id" class="hover:bg-slate-800/40 transition-colors">
-                <!-- N° Cliente y Nombre -->
+                <!-- N° Cliente y Nombre (Privacidad: Sin WhatsApp ni Teléfono) -->
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
                     <span class="font-mono text-xs font-bold bg-brand-accent/15 text-brand-accent px-2 py-0.5 rounded border border-brand-accent/30">
@@ -1419,13 +1388,16 @@ const openProductInNewTab = (product) => {
                     </span>
                     <span class="font-bold text-white">{{ client.name }}</span>
                   </div>
-                  <div class="text-[11px] font-mono text-slate-400 mt-0.5">{{ client.phone }}</div>
+                  <div class="text-[11px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
+                    <span>🛡️ Acceso:</span>
+                    <span class="text-slate-400">Bóveda Privada</span>
+                  </div>
                 </td>
 
-                <!-- Revendedor Número y Nombre -->
+                <!-- Tu Ganancia Neta -->
                 <td class="px-6 py-4">
-                  <span class="text-xs font-mono font-semibold bg-slate-950 text-slate-300 px-2 py-1 rounded border border-slate-800">
-                    {{ client.resellerId }}
+                  <span class="text-xs font-black font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    +${{ (client.resellerProfit || 0).toLocaleString() }} ARS
                   </span>
                 </td>
 
@@ -1473,7 +1445,7 @@ const openProductInNewTab = (product) => {
                   </span>
                 </td>
 
-                <!-- Acciones Rápidas Pro (Sin solicitud de reemplazo para revendedor) -->
+                <!-- Acciones Rápidas Pro -->
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-2">
                     <!-- Comprobante Digital de Entrega en Imagen / PDF -->
@@ -1485,31 +1457,11 @@ const openProductInNewTab = (product) => {
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     </button>
 
-                    <!-- Alerta Automática de Renovación Urgente a WhatsApp -->
-                    <button 
-                      v-if="getExpiryDays(client.expiry) <= 5"
-                      @click="sendUrgentRenewalReminder(client)" 
-                      class="text-amber-300 hover:text-slate-950 hover:bg-amber-400 bg-amber-500/15 p-2 rounded-xl border border-amber-500/40 transition-all shadow-sm animate-pulse" 
-                      title="Enviar Alerta Urgente de Vencimiento a WhatsApp con 1 Clic"
-                    >
-                      <span class="text-xs">⚡</span>
-                    </button>
-
-                    <!-- WhatsApp con Credenciales y PINs -->
-                    <a 
-                      :href="formatWhatsAppReminder(client)" 
-                      target="_blank" 
-                      class="text-emerald-400 hover:text-white hover:bg-emerald-600 bg-slate-950 p-2 rounded-xl border border-emerald-500/30 transition-all shadow-sm" 
-                      title="Enviar WhatsApp con Credenciales y PINs"
-                    >
-                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
-                    </a>
-
                     <!-- Renovar (+30 Días) -->
                     <button 
                       @click="handleRenew(client)" 
                       class="text-blue-400 hover:text-white hover:bg-blue-600 bg-slate-950 p-2 rounded-xl border border-blue-500/30 transition-all shadow-sm" 
-                      title="Renovar (+30 días)"
+                      title="Solicitar Renovación al Proveedor (+30 días)"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                     </button>
@@ -1519,7 +1471,7 @@ const openProductInNewTab = (product) => {
                       v-if="client.status !== 'En Reemplazo'" 
                       @click="handleReportFailure(client)" 
                       class="text-red-400 hover:text-white hover:bg-red-600 bg-slate-950 p-2 rounded-xl border border-red-500/30 transition-all shadow-sm" 
-                      title="Reportar Caída Técnica"
+                      title="Reportar Caída Técnica al Proveedor"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </button>
@@ -1528,7 +1480,7 @@ const openProductInNewTab = (product) => {
                     <button 
                       @click="openDetails(client)" 
                       class="text-slate-400 hover:text-brand-accent bg-slate-950 p-2 rounded-xl border border-slate-800 hover:border-brand-accent/40 transition-all"
-                      title="Ver Ficha y Editar Nombres/PINs"
+                      title="Ver Ficha de Suscripción"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                     </button>
@@ -1867,8 +1819,12 @@ const openProductInNewTab = (product) => {
                   <h4 class="font-bold text-white text-sm">{{ order.customerName }} ({{ order.customerNumber }})</h4>
                   <span class="text-xs text-slate-400 font-mono">{{ order.createdAt }}</span>
                 </div>
-                <div class="text-xs text-slate-400 mt-1">
-                  WhatsApp: <strong class="text-slate-200">{{ order.customerPhone }}</strong> · Origen: <span :class="order.source === 'shared_url' ? 'text-emerald-400 font-bold' : 'text-blue-300'">{{ order.source === 'shared_url' ? '🔗 Link Compartido (3%)' : '🛍️ Tienda (1%)' }}</span>
+                <div class="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                  <span>N° Pedido: <strong class="text-amber-400 font-mono">{{ order.customerNumber || order.id }}</strong></span>
+                  <span class="text-slate-600">•</span>
+                  <span>Origen: <span :class="order.source === 'shared_url' ? 'text-emerald-400 font-bold' : 'text-blue-300'">{{ order.source === 'shared_url' ? '🔗 Link Compartido (3%)' : '🛍️ Tienda (1%)' }}</span></span>
+                  <span class="text-slate-600">•</span>
+                  <span class="text-emerald-400 font-bold font-mono">Comisión: +${{ (order.commissionAmount || 0).toLocaleString() }} ARS</span>
                 </div>
               </div>
 
@@ -2650,11 +2606,31 @@ const openProductInNewTab = (product) => {
         </div>
 
         <div class="space-y-4">
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
-            <p class="text-slate-400">Revendedor Asignado: <strong class="text-white">{{ selectedClient.resellerId }}</strong></p>
-            <p class="text-slate-400">Correo oficial: <strong class="text-white">{{ selectedClient.account }}</strong></p>
-            <p class="text-slate-400">Contraseña: <strong class="text-white font-mono">{{ selectedClient.pass }}</strong></p>
-            <p class="text-slate-400">Vencimiento: <strong class="text-amber-300">{{ selectedClient.expiry }}</strong></p>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span class="text-slate-400">Servicio & Plan:</span>
+              <strong class="text-white">{{ selectedClient.platform }} · {{ selectedClient.planName || selectedClient.devices + ' Pantallas' }}</strong>
+            </div>
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span class="text-slate-400">Tu Ganancia Obtenida:</span>
+              <strong class="text-emerald-400 font-mono text-sm">+${{ (selectedClient.resellerProfit || 0).toLocaleString() }} ARS</strong>
+            </div>
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span class="text-slate-400">Vencimiento SLA:</span>
+              <strong class="text-amber-300 font-mono">{{ selectedClient.expiry }} ({{ getExpiryBadge(selectedClient.expiry).text }})</strong>
+            </div>
+            <div class="bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-500/20 space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="text-indigo-300 font-bold flex items-center gap-1.5">
+                  <span>🔐</span>
+                  <span>Entrega de Credenciales:</span>
+                </span>
+                <span class="font-bold text-brand-accent">Bóveda Privada del Cliente</span>
+              </div>
+              <p class="text-[11px] text-slate-400">
+                Las credenciales maestras están resguardadas y se entregan directamente al cliente en <strong class="text-slate-200">streamepro.me/boveda</strong> para máxima seguridad.
+              </p>
+            </div>
           </div>
 
           <!-- Perfiles -->
@@ -2905,15 +2881,15 @@ const openProductInNewTab = (product) => {
 
           <div class="space-y-1.5 text-xs bg-[#020617] p-3 rounded-xl border border-slate-800/80 font-mono">
             <div class="flex justify-between">
-              <span class="text-slate-400">Cuenta:</span>
-              <strong class="text-slate-200">{{ selectedVoucherClient.account }}</strong>
+              <span class="text-slate-400">Entrega de Accesos:</span>
+              <strong class="text-emerald-400">Bóveda Privada StreamPro</strong>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-400">Contraseña:</span>
-              <strong class="text-amber-300">{{ selectedVoucherClient.pass }}</strong>
+              <span class="text-slate-400">Consulta de Credenciales:</span>
+              <strong class="text-brand-accent">https://streamepro.me/boveda</strong>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-400">Vencimiento:</span>
+              <span class="text-slate-400">Garantía Activa Hasta:</span>
               <strong class="text-emerald-400">{{ selectedVoucherClient.expiry }}</strong>
             </div>
           </div>
@@ -2935,7 +2911,7 @@ const openProductInNewTab = (product) => {
 
           <div class="pt-2 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-400 font-mono">
             <span>🛡️ Garantía 30 Días</span>
-            <span>Atendido por {{ resellerStore.sessionUser?.name || 'Distribuidor Oficial' }}</span>
+            <span>Atendido por {{ resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Distribuidor Oficial' }}</span>
           </div>
         </div>
 
@@ -2949,11 +2925,12 @@ const openProductInNewTab = (product) => {
             <span>Descargar Imagen</span>
           </button>
           <button 
-            @click="shareVoucherWhatsApp" 
-            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs transition-all shadow flex items-center justify-center gap-1.5"
+            @click="copyVaultAccessForClient" 
+            class="flex-1 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 rounded-xl text-xs transition-all shadow flex items-center justify-center gap-1.5"
+            title="Copiar instrucciones y link de Bóveda para el cliente"
           >
-            <span>💬</span>
-            <span>Enviar por WhatsApp</span>
+            <span>📋</span>
+            <span>Copiar Enlace de Bóveda</span>
           </button>
         </div>
       </div>

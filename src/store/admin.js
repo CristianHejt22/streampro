@@ -1702,38 +1702,51 @@ export const useResellerStore = defineStore('reseller', {
     wallet: 0
   }),
   getters: {
-    totalProfit: (state) => state.clients.reduce((acc, c) => acc + (c.resellerProfit || 0), 0),
-    counts: (state) => ({
-      total: state.clients.length,
-      activas: state.clients.filter(c => c.status === 'Activa').length,
-      porVencer: state.clients.filter(c => c.status === 'Por Vencer').length,
-      vencidas: state.clients.filter(c => c.status === 'Vencida').length,
-      enReemplazo: state.clients.filter(c => c.status === 'En Reemplazo').length
-    }),
+    totalProfit: (state) => {
+      const resId = state.activeResellerId
+      return state.clients
+        .filter(c => c.resellerId === resId && c.resellerId !== 'DIRECT')
+        .reduce((acc, c) => acc + (c.resellerProfit || 0), 0)
+    },
+    counts: (state) => {
+      const resId = state.activeResellerId
+      const myClients = state.clients.filter(c => c.resellerId === resId && c.resellerId !== 'DIRECT')
+      return {
+        total: myClients.length,
+        activas: myClients.filter(c => c.status === 'Activa').length,
+        porVencer: myClients.filter(c => c.status === 'Por Vencer').length,
+        vencidas: myClients.filter(c => c.status === 'Vencida').length,
+        enReemplazo: myClients.filter(c => c.status === 'En Reemplazo').length
+      }
+    },
+    myClients: (state) => {
+      const resId = state.activeResellerId
+      return state.clients.filter(c => c.resellerId === resId && c.resellerId !== 'DIRECT')
+    },
     myPhysicalOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId)
+      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT')
     },
     myPendingPhysicalOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.status === 'Pendiente')
+      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && o.status === 'Pendiente')
     },
     myReceivedPhysicalOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.status === 'Recibido')
+      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && o.status === 'Recibido')
     },
     myConfirmedPhysicalOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && (o.status === 'Confirmado' || o.status === 'Aprobado'))
+      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && (o.status === 'Confirmado' || o.status === 'Aprobado'))
     },
     myApprovedPhysicalOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && (o.status === 'Confirmado' || o.status === 'Aprobado'))
+      return adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && (o.status === 'Confirmado' || o.status === 'Aprobado'))
     },
     myPhysicalCommissionsEarned: (state) => {
       const adminStore = useAdminStore()
       return adminStore.physicalOrders
-        .filter(o => o.resellerId === state.activeResellerId && (o.status === 'Confirmado' || o.status === 'Aprobado'))
+        .filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && (o.status === 'Confirmado' || o.status === 'Aprobado'))
         .reduce((sum, o) => sum + (o.commissionAmount || 0), 0)
     },
     myPackages: (state) => {
@@ -1742,20 +1755,20 @@ export const useResellerStore = defineStore('reseller', {
     },
     myCustomPackages: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.packages.filter(p => p.resellerId === state.activeResellerId)
+      return adminStore.packages.filter(p => p.resellerId === state.activeResellerId && p.resellerId !== 'DIRECT')
     },
     myStreamingOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId)
+      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT')
     },
     myPendingStreamingOrders: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId && o.status === 'Waiting Provider')
+      return adminStore.orders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && o.status === 'Waiting Provider')
     },
     myIncomingOrdersWithReceipt: (state) => {
       const adminStore = useAdminStore()
-      const streaming = adminStore.orders.filter(o => o.resellerId === state.activeResellerId && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
-      const physical = adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
+      const streaming = adminStore.orders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
+      const physical = adminStore.physicalOrders.filter(o => o.resellerId === state.activeResellerId && o.resellerId !== 'DIRECT' && (o.hasReceipt || o.receiptStatus === 'pending_verification'))
       return [...streaming, ...physical]
     }
   },
