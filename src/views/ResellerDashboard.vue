@@ -195,6 +195,16 @@ const handleRenew = (client) => {
   toast.add(`Solicitud de renovación para ${client.name} enviada al Proveedor (ID: ${result.renewal.id})`, 'success')
 }
 
+const formatWaPhone = (phone) => {
+  if (!phone) return ''
+  let cleaned = String(phone).replace(/[^0-9]/g, '')
+  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1)
+  if (cleaned.length === 10) cleaned = `549${cleaned}`
+  else if (cleaned.length === 11 && cleaned.startsWith('15')) cleaned = `54911${cleaned.substring(2)}`
+  else if (cleaned.length === 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) cleaned = `549${cleaned.substring(2)}`
+  return cleaned
+}
+
 const formatWhatsAppReminder = (client) => {
   const days = getExpiryDays(client.expiry)
   let text = ''
@@ -204,13 +214,13 @@ const formatWhatsAppReminder = (client) => {
     const profilesList = (client.profiles || []).map(p => `• ${p.name} (PIN: ${p.pin})`).join('\n')
     text = `🎬 *STREAMPRO - TUS CREDENCIALES OFICIALES*\nHola ${client.name}!\nN° Cliente: ${client.clientNumber || client.id}\nPlataforma: *${client.platform}*\nPlan: *${client.planName || client.devices + ' pantallas'}*\nCorreo: ${client.account}\nClave: ${client.pass}\nVence: ${client.expiry}\n\n*Perfiles asignados:*\n${profilesList}\n\n¡Gracias por tu compra!`
   }
-  return `https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`
+  return `https://wa.me/${formatWaPhone(client.phone)}?text=${encodeURIComponent(text)}`
 }
 
 // Alerta Automática de Vencimiento con 1 Clic
 const sendUrgentRenewalReminder = (client) => {
   const text = `🚨 *STREAMPRO - RENOVACIÓN URGENTE*\nHola ${client.name}!\nTu servicio de *${client.platform}* (${client.planName || client.devices + ' pantallas'}) vence el *${client.expiry}*.\n\n⚠️ Renueva ahora para no perder tu historial, favoritos y perfiles configurados.\n\n💳 Puedes renovar respondiendo directamente a este mensaje o desde nuestra tienda oficial:\n👉 ${uniqueAffiliateLink.value}`
-  window.open(`https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
+  window.open(`https://wa.me/${formatWaPhone(client.phone)}?text=${encodeURIComponent(text)}`, '_blank')
   toast.add(`Aviso de renovación enviado a WhatsApp de ${client.name}`, 'success')
 }
 
@@ -244,7 +254,7 @@ const shareVoucherWhatsApp = () => {
   const c = selectedVoucherClient.value
   const profilesList = (c.profiles || []).map(p => `• ${p.name} (PIN: ${p.pin})`).join('\n')
   const msg = `🧾 *COMPROBANTE OFICIAL DE ENTREGA - STREAMPRO*\n━━━━━━━━━━━━━━━━━━━━\n👤 Cliente: *${c.name}*\n🏷️ N° Cliente: *${c.clientNumber || c.id}*\n🍿 Servicio: *${c.platform}* (${c.planName || c.devices + ' pantallas'})\n📧 Cuenta: *${c.account}*\n🔑 Clave: *${c.pass}*\n📅 Vence: *${c.expiry}*\n\n*Perfiles asignados:*\n${profilesList}\n━━━━━━━━━━━━━━━━━━━━\n✅ Garantía activa y soporte directo.\n¡Disfruta de tu streaming!`
-  window.open(`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank')
+  window.open(`https://wa.me/${formatWaPhone(c.phone)}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 // Simulador y Calculadora de Ganancias Mayoristas

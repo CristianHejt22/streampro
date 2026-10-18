@@ -411,7 +411,17 @@ const sendOrderToWhatsApp = () => {
     ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000')
     : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 11 0000-0000')
 
-  const cleanPhone = targetPhone.replace(/[^0-9]/g, '')
+  let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = cleanPhone.substring(1)
+  }
+  if (cleanPhone.length === 10) {
+    cleanPhone = `549${cleanPhone}`
+  } else if (cleanPhone.length === 11 && cleanPhone.startsWith('15')) {
+    cleanPhone = `54911${cleanPhone.substring(2)}`
+  } else if (cleanPhone.length === 12 && cleanPhone.startsWith('54') && !cleanPhone.startsWith('549')) {
+    cleanPhone = `549${cleanPhone.substring(2)}`
+  }
 
   const itemsList = ord.items.map(i => {
     const name = i.name || i.platform || 'Item'

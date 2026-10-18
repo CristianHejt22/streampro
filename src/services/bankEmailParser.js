@@ -153,10 +153,10 @@ export const BANK_CONFIGS = [
   }
 ]
 
-// Convierte "$ 7.700,00" o "7700.00" o "7.700" en número flotante
+// Convierte "$ 7.700,00" o "7700.00" o "7.700" o "$ 7 700 ARS" en número flotante
 export function parseAmountNumber(str) {
   if (!str) return null
-  let s = str.trim().replace(/\$/g, '').trim()
+  let s = String(str).trim().replace(/\$/g, '').replace(/ARS/gi, '').replace(/\s+/g, '').trim()
   if (s.includes('.') && s.includes(',')) {
     // Formato argentino: 7.700,50 -> quitar puntos de miles y reemplazar coma por punto
     s = s.replace(/\./g, '').replace(',', '.')
@@ -208,7 +208,7 @@ export function parseBankEmail(rawContent, subject = '') {
   }
 }
 
-// Cruce inteligente con pedidos pendientes
+// Cruce inteligente con pedidos pendientes (digitales y físicos)
 export function matchTransferWithOrders(transfer, pendingOrders) {
   if (!transfer || !transfer.amount || !pendingOrders || pendingOrders.length === 0) {
     return []
@@ -218,8 +218,8 @@ export function matchTransferWithOrders(transfer, pendingOrders) {
     let score = 0
     const reasons = []
 
-    // 1. Coincidencia de Monto (Criterio Principal)
-    const orderAmount = order.clientPrice || order.total || 0
+    // 1. Coincidencia de Monto (Criterio Principal - streaming y físico)
+    const orderAmount = order.totalAmount || order.clientPrice || order.total || 0
     const diff = Math.abs(orderAmount - transfer.amount)
     
     if (diff === 0) {
@@ -231,9 +231,10 @@ export function matchTransferWithOrders(transfer, pendingOrders) {
     }
 
     // 2. Coincidencia de Nombre / Titular
-    if (transfer.sender && transfer.sender !== 'Desconocido' && order.customerName) {
+    const custName = order.customerName || order.clientName || ''
+    if (transfer.sender && transfer.sender !== 'Desconocido' && custName) {
       const transWords = transfer.sender.toLowerCase().split(/\s+/).filter(w => w.length > 2)
-      const orderWords = order.customerName.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+      const orderWords = custName.toLowerCase().split(/\s+/).filter(w => w.length > 2)
       
       const commonWords = transWords.filter(w => orderWords.some(ow => ow.includes(w) || w.includes(ow)))
       if (commonWords.length >= 2) {
@@ -245,9 +246,10 @@ export function matchTransferWithOrders(transfer, pendingOrders) {
       }
     }
 
-    // 3. Coincidencia de N° Comprobante / Voucher
-    if (order.voucher && transfer.operationId && order.voucher !== 'Sin comprobante adjunto') {
-      const cleanVoucher = String(order.voucher).replace(/[^0-9A-Za-z]/g, '').toLowerCase()
+    // 3. Coincidencia de N° Comprobante / Voucher / ID de orden
+    const orderVoucher = order.voucher || order.paymentProof || order.comprobante || order.id || ''
+    if (orderVoucher && transfer.operationId && orderVoucher !== 'Sin comprobante adjunto') {
+      const cleanVoucher = String(orderVoucher).replace(/[^0-9A-Za-z]/g, '').toLowerCase()
       const cleanOp = String(transfer.operationId).replace(/[^0-9A-Za-z]/g, '').toLowerCase()
       if (cleanVoucher && cleanOp && (cleanVoucher.includes(cleanOp) || cleanOp.includes(cleanVoucher))) {
         score += 40
@@ -256,13 +258,16 @@ export function matchTransferWithOrders(transfer, pendingOrders) {
     }
 
     // 4. Bonificación si es pedido reciente (creado hoy)
-    if (order.createdDate) {
-      const orderDate = new Date(order.createdDate)
-      const now = new Date()
-      const hoursDiff = (now - orderDate) / (1000 * 60 * 60)
-      if (hoursDiff < 3) {
-        score += 10
-        reasons.push('Pedido generado recientemente (< 3 horas)')
+    const orderDateVal = order.createdDate || order.createdAt || order.date
+    if (orderDateVal) {
+      const orderDate = new Date(orderDateVal)
+      if (!isNaN(orderDate.getTime())) {
+        const now = new Date()
+        const hoursDiff = (now - orderDate) / (1000 * 60 * 60)
+        if (hoursDiff < 3) {
+          score += 10
+          reasons.push('Pedido generado recientemente (< 3 horas)')
+        }
       }
     }
 

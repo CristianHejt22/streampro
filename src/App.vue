@@ -9,7 +9,7 @@ const route = useRoute()
 const toastStore = useToastStore()
 const resellerStore = useResellerStore()
 
-const isClientArea = computed(() => route.name === 'home' || route.name === 'portal' || ['/', '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente', '/p'].includes(route.path))
+const isClientArea = computed(() => route.name === 'home' || route.name === 'portal' || route.name === 'recruitment' || ['/', '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente', '/p', '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'].includes(route.path))
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
 </script>

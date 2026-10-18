@@ -25,13 +25,23 @@ const unlockVault = () => {
     return
   }
 
-  // Buscar clientes coincidentes
+  // Buscar clientes coincidentes en servicios streaming
   let matched = []
   if (query) {
     matched = resellerStore.clients.filter(c => {
       const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
       const cleanId = (c.clientNumber || c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
       return cleanPhone.includes(query) || cleanId.includes(query) || query.includes(cleanPhone)
+    })
+  }
+
+  // Buscar pedidos físicos asociados
+  let matchedPhysical = []
+  if (query) {
+    matchedPhysical = adminStore.physicalOrders.filter(o => {
+      const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '')
+      const cleanId = (o.customerNumber || o.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      return (cleanPhone && (cleanPhone.includes(query) || query.includes(cleanPhone))) || (cleanId && cleanId.includes(query))
     })
   }
 
@@ -49,10 +59,16 @@ const unlockVault = () => {
     }
     authenticatedClients.value = matched
     isUnlocked.value = true
+    portalTab.value = 'streaming'
     toast.add(`¡Bienvenido! Se encontraron ${matched.length} servicio(s) asociados a tus datos`, 'success')
+  } else if (matchedPhysical.length > 0) {
+    authenticatedClients.value = []
+    isUnlocked.value = true
+    portalTab.value = 'physical'
+    toast.add(`¡Bienvenido! Se encontraron ${matchedPhysical.length} pedido(s) físicos asociados`, 'success')
   } else {
-    error.value = 'No se encontraron servicios activos con esos datos. Verifica tu número de WhatsApp o N° de Cliente.'
-    toast.add('No encontramos tus servicios', 'error')
+    error.value = 'No se encontraron servicios ni pedidos activos con esos datos. Verifica tu número de WhatsApp o N° de Cliente.'
+    toast.add('No encontramos tus servicios ni pedidos', 'error')
   }
 }
 
@@ -64,9 +80,10 @@ const copyToClipboard = (text, field) => {
   })
 }
 
-// Cuentas vinculadas al cliente autenticado
+// Cuentas vinculadas al cliente autenticado (NUNCA exponer clientes de otros usuarios)
 const customerAccounts = computed(() => {
-  return authenticatedClients.value.length > 0 ? authenticatedClients.value : resellerStore.clients
+  if (!isUnlocked.value) return []
+  return authenticatedClients.value
 })
 
 const getRemainingDays = (dateStr) => {
@@ -77,16 +94,28 @@ const getRemainingDays = (dateStr) => {
 // Pestaña en el Portal del Cliente: 'streaming' vs 'physical'
 const portalTab = ref('streaming') // 'streaming' | 'physical'
 
-// Pedidos físicos del cliente autenticado (o filtrados por teléfono / número de cliente)
+// Pedidos físicos del cliente autenticado (NUNCA mostrar órdenes globales)
 const customerPhysicalOrders = computed(() => {
+  if (!isUnlocked.value) return []
   const q = searchIdentifier.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
-  if (!q) {
-    return adminStore.physicalOrders
-  }
+  const matchedPhones = authenticatedClients.value.map(c => (c.phone || '').replace(/[^0-9]/g, '')).filter(Boolean)
+  const matchedIds = authenticatedClients.value.map(c => (c.clientNumber || c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean)
+
   return adminStore.physicalOrders.filter(o => {
     const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '')
     const cleanId = (o.customerNumber || o.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-    return cleanPhone.includes(q) || cleanId.includes(q) || q.includes(cleanPhone)
+    if (q) {
+      if ((cleanPhone && (cleanPhone.includes(q) || q.includes(cleanPhone))) || (cleanId && cleanId.includes(q))) {
+        return true
+      }
+    }
+    if (cleanPhone && matchedPhones.some(p => p.includes(cleanPhone) || cleanPhone.includes(p))) {
+      return true
+    }
+    if (cleanId && matchedIds.some(id => id.includes(cleanId) || cleanId.includes(id))) {
+      return true
+    }
+    return false
   })
 })
 
@@ -202,7 +231,7 @@ const handleCustomerRenewal = (acc) => {
               <span>Pedidos Físicos ({{ customerPhysicalOrders.length }})</span>
             </button>
           </div>
-          <button @click="isUnlocked = false; masterPin = ''" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors border border-slate-700 text-slate-300">
+          <button @click="isUnlocked = false; masterPin = ''; authenticatedClients = []" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors border border-slate-700 text-slate-300">
             Bloquear Vista
           </button>
         </div>

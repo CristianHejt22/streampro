@@ -208,52 +208,84 @@ export const PLATFORM_PLANS = DEFAULT_PLATFORM_PLANS
 // Configuración Inicial de Revendedor Oficial Base para Producción (Limpio para arrancar)
 const DEFAULT_INITIAL_RESELLERS = []
 
-export const useAdminStore = defineStore('admin', {
-  state: () => ({
-    // Credenciales Maestras Verídicas de Administrador
-    adminAuth: loadDb(DB_KEYS.ADMIN_AUTH, {
-      username: 'admin',
-      password: 'StreamPro2026*Admin',
-      name: 'Administrador Principal',
-      whatsapp: '+54 9 11 0000-0000'
-    }),
+const DEFAULT_PROVIDER_BANK = {
+  holderName: 'StreamPro Mayorista Central',
+  bankName: 'Mercado Pago',
+  cuit: '20-00000000-0',
+  cbuAlias: 'STREAMPRO.MAYORISTA',
+  cbuNumber: '0000000000000000000000',
+  whatsapp: '+54 9 11 0000-0000',
+  email: 'pagos@streampro.com'
+}
 
-    // Catálogo de Productos Virtuales y Precios persistente
-    pricingCatalog: loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS),
+function getInitialProviderBankSetup() {
+  const savedBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, DEFAULT_PROVIDER_BANK)
+  let savedAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, null)
 
-    // Revendedores reales generados desde el panel con usuario, contraseña y datos bancarios
-    resellers: loadDb(DB_KEYS.RESELLERS, DEFAULT_INITIAL_RESELLERS),
-
-    // Historial global de transacciones de billetera cargadas desde Admin (Inicia limpio en producción)
-    walletTransactions: loadDb(DB_KEYS.WALLET_TRANSACTIONS, []),
-
-    // Cuentas Bancarias registradas del PROVEEDOR (Multi-Cuenta con opción de cambiar de cuenta activa)
-    providerBankAccounts: loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [
+  if (!Array.isArray(savedAccounts) || savedAccounts.length === 0) {
+    savedAccounts = [
       {
         id: 'acc_mp_principal',
-        name: 'Mercado Pago Principal',
+        name: savedBankInfo.bankName ? `${savedBankInfo.bankName} Principal` : 'Mercado Pago Principal',
         isActive: true,
-        holderName: 'StreamPro Mayorista Central',
-        bankName: 'Mercado Pago',
-        cuit: '20-00000000-0',
-        cbuAlias: 'STREAMPRO.MAYORISTA',
-        cbuNumber: '0000000000000000000000',
-        whatsapp: '+54 9 11 0000-0000',
-        email: 'pagos@streampro.com',
-        notifyEmail: 'cobros.streampro@gmail.com'
+        holderName: savedBankInfo.holderName || DEFAULT_PROVIDER_BANK.holderName,
+        bankName: savedBankInfo.bankName || DEFAULT_PROVIDER_BANK.bankName,
+        cuit: savedBankInfo.cuit || DEFAULT_PROVIDER_BANK.cuit,
+        cbuAlias: savedBankInfo.cbuAlias || DEFAULT_PROVIDER_BANK.cbuAlias,
+        cbuNumber: savedBankInfo.cbuNumber || DEFAULT_PROVIDER_BANK.cbuNumber,
+        whatsapp: savedBankInfo.whatsapp || DEFAULT_PROVIDER_BANK.whatsapp,
+        email: savedBankInfo.email || DEFAULT_PROVIDER_BANK.email,
+        notifyEmail: savedBankInfo.notifyEmail || savedBankInfo.email || 'cobros.streampro@gmail.com'
       }
-    ]),
+    ]
+  }
 
-    // Datos de transferencia bancaria oficial del PROVEEDOR (Sincronizado con la cuenta activa)
-    providerBankInfo: loadDb(DB_KEYS.PROVIDER_BANK, {
-      holderName: 'StreamPro Mayorista Central',
-      bankName: 'Mercado Pago',
-      cuit: '20-00000000-0',
-      cbuAlias: 'STREAMPRO.MAYORISTA',
-      cbuNumber: '0000000000000000000000',
-      whatsapp: '+54 9 11 0000-0000',
-      email: 'pagos@streampro.com'
-    }),
+  // Asegurar que exista al menos una cuenta activa
+  const hasActive = savedAccounts.some(a => a.isActive)
+  if (!hasActive && savedAccounts.length > 0) {
+    savedAccounts[0].isActive = true
+  }
+
+  const activeAcc = savedAccounts.find(a => a.isActive) || savedAccounts[0]
+  const synchronizedBankInfo = {
+    holderName: activeAcc.holderName,
+    bankName: activeAcc.bankName,
+    cuit: activeAcc.cuit,
+    cbuAlias: activeAcc.cbuAlias,
+    cbuNumber: activeAcc.cbuNumber,
+    whatsapp: activeAcc.whatsapp,
+    email: activeAcc.email
+  }
+
+  return { accounts: savedAccounts, info: synchronizedBankInfo }
+}
+
+export const useAdminStore = defineStore('admin', {
+  state: () => {
+    const initialBank = getInitialProviderBankSetup()
+    return {
+      // Credenciales Maestras Verídicas de Administrador
+      adminAuth: loadDb(DB_KEYS.ADMIN_AUTH, {
+        username: 'admin',
+        password: 'StreamPro2026*Admin',
+        name: 'Administrador Principal',
+        whatsapp: '+54 9 11 0000-0000'
+      }),
+
+      // Catálogo de Productos Virtuales y Precios persistente
+      pricingCatalog: loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS),
+
+      // Revendedores reales generados desde el panel con usuario, contraseña y datos bancarios
+      resellers: loadDb(DB_KEYS.RESELLERS, DEFAULT_INITIAL_RESELLERS),
+
+      // Historial global de transacciones de billetera cargadas desde Admin (Inicia limpio en producción)
+      walletTransactions: loadDb(DB_KEYS.WALLET_TRANSACTIONS, []),
+
+      // Cuentas Bancarias registradas del PROVEEDOR (Multi-Cuenta con opción de cambiar de cuenta activa)
+      providerBankAccounts: initialBank.accounts,
+
+      // Datos de transferencia bancaria oficial del PROVEEDOR (Sincronizado con la cuenta activa)
+      providerBankInfo: initialBank.info,
 
     // Transferencias detectadas por correo (Estilo Wanderlust)
     bankTransfers: loadDb(DB_KEYS.BANK_TRANSFERS, []),
@@ -322,7 +354,7 @@ export const useAdminStore = defineStore('admin', {
         createdAt: '2026-10-14'
       }
     ])
-  }),
+  }},
   getters: {
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
     totalProviderRevenue: (state) => state.orders.filter(o => o.status === 'Dispatched').reduce((acc, o) => acc + (o.providerCost || 0), 0),
@@ -374,7 +406,11 @@ export const useAdminStore = defineStore('admin', {
     // Actualizar Datos Bancarios del Proveedor (Sincroniza con la cuenta activa)
     updateProviderBankInfo(bankData) {
       Object.assign(this.providerBankInfo, bankData)
-      const active = this.providerBankAccounts.find(a => a.isActive)
+      let active = this.providerBankAccounts.find(a => a.isActive)
+      if (!active && this.providerBankAccounts.length > 0) {
+        active = this.providerBankAccounts[0]
+        active.isActive = true
+      }
       if (active) {
         Object.assign(active, bankData)
         this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
@@ -388,7 +424,11 @@ export const useAdminStore = defineStore('admin', {
       this.providerBankAccounts.forEach(acc => {
         acc.isActive = (acc.id === accountId)
       })
-      const active = this.providerBankAccounts.find(a => a.isActive)
+      let active = this.providerBankAccounts.find(a => a.isActive)
+      if (!active && this.providerBankAccounts.length > 0) {
+        active = this.providerBankAccounts[0]
+        active.isActive = true
+      }
       if (active) {
         this.providerBankInfo = {
           holderName: active.holderName,

@@ -269,8 +269,18 @@ const getClientExpiryDays = (expiryStr) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 
+const formatWaPhone = (phone) => {
+  if (!phone) return ''
+  let cleaned = String(phone).replace(/[^0-9]/g, '')
+  if (cleaned.startsWith('0')) cleaned = cleaned.substring(1)
+  if (cleaned.length === 10) cleaned = `549${cleaned}`
+  else if (cleaned.length === 11 && cleaned.startsWith('15')) cleaned = `54911${cleaned.substring(2)}`
+  else if (cleaned.length === 12 && cleaned.startsWith('54') && !cleaned.startsWith('549')) cleaned = `549${cleaned.substring(2)}`
+  return cleaned
+}
+
 const sendWhatsAppRenewalReminder = (client) => {
-  const phone = (client.phone || '').replace(/[^0-9]/g, '')
+  const phone = formatWaPhone(client.phone)
   const storeTitle = adminStore.providerBankInfo.holderName || 'StreamPro Mayorista'
   const daysRemaining = getClientExpiryDays(client.expiry)
   const timeText = daysRemaining <= 0 ? 'hoy' : daysRemaining === 1 ? 'mañana' : `en ${daysRemaining} días`
@@ -742,7 +752,7 @@ const confirmDispatch = () => {
 
 // Contactar directamente al cliente de una venta oficial por WhatsApp
 const contactDirectCustomerWhatsApp = (order) => {
-  const cleanPhone = (order.customerPhone || '').replace(/[^0-9]/g, '')
+  const cleanPhone = formatWaPhone(order.customerPhone)
   const msg = `¡Hola ${order.customerName}! Te contactamos desde StreamPro Oficial respecto a tu pedido de ${order.platform} (${order.customerNumber}). Estamos preparando tu activación.`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
@@ -787,12 +797,12 @@ const handleDeleteApplication = (app) => {
 
 const sendCredentialsWhatsApp = (data) => {
   if (!data?.reseller?.contactNumber) return
-  const cleanPhone = data.reseller.contactNumber.replace(/[^0-9]/g, '')
+  const cleanPhone = formatWaPhone(data.reseller.contactNumber)
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(data.message)}`, '_blank')
 }
 
 const contactApplicantWhatsApp = (app) => {
-  const cleanPhone = (app.whatsapp || '').replace(/[^0-9]/g, '')
+  const cleanPhone = formatWaPhone(app.whatsapp)
   const msg = `¡Hola ${app.fullName}! Te contactamos desde el Panel de Proveedor Mayorista de StreamPro respecto a tu postulación como distribuidor oficial.`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
