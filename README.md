@@ -98,14 +98,41 @@ Está diseñado tanto para vendedores mayoristas, revendedores independientes y 
 
 ---
 
+## 👥 Sistema de Registro y Activación por Correo y Contraseña
+
+Similar a la dinámica operativa de **Strampro**, las activaciones y el acceso de clientes se realizan directamente mediante **correo electrónico y contraseña**:
+
+1. **Página de Registro del Reseller / Super Reseller (`/ref/{code}/registro` o `/registro`):**
+   - Cada revendedor tiene su enlace único con su marca blanca.
+   - El cliente se registra con su **Nombre, Correo Electrónico, WhatsApp y Contraseña**.
+   - Queda vinculado automáticamente a la cartera de ese revendedor.
+2. **Activación de Cuentas / Licencias de Streaming:**
+   - Desde el CRM de Clientes (`/customers`), el revendedor o administrador puede activar inmediatamente un servicio al cliente seleccionando la plataforma deseada (**Netflix, HBO Max, Disney Estándar, Disney Premium**).
+   - El sistema asigna automáticamente una pantalla libre en stock con su PIN exclusivo de 4 dígitos.
+3. **Bóveda Privada del Cliente (`/boveda` o `/boveda/login`):**
+   - El cliente ingresa con su correo y contraseña.
+   - Visualiza en tiempo real sus cuentas activas:
+     - Servicio y Plan contratado.
+     - **Correo de acceso y Contraseña** (con botón de copiar y mostrar/ocultar).
+     - **Perfil asignado y PIN de 4 dígitos**.
+     - **Vencimiento y cuenta regresiva de días de garantía (SLA)**.
+     - Reglas de uso oficiales de la plataforma.
+     - Botón de **"Reportar Falla"** para solicitar soporte o reemplazo automático si la cuenta sufre una caída.
+4. **Login Unificado (`/login`):**
+   - El formulario de inicio de sesión detecta si el usuario es Administrador / Revendedor (redirigiendo a `/dashboard`) o Cliente final (redirigiendo a `/boveda`).
+
+---
+
 ## 🔑 Credenciales de Acceso Demo
 
-Una vez instalado y sembrado, el sistema incluye dos cuentas de prueba:
+El seeder del sistema (`php artisan db:seed`) incluye las siguientes cuentas preconfiguradas:
 
-| Rol | Correo | Contraseña | Perfil / Permisos |
+| Rol | Correo | Contraseña | Enlace / Funcionalidad |
 | :--- | :--- | :--- | :--- |
-| **Super Admin** | `admin@cstreame.com` | `admin123` | Acceso total al inventario, proveedores, ventas, revendedores, finanzas y configuración. |
-| **Revendedor VIP** | `marcos@revendedor.com` | `reseller123` | Panel de revendedor con billetera de saldo prepago ($150.00), catálogo de marca blanca y ventas propias. |
+| **Super Admin** | `admin@cstreame.com` | `admin123` | Control total del sistema, inventario global, proveedores, usuarios y tesorería. |
+| **Super Reseller** | `super@revendedor.com` | `super123` | Gestión de sub-revendedores, stock mayorista, enlace de registro: `/ref/SUPER-CARLOS/registro`. |
+| **Revendedor VIP** | `marcos@revendedor.com` | `reseller123` | Billetera prepago, venta de pantallas, enlace de registro: `/ref/VIP-MARCOS/registro`. |
+| **Cliente Demo** | `cliente@cstreame.com` | `cliente123` | Bóveda de cliente (`/boveda`), visualización de Netflix 4K y Disney+ Premium activos. |
 
 ---
 
@@ -118,13 +145,13 @@ Una vez instalado y sembrado, el sistema incluye dos cuentas de prueba:
 
 ### Pasos
 1. Clonar o posicionarse en el directorio del proyecto:
-   ```bash
+   ```powershell
    cd D:\CStreame
    ```
 2. Configurar el archivo `.env`:
    ```ini
    APP_NAME=CStreame
-   APP_URL=http://localhost:8000
+   APP_URL=http://localhost:8080
    DB_CONNECTION=mysql
    DB_HOST=127.0.0.1
    DB_PORT=3306
@@ -133,17 +160,20 @@ Una vez instalado y sembrado, el sistema incluye dos cuentas de prueba:
    DB_PASSWORD=
    ```
 3. Ejecutar las migraciones y sembrar la base de datos:
-   ```bash
+   ```powershell
    php artisan migrate:fresh --seed
    ```
-4. Iniciar el servidor local:
-   ```bash
-   php artisan serve --port=8000
+4. Iniciar el servidor local (en puerto 8080):
+   ```powershell
+   php artisan serve --port=8080
    ```
 5. Abrir en el navegador:
-   - Panel de Control: `http://localhost:8000/login`
-   - Catálogo Público: `http://localhost:8000/catalogo`
-   - Catálogo de Revendedor Referido: `http://localhost:8000/ref/VIP-MARCOS`
+   - **Login Unificado:** `http://localhost:8080/login`
+   - **Bóveda de Clientes:** `http://localhost:8080/boveda/login`
+   - **Registro de Clientes (General):** `http://localhost:8080/registro`
+   - **Registro de Clientes Referido (Super Reseller):** `http://localhost:8080/ref/SUPER-CARLOS/registro`
+   - **Registro de Clientes Referido (Reseller VIP):** `http://localhost:8080/ref/VIP-MARCOS/registro`
+   - **Catálogo Digital:** `http://localhost:8080/catalogo`
 
 ---
 
@@ -162,16 +192,21 @@ Una vez instalado y sembrado, el sistema incluye dos cuentas de prueba:
 
 ## 📋 Estructura de Rutas y Módulos
 
-- `/login` & `/logout`: Autenticación con soporte de roles (Admin / Revendedor).
-- `/dashboard`: Escritorio analítico con KPIs, ventas activas, cuentas críticas y gráfico de facturación de 7 días.
+- `/login` & `/logout`: Autenticación unificada con detección de roles y clientes.
+- `/registro`: Registro público de nuevos clientes.
+- `/ref/{code}/registro`: Registro de clientes bajo la marca blanca del Super Reseller o Reseller.
+- `/boveda`: Bóveda privada de credenciales de streaming del cliente (perfiles, PIN, contraseñas, SLA y reclamos).
+- `/boveda/login`: Acceso directo exclusivo para clientes.
+- `/dashboard`: Escritorio analítico con stock en vivo por plataforma, cuentas críticas y facturación.
+- `/accounts`: Inventario de cuentas maestras con resumen de stock en vivo (`🟢 Stock Óptimo`, `🟡 Stock Bajo`, `🔴 Agotado`), reposición rápida `+1 Cuenta` y actualización de clave privada.
+- `/customers`: CRM de clientes con enlaces de registro de referidos, activación directa de streaming y reseteo de claves de acceso a la bóveda.
 - `/sales`: Gestión de ventas, entrega de WhatsApp, renovaciones y garantías.
-- `/accounts`: Inventario de cuentas maestras, pantallas, contraseñas y asignaciones.
-- `/services`: Catálogo de plataformas (Netflix, Max, Disney+, etc.) y planes de suscripción.
-- `/customers`: Directorio CRM de clientes con enlaces directos a WhatsApp.
+- `/services`: Catálogo de plataformas (Netflix, Max, Disney Estándar, Disney Premium) y planes de suscripción.
 - `/suppliers`: Directorio de proveedores mayoristas y control de vencimientos.
 - `/warranties`: Gestión y resolución de garantías por caídas de cuenta.
-- `/resellers`: Administración de revendedores y recargas de billetera.
+- `/resellers`: Administración de Super Resellers y Resellers con recargas de billetera prepago.
 - `/treasury`: Auditoría de pagos, cobros bancarios, Mercado Pago y Mini Nube.
 - `/whitelabel`: Personalización de marca blanca, logotipos y redes.
 - `/catalogo`: Tienda digital pública para clientes finales.
 - `/ref/{code}`: Acceso al catálogo con la marca y contacto de un revendedor específico.
+

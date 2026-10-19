@@ -15,7 +15,7 @@ class StreamingAccountController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StreamingAccount::with(['service', 'supplier', 'profiles', 'creator']);
+        $query = StreamingAccount::with(['service', 'supplier', 'profiles.activeSale.customer', 'creator']);
 
         if ($request->filled('service_id')) {
             $query->where('service_id', $request->service_id);
@@ -47,6 +47,39 @@ class StreamingAccountController extends Controller
         $services = Service::where('status', 'active')->get();
         $suppliers = Supplier::where('status', 'active')->get();
 
+        // Resumen dinámico de stock en vivo por plataforma (estilo StreamPro)
+        $platformStockSummary = [];
+        foreach ($services as $srv) {
+            $totalProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+                $q->where('service_id', $srv->id)->where('status', 'active');
+            })->count();
+
+            $freeProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+                $q->where('service_id', $srv->id)->where('status', 'active');
+            })->where('status', 'available')->count();
+
+            $occupiedProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+                $q->where('service_id', $srv->id)->where('status', 'active');
+            })->where('status', 'assigned')->count();
+
+            $accountsWithCupo = StreamingAccount::where('service_id', $srv->id)
+                ->where('status', 'active')
+                ->whereHas('profiles', function ($q) {
+                    $q->where('status', 'available');
+                })->count();
+
+            $statusBadge = $freeProf > 2 ? 'in_stock' : ($freeProf > 0 ? 'low_stock' : 'out_of_stock');
+
+            $platformStockSummary[$srv->id] = [
+                'service' => $srv,
+                'total' => $totalProf,
+                'free' => $freeProf,
+                'occupied' => $occupiedProf,
+                'accountsWithCupo' => $accountsWithCupo,
+                'statusBadge' => $statusBadge,
+            ];
+        }
+
         // Totales de métricas para la barra superior
         $totalMasterAccounts = StreamingAccount::count();
         $activeAccounts = StreamingAccount::where('status', 'active')->count();
@@ -59,6 +92,7 @@ class StreamingAccountController extends Controller
             'accounts',
             'services',
             'suppliers',
+            'platformStockSummary',
             'totalMasterAccounts',
             'activeAccounts',
             'droppedAccounts',
@@ -186,5 +220,96 @@ class StreamingAccountController extends Controller
         ]);
 
         return redirect()->route('accounts.index')->with('success', 'Cuenta eliminada del inventario.');
+    }
+
+    /**
+     * Reabastecimiento Rápido (+1 Cuenta Máster con perfiles y PINs automáticos estilo StreamPro)
+     */
+    public function quickReplenish(Request $request)
+    {
+        $request->validate([
+            'service_id' => 'required|exists:services,id',
+        ]);
+
+        $service = Service::findOrFail($request->service_id);
+        $cleanPrefix = preg_replace('/[^a-z0-9]/', '', strtolower($service->slug));
+        $randSuffix = rand(100, 999);
+        $masterEmail = "{$cleanPrefix}.stock{$randSuffix}@streampro.me";
+        $masterPass = "StreamPro" . rand(1000, 9999) . "*";
+        $maxProfiles = $service->max_profiles_default ?: 4;
+
+        $account = StreamingAccount::create([
+            'service_id' => $service->id,
+            'supplier_id' => Supplier::value('id'),
+            'account_email' => $masterEmail,
+            'account_password' => $masterPass,
+            'modality' => 'profile',
+            'total_profiles' => $maxProfiles,
+            'supplier_cost' => 12000.00,
+            'supplier_expiration_date' => Carbon::now()->addDays(30),
+            'status' => 'active',
+            'notes' => 'Generada automáticamente por Reabastecimiento Rápido.',
+            'created_by' => Auth::id(),
+        ]);
+
+        for ($i = 1; $i <= $maxProfiles; $i++) {
+            AccountProfile::create([
+                'streaming_account_id' => $account->id,
+                'profile_number' => $i,
+                'profile_name' => "PERFIL {$i}",
+                'pin' => str_pad((string)rand(1000, 9999), 4, '0', STR_PAD_LEFT),
+                'status' => 'available',
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'quick_replenish_stock',
+            'description' => "Reabastecimiento rápido: Cuenta máster {$masterEmail} agregada para {$service->name} con {$maxProfiles} perfiles libres.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡+1 Cuenta máster para {$service->name} reabastecida con {$maxProfiles} perfiles libres y PINs!");
+    }
+
+    /**
+     * Cambio Privado de Contraseña en Panel Proveedor (estilo StreamPro)
+     */
+    public function updatePrivatePassword(Request $request, StreamingAccount $account)
+    {
+        $request->validate([
+            'account_password' => 'required|string|max:255',
+            'notify_active_clients' => 'nullable|boolean',
+        ]);
+
+        $oldPassword = $account->account_password;
+        $newPassword = $request->account_password;
+
+        $account->update([
+            'account_password' => $newPassword,
+        ]);
+
+        $affectedCount = 0;
+        if ($request->boolean('notify_active_clients')) {
+            // Actualizar snapshots de ventas activas vinculadas
+            $activeSales = $account->sales()->whereIn('status', ['active', 'expiring_soon'])->get();
+            foreach ($activeSales as $sale) {
+                $sale->update(['account_password_snapshot' => $newPassword]);
+                $affectedCount++;
+            }
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'change_account_password',
+            'description' => "Contraseña de la cuenta máster {$account->account_email} modificada. Notificados clientes activos: {$affectedCount}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        $msg = $request->boolean('notify_active_clients')
+            ? "Contraseña actualizada y sincronizada en {$affectedCount} cliente(s) con suscripción activa."
+            : "Contraseña de {$account->account_email} guardada privadamente (solo visible por Proveedor/Admin).";
+
+        return back()->with('success', $msg);
     }
 }

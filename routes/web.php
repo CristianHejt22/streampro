@@ -35,6 +35,24 @@ Route::get('/orden/{order}/exito', [CatalogController::class, 'success'])->name(
 
 /*
 |--------------------------------------------------------------------------
+| Portal del Cliente & Bóveda de Streaming (Registro & Login por Correo y Contraseña)
+|--------------------------------------------------------------------------
+*/
+Route::get('/registro', [\App\Http\Controllers\CustomerPortalController::class, 'showRegister'])->name('portal.register');
+Route::post('/registro', [\App\Http\Controllers\CustomerPortalController::class, 'processRegister'])->name('portal.register.process');
+Route::get('/ref/{code}/registro', [\App\Http\Controllers\CustomerPortalController::class, 'showRegister'])->name('portal.register.ref');
+
+Route::get('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'showLogin'])->name('boveda.login');
+Route::post('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'processLogin'])->name('boveda.login.process');
+Route::post('/boveda/logout', [\App\Http\Controllers\CustomerPortalController::class, 'logout'])->name('boveda.logout');
+
+Route::middleware(['auth:customer'])->group(function () {
+    Route::get('/boveda', [\App\Http\Controllers\CustomerPortalController::class, 'index'])->name('boveda.index');
+    Route::post('/boveda/report-issue/{sale}', [\App\Http\Controllers\CustomerPortalController::class, 'reportIssue'])->name('boveda.report');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Installation & Wizard Routes
 |--------------------------------------------------------------------------
 */
@@ -72,6 +90,8 @@ Route::middleware(['auth'])->group(function () {
     // Inventario de Cuentas Maestras y Perfiles
     Route::get('/accounts', [StreamingAccountController::class, 'index'])->name('accounts.index');
     Route::post('/accounts', [StreamingAccountController::class, 'store'])->name('accounts.store');
+    Route::post('/accounts/quick-replenish', [StreamingAccountController::class, 'quickReplenish'])->name('accounts.quick_replenish');
+    Route::post('/accounts/{account}/private-password', [StreamingAccountController::class, 'updatePrivatePassword'])->name('accounts.private_password');
     Route::put('/accounts/{account}', [StreamingAccountController::class, 'update'])->name('accounts.update');
     Route::post('/accounts/{account}/toggle', [StreamingAccountController::class, 'toggleStatus'])->name('accounts.toggle');
     Route::delete('/accounts/{account}', [StreamingAccountController::class, 'destroy'])->name('accounts.destroy');
@@ -87,6 +107,8 @@ Route::middleware(['auth'])->group(function () {
     // Agenda de Clientes CRM
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+    Route::post('/customers/{customer}/activate', [CustomerController::class, 'activateAccount'])->name('customers.activate');
+    Route::post('/customers/{customer}/reset-password', [CustomerController::class, 'resetPassword'])->name('customers.reset_password');
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');

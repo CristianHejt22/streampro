@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['admin', 'reseller'])->default('reseller');
+            $table->enum('role', ['admin', 'super_reseller', 'reseller'])->default('reseller');
+            $table->foreignId('parent_id')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('status', ['active', 'suspended'])->default('active');
             
             // Billetera y Saldo de Revendedor (Monedero prepago / crédito)

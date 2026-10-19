@@ -57,9 +57,24 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isSuperReseller(): bool
+    {
+        return $this->role === 'super_reseller';
+    }
+
     public function isReseller(): bool
     {
-        return $this->role === 'reseller';
+        return in_array($this->role, ['reseller', 'super_reseller']);
+    }
+
+    public function subResellers()
+    {
+        return $this->hasMany(User::class, 'parent_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(User::class, 'parent_id');
     }
 
     public function hasBalance(float $amount): bool
