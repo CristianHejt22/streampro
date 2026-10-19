@@ -100,18 +100,39 @@ class CustomerController extends Controller
         $request->validate([
             'service_plan_id' => 'required|exists:service_plans,id',
             'custom_price' => 'nullable|numeric|min:0',
+            'months_duration' => 'nullable|integer|in:1,2,3,6,12',
+            'is_consignment' => 'nullable|boolean',
         ]);
+
+        $months = max(1, (int) $request->input('months_duration', 1));
+        $isConsignment = $request->boolean('is_consignment');
 
         $plan = ServicePlan::with('service')->findOrFail($request->service_plan_id);
         $service = $plan->service;
 
-        // Descontar saldo si el emisor es revendedor
-        if ($user->isReseller()) {
-            $cost = $plan->reseller_price > 0 ? (float)$plan->reseller_price : (float)$plan->price;
+        $basePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
+        $price = $basePrice * $months;
+        $baseResellerPrice = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+        $cost = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
+        $profit = $price - $cost;
+
+        // Comisión del 25% para el panel que ofreció/clonó el servicio
+        $parentCommission = 0.00;
+        if ($user->parent_id && $user->parent) {
+            $pct = (float) ($user->parent_commission_pct ?: 25.00);
+            $parentCommission = round($profit * ($pct / 100), 2);
+        }
+
+        // Descontar saldo si el emisor es revendedor y NO es consignación
+        if ($user->isReseller() && !$isConsignment) {
             if (!$user->hasBalance($cost)) {
-                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Requiere \${$cost} y tu saldo es de \${$user->balance}."]);
+                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Requiere \${$cost} para {$months} mes(es) y tu saldo es de \${$user->balance}. Puedes activar en Consignación a 48hs."]);
             }
             $user->deductBalance($cost);
+
+            if ($parentCommission > 0 && $user->parent) {
+                $user->parent->addBalance($parentCommission);
+            }
         }
 
         // Buscar stock disponible
@@ -142,10 +163,8 @@ class CustomerController extends Controller
             }
         }
 
-        $price = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
-        $costEst = (float)($plan->cost_estimate ?: 0);
         $startDate = Carbon::today();
-        $endDate = Carbon::today()->addDays($plan->duration_days ?: 30);
+        $endDate = Carbon::today()->addMonths($months);
         $saleCode = 'CST-' . date('Ymd') . '-' . strtoupper(Str::random(4));
 
         $sale = Sale::create([
@@ -163,12 +182,17 @@ class CustomerController extends Controller
             'profile_pin_snapshot' => $profile ? $profile->pin : null,
             'usage_rules_snapshot' => $service->default_rules,
             'sale_price' => $price,
-            'cost_price' => $costEst,
-            'profit' => $price - $costEst,
+            'cost_price' => $cost,
+            'profit' => $profit,
+            'parent_commission_amount' => $parentCommission,
+            'months_duration' => $months,
+            'is_consignment' => $isConsignment,
+            'is_consignment_paid' => !$isConsignment,
+            'consignment_expires_at' => $isConsignment ? Carbon::now()->addHours(48) : null,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'status' => 'active',
-            'notes' => 'Activada manualmente para el cliente ' . $customer->name,
+            'notes' => 'Activada para el cliente ' . $customer->name . ($isConsignment ? ' [CONSIGNACIÓN 48H]' : ''),
         ]);
 
         AuditLog::create([

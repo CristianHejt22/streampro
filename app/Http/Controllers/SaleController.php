@@ -133,17 +133,33 @@ class SaleController extends Controller
             $customer = Customer::findOrFail($request->customer_id);
         }
 
-        // 2. Control de Saldo para Revendedores
-        $salePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
-        $costPrice = (float)($plan->cost_estimate ?: 0);
+        // 2. Control de Saldo, Duración en Meses y Consignación para Revendedores
+        $months = max(1, (int) $request->input('months_duration', 1));
+        $isConsignment = $request->boolean('is_consignment');
 
-        if ($user->isReseller()) {
-            $resellerCost = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
-            if (!$user->hasBalance($resellerCost)) {
-                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Esta cuenta requiere ${$resellerCost} y tu saldo actual es de ${$user->balance}."])->withInput();
+        $baseSalePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
+        $salePrice = $baseSalePrice * $months;
+        $baseResellerPrice = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+        $costPrice = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
+        $profit = $salePrice - $costPrice;
+
+        // Comisión del 25% para el panel padre patrocinador (copia de servicios)
+        $parentCommission = 0.00;
+        if ($user->parent_id && $user->parent) {
+            $pct = (float) ($user->parent_commission_pct ?: 25.00);
+            $parentCommission = round($profit * ($pct / 100), 2);
+        }
+
+        if ($user->isReseller() && !$isConsignment) {
+            if (!$user->hasBalance($costPrice)) {
+                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Esta cuenta requiere \${$costPrice} y tu saldo actual es de \${$user->balance}. Puedes activarla en Consignación (48hs de gracia) o recargar saldo."])->withInput();
             }
-            $user->deductBalance($resellerCost);
-            $costPrice = $resellerCost;
+            $user->deductBalance($costPrice);
+
+            // Acreditar comisión del 25% al panel que ofreció/clonó el servicio
+            if ($parentCommission > 0 && $user->parent) {
+                $user->parent->addBalance($parentCommission);
+            }
         }
 
         // 3. Asignación automática desde el stock disponible
@@ -178,7 +194,7 @@ class SaleController extends Controller
 
         // 4. Crear registro inmutable de Venta
         $startDate = Carbon::today();
-        $endDate = $startDate->copy()->addDays($plan->duration_days ?: 30);
+        $endDate = $startDate->copy()->addMonths($months);
         $saleCode = 'CST-' . date('Ymd') . '-' . strtoupper(Str::random(4));
 
         $sale = Sale::create([
@@ -197,7 +213,12 @@ class SaleController extends Controller
             'usage_rules_snapshot' => $service->default_rules,
             'sale_price' => $salePrice,
             'cost_price' => $costPrice,
-            'profit' => $salePrice - $costPrice,
+            'profit' => $profit,
+            'parent_commission_amount' => $parentCommission,
+            'months_duration' => $months,
+            'is_consignment' => $isConsignment,
+            'is_consignment_paid' => !$isConsignment,
+            'consignment_expires_at' => $isConsignment ? Carbon::now()->addHours(48) : null,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'status' => 'active',
@@ -207,13 +228,61 @@ class SaleController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'create_sale',
-            'description' => "Venta {$saleCode} creada para {$customer->name} ({$service->name}). Precio: \${$salePrice}.",
+            'description' => "Venta {$saleCode} creada para {$customer->name} ({$service->name}). Duración: {$months} mes(es). Consignación: " . ($isConsignment ? 'SÍ (48h)' : 'NO (Pagada)'),
             'ip_address' => $request->ip(),
         ]);
 
+        $consMsg = $isConsignment ? ' [EN CONSIGNACIÓN: Tienes 48hs para liquidarla antes de su caída automática]' : '';
+
         return redirect()->route('sales.index')
-            ->with('success', "¡Venta {$saleCode} registrada con éxito! Puedes copiar las credenciales o enviarlas por WhatsApp ahora mismo.")
+            ->with('success', "¡Venta {$saleCode} registrada con éxito!{$consMsg}")
             ->with('new_sale_id', $sale->id);
+    }
+
+    /**
+     * Liquidar / Pagar cuenta emitida en Consignación antes de las 48hs
+     */
+    public function payConsignment(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $sale->user_id !== $user->id) {
+            abort(403);
+        }
+
+        if (!$sale->is_consignment || $sale->is_consignment_paid) {
+            return back()->with('info', 'Esta venta ya se encuentra liquidada y pagada.');
+        }
+
+        if ($sale->isConsignmentExpired()) {
+            return back()->withErrors(['error' => 'El plazo de 48 horas de consignación ya expiró y la cuenta ha caído.']);
+        }
+
+        // Si es revendedor, descontar el costo de su balance
+        if ($user->isReseller()) {
+            if (!$user->hasBalance($sale->cost_price)) {
+                return back()->withErrors(['error' => "Saldo insuficiente para liquidar. Requiere \${$sale->cost_price} y tu saldo es de \${$user->balance}."]);
+            }
+            $user->deductBalance($sale->cost_price);
+
+            // Acreditar 25% de comisión al panel padre patrocinador
+            if ($sale->parent_commission_amount > 0 && $user->parent) {
+                $user->parent->addBalance($sale->parent_commission_amount);
+            }
+        }
+
+        $sale->update([
+            'is_consignment_paid' => true,
+            'status' => 'active',
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'pay_consignment',
+            'description' => "Consignación {$sale->sale_code} liquidada con éxito por \${$sale->cost_price}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Consignación de la venta {$sale->sale_code} pagada exitosamente! La cuenta ya es permanente.");
     }
 
     public function renew(Request $request, Sale $sale)
@@ -261,6 +330,10 @@ class SaleController extends Controller
         $user = Auth::user();
         if ($user->isReseller() && $sale->user_id !== $user->id) {
             abort(403);
+        }
+
+        if ($sale->is_consignment && !$sale->is_consignment_paid) {
+            return back()->withErrors(['error' => 'No puedes modificar ni aplicar cambios a una cuenta en consignación hasta que sea liquidada y pagada dentro del plazo de 48 horas.']);
         }
 
         $request->validate([

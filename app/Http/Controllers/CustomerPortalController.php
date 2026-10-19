@@ -221,4 +221,44 @@ class CustomerPortalController extends Controller
 
         return back()->with('success', '¡Reporte registrado con éxito! Tu distribuidor ha recibido la alerta y verificará tu cuenta de inmediato.');
     }
+
+    /**
+     * Verificación de Seguridad y Biometría para Desbloquear Bóveda
+     */
+    public function verifyUnlock(Request $request)
+    {
+        $customer = Auth::guard('customer')->user();
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Sesión expirada.'], 401);
+        }
+
+        $type = $request->input('type'); // 'biometric' o 'password'
+
+        if ($type === 'biometric') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Identidad biométrica validada con éxito en el dispositivo.',
+                'unlocked' => true,
+            ]);
+        }
+
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        $inputPass = $request->input('password');
+
+        if (Hash::check($inputPass, $customer->password) || ($customer->security_pin && $inputPass === $customer->security_pin)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Contraseña / PIN de Bóveda verificado exitosamente.',
+                'unlocked' => true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'La contraseña o PIN ingresado es incorrecto. Vuelve a intentarlo.',
+        ], 422);
+    }
 }

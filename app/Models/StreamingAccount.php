@@ -84,6 +84,23 @@ class StreamingAccount extends Model
         return $this->account_email;
     }
 
+    public function setAccountPasswordAttribute($value)
+    {
+        $this->attributes['account_password'] = !empty($value) ? \Illuminate\Support\Facades\Crypt::encryptString($value) : $value;
+    }
+
+    public function getAccountPasswordAttribute($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Throwable $e) {
+            return $value;
+        }
+    }
+
     public function getPasswordAttribute(): ?string
     {
         return $this->account_password;

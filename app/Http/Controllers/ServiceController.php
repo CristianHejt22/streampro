@@ -88,13 +88,18 @@ class ServiceController extends Controller
             'modality' => 'required|in:profile,full_account',
             'duration_days' => 'required|integer|min:1|max:365',
             'price' => 'required|numeric|min:0',
-            'reseller_price' => 'required|numeric|min:0',
+            'reseller_price' => 'nullable|numeric|min:0',
             'cost_estimate' => 'nullable|numeric|min:0',
             'screens_count' => 'required|integer|min:1|max:10',
             'is_featured' => 'nullable|boolean',
         ]);
 
         $validated['service_id'] = $service->id;
+        // Ganancia Revendedor del 40%: compra al 60% del precio oficial de venta
+        $price = (float)$validated['price'];
+        if (empty($validated['reseller_price']) || (float)$validated['reseller_price'] == 0) {
+            $validated['reseller_price'] = round($price * 0.60, 2);
+        }
         $validated['cost_estimate'] = $validated['cost_estimate'] ?? 0;
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['is_active'] = true;

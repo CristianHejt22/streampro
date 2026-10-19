@@ -217,6 +217,30 @@
                     <input type="number" step="0.01" name="custom_price" placeholder="Monto convenido o dejar vacío para precio regular" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-red-500">
                 </div>
 
+                <!-- Duración y Consignación -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Duración (Meses) *</label>
+                        <select name="months_duration" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none">
+                            <option value="1" selected>1 Mes (30d)</option>
+                            <option value="2">2 Meses (60d)</option>
+                            <option value="3">3 Meses (90d)</option>
+                            <option value="6">6 Meses (180d)</option>
+                            <option value="12">12 Meses (1 Año)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 text-xs text-amber-300 font-bold cursor-pointer">
+                            <input type="checkbox" name="is_consignment" value="1" class="rounded bg-slate-900 border-amber-500 text-amber-500 focus:ring-0">
+                            <span>📦 Consignación 48h</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                    ⏱️ Si se activa en consignación, la cuenta tiene <strong>48 horas</strong> para liquidarse antes de caerse automáticamente.
+                </div>
+
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
                     <button type="button" @click="activateModal = false" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
                     <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg">Confirmar Activación</button>

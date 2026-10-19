@@ -174,9 +174,25 @@
 
                         <!-- Vigencia -->
                         <td class="py-3 px-4">
-                            <div class="font-semibold text-white">{{ $s->end_date->format('d/m/Y') }}</div>
+                            <div class="font-semibold text-white">{{ $s->end_date->format('d/m/Y') }} ({{ $s->months_duration ?: 1 }}m)</div>
                             <div class="mt-0.5">
-                                @if($calcStatus === 'active')
+                                @if($s->is_consignment && !$s->is_consignment_paid)
+                                    @if($s->isConsignmentExpired())
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold block w-max">
+                                            🔴 Caída (48h Vencidas)
+                                        </span>
+                                    @else
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold block w-max animate-pulse">
+                                            📦 Consignación ({{ $s->consignment_hours_remaining ?? 48 }}h restantes)
+                                        </span>
+                                        <form method="POST" action="{{ route('sales.pay_consignment', $s) }}" class="inline mt-1 block">
+                                            @csrf
+                                            <button type="submit" onclick="return confirm('¿Confirmas liquidar la cuenta por ${{ number_format($s->cost_price, 2) }}?');" class="text-[10px] text-emerald-400 hover:underline font-bold block">
+                                                💰 Liquidar Consignación
+                                            </button>
+                                        </form>
+                                    @endif
+                                @elseif($calcStatus === 'active')
                                     <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
                                         Vence en {{ $daysLeft }} días
                                     </span>
@@ -227,9 +243,15 @@
                                 </button>
 
                                 <!-- Garantía / Caída -->
+                                @if($s->is_consignment && !$s->is_consignment_paid)
+                                <span title="Cuenta en Consignación: No se permiten cambios hasta liquidar el pago" class="p-2 rounded-lg bg-gray-800 text-gray-500 cursor-not-allowed">
+                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+                                </span>
+                                @else
                                 <button @click="selectedSale = {{ json_encode($s) }}; warrantyModal = true;" title="Reportar caída o cambiar credenciales por garantía" class="p-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-500/30 transition-all">
                                     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
                                 </button>
+                                @endif
 
                                 <!-- Eliminar / Cancelar -->
                                 <form method="POST" action="{{ route('sales.destroy', $s) }}" onsubmit="return confirm('¿Seguro que deseas eliminar esta venta? El perfil se liberará de nuevo al stock.');" class="inline">
@@ -353,9 +375,28 @@
                     </div>
                 </div>
 
-                <div class="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/30 text-blue-300 text-xs flex items-center gap-2.5">
-                    <i data-lucide="info" class="w-5 h-5 shrink-0 text-blue-400"></i>
-                    <span>El sistema buscará automáticamente una pantalla disponible con su PIN en el inventario activo y le descontará el costo si eres revendedor.</span>
+                <!-- Duración en Meses y Consignación -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold uppercase mb-1">Duración (Meses) *</label>
+                        <select name="months_duration" class="w-full px-3 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="1" selected>1 Mes (30 días)</option>
+                            <option value="2">2 Meses (60 días)</option>
+                            <option value="3">3 Meses (90 días)</option>
+                            <option value="6">6 Meses (180 días)</option>
+                            <option value="12">12 Meses (1 Año - 360 días)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 text-xs text-amber-300 font-bold cursor-pointer">
+                            <input type="checkbox" name="is_consignment" value="1" class="rounded bg-gray-900 border-amber-500 text-amber-500 focus:ring-0">
+                            <span>📦 En Consignación (48h)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed">
+                    ⏱️ <strong>Regla de Consignación:</strong> Si activas en consignación, la cuenta tendrá un plazo improrrogable de <strong>48 horas</strong> para ser liquidada. Si no se paga, se caerá automáticamente. No se permiten cambios de cuenta mientras esté en consignación.
                 </div>
 
                 <div class="pt-4 border-t border-gray-800 flex items-center justify-end gap-3">

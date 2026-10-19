@@ -58,7 +58,38 @@ class CStreameCronCommand extends Command
 
         $this->info("[✓] Ventas marcadas 'expiring_soon' (<= 3 días): {$expiringSales}");
 
-        // 3. Detectar cuentas de proveedores vencidas
+        // 3. Detectar y tirar cuentas en Consignación no pagadas tras 48 horas ("Auto-Caída")
+        $droppedConsignments = Sale::where('is_consignment', true)
+            ->where('is_consignment_paid', false)
+            ->where('consignment_expires_at', '<', Carbon::now())
+            ->whereNotIn('status', ['cancelled', 'expired'])
+            ->get();
+
+        $droppedCount = 0;
+        foreach ($droppedConsignments as $consSale) {
+            $consSale->update([
+                'status' => 'cancelled',
+                'notes' => trim(($consSale->notes ?: '') . ' | CAÍDA AUTOMÁTICA: Consignación no liquidada a las 48hs.')
+            ]);
+
+            // Liberar perfil de nuevo a stock libre
+            if ($consSale->account_profile_id) {
+                \App\Models\AccountProfile::where('id', $consSale->account_profile_id)->update(['status' => 'available']);
+            }
+            $droppedCount++;
+        }
+        $this->info("[✓] Cuentas en consignación caídas por falta de pago (plazo de 48h vencido): {$droppedCount}");
+
+        // 4. Suspensión de Paneles Clonados que no renovaron su suscripción mensual de $15.000 (30 días)
+        $expiredPanels = \App\Models\User::where('panel_type', 'cloned')
+            ->where('status', 'active')
+            ->whereNotNull('panel_expires_at')
+            ->where('panel_expires_at', '<', Carbon::now())
+            ->update(['status' => 'suspended']);
+
+        $this->info("[✓] Sub-paneles clonados suspendidos por falta de abono mensual ($15.000): {$expiredPanels}");
+
+        // 5. Detectar cuentas de proveedores vencidas
         $expiredMasterAccounts = StreamingAccount::where('status', 'active')
             ->whereNotNull('supplier_expiration_date')
             ->where('supplier_expiration_date', '<', $today)

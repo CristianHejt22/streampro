@@ -31,6 +31,14 @@ class User extends Authenticatable
         'support_telegram',
         'mp_public_key',
         'mp_access_token',
+        'parent_id',
+        'anti_phishing_code',
+        'plain_panel_token',
+        'panel_type',
+        'panel_monthly_fee',
+        'panel_expires_at',
+        'reseller_commission_pct',
+        'parent_commission_pct',
         'bank_cbu',
         'bank_cvu',
         'bank_alias',
@@ -50,7 +58,49 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'balance' => 'decimal:2',
+        'panel_expires_at' => 'datetime',
+        'panel_monthly_fee' => 'decimal:2',
+        'reseller_commission_pct' => 'decimal:2',
+        'parent_commission_pct' => 'decimal:2',
     ];
+
+    public function setPlainPasswordAttribute(?string $val): void
+    {
+        $this->attributes['plain_panel_token'] = !empty($val) ? \Illuminate\Support\Facades\Crypt::encryptString($val) : null;
+    }
+
+    public function getPlainPasswordAttribute(): ?string
+    {
+        if (empty($this->plain_panel_token)) {
+            return null;
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($this->plain_panel_token);
+        } catch (\Throwable $e) {
+            return '******';
+        }
+    }
+
+    public function isPanelCloned(): bool
+    {
+        return $this->panel_type === 'cloned';
+    }
+
+    public function isPanelExpired(): bool
+    {
+        if (!$this->isPanelCloned()) {
+            return false;
+        }
+        return $this->panel_expires_at && \Carbon\Carbon::parse($this->panel_expires_at)->isPast();
+    }
+
+    public function getDaysRemainingPanelAttribute(): ?int
+    {
+        if (!$this->panel_expires_at) {
+            return null;
+        }
+        return (int) \Carbon\Carbon::now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($this->panel_expires_at)->startOfDay(), false);
+    }
 
     public function isAdmin(): bool
     {

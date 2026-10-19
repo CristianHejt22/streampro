@@ -49,6 +49,7 @@ Route::post('/boveda/logout', [\App\Http\Controllers\CustomerPortalController::c
 Route::middleware(['auth:customer'])->group(function () {
     Route::get('/boveda', [\App\Http\Controllers\CustomerPortalController::class, 'index'])->name('boveda.index');
     Route::post('/boveda/report-issue/{sale}', [\App\Http\Controllers\CustomerPortalController::class, 'reportIssue'])->name('boveda.report');
+    Route::post('/boveda/verify-unlock', [\App\Http\Controllers\CustomerPortalController::class, 'verifyUnlock'])->name('boveda.verify_unlock');
 });
 
 /*
@@ -83,6 +84,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/sales/export', [SaleController::class, 'exportCsv'])->name('sales.export');
     Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
     Route::post('/sales/{sale}/renew', [SaleController::class, 'renew'])->name('sales.renew');
+    Route::post('/sales/{sale}/pay-consignment', [SaleController::class, 'payConsignment'])->name('sales.pay_consignment');
     Route::post('/sales/{sale}/warranty', [SaleController::class, 'replaceWarranty'])->name('sales.warranty');
     Route::post('/sales/{sale}/reminder-sent', [SaleController::class, 'markReminderSent'])->name('sales.reminder_sent');
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
@@ -129,6 +131,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers', [ResellerController::class, 'store'])->name('resellers.store');
     Route::post('/resellers/{reseller}/recharge', [ResellerController::class, 'rechargeBalance'])->name('resellers.recharge');
     Route::post('/resellers/{reseller}/toggle', [ResellerController::class, 'toggleStatus'])->name('resellers.toggle');
+    Route::get('/resellers/{reseller}/reveal-password', [ResellerController::class, 'revealPassword'])->name('resellers.reveal_password');
+    Route::post('/resellers/{reseller}/update-password', [ResellerController::class, 'updatePassword'])->name('resellers.update_password');
+    Route::post('/resellers/{reseller}/clone-panel', [ResellerController::class, 'clonePanel'])->name('resellers.clone_panel');
+    Route::post('/resellers/{reseller}/update-commissions', [ResellerController::class, 'updateCommissions'])->name('resellers.update_commissions');
     Route::post('/resellers/{reseller}/reset-password', [ResellerController::class, 'resetPassword'])->name('resellers.reset_password');
 
     // Módulo de Tesorería Multi-Usuario & Mini Nube de Comprobantes

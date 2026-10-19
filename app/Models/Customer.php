@@ -20,6 +20,10 @@ class Customer extends Authenticatable
         'password',
         'status',
         'country',
+        'anti_phishing_phrase',
+        'security_pin',
+        'biometric_credential_id',
+        'biometric_public_key',
         'notes',
     ];
 

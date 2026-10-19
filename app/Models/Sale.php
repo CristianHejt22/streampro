@@ -29,6 +29,11 @@ class Sale extends Model
         'profit',
         'start_date',
         'end_date',
+        'months_duration',
+        'is_consignment',
+        'is_consignment_paid',
+        'consignment_expires_at',
+        'parent_commission_amount',
         'status',
         'renewal_count',
         'reminder_sent_at',
@@ -41,8 +46,13 @@ class Sale extends Model
         'sale_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'profit' => 'decimal:2',
+        'parent_commission_amount' => 'decimal:2',
         'renewal_count' => 'integer',
         'reminder_sent_at' => 'datetime',
+        'is_consignment' => 'boolean',
+        'is_consignment_paid' => 'boolean',
+        'consignment_expires_at' => 'datetime',
+        'months_duration' => 'integer',
     ];
 
     public function user()
@@ -85,6 +95,44 @@ class Sale extends Model
         return $this->hasMany(Warranty::class);
     }
 
+    public function setAccountPasswordSnapshotAttribute($value)
+    {
+        $this->attributes['account_password_snapshot'] = !empty($value) ? \Illuminate\Support\Facades\Crypt::encryptString($value) : $value;
+    }
+
+    public function getAccountPasswordSnapshotAttribute($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Throwable $e) {
+            return $value;
+        }
+    }
+
+    public function isConsignment(): bool
+    {
+        return (bool) $this->is_consignment;
+    }
+
+    public function isConsignmentExpired(): bool
+    {
+        if (!$this->is_consignment || $this->is_consignment_paid) {
+            return false;
+        }
+        return $this->consignment_expires_at && \Carbon\Carbon::parse($this->consignment_expires_at)->isPast();
+    }
+
+    public function getConsignmentHoursRemainingAttribute(): ?int
+    {
+        if (!$this->is_consignment || $this->is_consignment_paid || !$this->consignment_expires_at) {
+            return null;
+        }
+        return (int) \Carbon\Carbon::now()->diffInHours(\Carbon\Carbon::parse($this->consignment_expires_at), false);
+    }
+
     public function getDaysRemainingAttribute(): int
     {
         $today = Carbon::now()->startOfDay();
@@ -94,6 +142,14 @@ class Sale extends Model
 
     public function getCalculatedStatusAttribute(): string
     {
+        if ($this->isConsignmentExpired()) {
+            return 'consignment_dropped';
+        }
+
+        if ($this->is_consignment && !$this->is_consignment_paid) {
+            return 'consignment_pending';
+        }
+
         if (in_array($this->status, ['renewed', 'replaced', 'cancelled'])) {
             return $this->status;
         }
@@ -114,6 +170,19 @@ class Sale extends Model
     {
         $status = $this->calculated_status;
         switch ($status) {
+            case 'consignment_pending':
+                $hours = $this->consignment_hours_remaining ?? 0;
+                return [
+                    'label' => "Consignación ({$hours}h para liquidar)",
+                    'class' => 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse',
+                    'icon' => 'clock',
+                ];
+            case 'consignment_dropped':
+                return [
+                    'label' => 'Caída (48h Consignación Vencida)',
+                    'class' => 'bg-rose-500/10 text-rose-400 border-rose-500/20 font-bold',
+                    'icon' => 'x-circle',
+                ];
             case 'active':
                 return [
                     'label' => 'Activa (Garantía OK)',
