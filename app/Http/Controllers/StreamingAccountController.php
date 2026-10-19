@@ -1,0 +1,190 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\StreamingAccount;
+use App\Models\AccountProfile;
+use App\Models\Service;
+use App\Models\Supplier;
+use App\Models\AuditLog;
+use Carbon\Carbon;
+
+class StreamingAccountController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = StreamingAccount::with(['service', 'supplier', 'profiles', 'creator']);
+
+        if ($request->filled('service_id')) {
+            $query->where('service_id', $request->service_id);
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('modality')) {
+            $query->where('modality', $request->modality);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('account_email', 'like', "%{$search}%")
+                  ->orWhere('recovery_email', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%");
+            });
+        }
+
+        $accounts = $query->latest()->paginate(15)->withQueryString();
+
+        $services = Service::where('status', 'active')->get();
+        $suppliers = Supplier::where('status', 'active')->get();
+
+        // Totales de métricas para la barra superior
+        $totalMasterAccounts = StreamingAccount::count();
+        $activeAccounts = StreamingAccount::where('status', 'active')->count();
+        $droppedAccounts = StreamingAccount::where('status', 'dropped')->count();
+        $totalAvailableProfiles = AccountProfile::where('status', 'available')->whereHas('streamingAccount', function ($q) {
+            $q->where('status', 'active');
+        })->count();
+
+        return view('accounts.index', compact(
+            'accounts',
+            'services',
+            'suppliers',
+            'totalMasterAccounts',
+            'activeAccounts',
+            'droppedAccounts',
+            'totalAvailableProfiles'
+        ));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'service_id' => 'required|exists:services,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'account_email' => 'required|string|max:255',
+            'account_password' => 'required|string|max:255',
+            'recovery_email' => 'nullable|string|max:255',
+            'modality' => 'required|in:profile,full_account',
+            'total_profiles' => 'required|integer|min:1|max:10',
+            'supplier_cost' => 'nullable|numeric|min:0',
+            'supplier_expiration_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+            'profile_names' => 'nullable|array',
+            'profile_pins' => 'nullable|array',
+        ]);
+
+        $validated['created_by'] = Auth::id();
+        $validated['supplier_cost'] = $validated['supplier_cost'] ?? 0;
+        $validated['status'] = 'active';
+
+        $account = StreamingAccount::create($validated);
+
+        // Crear perfiles según la cantidad
+        $total = $validated['total_profiles'];
+        for ($i = 1; $i <= $total; $i++) {
+            $profileName = $request->input("profile_names.{$i}", "Pantalla {$i}");
+            $pin = $request->input("profile_pins.{$i}", str_pad((string)rand(1000, 9999), 4, '0', STR_PAD_LEFT));
+
+            AccountProfile::create([
+                'streaming_account_id' => $account->id,
+                'profile_number' => $i,
+                'profile_name' => $profileName,
+                'pin' => $pin,
+                'status' => 'available',
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'create_streaming_account',
+            'description' => "Cuenta maestra {$account->account_email} para servicio ID {$account->service_id} agregada con {$total} perfiles.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->route('accounts.index')->with('success', 'Cuenta de streaming y sus perfiles cargados exitosamente al inventario.');
+    }
+
+    public function update(Request $request, StreamingAccount $account)
+    {
+        $validated = $request->validate([
+            'account_email' => 'required|string|max:255',
+            'account_password' => 'required|string|max:255',
+            'recovery_email' => 'nullable|string|max:255',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'supplier_cost' => 'nullable|numeric|min:0',
+            'supplier_expiration_date' => 'nullable|date',
+            'status' => 'required|in:active,in_review,dropped,expired,paused',
+            'notes' => 'nullable|string',
+        ]);
+
+        $account->update($validated);
+
+        // Actualizar perfiles si se enviaron
+        if ($request->has('profiles')) {
+            foreach ($request->input('profiles') as $pId => $pData) {
+                $prof = AccountProfile::where('streaming_account_id', $account->id)->find($pId);
+                if ($prof) {
+                    $prof->update([
+                        'profile_name' => $pData['name'] ?? $prof->profile_name,
+                        'pin' => $pData['pin'] ?? $prof->pin,
+                        'status' => $pData['status'] ?? $prof->status,
+                    ]);
+                }
+            }
+        }
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'update_streaming_account',
+            'description' => "Cuenta maestra {$account->account_email} actualizada (Estado: {$account->status}).",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->route('accounts.index')->with('success', 'Cuenta actualizada correctamente.');
+    }
+
+    public function toggleStatus(Request $request, StreamingAccount $account)
+    {
+        $newStatus = $account->status === 'active' ? 'dropped' : 'active';
+        $account->update(['status' => $newStatus]);
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'toggle_account_status',
+            'description' => "Estado de la cuenta {$account->account_email} cambiado a {$newStatus}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "Estado de la cuenta actualizado a: {$newStatus}");
+    }
+
+    public function destroy(StreamingAccount $account)
+    {
+        $hasActiveSales = $account->sales()->whereIn('status', ['active', 'expiring_soon'])->exists();
+        if ($hasActiveSales) {
+            return back()->withErrors(['error' => 'No puedes eliminar una cuenta que tiene ventas activas vigentes. Primero reemplaza las ventas por garantía o cancélalas.']);
+        }
+
+        $email = $account->account_email;
+        $account->delete();
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'delete_streaming_account',
+            'description' => "Cuenta de streaming {$email} eliminada del inventario.",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return redirect()->route('accounts.index')->with('success', 'Cuenta eliminada del inventario.');
+    }
+}

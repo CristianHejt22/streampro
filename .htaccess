@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block sensitive system files from direct browser access in shared hosting
+    <FilesMatch "^\.(env|git|htaccess)|composer\.(json|lock)|package\.(json|lock)|phpunit\.xml|artisan$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
+    # Protect storage and bootstrap cache direct directory listing
+    RewriteRule ^storage/.*\.php$ - [F,L]
+    RewriteRule ^bootstrap/cache/.*\.php$ - [F,L]
+
+    # Clean redirection to Laravel public directory
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+</IfModule>

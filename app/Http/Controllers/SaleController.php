@@ -1,0 +1,429 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Sale;
+use App\Models\StreamingAccount;
+use App\Models\AccountProfile;
+use App\Models\Customer;
+use App\Models\Service;
+use App\Models\ServicePlan;
+use App\Models\Warranty;
+use App\Models\AuditLog;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+
+class SaleController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $query = Sale::with(['customer', 'service', 'plan', 'streamingAccount', 'profile', 'user']);
+
+        // Si es revendedor, solo ve sus propias ventas
+        if ($user->isReseller()) {
+            $query->where('user_id', $user->id);
+        } elseif ($request->filled('seller_id')) {
+            $query->where('user_id', $request->seller_id);
+        }
+
+        // Filtro por estado calculado
+        $today = Carbon::today();
+        if ($request->filled('status')) {
+            $status = $request->status;
+            if ($status === 'active') {
+                $query->where('end_date', '>', $today->copy()->addDays(3)->toDateString())
+                      ->where('status', '!=', 'cancelled');
+            } elseif ($status === 'expiring_soon') {
+                $query->where('end_date', '>=', $today->toDateString())
+                      ->where('end_date', '<=', $today->copy()->addDays(3)->toDateString())
+                      ->where('status', '!=', 'cancelled');
+            } elseif ($status === 'expired') {
+                $query->where('end_date', '<', $today->toDateString())
+                      ->where('status', '!=', 'cancelled');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        // Filtro por servicio
+        if ($request->filled('service_id')) {
+            $query->where('service_id', $request->service_id);
+        }
+
+        // Búsqueda por cliente, código o email
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('sale_code', 'like', "%{$search}%")
+                  ->orWhere('account_email_snapshot', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $sales = $query->latest()->paginate(15)->withQueryString();
+
+        // Opciones de filtros
+        $services = Service::where('status', 'active')->get();
+        $sellers = $user->isAdmin() ? \App\Models\User::where('role', 'reseller')->get() : collect();
+
+        // Contadores para píldoras de filtro
+        $baseQuery = Sale::query();
+        if ($user->isReseller()) {
+            $baseQuery->where('user_id', $user->id);
+        }
+
+        $countActive = (clone $baseQuery)->where('end_date', '>', $today->copy()->addDays(3)->toDateString())->where('status', '!=', 'cancelled')->count();
+        $countExpiring = (clone $baseQuery)->where('end_date', '>=', $today->toDateString())->where('end_date', '<=', $today->copy()->addDays(3)->toDateString())->where('status', '!=', 'cancelled')->count();
+        $countExpired = (clone $baseQuery)->where('end_date', '<', $today->toDateString())->where('status', '!=', 'cancelled')->count();
+
+        // Stock disponible para el modal de "Nueva Venta"
+        $availablePlans = ServicePlan::with('service')->where('is_active', true)->get();
+        $customersList = Customer::where(function ($q) use ($user) {
+            if ($user->isReseller()) {
+                $q->where('user_id', $user->id);
+            }
+        })->orderBy('name')->get();
+
+        return view('sales.index', compact(
+            'sales',
+            'services',
+            'sellers',
+            'countActive',
+            'countExpiring',
+            'countExpired',
+            'availablePlans',
+            'customersList'
+        ));
+    }
+
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'service_plan_id' => 'required|exists:service_plans,id',
+            'customer_mode' => 'required|in:existing,new',
+            'customer_id' => 'nullable|required_if:customer_mode,existing|exists:customers,id',
+            'customer_name' => 'nullable|required_if:customer_mode,new|string|max:255',
+            'customer_phone' => 'nullable|required_if:customer_mode,new|string|max:50',
+            'customer_email' => 'nullable|email|max:255',
+            'custom_price' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string',
+        ]);
+
+        $plan = ServicePlan::with('service')->findOrFail($request->service_plan_id);
+        $service = $plan->service;
+
+        // 1. Obtener o crear cliente
+        if ($request->customer_mode === 'new') {
+            $customer = Customer::create([
+                'user_id' => $user->id,
+                'name' => $request->customer_name,
+                'phone' => $request->customer_phone,
+                'email' => $request->customer_email,
+            ]);
+        } else {
+            $customer = Customer::findOrFail($request->customer_id);
+        }
+
+        // 2. Control de Saldo para Revendedores
+        $salePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
+        $costPrice = (float)($plan->cost_estimate ?: 0);
+
+        if ($user->isReseller()) {
+            $resellerCost = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+            if (!$user->hasBalance($resellerCost)) {
+                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Esta cuenta requiere ${$resellerCost} y tu saldo actual es de ${$user->balance}."])->withInput();
+            }
+            $user->deductBalance($resellerCost);
+            $costPrice = $resellerCost;
+        }
+
+        // 3. Asignación automática desde el stock disponible
+        $streamingAccount = null;
+        $profile = null;
+
+        if ($plan->modality === 'profile') {
+            // Buscar un perfil disponible
+            $profile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service) {
+                $q->where('service_id', $service->id)->where('status', 'active');
+            })->where('status', 'available')->first();
+
+            if (!$profile) {
+                return back()->withErrors(['error' => "No hay pantallas disponibles en stock para {$service->name}. Por favor carga cuentas en el módulo de Inventario antes de realizar la venta."])->withInput();
+            }
+
+            $streamingAccount = $profile->streamingAccount;
+            $profile->update(['status' => 'assigned']);
+        } else {
+            // Cuenta completa
+            $streamingAccount = StreamingAccount::where('service_id', $service->id)
+                ->where('modality', 'full_account')
+                ->where('status', 'active')
+                ->whereDoesntHave('sales', function ($q) {
+                    $q->whereIn('status', ['active', 'expiring_soon']);
+                })->first();
+
+            if (!$streamingAccount) {
+                return back()->withErrors(['error' => "No hay cuentas completas disponibles en stock para {$service->name}. Carga una cuenta completa en el Inventario."])->withInput();
+            }
+        }
+
+        // 4. Crear registro inmutable de Venta
+        $startDate = Carbon::today();
+        $endDate = $startDate->copy()->addDays($plan->duration_days ?: 30);
+        $saleCode = 'CST-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+
+        $sale = Sale::create([
+            'sale_code' => $saleCode,
+            'user_id' => $user->id,
+            'customer_id' => $customer->id,
+            'service_id' => $service->id,
+            'service_plan_id' => $plan->id,
+            'streaming_account_id' => $streamingAccount->id,
+            'account_profile_id' => $profile ? $profile->id : null,
+            'modality' => $plan->modality,
+            'account_email_snapshot' => $streamingAccount->account_email,
+            'account_password_snapshot' => $streamingAccount->account_password,
+            'profile_name_snapshot' => $profile ? $profile->profile_name : 'Cuenta Completa',
+            'profile_pin_snapshot' => $profile ? $profile->pin : null,
+            'usage_rules_snapshot' => $service->default_rules,
+            'sale_price' => $salePrice,
+            'cost_price' => $costPrice,
+            'profit' => $salePrice - $costPrice,
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'status' => 'active',
+            'notes' => $request->notes,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'create_sale',
+            'description' => "Venta {$saleCode} creada para {$customer->name} ({$service->name}). Precio: \${$salePrice}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->route('sales.index')
+            ->with('success', "¡Venta {$saleCode} registrada con éxito! Puedes copiar las credenciales o enviarlas por WhatsApp ahora mismo.")
+            ->with('new_sale_id', $sale->id);
+    }
+
+    public function renew(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $sale->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $days = (int) $request->input('days', 30);
+        $plan = $sale->plan;
+
+        // Descontar saldo si es revendedor
+        if ($user->isReseller() && $plan) {
+            $cost = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+            if (!$user->hasBalance($cost)) {
+                return back()->withErrors(['error' => "Saldo insuficiente para renovar (${$cost} requeridos)."]);
+            }
+            $user->deductBalance($cost);
+        }
+
+        // Extender fecha de vencimiento
+        $currentEnd = Carbon::parse($sale->end_date);
+        $newEnd = $currentEnd->isPast() ? Carbon::today()->addDays($days) : $currentEnd->addDays($days);
+
+        $sale->update([
+            'end_date' => $newEnd->toDateString(),
+            'status' => 'active',
+            'renewal_count' => $sale->renewal_count + 1,
+            'reminder_sent_at' => null, // Reset reminder flag
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'renew_sale',
+            'description' => "Venta {$sale->sale_code} renovada por {$days} días más. Nuevo vencimiento: {$newEnd->format('d/m/Y')}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Venta renovada con éxito! Nueva fecha de vencimiento: {$newEnd->format('d/m/Y')}.");
+    }
+
+    public function replaceWarranty(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $sale->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'reason' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $service = $sale->service;
+        $oldAccount = $sale->streamingAccount;
+        $oldProfile = $sale->profile;
+
+        // Buscar reemplazo en stock disponible
+        $newAccount = null;
+        $newProfile = null;
+
+        if ($sale->modality === 'profile') {
+            $newProfile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service) {
+                $q->where('service_id', $service->id)->where('status', 'active');
+            })->where('status', 'available')->first();
+
+            if (!$newProfile) {
+                return back()->withErrors(['error' => "No hay pantallas disponibles en stock para reemplazar la cuenta de {$service->name}. Carga stock primero."]);
+            }
+
+            $newAccount = $newProfile->streamingAccount;
+            $newProfile->update(['status' => 'assigned']);
+
+            // Marcar perfil anterior en revisión o caído
+            if ($oldProfile) {
+                $oldProfile->update(['status' => 'in_review']);
+            }
+        } else {
+            $newAccount = StreamingAccount::where('service_id', $service->id)
+                ->where('modality', 'full_account')
+                ->where('status', 'active')
+                ->where('id', '!=', $oldAccount->id)
+                ->first();
+
+            if (!$newAccount) {
+                return back()->withErrors(['error' => "No hay cuentas completas de reemplazo en stock para {$service->name}."]);
+            }
+
+            $oldAccount->update(['status' => 'dropped']);
+        }
+
+        // Registrar garantía
+        Warranty::create([
+            'sale_id' => $sale->id,
+            'user_id' => $user->id,
+            'issue_type' => $request->input('issue_type', 'password_changed'),
+            'description' => $request->reason,
+            'old_streaming_account_id' => $oldAccount ? $oldAccount->id : null,
+            'old_account_profile_id' => $oldProfile ? $oldProfile->id : null,
+            'new_streaming_account_id' => $newAccount->id,
+            'new_account_profile_id' => $newProfile ? $newProfile->id : null,
+            'status' => 'resolved',
+            'resolution_notes' => 'Reemplazo automático de credenciales asignadas desde el stock.',
+            'resolved_at' => now(),
+        ]);
+
+        // Actualizar la venta con las nuevas credenciales snapshot
+        $sale->update([
+            'streaming_account_id' => $newAccount->id,
+            'account_profile_id' => $newProfile ? $newProfile->id : null,
+            'account_email_snapshot' => $newAccount->account_email,
+            'account_password_snapshot' => $newAccount->account_password,
+            'profile_name_snapshot' => $newProfile ? $newProfile->profile_name : 'Cuenta Completa',
+            'profile_pin_snapshot' => $newProfile ? $newProfile->pin : null,
+            'status' => 'active',
+            'notes' => ($sale->notes ? $sale->notes . "\n" : '') . "Garantía aplicada el " . date('d/m/Y') . ": " . $request->reason,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'warranty_replacement',
+            'description' => "Garantía aplicada a venta {$sale->sale_code}. Nueva cuenta: {$newAccount->account_email}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', '¡Garantía aplicada con éxito! Se asignaron nuevas credenciales. Envía los nuevos datos al cliente.');
+    }
+
+    public function markReminderSent(Sale $sale)
+    {
+        $sale->update(['reminder_sent_at' => now()]);
+        return response()->json(['success' => true]);
+    }
+
+    public function destroy(Sale $sale)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $sale->user_id !== $user->id) {
+            abort(403);
+        }
+
+        // Liberar perfil asignado
+        if ($sale->profile) {
+            $sale->profile->update(['status' => 'available']);
+        }
+
+        $code = $sale->sale_code;
+        $sale->delete();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'delete_sale',
+            'description' => "Venta {$code} cancelada y eliminada. Perfil liberado de nuevo al stock.",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return redirect()->route('sales.index')->with('success', "Venta {$code} eliminada y perfil devuelto al stock.");
+    }
+
+    public function exportCsv()
+    {
+        $user = Auth::user();
+        $query = Sale::with(['customer', 'service', 'user']);
+        if ($user->isReseller()) {
+            $query->where('user_id', $user->id);
+        }
+
+        $sales = $query->latest()->get();
+
+        $filename = 'ventas_streaming_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($sales) {
+            $file = fopen('php://output', 'w');
+            // UTF-8 BOM para Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, [
+                'Código', 'Servicio', 'Cliente', 'WhatsApp', 'Email Cuenta', 'Contraseña',
+                'Perfil', 'PIN', 'Monto Venta', 'Costo', 'Ganancia', 'Inicio', 'Vencimiento', 'Estado', 'Vendedor'
+            ]);
+
+            foreach ($sales as $s) {
+                fputcsv($file, [
+                    $s->sale_code,
+                    $s->service ? $s->service->name : '',
+                    $s->customer ? $s->customer->name : '',
+                    $s->customer ? $s->customer->phone : '',
+                    $s->account_email_snapshot,
+                    $s->account_password_snapshot,
+                    $s->profile_name_snapshot,
+                    $s->profile_pin_snapshot,
+                    $s->sale_price,
+                    $s->cost_price,
+                    $s->profit,
+                    $s->start_date ? $s->start_date->format('d/m/Y') : '',
+                    $s->end_date ? $s->end_date->format('d/m/Y') : '',
+                    $s->calculated_status,
+                    $s->user ? $s->user->name : '',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+}
