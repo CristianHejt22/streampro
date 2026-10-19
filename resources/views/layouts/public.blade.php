@@ -45,9 +45,21 @@
                 </a>
                 @endif
 
-                <a href="{{ route('login') }}" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="lock" class="w-3.5 h-3.5 text-red-400"></i>
-                    <span>Panel / Revendedores</span>
+                @if(\Illuminate\Support\Facades\Auth::guard('customer')->check())
+                <a href="{{ route('boveda.index') }}" class="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-500 hover:opacity-90 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>Mi Bóveda</span>
+                </a>
+                @else
+                <a href="{{ route('boveda.login') }}" class="px-3.5 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                    <span>Bóveda Clientes</span>
+                </a>
+                @endif
+
+                <a href="{{ route('login') }}" class="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>Panel Staff</span>
                 </a>
             </div>
         </div>

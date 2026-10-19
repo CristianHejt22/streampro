@@ -21,7 +21,10 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                return redirect(RouteServiceProvider::HOME);
+                if ($guard === 'customer') {
+                    return redirect()->route('boveda.index');
+                }
+                return redirect()->route('dashboard');
             }
         }
 

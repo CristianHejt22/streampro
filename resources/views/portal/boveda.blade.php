@@ -4,8 +4,9 @@
 
 @section('content')
 @php
-    $brand = $reseller->brand_name ?: config('app.name', 'CStreame Master');
-    $whatsapp = $reseller->support_whatsapp ?: '5491199887766';
+    $brand = ($reseller && $reseller->brand_name) ? $reseller->brand_name : config('app.name', 'CStreame Master');
+    $whatsapp = ($reseller && $reseller->support_whatsapp) ? $reseller->support_whatsapp : '5491199887766';
+    $referralCode = ($reseller && $reseller->referral_code) ? $reseller->referral_code : '';
 @endphp
 
 <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8" x-data="{
@@ -95,18 +96,25 @@
             @foreach($activeSales as $sale)
             @php
                 $srv = $sale->service;
+                $srvName = $srv ? $srv->name : 'Streaming Oficial';
+                $srvColor = $srv ? ($srv->color_hex ?? '#E50914') : '#E50914';
+                $planName = $sale->plan ? $sale->plan->name : 'Plan Estándar';
                 $days = $sale->days_remaining;
-                $badge = $sale->status_badge;
-                $endDate = \Carbon\Carbon::parse($sale->end_date)->format('d/m/Y');
+                $badge = $sale->status_badge ?? [
+                    'label' => 'Activa (Garantía OK)',
+                    'class' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    'icon' => 'check-circle'
+                ];
+                $endDate = $sale->end_date ? \Carbon\Carbon::parse($sale->end_date)->format('d/m/Y') : '30 días';
             @endphp
             <div class="bg-[#0f172a] rounded-3xl border border-slate-800 shadow-xl overflow-hidden hover:border-slate-700 transition-all flex flex-col justify-between">
                 <!-- Card Header -->
                 <div class="p-5 pb-4 border-b border-slate-800/80 flex items-start justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <span class="w-4 h-4 rounded-full shrink-0 shadow" style="background-color: {{ $srv->color_hex ?? '#E50914' }}"></span>
+                        <span class="w-4 h-4 rounded-full shrink-0 shadow" style="background-color: {{ $srvColor }}"></span>
                         <div>
-                            <h3 class="font-black text-white text-base">{{ $srv->name }}</h3>
-                            <span class="text-xs text-sky-400 font-mono">{{ $sale->plan->name ?? 'Plan Individual' }}</span>
+                            <h3 class="font-black text-white text-base">{{ $srvName }}</h3>
+                            <span class="text-xs text-sky-400 font-mono">{{ $planName }}</span>
                         </div>
                     </div>
                     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border {{ $badge['class'] }}">
@@ -194,7 +202,7 @@
                         <span>Reportar Falla</span>
                     </button>
 
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20deseo%20renovar%20mi%20servicio%20de%20*{{ urlencode($srv->name) }}*%20(Cliente:%20{{ urlencode($customer->name) }},%20Código:%20{{ $customer->customer_code }})." target="_blank" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20deseo%20renovar%20mi%20servicio%20de%20*{{ urlencode($srvName) }}*%20(Cliente:%20{{ urlencode($customer->name) }},%20Código:%20{{ $customer->customer_code }})." target="_blank" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow">
                         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                         <span>Renovar Cuenta</span>
                     </a>
@@ -204,6 +212,48 @@
         </div>
         @endif
     </div>
+
+    @if(isset($historySales) && $historySales->isNotEmpty())
+    <!-- SECCIÓN: HISTORIAL DE SERVICIOS ANTERIORES -->
+    <div class="space-y-4 pt-4 border-t border-slate-800/80" x-data="{ showHistory: false }">
+        <div class="flex items-center justify-between cursor-pointer" @click="showHistory = !showHistory">
+            <div class="flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+                <h3 class="text-sm font-bold text-slate-300">Historial de Cuentas Anteriores / Vencidas</h3>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                    {{ $historySales->count() }}
+                </span>
+            </div>
+            <button type="button" class="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+                <span x-text="showHistory ? 'Ocultar' : 'Ver Historial'"></span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" :class="{ 'rotate-180': showHistory }"></i>
+            </button>
+        </div>
+
+        <div x-show="showHistory" x-cloak class="space-y-2">
+            @foreach($historySales as $hSale)
+            @php
+                $hSrv = $hSale->service;
+                $hSrvName = $hSrv ? $hSrv->name : 'Streaming';
+                $hEndDate = $hSale->end_date ? \Carbon\Carbon::parse($hSale->end_date)->format('d/m/Y') : '-';
+            @endphp
+            <div class="p-3.5 rounded-2xl bg-[#0f172a]/50 border border-slate-800/80 flex items-center justify-between gap-4 text-xs">
+                <div class="flex items-center gap-3">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                    <div>
+                        <span class="font-bold text-white">{{ $hSrvName }}</span>
+                        <span class="text-slate-500 font-mono text-[11px] block">{{ $hSale->plan ? $hSale->plan->name : 'Individual' }} • Venció el {{ $hEndDate }}</span>
+                    </div>
+                </div>
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20deseo%20reactivar%20mi%20cuenta%20de%20*{{ urlencode($hSrvName) }}*%20(Cliente:%20{{ urlencode($customer->name) }})." target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white font-bold text-[11px] transition-all flex items-center gap-1">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                    <span>Reactivar</span>
+                </a>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     <!-- SECCIÓN: ACTIVAR OTRAS PLATAFORMAS (CATÁLOGO RÁPIDO) -->
     <div class="space-y-4 pt-6 border-t border-slate-800">
@@ -224,7 +274,7 @@
                 </div>
 
                 <div class="pt-2 border-t border-slate-800/80">
-                    <a href="{{ route('catalog.index', ['ref' => $reseller->referral_code]) }}" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                    <a href="{{ route('catalog.index', array_filter(['ref' => $referralCode])) }}" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-red-600 hover:text-white text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
                         <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
                         <span>Ver Planes & Activar</span>
                     </a>

@@ -108,6 +108,52 @@ class Sale extends Model
     }
 
     /**
+     * Devuelve la etiqueta y estilo visual según el estado calculado
+     */
+    public function getStatusBadgeAttribute(): array
+    {
+        $status = $this->calculated_status;
+        switch ($status) {
+            case 'active':
+                return [
+                    'label' => 'Activa (Garantía OK)',
+                    'class' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    'icon' => 'check-circle',
+                ];
+            case 'expiring_soon':
+                return [
+                    'label' => 'Por Vencer (<= 3 días)',
+                    'class' => 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse',
+                    'icon' => 'clock',
+                ];
+            case 'expired':
+                return [
+                    'label' => 'Vencida',
+                    'class' => 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    'icon' => 'alert-triangle',
+                ];
+            case 'renewed':
+                return [
+                    'label' => 'Renovada',
+                    'class' => 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+                    'icon' => 'refresh-cw',
+                ];
+            case 'replaced':
+                return [
+                    'label' => 'Reemplazada (Garantía)',
+                    'class' => 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                    'icon' => 'shield-check',
+                ];
+            default:
+                return [
+                    'label' => ucfirst($this->status ?: 'Activa'),
+                    'class' => 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+                    'icon' => 'help-circle',
+                ];
+        }
+    }
+
+    /**
      * Genera el texto formateado de entrega para WhatsApp
      */
     public function getWhatsAppDeliveryMessageAttribute(): string
