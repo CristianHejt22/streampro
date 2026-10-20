@@ -51,8 +51,8 @@ Route::get('/ref/{code}/registro', [\App\Http\Controllers\CustomerPortalControll
 // Formulario de Afiliación de Revendedor enviado por el Proveedor
 Route::get('/afiliar/{code}', [\App\Http\Controllers\ResellerController::class, 'showAffiliateRegister'])->name('affiliate.register');
 Route::post('/afiliar/{code}', [\App\Http\Controllers\ResellerController::class, 'processAffiliateRegister'])->name('affiliate.register.process');
-Route::get('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'showAffiliateRegister']);
-Route::post('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'processAffiliateRegister']);
+Route::get('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'showAffiliateRegister'])->name('resellers.affiliate_register');
+Route::post('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'processAffiliateRegister'])->name('resellers.affiliate_register.process');
 
 Route::get('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'showLogin'])->name('boveda.login');
 Route::post('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'processLogin'])->name('boveda.login.process');
@@ -182,4 +182,7 @@ Route::middleware(['auth'])->group(function () {
     // Marca Blanca & Customización
     Route::get('/whitelabel', [WhiteLabelController::class, 'index'])->name('whitelabel.index');
     Route::post('/whitelabel', [WhiteLabelController::class, 'update'])->name('whitelabel.update');
+    Route::get('/marca-blanca', function () {
+        return redirect()->route('whitelabel.index');
+    });
 });
