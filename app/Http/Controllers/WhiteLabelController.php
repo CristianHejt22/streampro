@@ -12,22 +12,20 @@ class WhiteLabelController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $isWhiteLabelAllowed = $user->isWhiteLabelAllowed();
 
-        // Check if reseller has permission for white label (Pro or Custom plan or Admin)
-        if ($user->isReseller() && $user->reseller_plan !== 'pro' && $user->reseller_plan !== 'custom') {
-            return redirect()->route('dashboard')
-                ->with('error', 'La función de Marca Blanca está disponible exclusivamente para revendedores con PLAN PRO.');
-        }
-
-        return view('whitelabel.index', compact('user'));
+        return view('whitelabel.index', compact('user', 'isWhiteLabelAllowed'));
     }
 
     public function update(Request $request)
     {
         $user = Auth::user();
 
-        if ($user->isReseller() && $user->reseller_plan !== 'pro' && $user->reseller_plan !== 'custom') {
-            abort(403);
+        // Control estricto de nivel de panel: Marca Blanca habilitada únicamente en PRO
+        if ($user->isReseller() && $user->isPanelBasic()) {
+            return back()->withErrors([
+                'error' => '⛔ Tu panel actual es BÁSICO (Marca oficial SPRO PLAY). La personalización completa de Marca Blanca (logo, colores y nombre propio) está habilitada exclusivamente para Paneles PRO.'
+            ]);
         }
 
         $validated = $request->validate([

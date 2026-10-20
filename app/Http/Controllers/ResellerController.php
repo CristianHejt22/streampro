@@ -5,17 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Service;
+use App\Models\ServicePlan;
 use App\Models\CreditTransaction;
 use App\Models\ResellerServiceCommission;
+use App\Models\ResellerPlanPrice;
+use App\Models\BalanceTransfer;
 use App\Models\SystemSetting;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class ResellerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         $query = User::query();
@@ -29,13 +33,68 @@ class ResellerController extends Controller
             abort(403, 'Acceso denegado al módulo de revendedores.');
         }
 
-        $resellers = $query->with(['parent', 'subResellers', 'customServiceCommissions.service'])
+        // Filtros rápidos del Super Admin / Proveedor
+        if ($request->filled('tier') && in_array($request->tier, ['basic', 'pro'])) {
+            $query->where('panel_tier', $request->tier);
+        }
+        if ($request->filled('status') && in_array($request->status, ['active', 'suspended', 'expired'])) {
+            if ($request->status === 'expired') {
+                $query->whereNotNull('panel_expires_at')->where('panel_expires_at', '<', Carbon::now());
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+        if ($request->filled('parent_id')) {
+            $query->where('parent_id', $request->parent_id);
+        }
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('email', 'like', "%{$s}%")
+                  ->orWhere('brand_name', 'like', "%{$s}%")
+                  ->orWhere('referral_code', 'like', "%{$s}%")
+                  ->orWhere('phone', 'like', "%{$s}%");
+            });
+        }
+
+        $resellers = $query->with(['parent', 'subResellers', 'customServiceCommissions.service', 'customPlanPrices.servicePlan'])
             ->withCount(['sales', 'orders'])
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $superResellersList = User::where('role', 'super_reseller')->get();
-        $servicesList = Service::where('status', 'active')->get();
+        $servicesList = Service::where('status', 'active')->with('plans')->get();
+        $servicePlansList = ServicePlan::with('service')->where('is_active', true)->get();
+
+        // Estadísticas clave en tiempo real para el panel de gestión
+        $baseCountQuery = $user->isAdmin() 
+            ? User::whereIn('role', ['reseller', 'super_reseller']) 
+            : User::where('parent_id', $user->id);
+
+        $stats = [
+            'total_resellers' => (clone $baseCountQuery)->count(),
+            'basic_panels' => (clone $baseCountQuery)->where('panel_tier', 'basic')->count(),
+            'pro_panels' => (clone $baseCountQuery)->where(function($q) {
+                $q->where('panel_tier', 'pro')->orWhereNull('panel_tier');
+            })->count(),
+            'active_panels' => (clone $baseCountQuery)->where('status', 'active')->count(),
+            'expired_panels' => (clone $baseCountQuery)->where(function($q) {
+                $q->where('status', 'suspended')
+                  ->orWhere(function($sub) {
+                      $sub->whereNotNull('panel_expires_at')->where('panel_expires_at', '<', Carbon::now());
+                  });
+            })->count(),
+            'total_wallets_balance' => (float)(clone $baseCountQuery)->sum('balance'),
+            'total_credits_basic' => (int)(clone $baseCountQuery)->sum('credits_basic'),
+            'total_credits_pro' => (int)(clone $baseCountQuery)->sum('credits_pro'),
+        ];
+
+        // Transferencias de saldo pendientes de revisión
+        $pendingTransfers = $user->isAdmin()
+            ? BalanceTransfer::where('status', 'pending')->with(['reseller', 'provider'])->latest()->get()
+            : BalanceTransfer::where('provider_id', $user->id)->where('status', 'pending')->with('reseller')->latest()->get();
 
         // Preferencias de soporte de WhatsApp para que el Admin las configure
         $whatsappSupportEnabled = SystemSetting::get('whatsapp_support_enabled', 'true') === 'true';
@@ -46,6 +105,9 @@ class ResellerController extends Controller
             'resellers',
             'superResellersList',
             'servicesList',
+            'servicePlansList',
+            'stats',
+            'pendingTransfers',
             'whatsappSupportEnabled',
             'whatsappSupportDest',
             'whatsappAdminPhone'
@@ -73,6 +135,9 @@ class ResellerController extends Controller
         $panelType = $request->input('panel_type', 'master');
         $panelExpiresAt = ($panelType === 'cloned') ? Carbon::now()->addDays(30) : null;
 
+        $tier = $request->input('panel_tier', 'basic');
+        $brandName = ($tier === 'basic') ? 'SPRO PLAY' : ($request->brand_name ?: $request->name . ' Streaming');
+
         $reseller = new User([
             'name' => $request->name,
             'email' => $request->email,
@@ -86,12 +151,12 @@ class ResellerController extends Controller
             'referral_code' => $referralCode,
             'anti_phishing_code' => $antiPhishingCode,
             'panel_type' => $panelType,
-            'panel_tier' => $request->input('panel_tier', 'pro'),
+            'panel_tier' => $tier,
             'panel_monthly_fee' => 15000.00,
             'panel_expires_at' => $panelExpiresAt,
             'reseller_commission_pct' => 40.00, // 40% Ganancia Revendedor
             'parent_commission_pct' => 25.00,   // 25% Ganancia Panel Patrocinador
-            'brand_name' => $request->brand_name ?: $request->name . ' Streaming',
+            'brand_name' => $brandName,
         ]);
 
         // Guardar contraseña cifrada reversible con AES-256 para que el Super Admin pueda verla
@@ -574,5 +639,258 @@ class ResellerController extends Controller
         ]);
 
         return back()->with('success', $statusStr);
+    }
+
+    /**
+     * Muestra el formulario público de afiliación de revendedor enviado por el Proveedor
+     */
+    public function showAffiliateRegister($code)
+    {
+        $provider = User::where('referral_code', $code)
+            ->orWhere('id', $code)
+            ->first();
+
+        if (!$provider || (!$provider->isReseller() && !$provider->isAdmin())) {
+            abort(404, 'Enlace de afiliación no válido o el proveedor ya no se encuentra activo.');
+        }
+
+        return view('portal.affiliate_register', compact('provider'));
+    }
+
+    /**
+     * Procesa el registro del revendedor desde el formulario enviado por el Proveedor
+     */
+    public function processAffiliateRegister(Request $request, $code)
+    {
+        $provider = User::where('referral_code', $code)
+            ->orWhere('id', $code)
+            ->firstOrFail();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'support_whatsapp' => 'required|string|max:50',
+            'panel_tier' => 'required|in:basic,pro',
+            'brand_name' => 'nullable|string|max:100',
+        ]);
+
+        $tier = $request->panel_tier;
+        $brandName = ($tier === 'basic') ? 'SPRO PLAY' : ($request->input('brand_name') ?: 'Mi Tienda Streaming');
+        $referralCode = 'RES-' . strtoupper(Str::random(6));
+        $antiPhishingCode = 'SEC-' . strtoupper(Str::random(8));
+
+        $reseller = new User([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->support_whatsapp,
+            'support_whatsapp' => $request->support_whatsapp,
+            'password' => Hash::make($request->password),
+            'role' => 'reseller',
+            'parent_id' => $provider->id,
+            'status' => 'active',
+            'reseller_plan' => $tier === 'pro' ? 'mayorista' : 'standard',
+            'balance' => 0.00,
+            'referral_code' => $referralCode,
+            'anti_phishing_code' => $antiPhishingCode,
+            'panel_type' => 'cloned',
+            'panel_tier' => $tier,
+            'panel_monthly_fee' => 15000.00,
+            'panel_expires_at' => Carbon::now()->addDays(30),
+            'cloned_store_paid_to_admin' => true,
+            'cloned_store_paid_by_reseller' => true,
+            'reseller_commission_pct' => 40.00,
+            'parent_commission_pct' => 25.00,
+            'brand_name' => $brandName,
+            'credits_basic' => 0,
+            'credits_pro' => 0,
+        ]);
+
+        $reseller->plain_password = $request->password;
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => $provider->id,
+            'action' => 'affiliate_register_reseller',
+            'description' => "Nuevo revendedor afiliado {$reseller->name} ({$reseller->email}) registrado con {$provider->name} como Panel " . strtoupper($tier) . " ({$brandName}).",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->route('login')->with('success', "¡Registro completado con éxito! Tu panel " . strtoupper($tier) . " ({$brandName}) ha sido creado bajo la red de {$provider->name}. Ya puedes ingresar con tu correo y contraseña.");
+    }
+
+    /**
+     * El Proveedor ajusta sus precios de costo mayorista para su revendedor
+     */
+    public function updatePlanPrices(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id) {
+            abort(403, 'Solo el proveedor patrocinador o el Super Admin pueden ajustar precios mayoristas.');
+        }
+
+        $costs = $request->input('provider_costs', []);
+        foreach ($costs as $planId => $cost) {
+            if ($cost === null || $cost === '') continue;
+            $costVal = max(0, (float)$cost);
+            ResellerPlanPrice::updateOrCreate(
+                ['reseller_id' => $reseller->id, 'service_plan_id' => $planId],
+                ['parent_id' => $reseller->parent_id ?: $user->id, 'provider_cost' => $costVal]
+            );
+        }
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'update_reseller_plan_prices',
+            'description' => "Precios mayoristas de proveedor ajustados para {$reseller->name}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Precios de costo de proveedor guardados exitosamente para {$reseller->name}!");
+    }
+
+    /**
+     * El Revendedor define sus propios precios al público (PVP) para su tienda
+     */
+    public function updateMyPvp(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isReseller() && !$user->isAdmin()) {
+            abort(403);
+        }
+
+        $pvps = $request->input('reseller_pvps', []);
+        foreach ($pvps as $planId => $pvp) {
+            if ($pvp === null || $pvp === '') continue;
+            $pvpVal = max(0, (float)$pvp);
+            ResellerPlanPrice::updateOrCreate(
+                ['reseller_id' => $user->id, 'service_plan_id' => $planId],
+                ['parent_id' => $user->parent_id, 'reseller_pvp' => $pvpVal]
+            );
+        }
+
+        return back()->with('success', '¡Tus precios de venta al público (PVP) han sido actualizados en tu tienda!');
+    }
+
+    /**
+     * El Revendedor notifica una transferencia de dinero a su Proveedor para recargar saldo
+     */
+    public function storeBalanceTransfer(Request $request)
+    {
+        $user = auth()->user();
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'payment_method' => 'required|string|max:50',
+            'reference_code' => 'nullable|string|max:100',
+            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+            'reseller_notes' => 'nullable|string|max:500',
+        ]);
+
+        $providerId = $user->parent_id ?: User::where('role', 'admin')->first()->id;
+
+        $receiptPath = null;
+        if ($request->hasFile('receipt')) {
+            $receiptPath = $request->file('receipt')->store('balance_transfers', 'public');
+        }
+
+        $transfer = BalanceTransfer::create([
+            'reseller_id' => $user->id,
+            'provider_id' => $providerId,
+            'amount' => (float)$request->amount,
+            'payment_method' => $request->payment_method,
+            'receipt_path' => $receiptPath,
+            'reference_code' => $request->reference_code,
+            'status' => 'pending',
+            'reseller_notes' => $request->reseller_notes,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'submit_balance_transfer',
+            'description' => "Revendedor {$user->name} notificó transferencia de \${$transfer->amount} a su proveedor (Ref: {$transfer->reference_code}).",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Transferencia de \${$transfer->amount} enviada con éxito! Tu proveedor revisará el comprobante para acreditarte saldo de inmediato.");
+    }
+
+    /**
+     * El Proveedor aprueba la transferencia recibida y acredita el saldo a su revendedor
+     */
+    public function approveBalanceTransfer(BalanceTransfer $transfer)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $transfer->provider_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($transfer->status !== 'pending') {
+            return back()->with('error', 'Esta transferencia ya fue procesada anteriormente.');
+        }
+
+        $transfer->status = 'approved';
+        $transfer->processed_at = Carbon::now();
+        $transfer->save();
+
+        // Acreditar saldo a la billetera del revendedor
+        $transfer->reseller->addBalance($transfer->amount);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'approve_balance_transfer',
+            'description' => "Proveedor {$user->name} aprobó transferencia #{$transfer->id} de \${$transfer->amount} para {$transfer->reseller->name}. Saldo acreditado.",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return back()->with('success', "¡Transferencia aprobada! Se acreditaron \${$transfer->amount} en la billetera de {$transfer->reseller->name} para entregas rápidas.");
+    }
+
+    /**
+     * El Proveedor rechaza una transferencia recibida
+     */
+    public function rejectBalanceTransfer(Request $request, BalanceTransfer $transfer)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $transfer->provider_id !== $user->id) {
+            abort(403);
+        }
+
+        $transfer->status = 'rejected';
+        $transfer->provider_notes = $request->input('reason', 'Comprobante no válido o pago no acreditado.');
+        $transfer->processed_at = Carbon::now();
+        $transfer->save();
+
+        return back()->with('info', "Transferencia rechazada para {$transfer->reseller->name}.");
+    }
+
+    /**
+     * Super Admin ajusta la preferencia de WhatsApp específica para un panel
+     */
+    public function updatePanelWhatsAppPreference(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $user->id !== $reseller->id && $reseller->parent_id !== $user->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'whatsapp_support_preference' => 'required|in:auto,reseller,provider,admin',
+            'support_whatsapp' => 'nullable|string|max:50',
+        ]);
+
+        $reseller->whatsapp_support_preference = $request->whatsapp_support_preference;
+        if ($request->filled('support_whatsapp')) {
+            $reseller->support_whatsapp = $request->support_whatsapp;
+        }
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'update_panel_whatsapp_preference',
+            'description' => "Preferencia de WhatsApp para panel de {$reseller->name} actualizada a: {$reseller->whatsapp_support_preference} ({$reseller->support_whatsapp}).",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Preferencia de WhatsApp para la Bóveda de {$reseller->name} actualizada con éxito!");
     }
 }

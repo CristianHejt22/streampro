@@ -48,6 +48,12 @@ Route::get('/registro', [\App\Http\Controllers\CustomerPortalController::class, 
 Route::post('/registro', [\App\Http\Controllers\CustomerPortalController::class, 'processRegister'])->name('portal.register.process');
 Route::get('/ref/{code}/registro', [\App\Http\Controllers\CustomerPortalController::class, 'showRegister'])->name('portal.register.ref');
 
+// Formulario de Afiliación de Revendedor enviado por el Proveedor
+Route::get('/afiliar/{code}', [\App\Http\Controllers\ResellerController::class, 'showAffiliateRegister'])->name('affiliate.register');
+Route::post('/afiliar/{code}', [\App\Http\Controllers\ResellerController::class, 'processAffiliateRegister'])->name('affiliate.register.process');
+Route::get('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'showAffiliateRegister']);
+Route::post('/registro-revendedor/{code}', [\App\Http\Controllers\ResellerController::class, 'processAffiliateRegister']);
+
 Route::get('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'showLogin'])->name('boveda.login');
 Route::post('/boveda/login', [\App\Http\Controllers\CustomerPortalController::class, 'processLogin'])->name('boveda.login.process');
 Route::post('/boveda/logout', [\App\Http\Controllers\CustomerPortalController::class, 'logout'])->name('boveda.logout');
@@ -151,6 +157,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/activate-master', [ResellerController::class, 'activatePanelMaster'])->name('resellers.activate_master');
     Route::post('/resellers/{reseller}/activate-credit', [ResellerController::class, 'activateWithCredit'])->name('resellers.activate_credit');
     Route::post('/resellers/{reseller}/toggle-provider-override', [ResellerController::class, 'toggleProviderWhatsAppOverride'])->name('resellers.toggle_provider_override');
+    Route::post('/resellers/{reseller}/update-whatsapp-preference', [ResellerController::class, 'updatePanelWhatsAppPreference'])->name('resellers.update_whatsapp_preference');
+    Route::post('/resellers/{reseller}/update-plan-prices', [ResellerController::class, 'updatePlanPrices'])->name('resellers.update_plan_prices');
+    Route::post('/services/plans/update-my-pvp', [ResellerController::class, 'updateMyPvp'])->name('services.plans.update_my_pvp');
+    Route::post('/resellers/balance-transfers', [ResellerController::class, 'storeBalanceTransfer'])->name('resellers.balance_transfers.store');
+    Route::post('/resellers/balance-transfers/{transfer}/approve', [ResellerController::class, 'approveBalanceTransfer'])->name('resellers.balance_transfers.approve');
+    Route::post('/resellers/balance-transfers/{transfer}/reject', [ResellerController::class, 'rejectBalanceTransfer'])->name('resellers.balance_transfers.reject');
     Route::post('/admin/settings/whatsapp-support', [ResellerController::class, 'updateWhatsAppSupportSettings'])->name('admin.settings.whatsapp_support');
 
     // Módulo de Tesorería Multi-Usuario & Mini Nube de Comprobantes

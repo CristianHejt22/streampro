@@ -4,8 +4,9 @@
 
 @section('content')
 @php
-    $brand = ($reseller && $reseller->brand_name) ? $reseller->brand_name : config('app.name', 'CStreame Master');
-    $whatsapp = ($reseller && $reseller->support_whatsapp) ? $reseller->support_whatsapp : '5491199887766';
+    $effectiveBrand = $reseller ? $reseller->getEffectiveBrandName() : config('app.name', 'CStreame Master');
+    $brandLogo = $reseller ? $reseller->brand_logo_url : asset('images/spro-play-logo.svg');
+    $whatsapp = $supportWhatsAppPhone ?: ($reseller ? $reseller->resolved_vault_whatsapp : '5491199887766');
     $referralCode = ($reseller && $reseller->referral_code) ? $reseller->referral_code : '';
     $antiPhishingCode = $customer->anti_phishing_phrase ?: 'CST-SAFE-' . ($customer->customer_code ?: $customer->id);
 @endphp
@@ -144,7 +145,13 @@
                         </span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-black text-white mt-1">¡Hola, {{ $customer->name }}!</h1>
-                    <p class="text-xs text-slate-400">Distribuidor autorizado: <strong class="text-amber-400">{{ $brand }}</strong></p>
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <span>Distribuidor autorizado:</span>
+                        <strong class="text-amber-400 font-bold">{{ $effectiveBrand }}</strong>
+                        @if($reseller && $reseller->isPanelBasic())
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-500 to-red-500 text-white font-mono tracking-wider">SPRO PLAY</span>
+                        @endif
+                    </p>
                 </div>
             </div>
 

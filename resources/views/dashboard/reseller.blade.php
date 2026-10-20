@@ -5,7 +5,7 @@
 @section('page_subtitle', 'Panel personal de ventas de cuentas streaming y billetera prepago')
 
 @section('content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ rechargeModal: false }">
 
     <!-- Tarjeta Principal de Billetera y Métricas -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -19,10 +19,14 @@
                 <span class="text-3xl font-black text-emerald-400">${{ number_format($user->balance, 2) }}</span>
                 <span class="text-xs text-gray-400 block mt-1">Crédito prepago para emitir cuentas</span>
             </div>
-            <div class="mt-4 pt-3 border-t border-gray-800 text-xs">
+            <div class="mt-4 pt-3 border-t border-gray-800 text-xs flex items-center justify-between">
                 <a href="{{ route('sales.index') }}" class="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1">
-                    Emitir Cuenta Ahora <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    Emitir Cuenta <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                 </a>
+                <button type="button" @click="rechargeModal = true" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 shadow cursor-pointer">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                    Cargar Saldo
+                </button>
             </div>
         </div>
 
@@ -78,7 +82,7 @@
 
     <!-- Módulo Proveedor: Sub-Revendedores, Tiendas Clonadas y Ganancias 25% -->
     @if($user->isSuperReseller())
-    <div class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/20 to-gray-900 border border-purple-500/40 shadow-xl space-y-3">
+    <div class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/20 to-gray-900 border border-purple-500/40 shadow-xl space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center font-bold text-lg">
@@ -112,6 +116,35 @@
             <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
                 <span class="text-[11px] text-gray-400 uppercase font-bold block">Comisiones Ganadas (25% Patrocinio)</span>
                 <span class="text-xl font-black text-emerald-400 mt-1 block">${{ number_format($sponsorshipEarnings, 2) }}</span>
+            </div>
+        </div>
+
+        <!-- Caja de Afiliación con Formulario de Registro para Revendedores -->
+        <div class="p-4 rounded-xl bg-[#0b0f19] border border-purple-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <span class="text-[10px] uppercase font-bold text-purple-400 block tracking-wider">Tu Enlace de Afiliación / Registro de Revendedores:</span>
+                <div class="mt-1 flex items-center gap-2">
+                    <code class="px-2.5 py-1 rounded bg-black/60 border border-gray-800 text-xs text-purple-300 font-mono select-all">
+                        {{ route('affiliate.register', ['code' => $user->referral_code]) }}
+                    </code>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    Envía este formulario a tus revendedores para que se registren automáticamente y tengan copia de tu catálogo con tus precios de proveedor.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <button onclick="navigator.clipboard.writeText('{{ route('affiliate.register', ['code' => $user->referral_code]) }}'); alert('¡Enlace de registro copiado!');" class="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-gray-700 cursor-pointer">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    <span>Copiar Enlace</span>
+                </button>
+                <a href="https://wa.me/?text={{ urlencode('¡Hola! Regístrate como revendedor con panel propio en nuestra plataforma aquí: ' . route('affiliate.register', ['code' => $user->referral_code])) }}" target="_blank" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow cursor-pointer">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                    <span>WhatsApp</span>
+                </a>
+                <a href="{{ route('affiliate.register', ['code' => $user->referral_code]) }}" target="_blank" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow shadow-purple-600/30">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    <span>Abrir Formulario</span>
+                </a>
             </div>
         </div>
     </div>
@@ -295,6 +328,137 @@
             @endforeach
         </div>
         @endif
+    </div>
+
+    @if(isset($myTransfers) && $myTransfers->isNotEmpty())
+    <!-- Historial de Transferencias / Recargas Enviadas al Proveedor -->
+    <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg space-y-3">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <div class="flex items-center gap-2 text-sky-400">
+                <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Tus Notificaciones de Saldo al Proveedor</h3>
+            </div>
+            <button @click="rechargeModal = true" class="text-xs text-emerald-400 hover:underline font-semibold cursor-pointer">
+                + Nueva Recarga
+            </button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-200">
+                <thead>
+                    <tr class="border-b border-gray-800 text-[10px] uppercase font-bold text-gray-400 bg-black/20">
+                        <th class="py-2 px-3">Fecha</th>
+                        <th class="py-2 px-3">Monto</th>
+                        <th class="py-2 px-3">Método & Ref</th>
+                        <th class="py-2 px-3">Estado</th>
+                        <th class="py-2 px-3">Comprobante</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800/60 font-mono">
+                    @foreach($myTransfers as $tr)
+                    <tr>
+                        <td class="py-2 px-3 text-gray-400">{{ $tr->created_at->format('d/m/Y H:i') }}</td>
+                        <td class="py-2 px-3 font-black text-emerald-400">${{ number_format($tr->amount, 2) }}</td>
+                        <td class="py-2 px-3 text-gray-300 font-sans">
+                            <span class="font-bold uppercase">{{ $tr->payment_method }}</span>
+                            @if($tr->reference_code)
+                            <span class="text-[10px] text-gray-500 block">Ref: {{ $tr->reference_code }}</span>
+                            @endif
+                        </td>
+                        <td class="py-2 px-3">
+                            @if($tr->status === 'approved')
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                ✓ Acreditado
+                            </span>
+                            @elseif($tr->status === 'rejected')
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                ✕ Rechazado
+                            </span>
+                            @else
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                                ⏳ Pendiente
+                            </span>
+                            @endif
+                        </td>
+                        <td class="py-2 px-3">
+                            @if($tr->receipt_path)
+                            <a href="{{ asset('storage/' . $tr->receipt_path) }}" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 font-sans text-[11px]">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Ver
+                            </a>
+                            @else
+                            <span class="text-gray-500 font-sans text-[11px]">—</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    <!-- ========================================== -->
+    <!-- MODAL: NOTIFICAR RECARGA / TRANSFERENCIA AL PROVEEDOR -->
+    <!-- ========================================== -->
+    <div x-show="rechargeModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="rechargeModal = false">
+        <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Cargar Saldo / Transferir a Proveedor</h3>
+                        <span class="text-xs text-gray-400">Notifica tu pago para que tu proveedor te acredite saldo de inmediato</span>
+                    </div>
+                </div>
+                <button @click="rechargeModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form action="{{ route('resellers.balance_transfers.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Monto Transferido ($) *</label>
+                    <input type="number" step="0.01" min="1" name="amount" required placeholder="Ej: 25000" class="w-full px-4 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-sm font-mono text-emerald-400 font-bold focus:border-emerald-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Medio de Pago *</label>
+                        <select name="payment_method" required class="w-full px-3 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:border-emerald-500 outline-none">
+                            <option value="transferencia">Transferencia Bancaria</option>
+                            <option value="mercadopago">Mercado Pago</option>
+                            <option value="binance_usdt">Binance (USDT)</option>
+                            <option value="efectivo">Efectivo</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nº Comprobante / Ref</label>
+                        <input type="text" name="reference_code" placeholder="Ej: MP-982344" class="w-full px-3 py-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:border-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Foto o PDF del Comprobante (Opcional)</label>
+                    <input type="file" name="receipt" accept="image/*,application/pdf" class="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-gray-800 file:text-sky-300 hover:file:bg-gray-700 cursor-pointer">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Mensaje / Notas para el Proveedor</label>
+                    <textarea name="reseller_notes" rows="2" placeholder="Ej: Pago de cuentas para recargar billetera..." class="w-full px-3 py-2 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:border-emerald-500 outline-none"></textarea>
+                </div>
+
+                <div class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
+                    ⚡ Al recibir y verificar la transferencia, tu proveedor o el Super Admin acreditarán tu saldo al instante para que tus entregas sean automáticas.
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="rechargeModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer">
+                        Enviar Notificación de Saldo
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 </div>

@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\RenewalRequest;
+use App\Models\BalanceTransfer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -202,6 +203,9 @@ class DashboardController extends Controller
         // Solicitudes de renovación pendientes de sus clientes
         $pendingRenewalsCount = RenewalRequest::where('user_id', $user->id)->where('status', 'pending')->count();
 
+        // Transferencias de saldo enviadas al proveedor
+        $myTransfers = BalanceTransfer::where('reseller_id', $user->id)->latest()->take(5)->get();
+
         // Estadísticas de Proveedor (si es Super Revendedor)
         $subResellersCount = User::where('parent_id', $user->id)->count();
         $clonedPanelsCount = User::where('parent_id', $user->id)->where('panel_type', 'cloned')->count();
@@ -222,6 +226,7 @@ class DashboardController extends Controller
             'chartValues',
             'consignmentsActive',
             'pendingRenewalsCount',
+            'myTransfers',
             'subResellersCount',
             'clonedPanelsCount',
             'sponsorshipEarnings'

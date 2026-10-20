@@ -30,6 +30,27 @@
         this.serviceReseller = res;
         this.serviceCommissionsModal = true;
     },
+    planPricesModal: false,
+    selectedPlanPricesReseller: null,
+    currentPlanCosts: {},
+    openPlanPrices(res) {
+        this.selectedPlanPricesReseller = res;
+        this.currentPlanCosts = {};
+        if (res.custom_plan_prices && Array.isArray(res.custom_plan_prices)) {
+            res.custom_plan_prices.forEach(p => {
+                this.currentPlanCosts[p.service_plan_id] = p.provider_cost;
+            });
+        }
+        this.planPricesModal = true;
+    },
+    whatsappPrefModal: false,
+    selectedPrefReseller: null,
+    currentWhatsAppPref: 'auto',
+    openWhatsAppPref(res) {
+        this.selectedPrefReseller = res;
+        this.currentWhatsAppPref = res.whatsapp_support_preference || 'auto';
+        this.whatsappPrefModal = true;
+    },
     revealedPassword: '',
     revealedAntiPhishing: '',
     revealedEmail: '',
@@ -67,7 +88,8 @@
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
                 <span class="text-[11px] font-bold text-gray-400 uppercase">Paneles Registrados</span>
-                <h4 class="text-2xl font-black text-white mt-1">{{ $resellers->total() }}</h4>
+                <h4 class="text-2xl font-black text-white mt-1">{{ $stats['total_resellers'] ?? $resellers->total() }}</h4>
+                <span class="text-[10px] text-amber-400 font-mono">{{ $stats['basic_panels'] ?? 0 }} Básicos · {{ $stats['pro_panels'] ?? 0 }} PRO</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center text-xl">
                 <i data-lucide="users" class="w-6 h-6"></i>
@@ -76,31 +98,34 @@
 
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase">Margen Revendedor</span>
-                <h4 class="text-2xl font-black text-emerald-400 mt-1">40%</h4>
+                <span class="text-[11px] font-bold text-gray-400 uppercase">Estado de Paneles</span>
+                <h4 class="text-2xl font-black text-emerald-400 mt-1">{{ $stats['active_panels'] ?? 0 }} Activos</h4>
+                <span class="text-[10px] text-rose-400 font-mono">{{ $stats['expired_panels'] ?? 0 }} Vencidos / Suspendidos</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center text-xl">
-                <i data-lucide="percent" class="w-6 h-6"></i>
+                <i data-lucide="check-circle" class="w-6 h-6"></i>
             </div>
         </div>
 
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase">Copia Panel (30 Días)</span>
-                <h4 class="text-2xl font-black text-sky-400 mt-1">$15.000</h4>
+                <span class="text-[11px] font-bold text-gray-400 uppercase">Saldo en Billeteras</span>
+                <h4 class="text-2xl font-black text-sky-400 mt-1">${{ number_format($stats['total_wallets_balance'] ?? 0, 2) }}</h4>
+                <span class="text-[10px] text-gray-400">Fondos activos para compras</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-sky-600/20 text-sky-400 flex items-center justify-center text-xl">
-                <i data-lucide="copy" class="w-6 h-6"></i>
+                <i data-lucide="wallet" class="w-6 h-6"></i>
             </div>
         </div>
 
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase">Comisión Patrocinador</span>
-                <h4 class="text-2xl font-black text-purple-400 mt-1">25%</h4>
+                <span class="text-[11px] font-bold text-gray-400 uppercase">Créditos de Activación</span>
+                <h4 class="text-2xl font-black text-purple-400 mt-1">{{ $stats['total_credits_basic'] ?? 0 }} B / {{ $stats['total_credits_pro'] ?? 0 }} P</h4>
+                <span class="text-[10px] text-purple-300 font-mono">Básicos ($2.5k) · PRO ($4k)</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-xl">
-                <i data-lucide="trending-up" class="w-6 h-6"></i>
+                <i data-lucide="gem" class="w-6 h-6"></i>
             </div>
         </div>
     </div>
@@ -187,6 +212,139 @@
         </div>
     </div>
     @endif
+
+    @if(isset($pendingTransfers) && $pendingTransfers->isNotEmpty())
+    <!-- Solicitudes de Recarga / Transferencias Pendientes de Aprobación -->
+    <div class="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-xl space-y-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5 text-amber-400">
+                <i data-lucide="bell-ring" class="w-5 h-5 animate-pulse"></i>
+                <h3 class="text-sm font-black text-white uppercase tracking-wider">
+                    🔔 Solicitudes de Saldo / Transferencias Pendientes de Aprobación ({{ $pendingTransfers->count() }})
+                </h3>
+            </div>
+            <span class="text-xs text-amber-300 font-mono">Revisión para acreditación inmediata de saldo</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-200">
+                <thead>
+                    <tr class="border-b border-amber-500/20 text-[10px] uppercase font-bold text-amber-400/80 bg-black/30">
+                        <th class="py-2.5 px-3">Revendedor</th>
+                        <th class="py-2.5 px-3">Monto Notificado</th>
+                        <th class="py-2.5 px-3">Método / Referencia</th>
+                        <th class="py-2.5 px-3">Comprobante</th>
+                        <th class="py-2.5 px-3">Notas</th>
+                        <th class="py-2.5 px-3 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-amber-500/10 font-mono">
+                    @foreach($pendingTransfers as $tr)
+                    <tr class="hover:bg-amber-500/5">
+                        <td class="py-2.5 px-3">
+                            <span class="font-bold text-white block">{{ $tr->reseller ? $tr->reseller->name : 'Revendedor' }}</span>
+                            <span class="text-[10px] text-gray-400 font-sans">{{ $tr->reseller ? $tr->reseller->email : '' }}</span>
+                        </td>
+                        <td class="py-2.5 px-3">
+                            <span class="text-sm font-black text-emerald-400">${{ number_format($tr->amount, 2) }}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-xs">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 font-sans font-bold uppercase">{{ $tr->payment_method }}</span>
+                            @if($tr->reference_code)
+                            <span class="block text-[10px] text-gray-400 mt-0.5">Ref: {{ $tr->reference_code }}</span>
+                            @endif
+                        </td>
+                        <td class="py-2.5 px-3">
+                            @if($tr->receipt_path)
+                            <a href="{{ asset('storage/' . $tr->receipt_path) }}" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 text-[11px] font-sans font-bold">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                                Ver Comprobante
+                            </a>
+                            @else
+                            <span class="text-gray-500 text-[10px] font-sans">Sin adjunto</span>
+                            @endif
+                        </td>
+                        <td class="py-2.5 px-3 text-[11px] font-sans text-gray-300">
+                            {{ $tr->reseller_notes ?: '—' }}
+                        </td>
+                        <td class="py-2.5 px-3 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="POST" action="{{ route('resellers.balance_transfers.approve', $tr) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" onclick="return confirm('¿Aprobar y acreditar ${{ number_format($tr->amount, 2) }} a la billetera de {{ $tr->reseller ? $tr->reseller->name : 'este revendedor' }}?')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md cursor-pointer font-sans">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        Aprobar Saldo
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('resellers.balance_transfers.reject', $tr) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" onclick="return confirm('¿Rechazar esta solicitud de saldo?')" class="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs cursor-pointer font-sans">
+                                        ✕
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    <!-- Filtros de Búsqueda y Gestión de Paneles -->
+    <div class="p-4 rounded-2xl bg-[#111827] border border-gray-800">
+        <form method="GET" action="{{ route('resellers.index') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-400 block mb-1">Buscar Panel</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Nombre, email, marca..." class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white placeholder-gray-500 outline-none focus:border-sky-500">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-400 block mb-1">Nivel / Tier</label>
+                <select name="tier" class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-sky-500">
+                    <option value="">Todos los Niveles</option>
+                    <option value="basic" {{ request('tier') === 'basic' ? 'selected' : '' }}>📦 BÁSICO (10 Serv)</option>
+                    <option value="pro" {{ request('tier') === 'pro' ? 'selected' : '' }}>💎 PRO (Ilimitado)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-400 block mb-1">Estado</label>
+                <select name="status" class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-sky-500">
+                    <option value="">Todos los Estados</option>
+                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>🟢 Activos</option>
+                    <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>🔴 Suspendidos</option>
+                    <option value="expired" {{ request('status') === 'expired' ? 'selected' : '' }}>⏳ Vencidos</option>
+                </select>
+            </div>
+
+            @if(Auth::user()->isAdmin() && isset($superResellersList))
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-400 block mb-1">Patrocinador / Proveedor</label>
+                <select name="parent_id" class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-sky-500">
+                    <option value="">Todos los Proveedores</option>
+                    @foreach($superResellersList as $sp)
+                    <option value="{{ $sp->id }}" {{ request('parent_id') == $sp->id ? 'selected' : '' }}>{{ $sp->name }} ({{ $sp->brand_name }})</option>
+                    @endforeach
+                </select>
+            </div>
+            @else
+            <div></div>
+            @endif
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="flex-1 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                    Filtrar
+                </button>
+                @if(request()->hasAny(['search', 'tier', 'status', 'parent_id']))
+                <a href="{{ route('resellers.index') }}" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs cursor-pointer">
+                    Limpiar
+                </a>
+                @endif
+            </div>
+        </form>
+    </div>
 
     <!-- Header Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -299,6 +457,17 @@
                                 <i data-lucide="sliders" class="w-3 h-3"></i>
                                 <span>Comisiones por Servicio</span>
                             </button>
+
+                            <div class="mt-1 flex flex-col gap-1">
+                                <button type="button" @click="openPlanPrices({{ json_encode($res) }})" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Ajustar Costos Mayoristas de Proveedor">
+                                    <i data-lucide="tag" class="w-3 h-3"></i>
+                                    <span>⚙️ Precios Proveedor</span>
+                                </button>
+                                <button type="button" @click="openWhatsAppPref({{ json_encode($res) }})" class="px-2 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Configurar WhatsApp en Bóveda Clientes">
+                                    <i data-lucide="message-circle" class="w-3 h-3"></i>
+                                    <span>📱 WhatsApp ({{ $res->whatsapp_support_preference ?? 'auto' }})</span>
+                                </button>
+                            </div>
                         </td>
                         <td class="py-3 px-4 text-xs">
                             @if($isCloned)
@@ -1106,6 +1275,139 @@
                     <button type="button" @click="creditActivationModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
                     <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 cursor-pointer">
                         Descontar 1 Crédito & Activar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 13: AJUSTAR PRECIOS DE PROVEEDOR (COSTO MAYORISTA) -->
+    <!-- ========================================== -->
+    <div x-show="planPricesModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="planPricesModal = false">
+        <div class="w-full max-w-2xl bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="tag" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Precios de Costo Mayorista para Revendedor</h3>
+                        <span class="text-xs text-gray-400" x-text="'Configuración individual para ' + (selectedPlanPricesReseller?.name || 'Revendedor')"></span>
+                    </div>
+                </div>
+                <button @click="planPricesModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
+                💡 <strong>¿Cómo funciona?</strong> Al clonar tu catálogo, puedes ajustar el <em>Costo Mayorista de Proveedor</em> de cada plan. Cuando el revendedor realice una entrega a su cliente, este costo se descontará de su saldo de billetera, generándote a ti la ganancia de proveedor.
+            </div>
+
+            <form :action="'/resellers/' + selectedPlanPricesReseller?.id + '/update-plan-prices'" method="POST" class="space-y-4">
+                @csrf
+
+                <div class="rounded-2xl border border-gray-800 overflow-hidden">
+                    <table class="w-full text-left text-xs text-gray-200">
+                        <thead>
+                            <tr class="bg-gray-900 border-b border-gray-800 text-[10px] uppercase font-bold text-gray-400">
+                                <th class="py-2.5 px-3">Servicio / Plan</th>
+                                <th class="py-2.5 px-3">PVP Sugerido</th>
+                                <th class="py-2.5 px-3">Costo Base</th>
+                                <th class="py-2.5 px-3">Tu Costo al Revendedor ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/60 font-mono">
+                            @foreach($servicePlansList as $sp)
+                            <tr class="hover:bg-gray-800/30">
+                                <td class="py-2.5 px-3 font-sans">
+                                    <span class="font-bold text-white block">{{ $sp->service ? $sp->service->name : 'Streaming' }}</span>
+                                    <span class="text-[11px] text-gray-400">{{ $sp->name }}</span>
+                                </td>
+                                <td class="py-2.5 px-3 text-sky-400">
+                                    ${{ number_format($sp->retail_price, 2) }}
+                                </td>
+                                <td class="py-2.5 px-3 text-gray-400">
+                                    ${{ number_format($sp->reseller_price, 2) }}
+                                </td>
+                                <td class="py-2.5 px-3">
+                                    <input type="number" step="0.01" min="0" 
+                                           :name="'provider_costs[' + {{ $sp->id }} + ']'" 
+                                           :value="currentPlanCosts[{{ $sp->id }}] || '{{ $sp->reseller_price }}'" 
+                                           class="w-32 px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-700 text-xs font-mono text-emerald-400 font-bold focus:border-emerald-500 outline-none">
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="planPricesModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer">
+                        Guardar Precios de Proveedor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 14: PREFERENCIA DE WHATSAPP EN BÓVEDA -->
+    <!-- ========================================== -->
+    <div x-show="whatsappPrefModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="whatsappPrefModal = false">
+        <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-teal-400">
+                    <i data-lucide="message-circle" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Soporte WhatsApp en Bóveda</h3>
+                        <span class="text-xs text-gray-400" x-text="'Destino de soporte para ' + (selectedPrefReseller?.name || 'este panel')"></span>
+                    </div>
+                </div>
+                <button @click="whatsappPrefModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form :action="'/resellers/' + selectedPrefReseller?.id + '/update-whatsapp-preference'" method="POST" class="space-y-4">
+                @csrf
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Seleccionar Destino del Botón WhatsApp *</label>
+
+                    <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
+                        <input type="radio" name="preference" value="auto" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-bold text-white block">🤖 Automático (Recomendado)</span>
+                            <span class="text-[11px] text-gray-400">Usa el WhatsApp propio del revendedor si configuró teléfono; de lo contrario usa el del proveedor o Super Admin.</span>
+                        </div>
+                    </label>
+
+                    <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
+                        <input type="radio" name="preference" value="reseller" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-bold text-white block">👤 WhatsApp Propio del Revendedor</span>
+                            <span class="text-[11px] text-gray-400">Todas las consultas de cuentas de este panel van directo al teléfono de este revendedor.</span>
+                        </div>
+                    </label>
+
+                    <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
+                        <input type="radio" name="preference" value="provider" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-bold text-white block">🛡️ WhatsApp Central del Proveedor Patrocinador</span>
+                            <span class="text-[11px] text-gray-400">El proveedor patrocinador atiende las consultas técnicas y garantías de este panel.</span>
+                        </div>
+                    </label>
+
+                    <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
+                        <input type="radio" name="preference" value="admin" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-bold text-white block">⚡ WhatsApp Central del Super Admin</span>
+                            <span class="text-[11px] text-gray-400">Centralizar el soporte en el número maestro de la plataforma streaming.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="whatsappPrefModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg shadow-teal-600/30 cursor-pointer">
+                        Guardar Preferencia
                     </button>
                 </div>
             </form>

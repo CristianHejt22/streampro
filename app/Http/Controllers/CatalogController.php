@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\ServicePlan;
 use App\Models\User;
 use App\Models\Order;
+use App\Models\ResellerPlanPrice;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -59,24 +60,36 @@ class CatalogController extends Controller
         }
 
         $services = $query->latest()->get();
-        $categories = Service::where('status', 'active')->distinct()->pluck('category');
 
-        $brandName = $seller->brand_name ?: ($seller->isAdmin() ? 'CStreame Master Platform' : $seller->name);
-        $brandLogo = $seller->brand_logo;
-        $primaryColor = $seller->brand_primary_color ?: '#E50914';
-
-        // Regla de WhatsApp: si es copia, usa su revendedor, salvo que el proveedor lo desee
-        $whatsappSupportPhone = $seller->support_whatsapp;
-        if ($seller && $seller->isReseller() && $seller->parent_id && $seller->parent) {
-            if ($seller->parent->provider_override_support_whatsapp && !empty($seller->parent->support_whatsapp)) {
-                $whatsappSupportPhone = $seller->parent->support_whatsapp;
+        // Aplicar precios de venta al público (PVP) personalizados del revendedor
+        if ($seller && $seller->isReseller()) {
+            foreach ($services as $service) {
+                foreach ($service->plans as $plan) {
+                    $customPrice = ResellerPlanPrice::where('reseller_id', $seller->id)
+                        ->where('service_plan_id', $plan->id)
+                        ->value('reseller_pvp');
+                    if ($customPrice !== null && (float)$customPrice > 0) {
+                        $plan->price = (float)$customPrice;
+                    }
+                }
             }
         }
-        if (empty($whatsappSupportPhone)) {
-            $whatsappSupportPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
+
+        $categories = Service::where('status', 'active')->distinct()->pluck('category');
+
+        // Marca Oficial SPRO PLAY para Paneles Básicos
+        if ($seller && $seller->isReseller() && $seller->isPanelBasic()) {
+            $brandName = 'SPRO PLAY';
+            $brandLogo = 'images/spro-play-logo.svg';
+        } else {
+            $brandName = $seller->brand_name ?: ($seller->isAdmin() ? 'CStreame Master Platform' : $seller->name);
+            $brandLogo = $seller->brand_logo;
         }
 
-        $supportWhatsapp = $whatsappSupportPhone;
+        $primaryColor = $seller->brand_primary_color ?: '#E50914';
+
+        // Resolución de WhatsApp de Bóveda / Catálogo según preferencias
+        $supportWhatsapp = $seller->resolved_vault_whatsapp ?: SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
         $supportTelegram = $seller->support_telegram;
 
         return view('catalog.index', compact(

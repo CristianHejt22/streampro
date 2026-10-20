@@ -8,6 +8,7 @@
 <div class="space-y-6" x-data="{
     newServiceModal: false,
     newPlanModal: false,
+    myPvpModal: false,
     selectedService: null
 }">
 
@@ -78,16 +79,22 @@
     @endif
 
     <!-- Top Action Bar -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Catálogo de Plataformas</h3>
             <p class="text-xs text-gray-400">Servicios disponibles para venta, reglas de entrega y planes</p>
         </div>
 
-        <button @click="newServiceModal = true" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/30">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i>
-            <span>Nueva Plataforma</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button @click="myPvpModal = true" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer">
+                <i data-lucide="tag" class="w-4 h-4"></i>
+                <span>Ajustar Mis Precios PVP</span>
+            </button>
+            <button @click="newServiceModal = true" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/30 cursor-pointer">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Nueva Plataforma</span>
+            </button>
+        </div>
     </div>
 
     <!-- Services Grid -->
@@ -146,16 +153,23 @@
 
                 <div class="space-y-2">
                     @forelse($serv->plans as $plan)
-                    <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between text-xs">
+                    @php
+                        $pricing = Auth::user()->getEffectivePlanPricing($plan);
+                        $margin = max(0, $pricing['reseller_pvp'] - $pricing['provider_cost']);
+                    @endphp
+                    <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between text-xs hover:border-gray-700 transition-colors">
                         <div>
                             <div class="font-bold text-white">{{ $plan->name }}</div>
                             <div class="text-[10px] text-gray-400 mt-0.5">
                                 {{ $plan->duration_days }} días · {{ $plan->modality === 'profile' ? 'Pantalla con PIN' : 'Cuenta Completa' }}
                             </div>
+                            <div class="text-[10px] text-emerald-400 font-mono mt-0.5">
+                                Ganancia neta: <strong>+${{ number_format($margin, 2) }}</strong>
+                            </div>
                         </div>
                         <div class="text-right">
-                            <div class="font-black text-emerald-400">${{ number_format($plan->price, 2) }}</div>
-                            <div class="text-[10px] text-cyan-400 font-semibold">Mayorista: ${{ number_format($plan->reseller_price, 2) }}</div>
+                            <div class="font-black text-white text-sm">${{ number_format($pricing['reseller_pvp'], 2) }} <span class="text-[9px] font-normal text-gray-400">PVP</span></div>
+                            <div class="text-[10px] text-cyan-400 font-mono font-semibold">Costo: ${{ number_format($pricing['provider_cost'], 2) }}</div>
                         </div>
                     </div>
                     @empty
@@ -279,6 +293,79 @@
                 <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
                     <button type="button" @click="newPlanModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
                     <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30">Crear Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: AJUSTAR MIS PRECIOS DE VENTA (PVP) -->
+    <!-- ========================================== -->
+    <div x-show="myPvpModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="myPvpModal = false">
+        <div class="w-full max-w-2xl bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="badge-dollar-sign" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Definir Mis Precios al Público (PVP)</h3>
+                        <span class="text-xs text-gray-400">Fija el precio de venta en tu tienda y visualiza tu ganancia neta en tiempo real</span>
+                    </div>
+                </div>
+                <button @click="myPvpModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
+                💵 <strong>Tú decides tu margen:</strong> El costo mayorista es lo que se descontará de tu billetera al entregar cada cuenta. Lo que cobres por encima en tu tienda es tu <strong>Ganancia Neta directa</strong>.
+            </div>
+
+            <form action="{{ route('services.plans.update_my_pvp') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <div class="rounded-2xl border border-gray-800 overflow-hidden">
+                    <table class="w-full text-left text-xs text-gray-200">
+                        <thead>
+                            <tr class="bg-gray-900 border-b border-gray-800 text-[10px] uppercase font-bold text-gray-400">
+                                <th class="py-2.5 px-3">Plataforma / Plan</th>
+                                <th class="py-2.5 px-3">Tu Costo Mayorista</th>
+                                <th class="py-2.5 px-3">PVP Sugerido Base</th>
+                                <th class="py-2.5 px-3">Tu Precio al Público (PVP)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/60 font-mono">
+                            @foreach($services as $s)
+                            @foreach($s->plans as $p)
+                            @php
+                                $pricing = Auth::user()->getEffectivePlanPricing($p);
+                            @endphp
+                            <tr class="hover:bg-gray-800/30">
+                                <td class="py-2.5 px-3 font-sans">
+                                    <span class="font-bold text-white block">{{ $s->name }}</span>
+                                    <span class="text-[11px] text-gray-400">{{ $p->name }}</span>
+                                </td>
+                                <td class="py-2.5 px-3 text-cyan-400 font-bold">
+                                    ${{ number_format($pricing['provider_cost'], 2) }}
+                                </td>
+                                <td class="py-2.5 px-3 text-gray-400">
+                                    ${{ number_format($p->price, 2) }}
+                                </td>
+                                <td class="py-2.5 px-3">
+                                    <input type="number" step="0.01" min="{{ $pricing['provider_cost'] }}" 
+                                           name="reseller_pvps[{{ $p->id }}]" 
+                                           value="{{ $pricing['reseller_pvp'] }}" 
+                                           class="w-32 px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-700 text-xs font-mono text-emerald-400 font-bold focus:border-emerald-500 outline-none">
+                                </td>
+                            </tr>
+                            @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="myPvpModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer">
+                        Guardar Mis Precios PVP
+                    </button>
                 </div>
             </form>
         </div>

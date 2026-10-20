@@ -46,6 +46,7 @@ class User extends Authenticatable
         'credits_basic',
         'credits_pro',
         'provider_override_support_whatsapp',
+        'whatsapp_support_preference',
         'bank_cbu',
         'bank_cvu',
         'bank_alias',
@@ -309,6 +310,83 @@ class User extends Authenticatable
         return $this->hasMany(ResellerServiceCommission::class, 'parent_id');
     }
 
+    public function customPlanPrices()
+    {
+        return $this->hasMany(ResellerPlanPrice::class, 'reseller_id');
+    }
+
+    public function subResellerPlanPrices()
+    {
+        return $this->hasMany(ResellerPlanPrice::class, 'parent_id');
+    }
+
+    public function balanceTransfersSent()
+    {
+        return $this->hasMany(BalanceTransfer::class, 'reseller_id');
+    }
+
+    public function balanceTransfersReceived()
+    {
+        return $this->hasMany(BalanceTransfer::class, 'provider_id');
+    }
+
+    public function isWhiteLabelAllowed(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+        return $this->isPanelPro();
+    }
+
+    public function getEffectiveBrandName(): string
+    {
+        if ($this->isReseller() && $this->isPanelBasic()) {
+            return 'SPRO PLAY';
+        }
+        return $this->attributes['brand_name'] ?? 'CStreame Master';
+    }
+
+    public function getBrandLogoUrlAttribute(): string
+    {
+        if ($this->isReseller() && $this->isPanelBasic()) {
+            return asset('images/spro-play-logo.svg');
+        }
+        if (!empty($this->brand_logo)) {
+            return asset('storage/' . $this->brand_logo);
+        }
+        return asset('images/spro-play-logo.svg');
+    }
+
+    public function getResolvedVaultWhatsAppAttribute(): string
+    {
+        $adminPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
+        $pref = $this->whatsapp_support_preference ?? 'auto';
+
+        if ($pref === 'reseller') {
+            return $this->support_whatsapp ?: $adminPhone;
+        }
+        if ($pref === 'provider') {
+            return ($this->parent && $this->parent->support_whatsapp) ? $this->parent->support_whatsapp : $adminPhone;
+        }
+        if ($pref === 'admin') {
+            return $adminPhone;
+        }
+
+        // Modo 'auto': sigue la preferencia global y la configuración del proveedor
+        $globalDest = SystemSetting::get('whatsapp_support_dest', 'reseller');
+        if ($globalDest === 'admin') {
+            return $adminPhone;
+        }
+
+        if ($this->parent_id && $this->parent) {
+            if ($this->parent->provider_override_support_whatsapp && !empty($this->parent->support_whatsapp)) {
+                return $this->parent->support_whatsapp;
+            }
+        }
+
+        return $this->support_whatsapp ?: ($this->parent ? $this->parent->support_whatsapp : $adminPhone);
+    }
+
     public function getCommissionForService($serviceId): float
     {
         $custom = ResellerServiceCommission::where('reseller_id', $this->id)
@@ -316,5 +394,29 @@ class User extends Authenticatable
             ->value('commission_pct');
 
         return $custom !== null ? (float)$custom : (float)($this->reseller_commission_pct ?: 40.00);
+    }
+
+    public function getEffectivePlanPricing(ServicePlan $plan): array
+    {
+        $custom = ResellerPlanPrice::where('reseller_id', $this->id)
+            ->where('service_plan_id', $plan->id)
+            ->first();
+
+        $providerCost = $custom && $custom->provider_cost !== null 
+            ? (float)$custom->provider_cost 
+            : (float)($plan->reseller_price ?: ($plan->price * 0.60));
+
+        $resellerPvp = $custom && $custom->reseller_pvp !== null 
+            ? (float)$custom->reseller_pvp 
+            : (float)$plan->price;
+
+        $margin = max(0, $resellerPvp - $providerCost);
+
+        return [
+            'provider_cost' => $providerCost,
+            'reseller_pvp' => $resellerPvp,
+            'margin' => $margin,
+            'margin_pct' => $resellerPvp > 0 ? round(($margin / $resellerPvp) * 100, 1) : 0,
+        ];
     }
 }
