@@ -237,8 +237,15 @@
                     </div>
                 </div>
 
-                <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
-                    ⏱️ Si se activa en consignación, la cuenta tiene <strong>48 horas</strong> para liquidarse antes de caerse automáticamente.
+                <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-amber-400">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+                        <span>Regla de Entrega Estricta:</span>
+                    </div>
+                    <p>
+                        <strong>No se entregará sin monto en billetera o si no se recibe el pago del proveedor.</strong>
+                        Si se activa en consignación o sin saldo suficiente, las credenciales quedan retenidas y solo se desbloquearán en la Bóveda del cliente cuando liquides el costo desde tu saldo.
+                    </p>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">

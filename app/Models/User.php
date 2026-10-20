@@ -100,6 +100,39 @@ class User extends Authenticatable
         return $this->panel_expires_at && \Carbon\Carbon::parse($this->panel_expires_at)->isPast();
     }
 
+    /**
+     * Valida si el usuario o revendedor tiene sus pagos al día para emitir y entregar cuentas.
+     * "No se entregará sin monto en billetera o si no se recibe el pago del proveedor."
+     */
+    public function canDeliverAccounts(&$reason = null): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->status !== 'active') {
+            $reason = 'El panel del revendedor se encuentra inactivo o suspendido.';
+            return false;
+        }
+
+        // Si es un panel clonado o depende de un proveedor:
+        if ($this->isPanelCloned() || $this->parent_id) {
+            // 1. Debe haberse recibido el pago del revendedor al proveedor por la tienda clonada
+            if (!$this->cloned_store_paid_by_reseller) {
+                $reason = 'No se ha recibido el pago del proveedor. El proveedor tiene pendiente de cobro la suscripción de esta tienda clonada.';
+                return false;
+            }
+
+            // 2. El proveedor debe haber abonado al Administrador y no estar vencido ($15.000 / 30d)
+            if (!$this->cloned_store_paid_to_admin || $this->isPanelExpired()) {
+                $reason = 'La suscripción del panel ante el Administrador General no está abonada o se encuentra vencida ($15.000 / 30 días).';
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function getDaysRemainingPanelAttribute(): ?int
     {
         if (!$this->panel_expires_at) {

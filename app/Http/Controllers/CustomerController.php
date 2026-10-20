@@ -129,15 +129,24 @@ class CustomerController extends Controller
             $parentCommission = round($profit * ($pct / 100), 2);
         }
 
-        // Descontar saldo si el emisor es revendedor y NO es consignación
-        if ($user->isReseller() && !$isConsignment) {
-            if (!$user->hasBalance($cost)) {
-                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Requiere \${$cost} para {$months} mes(es) y tu saldo es de \${$user->balance}. Puedes activar en Consignación a 48hs."]);
+        // Regla: No se entregará sin monto en billetera o si no se recibe el pago del proveedor
+        if ($user->isReseller()) {
+            $providerBlockReason = null;
+            if (!$user->canDeliverAccounts($providerBlockReason)) {
+                return back()->withErrors([
+                    'error' => "⛔ Entrega Bloqueada: {$providerBlockReason} No se pueden emitir ni entregar cuentas sin la confirmación de pago del proveedor."
+                ]);
             }
-            $user->deductBalance($cost);
 
-            if ($parentCommission > 0 && $user->parent) {
-                $user->parent->addBalance($parentCommission);
+            if (!$isConsignment) {
+                if (!$user->hasBalance($cost)) {
+                    return back()->withErrors(['error' => "⛔ Entrega Bloqueada: No se puede entregar la cuenta sin monto en billetera. Costo requerido: \${$cost} para {$months} mes(es) y tu saldo actual es de \${$user->balance}. Recarga tu billetera para entregar el servicio."]);
+                }
+                $user->deductBalance($cost);
+
+                if ($parentCommission > 0 && $user->parent) {
+                    $user->parent->addBalance($parentCommission);
+                }
             }
         }
 
@@ -208,7 +217,11 @@ class CustomerController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', "¡Activación completada con éxito! {$service->name} asignado a {$customer->name}. Las credenciales ya están visibles en su Bóveda.");
+        $msg = $isConsignment 
+            ? "¡Cuenta en consignación apartada para {$customer->name}! 🔒 ATENCIÓN: Las credenciales quedan RETENIDAS y NO se entregarán en la Bóveda del cliente hasta liquidar el costo de $" . number_format($cost, 2) . " desde tu billetera." 
+            : "¡Activación completada con éxito! {$service->name} asignado a {$customer->name}. Las credenciales han sido entregadas en su Bóveda.";
+
+        return back()->with('success', $msg);
     }
 
     /**

@@ -268,6 +268,15 @@
                                             </button>
                                         </form>
                                     </div>
+                                    @if(!$res->cloned_store_paid_by_reseller)
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold block mt-1 w-max">
+                                        ⛔ Entrega de cuentas BLOQUEADA
+                                    </span>
+                                    @else
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold block mt-1 w-max">
+                                        ✓ Entrega de cuentas HABILITADA
+                                    </span>
+                                    @endif
                                 </div>
 
                                 <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="text-[10px] text-sky-400 hover:underline block mt-1.5 font-bold cursor-pointer">

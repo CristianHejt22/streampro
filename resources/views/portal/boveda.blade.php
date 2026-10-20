@@ -240,6 +240,10 @@
                 $endDate = $sale->end_date ? \Carbon\Carbon::parse($sale->end_date)->format('d/m/Y') : '30 días';
                 $isConsignment = $sale->is_consignment && !$sale->is_consignment_paid;
                 $hoursLeft = $sale->consignment_hours_remaining;
+
+                // REGLA: No se entregará sin monto en billetera o si no se recibe el pago del proveedor
+                $blockReason = null;
+                $canDeliver = $sale->canDeliverCredentials($blockReason);
             @endphp
             <div class="bg-[#0f172a] rounded-3xl border border-slate-800 shadow-xl overflow-hidden hover:border-slate-700 transition-all flex flex-col justify-between">
                 <!-- Card Header -->
@@ -256,8 +260,25 @@
                     </span>
                 </div>
 
-                <!-- ALERTA DE CONSIGNACIÓN 48H -->
-                @if($isConsignment)
+                <!-- ALERTA DE CONSIGNACIÓN / ENTREGA RETENIDA -->
+                @if(!$canDeliver)
+                <div class="p-4 mx-5 mt-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2">
+                    <div class="flex items-center gap-2 font-black text-amber-400">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400 animate-pulse"></i>
+                        <span>ACCESO RETENIDO - PAGO PENDIENTE DE ACREDITACIÓN</span>
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">{{ $blockReason }}</p>
+                    <div class="pt-2 border-t border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-amber-400 font-sans font-semibold">
+                        <span>🔒 Las credenciales se liberarán automáticamente al confirmarse la acreditación.</span>
+                        @if($whatsappSupportEnabled)
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20cuenta%20{{ urlencode($srvName) }}%20(Venta:%20{{ $sale->sale_code }}).%20Figura%20retenida%20por%20pago." target="_blank" class="underline hover:text-white flex items-center gap-1 w-max">
+                            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                            <span>Consultar a Soporte</span>
+                        </a>
+                        @endif
+                    </div>
+                </div>
+                @elseif($isConsignment)
                 <div class="p-3 mx-5 mt-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <i data-lucide="clock" class="w-4 h-4 text-amber-400 animate-pulse"></i>
@@ -278,6 +299,19 @@
 
                 <!-- Credenciales Oficiales -->
                 <div class="p-5 space-y-4 text-xs font-mono">
+                    @if(!$canDeliver)
+                    <!-- Estado de Retención Estricto -->
+                    <div class="bg-slate-900/90 p-4 rounded-2xl border border-dashed border-amber-500/40 text-center space-y-2">
+                        <i data-lucide="lock" class="w-8 h-8 text-amber-400 mx-auto opacity-80"></i>
+                        <h4 class="text-white font-bold text-sm">Credenciales No Entregadas</h4>
+                        <p class="text-[11px] text-slate-400 font-sans">
+                            Por políticas comerciales y de seguridad, las claves de acceso se mantienen retenidas hasta que se liquide el saldo en la billetera o se reciba el pago del proveedor.
+                        </p>
+                        <span class="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold font-mono">
+                            ESTADO: RETENIDO HASTA PAGO
+                        </span>
+                    </div>
+                    @else
                     <!-- Correo Oficial -->
                     <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
                         <span class="text-[10px] uppercase font-bold text-slate-400 font-sans block mb-1">Correo Electrónico Oficial</span>
@@ -350,6 +384,7 @@
                             </template>
                         </div>
                     </div>
+                    @endif
 
                     <!-- Vencimiento SLA & Barra de Progreso Dinámica -->
                     @php

@@ -125,6 +125,41 @@ class Sale extends Model
         return $this->consignment_expires_at && \Carbon\Carbon::parse($this->consignment_expires_at)->isPast();
     }
 
+    /**
+     * Regla de Entrega Estricta:
+     * "No se entregará sin monto en billetera o si no se recibe el pago del proveedor."
+     * Determina si las credenciales (correo, contraseña, perfil, PIN) pueden ser entregadas/visibles al cliente.
+     */
+    public function canDeliverCredentials(&$blockReason = null): bool
+    {
+        // 1. Si la cuenta fue emitida en consignación y aún no ha sido pagada/liquidada con saldo en billetera
+        if ($this->is_consignment && !$this->is_consignment_paid) {
+            $blockReason = 'Entrega retenida: Esta cuenta fue emitida en consignación y aún no cuenta con el costo mayorista liquidado desde la billetera.';
+            return false;
+        }
+
+        // 2. Si la cuenta cayó por vencimiento del plazo de consignación (48hs)
+        if ($this->isConsignmentExpired() || $this->status === 'cancelled') {
+            $blockReason = 'Entrega cancelada: El plazo de consignación de 48 horas venció sin registrarse el pago de la cuenta.';
+            return false;
+        }
+
+        // 3. Si el estado de la venta no es activo
+        if (!in_array($this->status, ['active', 'expiring_soon'])) {
+            $blockReason = 'La suscripción no se encuentra activa.';
+            return false;
+        }
+
+        // 4. Si el revendedor emisor tiene panel clonado y no se ha recibido el pago del proveedor/administrador
+        $providerReason = null;
+        if ($this->user && !$this->user->canDeliverAccounts($providerReason)) {
+            $blockReason = 'Entrega retenida por falta de recepción de pago del proveedor: ' . $providerReason;
+            return false;
+        }
+
+        return true;
+    }
+
     public function getConsignmentHoursRemainingAttribute(): ?int
     {
         if (!$this->is_consignment || $this->is_consignment_paid || !$this->consignment_expires_at) {
@@ -227,7 +262,18 @@ class Sale extends Model
      */
     public function getWhatsAppDeliveryMessageAttribute(): string
     {
-        $brand = $this->user->brand_name ?: config('app.name', 'CStreame');
+        $blockReason = null;
+        if (!$this->canDeliverCredentials($blockReason)) {
+            $brand = $this->user ? ($this->user->brand_name ?: config('app.name', 'CStreame')) : config('app.name', 'CStreame');
+            $serviceName = $this->service ? $this->service->name : 'Streaming';
+            return "⏳ *AVISO DE ESTADO DE CUENTA - {$serviceName}* ⏳\n"
+                . "De parte de *{$brand}*.\n\n"
+                . "Tu suscripción se encuentra registrada pero *las credenciales de acceso están retenidas*:\n"
+                . "🔒 *Motivo:* {$blockReason}\n\n"
+                . "Las credenciales oficiales serán liberadas y entregadas en tu Bóveda una vez confirmado el saldo o el pago con el proveedor. 💬";
+        }
+
+        $brand = $this->user ? ($this->user->brand_name ?: config('app.name', 'CStreame')) : config('app.name', 'CStreame');
         $serviceName = $this->service ? $this->service->name : 'Streaming';
         $vence = Carbon::parse($this->end_date)->format('d/m/Y');
 

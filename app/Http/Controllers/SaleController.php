@@ -166,15 +166,26 @@ class SaleController extends Controller
             $parentCommission = round($profit * ($pct / 100), 2);
         }
 
-        if ($user->isReseller() && !$isConsignment) {
-            if (!$user->hasBalance($costPrice)) {
-                return back()->withErrors(['error' => "Saldo insuficiente en tu billetera. Esta cuenta requiere \${$costPrice} y tu saldo actual es de \${$user->balance}. Puedes activarla en Consignación (48hs de gracia) o recargar saldo."])->withInput();
+        if ($user->isReseller()) {
+            $providerBlockReason = null;
+            if (!$user->canDeliverAccounts($providerBlockReason)) {
+                return back()->withErrors([
+                    'error' => "⛔ Entrega Bloqueada: {$providerBlockReason} No se pueden emitir ni entregar cuentas sin la confirmación de pago del proveedor."
+                ])->withInput();
             }
-            $user->deductBalance($costPrice);
 
-            // Acreditar comisión del 25% al panel que ofreció/clonó el servicio
-            if ($parentCommission > 0 && $user->parent) {
-                $user->parent->addBalance($parentCommission);
+            if (!$isConsignment) {
+                if (!$user->hasBalance($costPrice)) {
+                    return back()->withErrors([
+                        'error' => "⛔ Entrega Bloqueada: No se puede entregar la cuenta sin monto en billetera. Costo requerido: \${$costPrice}, Saldo actual: \${$user->balance}. Por favor recarga saldo antes de realizar la entrega."
+                    ])->withInput();
+                }
+                $user->deductBalance($costPrice);
+
+                // Acreditar comisión del 25% al panel que ofreció/clonó el servicio
+                if ($parentCommission > 0 && $user->parent) {
+                    $user->parent->addBalance($parentCommission);
+                }
             }
         }
 
@@ -248,7 +259,9 @@ class SaleController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        $consMsg = $isConsignment ? ' [EN CONSIGNACIÓN: Tienes 48hs para liquidarla antes de su caída automática]' : '';
+        $consMsg = $isConsignment 
+            ? ' [EN CONSIGNACIÓN: Las credenciales quedan RETENIDAS y NO se entregarán en la Bóveda del cliente hasta liquidar los $' . number_format($costPrice, 2) . ' desde tu billetera]' 
+            : ' [Credenciales entregadas al cliente en su Bóveda]';
 
         return redirect()->route('sales.index')
             ->with('success', "¡Venta {$saleCode} registrada con éxito!{$consMsg}")
@@ -275,8 +288,13 @@ class SaleController extends Controller
 
         // Si es revendedor, descontar el costo de su balance
         if ($user->isReseller()) {
+            $providerBlockReason = null;
+            if (!$user->canDeliverAccounts($providerBlockReason)) {
+                return back()->withErrors(['error' => "⛔ Liquidación Bloqueada: {$providerBlockReason} Regulariza el estado con tu proveedor."]);
+            }
+
             if (!$user->hasBalance($sale->cost_price)) {
-                return back()->withErrors(['error' => "Saldo insuficiente para liquidar. Requiere \${$sale->cost_price} y tu saldo es de \${$user->balance}."]);
+                return back()->withErrors(['error' => "Saldo insuficiente para liquidar y entregar. Requiere \${$sale->cost_price} y tu saldo actual es de \${$user->balance}. Recarga tu billetera."]);
             }
             $user->deductBalance($sale->cost_price);
 
@@ -294,11 +312,11 @@ class SaleController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'pay_consignment',
-            'description' => "Consignación {$sale->sale_code} liquidada con éxito por \${$sale->cost_price}.",
+            'description' => "Consignación {$sale->sale_code} liquidada con éxito por \${$sale->cost_price}. Credenciales entregadas al cliente.",
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', "¡Consignación de la venta {$sale->sale_code} pagada exitosamente! La cuenta ya es permanente.");
+        return back()->with('success', "¡Consignación de la venta {$sale->sale_code} pagada exitosamente! Las credenciales han sido entregadas y desbloqueadas en la Bóveda del Cliente.");
     }
 
     public function renew(Request $request, Sale $sale)
@@ -313,9 +331,14 @@ class SaleController extends Controller
 
         // Descontar saldo si es revendedor
         if ($user->isReseller() && $plan) {
+            $providerBlockReason = null;
+            if (!$user->canDeliverAccounts($providerBlockReason)) {
+                return back()->withErrors(['error' => "⛔ Renovación Bloqueada: {$providerBlockReason} No se pueden entregar renovaciones sin el pago del proveedor."]);
+            }
+
             $cost = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
             if (!$user->hasBalance($cost)) {
-                return back()->withErrors(['error' => "Saldo insuficiente para renovar (${$cost} requeridos)."]);
+                return back()->withErrors(['error' => "⛔ No se puede entregar la renovación sin monto en billetera (\${$cost} requeridos). Tu saldo actual es de \${$user->balance}."]);
             }
             $user->deductBalance($cost);
         }
@@ -537,12 +560,17 @@ class SaleController extends Controller
 
         // Descontar costo del revendedor si corresponde
         if ($user->isReseller() && $plan) {
+            $providerBlockReason = null;
+            if (!$user->canDeliverAccounts($providerBlockReason)) {
+                return back()->withErrors(['error' => "⛔ Renovación Bloqueada: {$providerBlockReason} No se pueden entregar renovaciones sin el pago del proveedor al día."]);
+            }
+
             $resellerPct = $user->getCommissionForService($sale->service_id);
             $unitCost = $plan->reseller_price > 0 ? (float)$plan->reseller_price : ((float)$plan->price * (1 - ($resellerPct / 100)));
             $totalCost = $unitCost * $months;
 
             if (!$user->hasBalance($totalCost)) {
-                return back()->withErrors(['error' => "Saldo insuficiente para aprobar la renovación. Requiere \${$totalCost} y tu saldo es de \${$user->balance}."]);
+                return back()->withErrors(['error' => "⛔ No se puede entregar la renovación sin monto en billetera. Requiere \${$totalCost} y tu saldo actual es de \${$user->balance}. Recarga tu saldo antes de aprobar."]);
             }
 
             $user->deductBalance($totalCost);

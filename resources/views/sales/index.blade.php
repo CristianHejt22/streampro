@@ -289,10 +289,11 @@
                                         <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold block w-max animate-pulse">
                                             📦 Consignación ({{ $s->consignment_hours_remaining ?? 48 }}h restantes)
                                         </span>
+                                        <span class="text-[9px] text-amber-400 font-mono block mt-0.5">🔒 Credenciales Retenidas</span>
                                         <form method="POST" action="{{ route('sales.pay_consignment', $s) }}" class="inline mt-1 block">
                                             @csrf
-                                            <button type="submit" onclick="return confirm('¿Confirmas liquidar la cuenta por ${{ number_format($s->cost_price, 2) }}?');" class="text-[10px] text-emerald-400 hover:underline font-bold block">
-                                                💰 Liquidar Consignación
+                                            <button type="submit" onclick="return confirm('¿Confirmas liquidar la cuenta por ${{ number_format($s->cost_price, 2) }} y entregar credenciales?');" class="text-[10px] text-emerald-400 hover:underline font-bold block">
+                                                💰 Liquidar & Entregar
                                             </button>
                                         </form>
                                     @endif
@@ -327,9 +328,15 @@
                             <div class="flex items-center justify-center gap-1.5">
                                 <!-- Enviar WhatsApp Ficha -->
                                 @if($s->customer->clean_phone)
-                                <a href="https://wa.me/{{ $s->customer->clean_phone }}?text={{ urlencode($s->whats_app_delivery_message) }}" target="_blank" title="Enviar credenciales completas por WhatsApp" class="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition-all">
-                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
-                                </a>
+                                    @if(!$s->canDeliverCredentials())
+                                    <span title="Credenciales Retenidas: No se entregarán sin liquidar el costo en billetera o sin pago del proveedor" class="p-2 rounded-lg bg-gray-800 text-gray-500 cursor-not-allowed">
+                                        <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                    </span>
+                                    @else
+                                    <a href="https://wa.me/{{ $s->customer->clean_phone }}?text={{ urlencode($s->whats_app_delivery_message) }}" target="_blank" title="Enviar credenciales completas por WhatsApp" class="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition-all">
+                                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                    </a>
+                                    @endif
                                 @endif
 
                                 <!-- Recordatorio de Cobro (si vence pronto o venció) -->
@@ -499,8 +506,15 @@
                     </div>
                 </div>
 
-                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed">
-                    ⏱️ <strong>Regla de Consignación:</strong> Si activas en consignación, la cuenta tendrá un plazo improrrogable de <strong>48 horas</strong> para ser liquidada. Si no se paga, se caerá automáticamente. No se permiten cambios de cuenta mientras esté en consignación.
+                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-amber-400">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                        <span>Regla de Entrega Estricta:</span>
+                    </div>
+                    <p>
+                        <strong>No se entregará sin monto en billetera o si no se recibe el pago del proveedor.</strong>
+                        Si emites en consignación o tu panel no tiene saldo suficiente, las credenciales permanecerán <strong>retenidas</strong> en la Bóveda del cliente y solo se entregarán cuando liquides el costo mayorista con saldo disponible. Plazo de gracia: 48 horas.
+                    </p>
                 </div>
 
                 <div class="pt-4 border-t border-gray-800 flex items-center justify-end gap-3">
