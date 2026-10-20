@@ -86,7 +86,7 @@
                 </div>
                 <div>
                     <h3 class="text-base font-black text-white flex items-center gap-2">
-                        <span>Panel de Proveedor de Cuentas</span>
+                        <span>Panel de Proveedor o Revendedor de Cuentas</span>
                         <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono font-bold">
                             Catálogo & Tiendas Clonadas
                         </span>

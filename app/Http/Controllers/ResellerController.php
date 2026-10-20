@@ -369,8 +369,9 @@ class ResellerController extends Controller
 
     /**
      * Venta de Créditos de Activación de Paneles por parte del Super Admin
-     * - Básico (10 Servicios): Pack 10 créditos ($2.500 c/u) = $25.000 / Pack 5 créditos ($3.000 c/u) = $15.000
-     * - PRO (Ilimitado): Pack 10 créditos ($4.000 c/u) = $40.000 / Pack 5 créditos ($5.000 c/u) = $25.000
+     * - Básico (10 Servicios): Pack 10 créditos ($2.500 c/u) = $25.000
+     * - PRO (Ilimitado): Pack 10 créditos ($4.000 c/u) = $40.000
+     * - COMBO DÚO (5 de cada uno juntos): 5 Básicos ($3.000 c/u = $15.000) + 5 PRO ($5.000 c/u = $25.000) = $40.000 (10 créditos en total)
      */
     public function sellCredits(Request $request, User $reseller)
     {
@@ -380,7 +381,7 @@ class ResellerController extends Controller
         }
 
         $request->validate([
-            'pack_type' => 'required|in:basic_10,basic_5,pro_10,pro_5,custom',
+            'pack_type' => 'required|in:basic_10,pro_10,combo_5_5,basic_5,pro_5,custom',
             'custom_tier' => 'nullable|required_if:pack_type,custom|in:basic,pro',
             'custom_qty' => 'nullable|required_if:pack_type,custom|integer|min:1',
             'custom_price' => 'nullable|required_if:pack_type,custom|numeric|min:0',
@@ -388,6 +389,26 @@ class ResellerController extends Controller
         ]);
 
         $packType = $request->pack_type;
+
+        // Caso Combo Dúo: 5 Básicos y 5 PRO juntos
+        if ($packType === 'combo_5_5') {
+            $notesCustom = $request->input('notes', '');
+            $noteBasic = "Combo Dúo: 5 Créditos Básicos ($3.000 c/u = $15.000)" . ($notesCustom ? " - {$notesCustom}" : "");
+            $notePro = "Combo Dúo: 5 Créditos PRO ($5.000 c/u = $25.000)" . ($notesCustom ? " - {$notesCustom}" : "");
+
+            $reseller->addCredits('basic', 5, 3000.00, $user->id, $noteBasic);
+            $reseller->addCredits('pro', 5, 5000.00, $user->id, $notePro);
+
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'sell_panel_credits_combo',
+                'description' => "Super Admin vendió Pack Combo Dúo (5 Básicos @ \$3.000 + 5 PRO @ \$5.000) a {$reseller->name} por \$40.000.",
+                'ip_address' => $request->ip(),
+            ]);
+
+            return back()->with('success', "¡Pack Combo Dúo acreditado con éxito! Se sumaron +5 créditos BÁSICO (\$3.000 c/u) y +5 créditos PRO (\$5.000 c/u) a {$reseller->name} (Total: \$40.000 por 10 créditos).");
+        }
+
         $tier = 'basic';
         $qty = 10;
         $unitPrice = 2500.00;
@@ -398,15 +419,15 @@ class ResellerController extends Controller
                 $qty = 10;
                 $unitPrice = 2500.00;
                 break;
-            case 'basic_5':
-                $tier = 'basic';
-                $qty = 5;
-                $unitPrice = 3000.00;
-                break;
             case 'pro_10':
                 $tier = 'pro';
                 $qty = 10;
                 $unitPrice = 4000.00;
+                break;
+            case 'basic_5':
+                $tier = 'basic';
+                $qty = 5;
+                $unitPrice = 3000.00;
                 break;
             case 'pro_5':
                 $tier = 'pro';
@@ -506,7 +527,7 @@ class ResellerController extends Controller
         $user->deductCredits($tier, 1, $reseller->name);
 
         $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;
-        $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays($30) : Carbon::now()->addDays(30);
+        $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays(30) : Carbon::now()->addDays(30);
 
         $reseller->panel_tier = $tier;
         $reseller->panel_type = 'cloned';

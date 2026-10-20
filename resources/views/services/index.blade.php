@@ -117,7 +117,7 @@
                                 </span>
                                 @else
                                 <span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold">
-                                    🏢 Catálogo Proveedor
+                                    🏢 Catálogo de Proveedor o Revendedor
                                 </span>
                                 @endif
                             </div>

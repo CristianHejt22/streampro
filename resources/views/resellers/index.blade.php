@@ -158,7 +158,7 @@
     @if(Auth::user()->isSuperReseller())
     <div class="rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 border border-purple-500/30 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
         <div class="space-y-1">
-            <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Billetera de Créditos de Proveedor</span>
+            <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Billetera de Créditos para Proveedor o Revendedor</span>
             <div class="flex items-center gap-3">
                 <div class="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
                     📦 Créditos Básicos: <strong>{{ Auth::user()->credits_basic ?? 0 }}</strong>
@@ -170,17 +170,17 @@
             <p class="text-[11px] text-gray-400">Usa 1 crédito para activar o renovar sub-paneles clonados por 30 días.</p>
         </div>
 
-        <!-- Toggle WhatsApp Proveedor vs Revendedor en Bóveda -->
+        <!-- Toggle WhatsApp Proveedor o Revendedor en Bóveda -->
         <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span class="text-[10px] font-bold uppercase text-slate-400 block">WhatsApp en Bóveda de Clientes de tus Revendedores:</span>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">WhatsApp en Bóveda de Clientes (Proveedor o Revendedor):</span>
             <div class="flex items-center gap-2">
                 <span class="text-xs font-bold {{ Auth::user()->provider_override_support_whatsapp ? 'text-emerald-400' : 'text-slate-400' }}">
-                    {{ Auth::user()->provider_override_support_whatsapp ? '✓ TU WhatsApp de Proveedor' : 'WhatsApp Individual del Revendedor' }}
+                    {{ Auth::user()->provider_override_support_whatsapp ? '✓ TU WhatsApp Central (Proveedor o Revendedor)' : 'WhatsApp Individual del Sub-Revendedor' }}
                 </span>
                 <form method="POST" action="{{ route('resellers.toggle_provider_override', Auth::user()) }}" class="inline">
                     @csrf
                     <button type="submit" class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-bold cursor-pointer">
-                        {{ Auth::user()->provider_override_support_whatsapp ? 'Cambiar a Revendedor' : 'Cambiar a Mi WhatsApp' }}
+                        {{ Auth::user()->provider_override_support_whatsapp ? 'Cambiar a Sub-Revendedor' : 'Cambiar a Mi WhatsApp' }}
                     </button>
                 </form>
             </div>
@@ -497,7 +497,7 @@
                 <h3 class="font-bold text-white text-base">Clonar / Renovar Tienda de Revendedor</h3>
             </div>
             <p class="text-xs text-gray-400 leading-relaxed">
-                La clonación de la tienda la paga el proveedor que da lugar a su revendedor. El abono es de <strong>$15.000 x 30 días</strong> al Administrador General por la plataforma, y el revendedor debe abonarle al proveedor para clonar su catálogo.
+                La clonación de la tienda la paga el proveedor o revendedor patrocinador que da lugar a su revendedor. El abono es de <strong>$15.000 x 30 días</strong> al Administrador General por la plataforma, y el revendedor debe abonarle a su proveedor o revendedor patrocinador para clonar su catálogo.
             </p>
 
             <form :action="'/resellers/' + selectedReseller?.id + '/clone-panel'" method="POST" class="space-y-4">
@@ -505,7 +505,7 @@
 
                 @if(Auth::user()->isAdmin())
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor / Patrocinador de Cuentas</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor o Revendedor Patrocinador de Cuentas</label>
                     <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                         <option value="">-- Sin Patrocinador (Super Panel Directo) --</option>
                         @foreach($superResellersList as $sres)
@@ -527,7 +527,7 @@
                 </div>
                 @endif
 
-                <!-- Cobro del Revendedor al Proveedor -->
+                <!-- Cobro del Revendedor al Proveedor o Revendedor Patrocinador -->
                 <div class="p-3 rounded-2xl bg-[#0b0f19] border border-gray-800">
                     <label class="flex items-center gap-2.5 cursor-pointer">
                         <input type="checkbox" name="cloned_store_paid_by_reseller" value="1" class="rounded bg-gray-900 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4">
@@ -572,7 +572,7 @@
             </div>
 
             <p class="text-xs text-gray-400 leading-relaxed">
-                El proveedor ajusta aquí la comisión porcentual de su revendedor por cada plataforma de streaming en particular, en lugar de utilizar una comisión general única.
+                Ajusta aquí la comisión porcentual del proveedor o revendedor por cada plataforma de streaming en particular, en lugar de utilizar una comisión general única.
             </p>
 
             <form :action="'/resellers/' + serviceReseller?.id + '/update-service-commissions'" method="POST" class="space-y-4">
@@ -856,7 +856,7 @@
                     <i data-lucide="coins" class="w-6 h-6"></i>
                     <div>
                         <h3 class="font-black text-white text-base">Venta de Créditos de Activación</h3>
-                        <span class="text-xs text-gray-400">Asigna paquetes de créditos para revendedores y proveedores</span>
+                        <span class="text-xs text-gray-400">Asigna paquetes de créditos para proveedor o revendedor</span>
                     </div>
                 </div>
                 <button @click="sellCreditsModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
@@ -864,7 +864,7 @@
 
             <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block">Comprador / Destinatario:</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block">Comprador (Proveedor o Revendedor):</span>
                     <strong class="text-white text-sm" x-text="selectedReseller?.name"></strong>
                     <span class="text-xs text-sky-400 block" x-text="selectedReseller?.email"></span>
                 </div>
@@ -880,36 +880,21 @@
 
                 <div class="space-y-2">
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Selecciona el Paquete de Créditos *</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                         <!-- Pack 10 Básicos -->
                         <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
                                :class="selectedCreditPack === 'basic_10' ? 'bg-amber-500/10 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
                             <div class="flex items-center justify-between">
                                 <input type="radio" name="pack_type" value="basic_10" x-model="selectedCreditPack" class="text-amber-500 focus:ring-0">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-300">AHORRO</span>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-300">10 BÁSICOS</span>
                             </div>
                             <div class="mt-2">
-                                <div class="font-bold text-white text-sm">📦 10 Créditos Básicos</div>
+                                <div class="font-bold text-white text-sm">📦 10 Básicos</div>
                                 <div class="text-[11px] text-amber-400 font-mono mt-0.5">$2.500 c/u</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Mínimo 10 créditos</div>
                             </div>
                             <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
                                 Total: $25.000
-                            </div>
-                        </label>
-
-                        <!-- Promo 5 Básicos -->
-                        <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
-                               :class="selectedCreditPack === 'basic_5' ? 'bg-amber-500/10 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
-                            <div class="flex items-center justify-between">
-                                <input type="radio" name="pack_type" value="basic_5" x-model="selectedCreditPack" class="text-amber-500 focus:ring-0">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">PROMO</span>
-                            </div>
-                            <div class="mt-2">
-                                <div class="font-bold text-white text-sm">📦 5 Créditos Básicos</div>
-                                <div class="text-[11px] text-amber-400 font-mono mt-0.5">$3.000 c/u</div>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
-                                Total: $15.000
                             </div>
                         </label>
 
@@ -918,30 +903,35 @@
                                :class="selectedCreditPack === 'pro_10' ? 'bg-purple-500/10 border-purple-500 text-white shadow-lg ring-1 ring-purple-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
                             <div class="flex items-center justify-between">
                                 <input type="radio" name="pack_type" value="pro_10" x-model="selectedCreditPack" class="text-purple-500 focus:ring-0">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300">MAYORISTA PRO</span>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300">10 PRO</span>
                             </div>
                             <div class="mt-2">
-                                <div class="font-bold text-white text-sm">💎 10 Créditos PRO</div>
-                                <div class="text-[11px] text-purple-400 font-mono mt-0.5">$4.000 c/u · Ilimitado</div>
+                                <div class="font-bold text-white text-sm">💎 10 PRO</div>
+                                <div class="text-[11px] text-purple-400 font-mono mt-0.5">$4.000 c/u</div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">Ilimitado · Mínimo 10</div>
                             </div>
                             <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
                                 Total: $40.000
                             </div>
                         </label>
 
-                        <!-- Promo 5 PRO -->
+                        <!-- Combo Dúo (5 de cada uno) -->
                         <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
-                               :class="selectedCreditPack === 'pro_5' ? 'bg-purple-500/10 border-purple-500 text-white shadow-lg ring-1 ring-purple-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
+                               :class="selectedCreditPack === 'combo_5_5' ? 'bg-gradient-to-br from-amber-500/15 via-slate-900 to-purple-500/15 border-emerald-500 text-white shadow-lg ring-1 ring-emerald-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
                             <div class="flex items-center justify-between">
-                                <input type="radio" name="pack_type" value="pro_5" x-model="selectedCreditPack" class="text-purple-500 focus:ring-0">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">PROMO PRO</span>
+                                <input type="radio" name="pack_type" value="combo_5_5" x-model="selectedCreditPack" class="text-emerald-500 focus:ring-0">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">COMBO DÚO</span>
                             </div>
                             <div class="mt-2">
-                                <div class="font-bold text-white text-sm">💎 5 Créditos PRO</div>
-                                <div class="text-[11px] text-purple-400 font-mono mt-0.5">$5.000 c/u · Ilimitado</div>
+                                <div class="font-bold text-white text-sm">🌟 5 de Cada Uno</div>
+                                <div class="text-[10px] text-slate-300 font-mono mt-0.5 space-y-0.5">
+                                    <div class="text-amber-400">5 Básicos ($3.000 c/u) = $15k</div>
+                                    <div class="text-purple-400">5 PRO ($5.000 c/u) = $25k</div>
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">10 Créditos Mixtos</div>
                             </div>
-                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
-                                Total: $25.000
+                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-emerald-400 font-mono text-right">
+                                Total: $40.000
                             </div>
                         </label>
                     </div>
@@ -1058,7 +1048,7 @@
                     <i data-lucide="gem" class="w-6 h-6"></i>
                     <div>
                         <h3 class="font-black text-white text-base">Activar Panel con 1 Crédito</h3>
-                        <span class="text-xs text-gray-400">Canje de 1 crédito por 30 días de suscripción</span>
+                        <span class="text-xs text-gray-400">Canje de 1 crédito para proveedor o revendedor por 30 días de suscripción</span>
                     </div>
                 </div>
                 <button @click="creditActivationModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
@@ -1081,7 +1071,7 @@
                 @csrf
 
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Revendedor a Activar</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor o Revendedor a Activar</label>
                     <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs font-bold text-white" x-text="selectedReseller?.name + ' (' + (selectedReseller?.brand_name || '') + ')'"></div>
                 </div>
 

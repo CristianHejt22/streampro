@@ -4,17 +4,36 @@
 
 @section('content')
 <div class="space-y-16 pb-16" x-data="{
-    calcTier: 'basic',
-    calcQty: 10,
-    get unitPrice() {
-        if (this.calcTier === 'basic') {
-            return this.calcQty >= 10 ? 2500 : 3000;
+    calcPack: 'combo_5_5',
+    get packDetails() {
+        if (this.calcPack === 'basic_10') {
+            return {
+                title: 'Pack 10 Créditos Básicos',
+                tierBadge: '📦 BÁSICO (10 SERVICIOS)',
+                desc: '10 créditos para activar paneles básicos (hasta 10 servicios)',
+                unitPriceText: '$2.500 c/u (mínimo 10 créditos)',
+                totalPrice: 25000,
+                qtyText: '10 Créditos Básicos'
+            };
+        } else if (this.calcPack === 'pro_10') {
+            return {
+                title: 'Pack 10 Créditos PRO',
+                tierBadge: '💎 PRO ILIMITADO',
+                desc: '10 créditos para activar paneles PRO (servicios ilimitados)',
+                unitPriceText: '$4.000 c/u (mínimo 10 créditos)',
+                totalPrice: 40000,
+                qtyText: '10 Créditos PRO'
+            };
         } else {
-            return this.calcQty >= 10 ? 4000 : 5000;
+            return {
+                title: 'Pack Combo Dúo (5 de Cada Uno)',
+                tierBadge: '🌟 5 BÁSICOS + 5 PRO JUNTOS',
+                desc: '5 créditos Básico a $3.000 ($15.000) + 5 créditos PRO a $5.000 ($25.000)',
+                unitPriceText: '5 Básicos ($3.000 c/u) + 5 PRO ($5.000 c/u)',
+                totalPrice: 40000,
+                qtyText: '10 Créditos Mixtos (5 Básicos + 5 PRO)'
+            };
         }
-    },
-    get totalPrice() {
-        return this.unitPrice * this.calcQty;
     }
 }">
 
@@ -161,17 +180,13 @@
 
                     <!-- Precios de Créditos -->
                     <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Tarifas Oficiales de Créditos:</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Tarifa Oficial de Créditos:</span>
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Pack 10 Créditos:</span>
+                            <span class="text-slate-300">Pack 10 Créditos Básicos:</span>
                             <span class="text-white font-mono font-bold">$2.500 <span class="text-[10px] text-slate-400 font-sans">c/u ($25.000 total)</span></span>
                         </div>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Promo 5 Créditos:</span>
-                            <span class="text-white font-mono font-bold">$3.000 <span class="text-[10px] text-slate-400 font-sans">c/u ($15.000 total)</span></span>
-                        </div>
                         <span class="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
-                            * Cada crédito activa o renueva 1 panel básico por 30 días.
+                            * Mínimo 10 créditos. Cada crédito activa o renueva 1 panel básico por 30 días.
                         </span>
                     </div>
 
@@ -202,9 +217,9 @@
 
                 <div class="pt-6 mt-6 border-t border-slate-800">
                     @if($supportWhatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20B%C3%81SICO%20(10%20Servicios)%20y%20comprar%20cr%C3%A9ditos." target="_blank" class="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20B%C3%81SICO%20(10%20Servicios)%20y%20el%20Pack%20de%2010%20cr%C3%A9ditos%20por%20$25.000." target="_blank" class="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer">
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
-                        <span>Solicitar Panel Básico</span>
+                        <span>Solicitar Panel Básico (10 Créditos)</span>
                     </a>
                     @endif
                 </div>
@@ -227,22 +242,18 @@
 
                     <div>
                         <h3 class="text-2xl font-black text-white">Panel Mayorista PRO Ilimitado</h3>
-                        <p class="text-xs text-slate-400 mt-1">Para proveedores y super revendedores que quieren libertad total de servicios y stock.</p>
+                        <p class="text-xs text-slate-400 mt-1">Para proveedor o revendedor que quiere libertad total de servicios y stock.</p>
                     </div>
 
                     <!-- Precios de Créditos -->
                     <div class="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 space-y-2">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block">Tarifas Oficiales de Créditos:</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block">Tarifa Oficial de Créditos:</span>
                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Pack 10 Créditos:</span>
+                            <span class="text-slate-300">Pack 10 Créditos PRO:</span>
                             <span class="text-white font-mono font-bold">$4.000 <span class="text-[10px] text-slate-400 font-sans">c/u ($40.000 total)</span></span>
                         </div>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Promo 5 Créditos:</span>
-                            <span class="text-white font-mono font-bold">$5.000 <span class="text-[10px] text-slate-400 font-sans">c/u ($25.000 total)</span></span>
-                        </div>
                         <span class="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
-                            * Cada crédito activa o renueva 1 panel PRO ilimitado por 30 días.
+                            * Mínimo 10 créditos. Cada crédito activa o renueva 1 panel PRO ilimitado por 30 días.
                         </span>
                     </div>
 
@@ -258,7 +269,7 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Copia completa del inventario y cuentas de tu proveedor</span>
+                            <span>Copia completa del inventario y cuentas de tu proveedor o revendedor patrocinador</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
@@ -270,19 +281,56 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Soporte WhatsApp propio o derivado a tu proveedor</span>
+                            <span>Soporte WhatsApp propio o derivado a tu proveedor o revendedor patrocinador</span>
                         </li>
                     </ul>
                 </div>
 
                 <div class="pt-6 mt-6 border-t border-slate-800">
                     @if($supportWhatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20PRO%20(Ilimitado)%20y%20comprar%20cr%C3%A9ditos." target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20PRO%20(Ilimitado)%20y%20el%20Pack%20de%2010%20cr%C3%A9ditos%20por%20$40.000." target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30 cursor-pointer">
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
-                        <span>Solicitar Panel PRO (Ilimitado)</span>
+                        <span>Solicitar Panel PRO (10 Créditos)</span>
                     </a>
                     @endif
                 </div>
+            </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- PACK COMBO DÚO: 5 DE CADA UNO JUNTOS -->
+        <!-- ======================================================== -->
+        <div class="max-w-5xl mx-auto rounded-3xl bg-gradient-to-r from-amber-950/40 via-[#131b2e] to-purple-950/40 border-2 border-emerald-500/50 p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-slate-950 uppercase tracking-wider">
+                        🌟 PACK COMBO DÚO (5 DE CADA UNO)
+                    </span>
+                    <span class="text-xs font-bold text-emerald-400 font-mono">10 Créditos Mixtos</span>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-black text-white">5 Créditos Básico + 5 Créditos PRO Juntos</h3>
+                <p class="text-xs text-slate-300 max-w-xl leading-relaxed">
+                    Para proveedor o revendedor que desea activar y gestionar ambos tipos de paneles con flexibilidad total: 
+                    5 créditos Básico a $3.000 c/u ($15.000) y 5 créditos PRO a $5.000 c/u ($25.000).
+                </p>
+                <div class="flex flex-wrap items-center gap-2 pt-1 text-xs font-mono">
+                    <span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300">📦 5 Básicos: $15.000 ($3.000 c/u)</span>
+                    <span class="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300">💎 5 PRO: $25.000 ($5.000 c/u)</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:items-end justify-center shrink-0 space-y-3">
+                <div class="sm:text-right">
+                    <span class="text-xs text-slate-400 uppercase font-bold block">Inversión Total Combo:</span>
+                    <span class="text-3xl font-black text-emerald-400 font-mono">$40.000</span>
+                    <span class="text-[11px] text-slate-400 block font-mono">10 créditos listos en tu billetera</span>
+                </div>
+                @if($supportWhatsapp)
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20el%20PACK%20COMBO%20D%C3%9AO%20(5%20B%C3%A1sicos%20+%205%20PRO)%20por%20$40.000." target="_blank" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-emerald-600/30 transition-all cursor-pointer">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    <span>Solicitar Combo Dúo ($40k)</span>
+                </a>
+                @endif
             </div>
         </div>
     </section>
@@ -298,54 +346,71 @@
                 </div>
                 <div>
                     <h3 class="text-xl font-black text-white">Cotizador de Créditos de Activación</h3>
-                    <p class="text-xs text-slate-400">Calcula al instante el costo de los créditos vendidos por el Super Admin</p>
+                    <p class="text-xs text-slate-400">Selecciona el paquete para proveedor o revendedor y cotiza al instante</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <!-- Selector de Tier -->
-                <div class="space-y-2">
-                    <label class="block text-xs font-bold uppercase text-slate-400">1. Tipo de Panel a Activar</label>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <button type="button" @click="calcTier = 'basic'" :class="calcTier === 'basic' ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow' : 'bg-slate-950 text-slate-300 border-slate-800'" class="p-3 rounded-xl border text-center transition-all cursor-pointer">
-                            <span>📦 BÁSICO</span>
-                            <span class="block text-[10px] opacity-80">(10 Servicios)</span>
-                        </button>
-                        <button type="button" @click="calcTier = 'pro'" :class="calcTier === 'pro' ? 'bg-purple-600 text-white font-black border-purple-500 shadow' : 'bg-slate-950 text-slate-300 border-slate-800'" class="p-3 rounded-xl border text-center transition-all cursor-pointer">
-                            <span>💎 PRO</span>
-                            <span class="block text-[10px] opacity-80">(Ilimitado)</span>
-                        </button>
-                    </div>
-                </div>
+            <!-- Selector de Paquete Oficial -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold uppercase text-slate-400">Selecciona el Paquete de Créditos</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <!-- 10 Básicos -->
+                    <button type="button" @click="calcPack = 'basic_10'" 
+                            :class="calcPack === 'basic_10' ? 'bg-amber-500/20 border-amber-500 ring-2 ring-amber-500/30 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+                            class="p-4 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer">
+                        <div>
+                            <span class="text-[10px] font-mono font-bold text-amber-400 block uppercase">10 Básicos</span>
+                            <strong class="text-white text-sm block mt-1">Pack 10 Básicos</strong>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">$2.500 c/u</span>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800/80 font-black text-white font-mono text-sm">
+                            $25.000
+                        </div>
+                    </button>
 
-                <!-- Selector de Cantidad -->
-                <div class="space-y-2">
-                    <label class="block text-xs font-bold uppercase text-slate-400">2. Cantidad de Créditos</label>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <button type="button" @click="calcQty = 10" :class="calcQty === 10 ? 'bg-emerald-600 text-white font-black border-emerald-500 shadow' : 'bg-slate-950 text-slate-300 border-slate-800'" class="p-3 rounded-xl border text-center transition-all cursor-pointer">
-                            <span>Pack 10 Créditos</span>
-                            <span class="block text-[10px] text-emerald-300 font-mono" x-text="calcTier === 'basic' ? '$2.500 c/u' : '$4.000 c/u'"></span>
-                        </button>
-                        <button type="button" @click="calcQty = 5" :class="calcQty === 5 ? 'bg-emerald-600 text-white font-black border-emerald-500 shadow' : 'bg-slate-950 text-slate-300 border-slate-800'" class="p-3 rounded-xl border text-center transition-all cursor-pointer">
-                            <span>Promo 5 Créditos</span>
-                            <span class="block text-[10px] text-emerald-300 font-mono" x-text="calcTier === 'basic' ? '$3.000 c/u' : '$5.000 c/u'"></span>
-                        </button>
-                    </div>
+                    <!-- 10 PRO -->
+                    <button type="button" @click="calcPack = 'pro_10'" 
+                            :class="calcPack === 'pro_10' ? 'bg-purple-500/20 border-purple-500 ring-2 ring-purple-500/30 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+                            class="p-4 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer">
+                        <div>
+                            <span class="text-[10px] font-mono font-bold text-purple-400 block uppercase">10 PRO</span>
+                            <strong class="text-white text-sm block mt-1">Pack 10 PRO</strong>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">$4.000 c/u · Ilimitado</span>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800/80 font-black text-white font-mono text-sm">
+                            $40.000
+                        </div>
+                    </button>
+
+                    <!-- Combo 5 de Cada Uno -->
+                    <button type="button" @click="calcPack = 'combo_5_5'" 
+                            :class="calcPack === 'combo_5_5' ? 'bg-emerald-500/20 border-emerald-500 ring-2 ring-emerald-500/30 text-white' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+                            class="p-4 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer">
+                        <div>
+                            <span class="text-[10px] font-mono font-bold text-emerald-400 block uppercase">Combo Dúo</span>
+                            <strong class="text-white text-sm block mt-1">5 de Cada Uno</strong>
+                            <span class="text-[11px] text-slate-400 block mt-0.5">5 Básicos + 5 PRO</span>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800/80 font-black text-emerald-400 font-mono text-sm">
+                            $40.000
+                        </div>
+                    </button>
                 </div>
             </div>
 
             <!-- Resumen en Vivo -->
             <div class="p-5 rounded-2xl bg-slate-950/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <span class="text-xs text-slate-400 font-semibold block">Total a Abonar por el Pack:</span>
+                <div class="space-y-1">
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-slate-800 text-slate-300 inline-block" x-text="packDetails.tierBadge"></span>
                     <div class="flex items-baseline gap-2 mt-0.5">
-                        <span class="text-3xl font-black text-emerald-400 font-mono" x-text="'$' + totalPrice.toLocaleString('es-AR', {minimumFractionDigits: 2})"></span>
-                        <span class="text-xs text-slate-400 font-mono" x-text="'(' + calcQty + ' créditos a $' + unitPrice.toLocaleString('es-AR') + ' c/u)'"></span>
+                        <span class="text-3xl font-black text-emerald-400 font-mono" x-text="'$' + packDetails.totalPrice.toLocaleString('es-AR', {minimumFractionDigits: 2})"></span>
+                        <span class="text-xs text-slate-400 font-mono" x-text="'(' + packDetails.unitPriceText + ')'"></span>
                     </div>
+                    <p class="text-xs text-slate-400" x-text="packDetails.desc"></p>
                 </div>
 
                 @if($supportWhatsapp)
-                <a :href="'https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quiero%20comprar%20el%20Pack%20de%20' + calcQty + '%20cr%C3%A9ditos%20para%20Panel%20' + calcTier.toUpperCase() + '%20por%20$' + totalPrice.toLocaleString('es-AR') + '.'" target="_blank" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all">
+                <a :href="'https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quiero%20comprar%20el%20' + encodeURIComponent(packDetails.title) + '%20por%20$' + packDetails.totalPrice.toLocaleString('es-AR') + '.'" target="_blank" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all shrink-0 cursor-pointer">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
                     <span>Ordenar Pack por WhatsApp</span>
                 </a>
