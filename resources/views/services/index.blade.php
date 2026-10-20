@@ -174,11 +174,11 @@
                         </div>
                         <div class="flex items-center justify-between text-slate-400 text-[11px]">
                             <span>PVP Sugerido al Revendedor:</span>
-                            <span class="text-white font-mono font-bold">$15.000 / 30 días</span>
+                            <span class="text-white font-mono font-bold">$4.000 / mes</span>
                         </div>
                         <div class="flex items-center justify-between text-emerald-400 font-bold pt-1 border-t border-slate-800">
                             <span>Margen Neto Estimado:</span>
-                            <span class="font-mono">+$12.500 por panel</span>
+                            <span class="font-mono">+$1.500 por panel</span>
                         </div>
                     </div>
                 </div>
@@ -215,11 +215,11 @@
                         </div>
                         <div class="flex items-center justify-between text-slate-400 text-[11px]">
                             <span>PVP Sugerido al Revendedor:</span>
-                            <span class="text-white font-mono font-bold">$25.000 / 30 días</span>
+                            <span class="text-white font-mono font-bold">$6.000 / mes</span>
                         </div>
                         <div class="flex items-center justify-between text-emerald-400 font-bold pt-1 border-t border-slate-800">
                             <span>Margen Neto Estimado:</span>
-                            <span class="font-mono">+$21.000 por panel</span>
+                            <span class="font-mono">+$2.000 por panel</span>
                         </div>
                     </div>
                 </div>

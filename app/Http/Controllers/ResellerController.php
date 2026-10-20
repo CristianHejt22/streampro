@@ -748,7 +748,7 @@ class ResellerController extends Controller
             'anti_phishing_code' => $antiPhishingCode,
             'panel_type' => 'cloned',
             'panel_tier' => $tier,
-            'panel_monthly_fee' => 15000.00,
+            'panel_monthly_fee' => ($tier === 'pro') ? 6000.00 : 4000.00,
             'panel_expires_at' => null, // Se fija al activar con crédito
             'cloned_store_paid_to_admin' => false,
             'cloned_store_paid_by_reseller' => false,

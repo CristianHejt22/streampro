@@ -63,7 +63,10 @@
                             </p>
                         </div>
                         <div class="mt-3 pt-2 border-t border-gray-800/80 flex items-center justify-between">
-                            <img src="{{ asset('images/spro-play-logo.svg') }}" alt="SPRO PLAY" class="h-5 object-contain">
+                            <div class="flex items-center gap-1.5">
+                                <img src="{{ asset('images/spro-play-logo.svg') }}" alt="SPRO PLAY" class="h-5 object-contain">
+                                <span class="text-xs font-mono font-bold text-white">$4.000 <span class="text-[9px] text-slate-400 font-sans">/ mes</span></span>
+                            </div>
                             <span class="text-[10px] font-mono text-amber-400 font-bold">1 Crédito ($2.500)</span>
                         </div>
                     </label>
@@ -84,7 +87,10 @@
                             </p>
                         </div>
                         <div class="mt-3 pt-2 border-t border-gray-800/80 flex items-center justify-between">
-                            <span class="text-[10px] text-purple-300 font-mono font-bold">Reventa habilitada</span>
+                            <div>
+                                <span class="text-[10px] text-purple-300 font-mono font-bold block">Reventa habilitada</span>
+                                <span class="text-xs font-mono font-bold text-white">$6.000 <span class="text-[9px] text-slate-400 font-sans">/ mes</span></span>
+                            </div>
                             <span class="text-[10px] font-mono text-purple-400 font-bold">1 Crédito ($4.000)</span>
                         </div>
                     </label>
