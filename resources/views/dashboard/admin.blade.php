@@ -73,7 +73,83 @@
                 +{{ $availableFullAccountsCount }} cuentas completas listas
             </div>
         </div>
+
+        <!-- Tiendas Clonadas Activas ($15.000 / 30d) -->
+        <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg relative overflow-hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Tiendas Clonadas</span>
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-baseline gap-2">
+                <span class="text-2xl font-black text-white">{{ $clonedPanelsCount }}</span>
+                <span class="text-xs text-purple-400 font-mono font-bold">${{ number_format($clonedPanelsRevenue, 0) }} / mes</span>
+            </div>
+            <div class="mt-1 text-xs text-gray-400">
+                <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline">Ver paneles de revendedores &rarr;</a>
+            </div>
+        </div>
     </div>
+
+    <!-- Alert Box: Solicitudes de Renovación Pendientes desde Bóveda de Clientes -->
+    @if(isset($pendingRenewalsCount) && $pendingRenewalsCount > 0)
+    <div class="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/20 to-gray-900 border border-cyan-500/30 shadow-xl flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-bold text-xl shrink-0 animate-pulse">
+                <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">Tienes {{ $pendingRenewalsCount }} solicitud(es) de renovación pendientes desde la Bóveda</h3>
+                <p class="text-xs text-gray-400">Los clientes solicitaron la extensión de sus cuentas de streaming y adjuntaron comprobante.</p>
+            </div>
+        </div>
+        <a href="{{ route('sales.index') }}" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-lg shadow-cyan-600/30 shrink-0 flex items-center gap-2">
+            <span>Revisar y Aprobar</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+    </div>
+    @endif
+
+    <!-- Alert Box: Cuentas en Consignación 48hs -->
+    @if(isset($consignmentsActive) && $consignmentsActive->isNotEmpty())
+    <div class="p-5 rounded-2xl bg-[#111827] border border-amber-500/40 shadow-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <div class="flex items-center gap-2 text-amber-400">
+                <i data-lucide="clock" class="w-5 h-5 animate-pulse"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Cuentas en Consignación (Plazo de 48hs Activo)</h3>
+            </div>
+            <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                {{ $consignmentsActive->count() }} por Liquidar
+            </span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach($consignmentsActive as $cSale)
+            @php
+                $hrs = $cSale->consignment_hours_remaining ?? 48;
+            @endphp
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
+                <div>
+                    <span class="font-bold text-white text-xs block">{{ $cSale->service ? $cSale->service->name : 'Streaming' }}</span>
+                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Consignatario' }}</span>
+                    <span class="text-[10px] text-sky-400 font-mono block">Vendedor: {{ $cSale->user ? $cSale->user->name : '' }}</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs font-mono font-bold {{ $hrs <= 12 ? 'text-rose-400 animate-pulse' : 'text-amber-400' }} block">
+                        ⏳ {{ $hrs }}h restantes
+                    </span>
+                    <form method="POST" action="{{ route('sales.pay_consignment', $cSale) }}" class="mt-1">
+                        @csrf
+                        <button type="submit" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 cursor-pointer">
+                            Liquidar ${{ number_format($cSale->cost_price, 2) }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     <!-- Alert Box: Comprobantes Pendientes en Mini Nube -->
     @if($pendingOrdersCount > 0)

@@ -13,6 +13,11 @@
     clonePanelModal: false,
     commissionsModal: false,
     serviceCommissionsModal: false,
+    calculatorModal: false,
+    calcPrice: 4500,
+    calcMonths: 1,
+    calcMargin: 40,
+    calcParentPct: 25,
     serviceReseller: null,
     selectedReseller: null,
     openServiceCommissions(res) {
@@ -151,10 +156,19 @@
             <p class="text-xs text-gray-400">Como Super Panel puedes ver y cambiar cualquier contraseña, activar copias clonadas y ajustar comisiones.</p>
         </div>
 
-        <button @click="newResellerModal = true" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/30">
-            <i data-lucide="user-plus" class="w-4 h-4"></i>
-            <span>+ Generar Nuevo Panel</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button @click="calculatorModal = true" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-xs flex items-center gap-2 transition-all border border-slate-700 cursor-pointer">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                <span>Cotizador de Ganancias</span>
+            </button>
+
+            @if(Auth::user()->isAdmin())
+            <button @click="newResellerModal = true" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/30 cursor-pointer">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>+ Generar Nuevo Panel</span>
+            </button>
+            @endif
+        </div>
     </div>
 
     <!-- Resellers Table -->
@@ -634,6 +648,106 @@
                     <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30">Crear Panel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 9: COTIZADOR & CALCULADORA DE GANANCIAS -->
+    <!-- ========================================== -->
+    <div x-show="calculatorModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="calculatorModal = false">
+        <div class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-5 relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="calculator" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Cotizador & Calculadora de Ganancias</h3>
+                        <span class="text-xs text-gray-400">Simulador de precios, costos mayoristas y comisiones</span>
+                    </div>
+                </div>
+                <button @click="calculatorModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <!-- Selector de Servicio -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">1. Selecciona la Plataforma</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button type="button" @click="calcPrice = 4500" :class="calcPrice === 4500 ? 'bg-red-600 text-white border-red-500 ring-2 ring-red-500/30 font-bold' : 'bg-slate-900 text-slate-300 border-gray-800'" class="p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer">
+                        <span>NETFLIX 4K</span>
+                        <span class="font-mono text-[11px] opacity-80">$4.500</span>
+                    </button>
+                    <button type="button" @click="calcPrice = 3500" :class="calcPrice === 3500 ? 'bg-blue-600 text-white border-blue-500 ring-2 ring-blue-500/30 font-bold' : 'bg-slate-900 text-slate-300 border-gray-800'" class="p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer">
+                        <span>HBO MAX</span>
+                        <span class="font-mono text-[11px] opacity-80">$3.500</span>
+                    </button>
+                    <button type="button" @click="calcPrice = 3200" :class="calcPrice === 3200 ? 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-500/30 font-bold' : 'bg-slate-900 text-slate-300 border-gray-800'" class="p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer">
+                        <span>DISNEY+ ESTÁNDAR</span>
+                        <span class="font-mono text-[11px] opacity-80">$3.200</span>
+                    </button>
+                    <button type="button" @click="calcPrice = 4200" :class="calcPrice === 4200 ? 'bg-purple-600 text-white border-purple-500 ring-2 ring-purple-500/30 font-bold' : 'bg-slate-900 text-slate-300 border-gray-800'" class="p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer">
+                        <span>DISNEY+ PREMIUM</span>
+                        <span class="font-mono text-[11px] opacity-80">$4.200</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Selector de Meses -->
+            <div class="space-y-2">
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">2. Duración de la Licencia</label>
+                <div class="grid grid-cols-5 gap-2">
+                    @foreach([1, 2, 3, 6, 12] as $m)
+                    <button type="button" @click="calcMonths = {{ $m }}" :class="calcMonths === {{ $m }} ? 'bg-emerald-600 text-white border-emerald-500 font-black ring-2 ring-emerald-500/30 shadow' : 'bg-slate-900 text-slate-300 border-gray-800'" class="p-2 rounded-xl border text-xs text-center cursor-pointer">
+                        {{ $m }} {{ $m == 1 ? 'Mes' : 'Meses' }}
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Porcentajes de Margen -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">Margen Revendedor (%)</label>
+                    <input type="number" step="1" min="10" max="90" x-model.number="calcMargin" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-gray-700 text-xs text-white font-black font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-purple-400 mb-1">Comisión Patrocinador (%)</label>
+                    <input type="number" step="1" min="0" max="50" x-model.number="calcParentPct" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-gray-700 text-xs text-white font-black font-mono">
+                </div>
+            </div>
+
+            <!-- Resultados en Vivo -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-purple-950/40 border border-emerald-500/30 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400">Precio Final al Cliente (PVP):</span>
+                    <strong class="text-white font-mono text-sm" x-text="'$' + (calcMonths * calcPrice).toLocaleString('es-AR', {minimumFractionDigits: 2})"></strong>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400">Costo Descontado de Saldo:</span>
+                    <strong class="text-sky-300 font-mono text-sm" x-text="'$' + ((calcMonths * calcPrice) * (1 - calcMargin/100)).toLocaleString('es-AR', {minimumFractionDigits: 2})"></strong>
+                </div>
+
+                <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs uppercase font-bold text-emerald-400 block">Tu Ganancia Neta:</span>
+                        <span class="text-[11px] text-gray-400" x-text="calcMargin + '% del valor total'"></span>
+                    </div>
+                    <span class="text-xl font-black text-emerald-400 font-mono" x-text="'$' + ((calcMonths * calcPrice) * (calcMargin/100)).toLocaleString('es-AR', {minimumFractionDigits: 2})"></span>
+                </div>
+
+                <div class="pt-2 border-t border-gray-800/80 flex items-center justify-between text-xs">
+                    <span class="text-purple-400">Comisión Patrocinador (<span x-text="calcParentPct"></span>%):</span>
+                    <strong class="text-purple-300 font-mono" x-text="'$' + (((calcMonths * calcPrice) * (calcMargin/100)) * (calcParentPct/100)).toLocaleString('es-AR', {minimumFractionDigits: 2})"></strong>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-1">
+                <button type="button" @click="calculatorModal = false" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 cursor-pointer">
+                    Cerrar Cotizador
+                </button>
+            </div>
         </div>
     </div>
 

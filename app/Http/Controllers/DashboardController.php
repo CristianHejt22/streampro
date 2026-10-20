@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\RenewalRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -98,6 +99,21 @@ class DashboardController extends Controller
             $chartValues[] = (float) $salesAmount;
         }
 
+        // Cuentas en Consignación activas pendientes de pago (48hs)
+        $consignmentsActive = Sale::where('is_consignment', true)
+            ->where('is_consignment_paid', false)
+            ->where('status', 'active')
+            ->with(['customer', 'service', 'user'])
+            ->latest()
+            ->get();
+
+        // Solicitudes de renovación pendientes desde Bóveda de Clientes
+        $pendingRenewalsCount = RenewalRequest::where('status', 'pending')->count();
+
+        // Paneles clonados activos y recaudación mensual
+        $clonedPanelsCount = User::where('panel_type', 'cloned')->where('status', 'active')->count();
+        $clonedPanelsRevenue = $clonedPanelsCount * 15000.00;
+
         return view('dashboard.admin', compact(
             'totalSalesCount',
             'totalRevenue',
@@ -113,7 +129,11 @@ class DashboardController extends Controller
             'recentSales',
             'expiringSales',
             'chartLabels',
-            'chartValues'
+            'chartValues',
+            'consignmentsActive',
+            'pendingRenewalsCount',
+            'clonedPanelsCount',
+            'clonedPanelsRevenue'
         ));
     }
 
@@ -170,6 +190,25 @@ class DashboardController extends Controller
             $chartValues[] = (float) $salesAmount;
         }
 
+        // Cuentas en Consignación del revendedor pendientes de liquidar (48hs)
+        $consignmentsActive = Sale::where('user_id', $user->id)
+            ->where('is_consignment', true)
+            ->where('is_consignment_paid', false)
+            ->where('status', 'active')
+            ->with(['customer', 'service'])
+            ->latest()
+            ->get();
+
+        // Solicitudes de renovación pendientes de sus clientes
+        $pendingRenewalsCount = RenewalRequest::where('user_id', $user->id)->where('status', 'pending')->count();
+
+        // Estadísticas de Proveedor (si es Super Revendedor)
+        $subResellersCount = User::where('parent_id', $user->id)->count();
+        $clonedPanelsCount = User::where('parent_id', $user->id)->where('panel_type', 'cloned')->count();
+        $sponsorshipEarnings = (float) Sale::whereHas('user', function($q) use ($user) {
+            $q->where('parent_id', $user->id);
+        })->sum('parent_commission_amount');
+
         return view('dashboard.reseller', compact(
             'user',
             'mySalesCount',
@@ -180,7 +219,12 @@ class DashboardController extends Controller
             'expiringSales',
             'services',
             'chartLabels',
-            'chartValues'
+            'chartValues',
+            'consignmentsActive',
+            'pendingRenewalsCount',
+            'subResellersCount',
+            'clonedPanelsCount',
+            'sponsorshipEarnings'
         ));
     }
 }

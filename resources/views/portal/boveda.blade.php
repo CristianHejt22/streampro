@@ -14,6 +14,7 @@
     reportModal: false,
     unlockModal: false,
     renewModal: false,
+    guideModal: false,
     renewSale: null,
     renewMonths: 1,
     renewPricePerMonth: 0,
@@ -350,18 +351,44 @@
                         </div>
                     </div>
 
-                    <!-- Vencimiento SLA -->
-                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-900 flex items-center justify-between text-xs font-sans">
-                        <div>
-                            <span class="text-[10px] text-slate-500 uppercase block">Vencimiento Oficial</span>
-                            <span class="font-bold text-slate-200">{{ $endDate }}</span>
+                    <!-- Vencimiento SLA & Barra de Progreso Dinámica -->
+                    @php
+                        $totalDays = max(1, ($sale->months_duration ?: 1) * 30);
+                        $remainingDays = max(0, $days);
+                        $pctRemaining = min(100, max(0, round(($remainingDays / $totalDays) * 100)));
+                        $barColor = $days > 7 ? 'bg-emerald-500' : ($days > 3 ? 'bg-amber-500' : 'bg-rose-500 animate-pulse');
+                    @endphp
+                    <div class="bg-slate-950 p-3 rounded-2xl border border-slate-900 space-y-2 text-xs font-sans">
+                        <div class="flex items-center justify-between text-xs">
+                            <div>
+                                <span class="text-[10px] text-slate-500 uppercase block">Vencimiento Oficial</span>
+                                <span class="font-bold text-slate-200">{{ $endDate }}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[11px] font-bold {{ $days <= 3 ? 'text-rose-400 animate-pulse' : ($days <= 7 ? 'text-amber-400' : 'text-emerald-400') }}">
+                                    {{ $days < 0 ? 'Expiró hace ' . abs($days) . ' días' : ($days === 0 ? '¡Vence hoy!' : 'Quedan ' . $days . ' días (' . $pctRemaining . '%)') }}
+                                </span>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <span class="text-[11px] font-bold {{ $days <= 3 ? 'text-amber-400 animate-pulse' : 'text-emerald-400' }}">
-                                {{ $days < 0 ? 'Expiró hace ' . abs($days) . ' días' : ($days === 0 ? '¡Vence hoy!' : 'Vence en ' . $days . ' días') }}
-                            </span>
+                        <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+                            <div class="h-full {{ $barColor }} rounded-full transition-all duration-500" style="width: {{ $pctRemaining }}%"></div>
                         </div>
+                        @if($sale->renewal_count > 0)
+                        <div class="text-[10px] text-sky-400 font-mono text-right flex items-center justify-end gap-1">
+                            <i data-lucide="check" class="w-3 h-3 text-sky-400"></i>
+                            <span>Renovada {{ $sale->renewal_count }} vez/veces con éxito</span>
+                        </div>
+                        @endif
                     </div>
+
+                    <!-- Botón de Guía Anti-Bloqueo de Hogar -->
+                    <button type="button" @click="guideModal = true" class="w-full p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-sky-300 hover:text-white border border-slate-800 text-[11px] font-sans font-semibold flex items-center justify-between transition-colors cursor-pointer">
+                        <span class="flex items-center gap-1.5">
+                            <i data-lucide="tv" class="w-3.5 h-3.5 text-sky-400"></i>
+                            <span>¿Cómo conectar en Smart TV sin bloqueo de Hogar?</span>
+                        </span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+                    </button>
 
                     <!-- Reglas de Uso -->
                     <div class="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-[11px] text-amber-300 font-sans leading-relaxed">
@@ -688,6 +715,74 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 8: GUÍA OFICIAL ANTI-BLOQUEO & SMART TV -->
+    <!-- ========================================== -->
+    <div x-show="guideModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="guideModal = false">
+        <div class="bg-[#0f172a] p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl max-w-lg w-full space-y-5 relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2.5 text-sky-400">
+                    <i data-lucide="tv" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Guía de Conexión & Tips Anti-Bloqueo</h3>
+                        <span class="text-xs text-slate-400">Instrucciones para Smart TV, TV Box y Dispositivos Móviles</span>
+                    </div>
+                </div>
+                <button @click="guideModal = false" class="text-slate-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-3.5 max-h-80 overflow-y-auto pr-1 text-xs">
+                <!-- Netflix -->
+                <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-slate-800 space-y-2">
+                    <div class="flex items-center gap-2 text-red-500 font-bold">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                        <h4 class="text-white font-bold">Netflix (Smart TV & Evitar Bloqueo de Hogar)</h4>
+                    </div>
+                    <ul class="space-y-1.5 text-slate-300 list-disc list-inside leading-relaxed text-[11px]">
+                        <li>Inicia sesión con el correo y contraseña oficial provisto en tu Bóveda.</li>
+                        <li>Si en el televisor aparece el aviso <em>"Este televisor no forma parte de tu Hogar Netflix"</em>, elige la opción <strong>"Estoy de viaje"</strong> o <strong>"Ver código temporal"</strong> y solicítaselo a tu distribuidor por el botón de WhatsApp.</li>
+                        <li>Ingresa <strong>ÚNICAMENTE</strong> a tu perfil asignado con tu PIN numérico.</li>
+                        <li><strong>PROHIBIDO</strong> cambiar el correo, contraseña o asociar números de teléfono.</li>
+                    </ul>
+                </div>
+
+                <!-- Disney+ & Star -->
+                <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-slate-800 space-y-2">
+                    <div class="flex items-center gap-2 text-sky-400 font-bold">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                        <h4 class="text-white font-bold">Disney+ Estándar y Premium (Star & ESPN)</h4>
+                    </div>
+                    <ul class="space-y-1.5 text-slate-300 list-disc list-inside leading-relaxed text-[11px]">
+                        <li>Ingresa directamente con las credenciales de acceso de la Bóveda.</li>
+                        <li>Selecciona tu perfil designado con tu PIN. No modifiques nombres ni avatares de otros usuarios.</li>
+                        <li>Válido para reproducción en simultáneo en 1 pantalla activa a la vez.</li>
+                    </ul>
+                </div>
+
+                <!-- HBO Max -->
+                <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-slate-800 space-y-2">
+                    <div class="flex items-center gap-2 text-purple-400 font-bold">
+                        <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                        <h4 class="text-white font-bold">HBO (MAX Platino 4K UHD)</h4>
+                    </div>
+                    <ul class="space-y-1.5 text-slate-300 list-disc list-inside leading-relaxed text-[11px]">
+                        <li>Disfruta películas y series en ultra alta definición 4K sin interrupciones.</li>
+                        <li>Accede a tu perfil privado protegido por PIN para mantener tus listas y reproducciones personalizadas.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-slate-800">
+                <button type="button" @click="guideModal = false" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer">
+                    Entendido, Cerrar Guía
+                </button>
+            </div>
         </div>
     </div>
 </div>

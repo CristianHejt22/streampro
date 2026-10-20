@@ -76,6 +76,106 @@
         </div>
     </div>
 
+    <!-- Módulo Proveedor: Sub-Revendedores, Tiendas Clonadas y Ganancias 25% -->
+    @if($user->isSuperReseller())
+    <div class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/20 to-gray-900 border border-purple-500/40 shadow-xl space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center font-bold text-lg">
+                    <i data-lucide="network" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-white flex items-center gap-2">
+                        <span>Panel de Proveedor de Cuentas</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono font-bold">
+                            Catálogo & Tiendas Clonadas
+                        </span>
+                    </h3>
+                    <p class="text-xs text-gray-400">Control de tus revendedores asignados, cobro de copias y comisiones del 25% acumuladas</p>
+                </div>
+            </div>
+            <a href="{{ route('resellers.index') }}" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 w-max">
+                <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                <span>Gestionar Mis Revendedores</span>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
+                <span class="text-[11px] text-gray-400 uppercase font-bold block">Revendedores Patrocinados</span>
+                <span class="text-xl font-black text-white mt-1 block">{{ $subResellersCount }} usuarios</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
+                <span class="text-[11px] text-gray-400 uppercase font-bold block">Tiendas Clonadas Activas</span>
+                <span class="text-xl font-black text-sky-400 mt-1 block">{{ $clonedPanelsCount }} tiendas ($15k/mes)</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
+                <span class="text-[11px] text-gray-400 uppercase font-bold block">Comisiones Ganadas (25% Patrocinio)</span>
+                <span class="text-xl font-black text-emerald-400 mt-1 block">${{ number_format($sponsorshipEarnings, 2) }}</span>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Alert Box: Solicitudes de Renovación Pendientes de Clientes -->
+    @if(isset($pendingRenewalsCount) && $pendingRenewalsCount > 0)
+    <div class="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/20 to-gray-900 border border-cyan-500/30 shadow-xl flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-bold text-xl shrink-0 animate-pulse">
+                <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">Tienes {{ $pendingRenewalsCount }} solicitud(es) de renovación pendientes de clientes</h3>
+                <p class="text-xs text-gray-400">Tus clientes solicitaron renovar su cuenta desde la Bóveda. Revisa el comprobante y aprueba la extensión.</p>
+            </div>
+        </div>
+        <a href="{{ route('sales.index') }}" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-lg shadow-cyan-600/30 shrink-0 flex items-center gap-2">
+            <span>Aprobar Renovación</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+    </div>
+    @endif
+
+    <!-- Alert Box: Cuentas en Consignación 48hs -->
+    @if(isset($consignmentsActive) && $consignmentsActive->isNotEmpty())
+    <div class="p-5 rounded-2xl bg-[#111827] border border-amber-500/40 shadow-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <div class="flex items-center gap-2 text-amber-400">
+                <i data-lucide="clock" class="w-5 h-5 animate-pulse"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Tus Cuentas en Consignación (48 Horas de Plazo)</h3>
+            </div>
+            <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                {{ $consignmentsActive->count() }} activas por liquidar
+            </span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach($consignmentsActive as $cSale)
+            @php
+                $hrs = $cSale->consignment_hours_remaining ?? 48;
+            @endphp
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
+                <div>
+                    <span class="font-bold text-white text-xs block">{{ $cSale->service ? $cSale->service->name : 'Streaming' }}</span>
+                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Consignatario' }}</span>
+                    <span class="text-[10px] text-amber-400 font-mono block">Costo: ${{ number_format($cSale->cost_price, 2) }}</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs font-mono font-bold {{ $hrs <= 12 ? 'text-rose-400 animate-pulse' : 'text-amber-400' }} block">
+                        ⏳ {{ $hrs }}h restantes
+                    </span>
+                    <form method="POST" action="{{ route('sales.pay_consignment', $cSale) }}" class="mt-1">
+                        @csrf
+                        <button type="submit" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow cursor-pointer">
+                            Liquidar Ahora
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- Banner Mi Tienda Personal con Marca Blanca -->
     <div class="p-5 rounded-2xl bg-gradient-to-r from-red-950/40 via-purple-950/20 to-gray-900 border border-red-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
