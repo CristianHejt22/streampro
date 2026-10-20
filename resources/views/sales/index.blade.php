@@ -104,6 +104,110 @@
         </form>
     </div>
 
+    <!-- SECCIÓN DE SOLICITUDES DE RENOVACIÓN DESDE BÓVEDA -->
+    @if(isset($pendingRenewals) && $pendingRenewals->isNotEmpty())
+    <div class="p-5 rounded-2xl bg-gradient-to-r from-cyan-950/60 via-[#111827] to-[#111827] border-2 border-cyan-500/40 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center font-bold text-lg animate-pulse">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-white flex items-center gap-2">
+                        <span>Solicitudes de Renovación desde Bóveda de Clientes</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono font-bold">
+                            {{ $pendingRenewals->count() }} Pendiente(s)
+                        </span>
+                    </h3>
+                    <p class="text-xs text-gray-400">Solicitudes enviadas directamente por clientes para extender vigencia de cuentas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="text-[11px] text-gray-400 uppercase bg-gray-900/80 border-b border-gray-800">
+                    <tr>
+                        <th class="px-4 py-3">Cliente</th>
+                        <th class="px-4 py-3">Servicio / Cuenta</th>
+                        <th class="px-4 py-3">Duración</th>
+                        <th class="px-4 py-3">Monto & Método</th>
+                        <th class="px-4 py-3">Comprobante / Notas</th>
+                        <th class="px-4 py-3 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800/80">
+                    @foreach($pendingRenewals as $req)
+                    @php
+                        $rSale = $req->sale;
+                        $rSrv = $req->service ?: ($rSale ? $rSale->service : null);
+                        $rCustomer = $req->customer ?: ($rSale ? $rSale->customer : null);
+                    @endphp
+                    <tr class="hover:bg-gray-800/40 transition-colors">
+                        <td class="px-4 py-3 font-semibold text-white">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center font-bold text-xs">
+                                    {{ strtoupper(substr($rCustomer ? $rCustomer->name : 'CLI', 0, 2)) }}
+                                </span>
+                                <div>
+                                    <div class="font-bold">{{ $rCustomer ? $rCustomer->name : 'Cliente' }}</div>
+                                    <div class="text-[10px] text-gray-400 font-mono">{{ $rCustomer ? $rCustomer->phone : '' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-cyan-300">{{ $rSrv ? $rSrv->name : 'Streaming' }}</div>
+                            <div class="text-[10px] text-gray-400 font-mono">{{ $rSale ? $rSale->sale_code : '' }} ({{ $rSale ? $rSale->profile_name_snapshot : 'Perfil' }})</div>
+                        </td>
+                        <td class="px-4 py-3 font-mono">
+                            <span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                                {{ $req->months_duration }} Mes(es)
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-black text-sm text-emerald-400 font-mono">${{ number_format($req->amount, 2) }}</div>
+                            <div class="text-[10px] text-gray-400 uppercase font-bold">{{ str_replace('_', ' ', $req->payment_method) }}</div>
+                        </td>
+                        <td class="px-4 py-3 max-w-xs">
+                            @if($req->receipt_path)
+                            <a href="{{ asset('storage/' . $req->receipt_path) }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 hover:text-sky-300 underline mb-1">
+                                <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                                <span>Ver Comprobante</span>
+                            </a>
+                            @else
+                            <span class="text-[10px] text-gray-500 italic block">Sin comprobante</span>
+                            @endif
+                            @if($req->customer_notes)
+                            <p class="text-[11px] text-gray-300 truncate" title="{{ $req->customer_notes }}">"{{ $req->customer_notes }}"</p>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <form method="POST" action="{{ route('sales.renewals.approve', $req) }}" onsubmit="return confirm('¿Aprobar y extender la cuenta por {{ $req->months_duration }} mes(es)?');">
+                                    @csrf
+                                    <button type="submit" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow cursor-pointer" title="Aprobar y extender vigencia">
+                                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                        <span>Aprobar</span>
+                                    </button>
+                                </form>
+
+                                <form method="POST" action="{{ route('sales.renewals.reject', $req) }}" onsubmit="return confirm('¿Rechazar esta solicitud de renovación?');">
+                                    @csrf
+                                    <button type="submit" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-500/30 cursor-pointer" title="Rechazar">
+                                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                        <span>Rechazar</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     <!-- Sales Table -->
     <div class="rounded-2xl bg-[#111827] border border-gray-800 shadow-xl overflow-hidden">
         <div class="overflow-x-auto">

@@ -15,6 +15,8 @@ use App\Models\Order;
 use App\Models\Shortcut;
 use App\Models\SystemSetting;
 use App\Models\AuditLog;
+use App\Models\RenewalRequest;
+use App\Models\ResellerServiceCommission;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 
@@ -562,5 +564,46 @@ class DatabaseSeeder extends Seeder
             ['user_id' => $admin->id, 'title' => 'Mercado Pago Cobros'],
             ['url' => 'https://mercadopago.com.ar', 'icon' => 'credit-card', 'color' => '#009EE3']
         );
+
+        // 9. Preferencias de Soporte de Cuenta por WhatsApp configuradas por Admin
+        SystemSetting::set('whatsapp_support_enabled', 'true');
+        SystemSetting::set('whatsapp_support_dest', 'reseller');
+        SystemSetting::set('whatsapp_support_admin_phone', '5491199887766');
+
+        // 10. Comisiones Específicas por Servicio configuradas por el Proveedor (Carlos) para su Revendedor (Marcos)
+        ResellerServiceCommission::updateOrCreate(
+            ['reseller_id' => $reseller1->id, 'service_id' => $netflix->id],
+            ['parent_id' => $superReseller->id, 'commission_pct' => 35.00]
+        );
+        ResellerServiceCommission::updateOrCreate(
+            ['reseller_id' => $reseller1->id, 'service_id' => $hbo->id],
+            ['parent_id' => $superReseller->id, 'commission_pct' => 45.00]
+        );
+        ResellerServiceCommission::updateOrCreate(
+            ['reseller_id' => $reseller1->id, 'service_id' => $disneyStd->id],
+            ['parent_id' => $superReseller->id, 'commission_pct' => 30.00]
+        );
+        ResellerServiceCommission::updateOrCreate(
+            ['reseller_id' => $reseller1->id, 'service_id' => $disneyPrem->id],
+            ['parent_id' => $superReseller->id, 'commission_pct' => 35.00]
+        );
+
+        // 11. Solicitud de Renovación Demo enviada desde la Bóveda de Gonzalo para Netflix
+        $v1 = Sale::where('sale_code', 'CST-2026-0001')->first();
+        if ($v1) {
+            RenewalRequest::firstOrCreate(
+                ['sale_id' => $v1->id, 'status' => 'pending'],
+                [
+                    'customer_id' => $c1->id,
+                    'user_id' => $admin->id,
+                    'service_id' => $netflix->id,
+                    'service_plan_id' => $pNet1->id,
+                    'months_duration' => 2,
+                    'amount' => 9000.00,
+                    'payment_method' => 'bank_transfer',
+                    'customer_notes' => 'Transferí $9.000 por Mercado Pago al Alias de CStreame. Renovar por 2 meses por favor.',
+                ]
+            );
+        }
     }
 }

@@ -12,6 +12,8 @@ use App\Models\Service;
 use App\Models\ServicePlan;
 use App\Models\Warranty;
 use App\Models\AuditLog;
+use App\Models\RenewalRequest;
+use App\Models\SystemSetting;
 
 class CustomerPortalController extends Controller
 {
@@ -157,23 +159,34 @@ class CustomerPortalController extends Controller
             return redirect()->route('boveda.login');
         }
 
-        // Obtener ventas activas del cliente con credenciales snapshot y perfiles
-        $activeSales = Sale::with(['service', 'plan', 'streamingAccount', 'profile'])
+        // Obtener ventas activas del cliente con credenciales snapshot, perfiles y solicitudes de renovación
+        $activeSales = Sale::with(['service', 'plan', 'streamingAccount', 'profile', 'latestRenewalRequest'])
             ->where('customer_id', $customer->id)
             ->whereIn('status', ['active', 'expiring_soon'])
             ->latest()
             ->get();
 
         // Historial de ventas anteriores o vencidas
-        $historySales = Sale::with(['service', 'plan'])
+        $historySales = Sale::with(['service', 'plan', 'latestRenewalRequest'])
             ->where('customer_id', $customer->id)
             ->whereNotIn('status', ['active', 'expiring_soon'])
             ->latest()
             ->take(5)
             ->get();
 
-        // Datos del revendedor asignado (Marca blanca, WhatsApp, Logo)
+        // Datos del revendedor asignado (Marca blanca, WhatsApp, Logo, CBU/CVU)
         $reseller = $customer->user ?: User::where('role', 'admin')->first();
+
+        // Preferencia de Soporte de Cuenta por WhatsApp configurada por el Administrador General
+        $whatsappSupportEnabled = SystemSetting::get('whatsapp_support_enabled', 'true') === 'true';
+        $whatsappSupportDest = SystemSetting::get('whatsapp_support_dest', 'reseller');
+        $whatsappAdminPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
+
+        if ($whatsappSupportDest === 'admin') {
+            $supportWhatsAppPhone = $whatsappAdminPhone;
+        } else {
+            $supportWhatsAppPhone = ($reseller && $reseller->support_whatsapp) ? $reseller->support_whatsapp : $whatsappAdminPhone;
+        }
 
         // Catálogo de plataformas principales para activar nuevas cuentas
         $catalogServices = Service::where('status', 'active')
@@ -182,7 +195,15 @@ class CustomerPortalController extends Controller
             }])
             ->get();
 
-        return view('portal.boveda', compact('customer', 'activeSales', 'historySales', 'reseller', 'catalogServices'));
+        return view('portal.boveda', compact(
+            'customer',
+            'activeSales',
+            'historySales',
+            'reseller',
+            'catalogServices',
+            'whatsappSupportEnabled',
+            'supportWhatsAppPhone'
+        ));
     }
 
     /**
@@ -260,5 +281,57 @@ class CustomerPortalController extends Controller
             'success' => false,
             'message' => 'La contraseña o PIN ingresado es incorrecto. Vuelve a intentarlo.',
         ], 422);
+    }
+
+    /**
+     * Procesa la solicitud de renovación enviada por el cliente desde su Bóveda
+     */
+    public function submitRenewalRequest(Request $request, Sale $sale)
+    {
+        $customer = Auth::guard('customer')->user();
+        if (!$customer || $sale->customer_id !== $customer->id) {
+            abort(403, 'No tienes permiso para renovar esta suscripción.');
+        }
+
+        $request->validate([
+            'months_duration' => 'required|integer|in:1,2,3,6,12',
+            'payment_method' => 'required|string|in:bank_transfer,mercadopago,binance,cash',
+            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'customer_notes' => 'nullable|string|max:500',
+        ]);
+
+        $months = (int) $request->input('months_duration', 1);
+        $plan = $sale->plan;
+        $basePrice = $plan ? (float)$plan->price : (float)$sale->sale_price;
+        $totalAmount = $basePrice * $months;
+
+        $receiptPath = null;
+        if ($request->hasFile('receipt')) {
+            $receiptPath = $request->file('receipt')->store('receipts', 'public');
+        }
+
+        // Crear la Solicitud de Renovación formal
+        $renewalReq = RenewalRequest::create([
+            'sale_id' => $sale->id,
+            'customer_id' => $customer->id,
+            'user_id' => $sale->user_id,
+            'service_id' => $sale->service_id,
+            'service_plan_id' => $sale->service_plan_id,
+            'months_duration' => $months,
+            'amount' => $totalAmount,
+            'payment_method' => $request->payment_method,
+            'receipt_path' => $receiptPath,
+            'customer_notes' => $request->customer_notes,
+            'status' => 'pending',
+        ]);
+
+        AuditLog::create([
+            'user_id' => $sale->user_id,
+            'action' => 'customer_request_renewal',
+            'description' => "El cliente {$customer->name} solicitó renovación para {$sale->sale_code} ({$sale->service->name}) por {$months} mes(es). Monto: \${$totalAmount}. Método: {$request->payment_method}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Solicitud de renovación enviada con éxito! Tu distribuidor ha recibido la alerta por {$months} mes(es) (\${$totalAmount}) y confirmará la extensión en tu Bóveda.");
     }
 }

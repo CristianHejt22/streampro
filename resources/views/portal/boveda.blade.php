@@ -13,6 +13,10 @@
 <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8" x-data="{
     reportModal: false,
     unlockModal: false,
+    renewModal: false,
+    renewSale: null,
+    renewMonths: 1,
+    renewPricePerMonth: 0,
     vaultUnlocked: false,
     unlockTab: 'biometric',
     unlockPassword: '',
@@ -20,6 +24,12 @@
     isVerifying: false,
     selectedSale: null,
     showPasswords: {},
+    openRenewModal(sale) {
+        this.renewSale = sale;
+        this.renewMonths = 1;
+        this.renewPricePerMonth = (sale.plan && sale.plan.price) ? parseFloat(sale.plan.price) : parseFloat(sale.sale_price);
+        this.renewModal = true;
+    },
     togglePassword(id) {
         if (!this.vaultUnlocked) {
             this.unlockModal = true;
@@ -154,10 +164,12 @@
                     </button>
                 </template>
 
-                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20soy%20{{ urlencode($customer->name) }}%20(N°%20Cliente:%20{{ $customer->customer_code }})%20y%20tengo%20una%20consulta%20sobre%20mi%20boveda%20de%20streaming." target="_blank" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all">
+                @if($whatsappSupportEnabled)
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20soy%20{{ urlencode($customer->name) }}%20(N°%20Cliente:%20{{ $customer->customer_code }})%20y%20tengo%20una%20consulta%20sobre%20mi%20boveda%20de%20streaming." target="_blank" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
                     <span>Soporte WhatsApp</span>
                 </a>
+                @endif
 
                 <form method="POST" action="{{ route('boveda.logout') }}">
                     @csrf
@@ -249,6 +261,16 @@
                     <div class="flex items-center gap-2">
                         <i data-lucide="clock" class="w-4 h-4 text-amber-400 animate-pulse"></i>
                         <span><strong>Cuenta en Consignación:</strong> {{ $hoursLeft ?? 48 }} horas restantes para liquidación por tu revendedor.</span>
+                    </div>
+                </div>
+                @endif
+
+                <!-- ALERTA DE SOLICITUD DE RENOVACIÓN PENDIENTE -->
+                @if($sale->latestRenewalRequest && $sale->latestRenewalRequest->isPending())
+                <div class="p-3 mx-5 mt-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-cyan-400 animate-spin"></i>
+                        <span><strong>Solicitud de Renovación en Proceso:</strong> {{ $sale->latestRenewalRequest->months_duration }} mes(es) por ${{ number_format($sale->latestRenewalRequest->amount, 2) }}. Tu revendedor la confirmará en breve.</span>
                     </div>
                 </div>
                 @endif
@@ -348,16 +370,25 @@
                 </div>
 
                 <!-- Footer Card Actions -->
-                <div class="p-4 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                    <button @click="openReportModal({{ json_encode($sale) }})" class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                <div class="p-4 bg-slate-950/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                    <button @click="openReportModal({{ json_encode($sale) }})" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                         <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
                         <span>Reportar Falla</span>
                     </button>
 
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20deseo%20renovar%20mi%20servicio%20de%20*{{ urlencode($srvName) }}*%20(Cliente:%20{{ urlencode($customer->name) }},%20Código:%20{{ $customer->customer_code }})." target="_blank" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                        <span>Renovar Cuenta</span>
-                    </a>
+                    <div class="flex items-center gap-2">
+                        @if($whatsappSupportEnabled)
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20necesito%20soporte%20con%20mi%20cuenta%20de%20*{{ urlencode($srvName) }}*%20(Código:%20{{ $sale->sale_code }},%20Perfil:%20{{ urlencode($sale->profile_name_snapshot) }}).%20Cliente:%20{{ urlencode($customer->name) }}." target="_blank" class="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5" title="Soporte oficial por WhatsApp">
+                            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                            <span>Soporte</span>
+                        </a>
+                        @endif
+
+                        <button type="button" @click="openRenewModal({{ json_encode($sale) }})" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Renovar Cuenta</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             @endforeach
@@ -397,10 +428,10 @@
                         <span class="text-slate-500 font-mono text-[11px] block">{{ $hSale->plan ? $hSale->plan->name : 'Individual' }} • Venció el {{ $hEndDate }}</span>
                     </div>
                 </div>
-                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text=Hola,%20deseo%20reactivar%20mi%20cuenta%20de%20*{{ urlencode($hSrvName) }}*%20(Cliente:%20{{ urlencode($customer->name) }})." target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white font-bold text-[11px] transition-all flex items-center gap-1">
+                <button type="button" @click="openRenewModal({{ json_encode($hSale) }})" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer">
                     <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                    <span>Reactivar</span>
-                </a>
+                    <span>Renovar / Reactivar</span>
+                </button>
             </div>
             @endforeach
         </div>
@@ -537,6 +568,123 @@
                     </button>
                     <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-lg">
                         Enviar Reporte de Garantía
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL DE SOLICITUD DE RENOVACIÓN DE CUENTA -->
+    <!-- ========================================== -->
+    <div x-show="renewModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="renewModal = false">
+        <div class="bg-[#0f172a] p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl max-w-lg w-full space-y-5 relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Solicitar Renovación de Cuenta</h3>
+                        <span class="text-xs text-slate-400 font-mono" x-text="renewSale?.service?.name + ' (' + (renewSale?.sale_code || '') + ')'"></span>
+                    </div>
+                </div>
+                <button @click="renewModal = false" class="text-slate-400 hover:text-white cursor-pointer text-lg font-bold">✕</button>
+            </div>
+
+            <form x-bind:action="'/boveda/renovar/' + (renewSale ? renewSale.id : '')" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+
+                <!-- Selector de Meses de Duración -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Selecciona la Duración a Renovar *</label>
+                    <div class="grid grid-cols-5 gap-2">
+                        @foreach([1 => '1 Mes', 2 => '2 Meses', 3 => '3 Meses', 6 => '6 Meses', 12 => '12 Meses'] as $m => $lbl)
+                        <button type="button" @click="renewMonths = {{ $m }}" :class="renewMonths === {{ $m }} ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-600/30 font-black' : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 font-semibold'" class="p-2.5 rounded-xl border text-xs text-center transition-all cursor-pointer">
+                            <span class="block text-sm">{{ $m }}M</span>
+                            <span class="text-[10px] block opacity-80">{{ $m == 1 ? '30d' : ($m*30).'d' }}</span>
+                        </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="months_duration" :value="renewMonths">
+                </div>
+
+                <!-- Monto Total Calculado -->
+                <div class="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] text-slate-400 uppercase font-bold block">Total a Abonar (<span x-text="renewMonths"></span> mes/es)</span>
+                        <span class="text-xs text-emerald-400 font-mono" x-text="'$' + renewPricePerMonth.toFixed(2) + ' / mes'"></span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-black text-emerald-300 font-mono" x-text="'$' + (renewMonths * renewPricePerMonth).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                    </div>
+                </div>
+
+                <!-- Datos de Pago del Revendedor / Proveedor -->
+                @if($reseller && ($reseller->bank_alias || $reseller->bank_cvu || $reseller->bank_cbu || $reseller->binance_id))
+                <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5 text-xs font-mono">
+                    <span class="text-[10px] font-bold text-amber-400 uppercase font-sans flex items-center gap-1">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                        <span>Datos de Pago de {{ $reseller->name }}</span>
+                    </span>
+                    @if($reseller->bank_alias)
+                    <div class="flex justify-between text-slate-300">
+                        <span class="text-slate-500 font-sans">Alias:</span>
+                        <strong class="text-white">{{ $reseller->bank_alias }}</strong>
+                    </div>
+                    @endif
+                    @if($reseller->bank_cvu || $reseller->bank_cbu)
+                    <div class="flex justify-between text-slate-300">
+                        <span class="text-slate-500 font-sans">CVU/CBU:</span>
+                        <span class="text-slate-200">{{ $reseller->bank_cvu ?: $reseller->bank_cbu }}</span>
+                    </div>
+                    @endif
+                    @if($reseller->bank_holder_name)
+                    <div class="flex justify-between text-slate-300">
+                        <span class="text-slate-500 font-sans">Titular:</span>
+                        <span class="text-slate-200">{{ $reseller->bank_holder_name }}</span>
+                    </div>
+                    @endif
+                    @if($reseller->binance_id)
+                    <div class="flex justify-between text-slate-300">
+                        <span class="text-slate-500 font-sans">Binance Pay ID:</span>
+                        <span class="text-amber-400">{{ $reseller->binance_id }}</span>
+                    </div>
+                    @endif
+                </div>
+                @endif
+
+                <!-- Método de Pago -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Método de Pago Utilizado *</label>
+                    <select name="payment_method" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-emerald-500">
+                        <option value="bank_transfer">Transferencia Bancaria / CVU Mercado Pago</option>
+                        <option value="mercadopago">Mercado Pago (Dinero en Cuenta / Tarjeta)</option>
+                        <option value="binance">Binance Pay (USDT Crypto)</option>
+                        <option value="cash">Efectivo / Acordar con Vendedor</option>
+                    </select>
+                </div>
+
+                <!-- Adjuntar Comprobante (Mini Nube) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Adjuntar Comprobante de Pago (Opcional)</label>
+                    <input type="file" name="receipt" accept="image/*,application/pdf" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-emerald-400 hover:file:bg-slate-700 cursor-pointer">
+                </div>
+
+                <!-- Notas del Cliente -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Notas o Referencia de Pago</label>
+                    <textarea name="customer_notes" rows="2" placeholder="Ej: Ya transferí desde Mercado Pago titular Juan Pérez..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 outline-none focus:border-emerald-500"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" @click="renewModal = false" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white text-xs font-black shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Enviar Solicitud al Panel</span>
                     </button>
                 </div>
             </form>

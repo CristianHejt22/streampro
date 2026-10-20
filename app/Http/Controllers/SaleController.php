@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\Service;
 use App\Models\ServicePlan;
 use App\Models\Warranty;
+use App\Models\RenewalRequest;
 use App\Models\AuditLog;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -69,6 +70,14 @@ class SaleController extends Controller
 
         $sales = $query->latest()->paginate(15)->withQueryString();
 
+        // Solicitudes de Renovación pendientes enviadas desde la Bóveda de Clientes
+        $renewalQuery = RenewalRequest::with(['sale.customer', 'sale.service', 'sale.plan', 'customer', 'service', 'plan', 'user'])
+            ->where('status', 'pending');
+        if ($user->isReseller()) {
+            $renewalQuery->where('user_id', $user->id);
+        }
+        $pendingRenewals = $renewalQuery->latest()->get();
+
         // Opciones de filtros
         $services = Service::where('status', 'active')->get();
         $sellers = $user->isAdmin() ? \App\Models\User::where('role', 'reseller')->get() : collect();
@@ -99,7 +108,8 @@ class SaleController extends Controller
             'countExpiring',
             'countExpired',
             'availablePlans',
-            'customersList'
+            'customersList',
+            'pendingRenewals'
         ));
     }
 
@@ -139,11 +149,17 @@ class SaleController extends Controller
 
         $baseSalePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
         $salePrice = $baseSalePrice * $months;
-        $baseResellerPrice = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+
+        // Comisión por Servicio ajustada por el Proveedor para este revendedor
+        $resellerMarginPct = $user->getCommissionForService($service->id);
+        $baseResellerPrice = ($plan->reseller_price > 0 && $resellerMarginPct == 40.00)
+            ? (float)$plan->reseller_price
+            : ((float)$plan->price * (1 - ($resellerMarginPct / 100)));
+
         $costPrice = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
         $profit = $salePrice - $costPrice;
 
-        // Comisión del 25% para el panel padre patrocinador (copia de servicios)
+        // Comisión del 25% para el panel padre patrocinador (copia de catálogo)
         $parentCommission = 0.00;
         if ($user->parent_id && $user->parent) {
             $pct = (float) ($user->parent_commission_pct ?: 25.00);
@@ -498,5 +514,103 @@ class SaleController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Aprobar y Extender una Solicitud de Renovación enviada desde la Bóveda del Cliente
+     */
+    public function approveRenewalRequest(Request $request, RenewalRequest $renewalRequest)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $renewalRequest->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para aprobar esta solicitud.');
+        }
+
+        if ($renewalRequest->status !== 'pending') {
+            return back()->with('info', 'Esta solicitud ya fue procesada anteriormente.');
+        }
+
+        $sale = $renewalRequest->sale;
+        $months = max(1, (int) $renewalRequest->months_duration);
+        $days = $months * 30;
+        $plan = $sale->plan;
+
+        // Descontar costo del revendedor si corresponde
+        if ($user->isReseller() && $plan) {
+            $resellerPct = $user->getCommissionForService($sale->service_id);
+            $unitCost = $plan->reseller_price > 0 ? (float)$plan->reseller_price : ((float)$plan->price * (1 - ($resellerPct / 100)));
+            $totalCost = $unitCost * $months;
+
+            if (!$user->hasBalance($totalCost)) {
+                return back()->withErrors(['error' => "Saldo insuficiente para aprobar la renovación. Requiere \${$totalCost} y tu saldo es de \${$user->balance}."]);
+            }
+
+            $user->deductBalance($totalCost);
+
+            // Acreditar comisión al patrocinador si corresponde
+            if ($user->parent) {
+                $parentPct = (float)($user->parent_commission_pct ?: 25.00);
+                $profit = ($renewalRequest->amount - $totalCost);
+                $parentCut = round(max(0, $profit) * ($parentPct / 100), 2);
+                if ($parentCut > 0) {
+                    $user->parent->addBalance($parentCut);
+                }
+            }
+        }
+
+        // Extender fecha de vencimiento
+        $currentEnd = Carbon::parse($sale->end_date);
+        $newEnd = $currentEnd->isPast() ? Carbon::today()->addDays($days) : $currentEnd->addDays($days);
+
+        $sale->update([
+            'end_date' => $newEnd->toDateString(),
+            'status' => 'active',
+            'renewal_count' => $sale->renewal_count + 1,
+            'reminder_sent_at' => null,
+            'is_consignment_paid' => true,
+        ]);
+
+        $renewalRequest->update([
+            'status' => 'approved',
+            'processed_at' => Carbon::now(),
+            'admin_notes' => $request->input('admin_notes', 'Aprobada por el distribuidor'),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'approve_renewal_request',
+            'description' => "Solicitud de renovación aprobada para {$sale->sale_code} ({$sale->service->name}). Extendido por {$months} mes(es) hasta {$newEnd->format('d/m/Y')}. Monto: \${$renewalRequest->amount}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Solicitud de renovación aprobada! La cuenta {$sale->sale_code} se ha extendido por {$months} mes(es) hasta el {$newEnd->format('d/m/Y')}.");
+    }
+
+    /**
+     * Rechazar una Solicitud de Renovación
+     */
+    public function rejectRenewalRequest(Request $request, RenewalRequest $renewalRequest)
+    {
+        $user = Auth::user();
+        if ($user->isReseller() && $renewalRequest->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $reason = $request->input('reason', 'Comprobante no acreditado o datos incorrectos');
+
+        $renewalRequest->update([
+            'status' => 'rejected',
+            'processed_at' => Carbon::now(),
+            'admin_notes' => $reason,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'reject_renewal_request',
+            'description' => "Solicitud de renovación rechazada para {$renewalRequest->sale->sale_code}. Motivo: {$reason}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('info', "La solicitud de renovación ha sido rechazada. Motivo: {$reason}");
     }
 }

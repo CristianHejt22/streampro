@@ -37,6 +37,9 @@ class User extends Authenticatable
         'panel_type',
         'panel_monthly_fee',
         'panel_expires_at',
+        'cloned_store_paid_to_admin',
+        'cloned_store_paid_by_reseller',
+        'cloned_store_last_payment_date',
         'reseller_commission_pct',
         'parent_commission_pct',
         'bank_cbu',
@@ -59,6 +62,9 @@ class User extends Authenticatable
         'password' => 'hashed',
         'balance' => 'decimal:2',
         'panel_expires_at' => 'datetime',
+        'cloned_store_paid_to_admin' => 'boolean',
+        'cloned_store_paid_by_reseller' => 'boolean',
+        'cloned_store_last_payment_date' => 'datetime',
         'panel_monthly_fee' => 'decimal:2',
         'reseller_commission_pct' => 'decimal:2',
         'parent_commission_pct' => 'decimal:2',
@@ -174,5 +180,29 @@ class User extends Authenticatable
     public function warranties()
     {
         return $this->hasMany(Warranty::class);
+    }
+
+    public function renewalRequests()
+    {
+        return $this->hasMany(RenewalRequest::class, 'user_id');
+    }
+
+    public function customServiceCommissions()
+    {
+        return $this->hasMany(ResellerServiceCommission::class, 'reseller_id');
+    }
+
+    public function configuredChildCommissions()
+    {
+        return $this->hasMany(ResellerServiceCommission::class, 'parent_id');
+    }
+
+    public function getCommissionForService($serviceId): float
+    {
+        $custom = ResellerServiceCommission::where('reseller_id', $this->id)
+            ->where('service_id', $serviceId)
+            ->value('commission_pct');
+
+        return $custom !== null ? (float)$custom : (float)($this->reseller_commission_pct ?: 40.00);
     }
 }

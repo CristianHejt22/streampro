@@ -107,10 +107,20 @@
                 </div>
                 @php
                     $salesCount = Auth::user()->isAdmin() ? \App\Models\Sale::whereIn('status', ['active', 'expiring_soon'])->count() : Auth::user()->sales()->whereIn('status', ['active', 'expiring_soon'])->count();
+                    $pendingRenewalsSidebar = Auth::user()->isAdmin()
+                        ? \App\Models\RenewalRequest::where('status', 'pending')->count()
+                        : \App\Models\RenewalRequest::where('user_id', Auth::id())->where('status', 'pending')->count();
                 @endphp
-                <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-emerald-400 font-bold border border-gray-700">
-                    {{ $salesCount }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                    @if($pendingRenewalsSidebar > 0)
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 animate-pulse" title="{{ $pendingRenewalsSidebar }} Renovaciones solicitadas">
+                        🔄 {{ $pendingRenewalsSidebar }}
+                    </span>
+                    @endif
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-emerald-400 font-bold border border-gray-700">
+                        {{ $salesCount }}
+                    </span>
+                </div>
             </a>
 
             <!-- Inventario de Cuentas y Pantallas -->
@@ -181,11 +191,11 @@
                 @endif
             </a>
 
-            <!-- Revendedores (Admin) -->
-            @if(Auth::user()->isAdmin())
+            <!-- Revendedores (Admin & Proveedor / Super Reseller) -->
+            @if(Auth::user()->isAdmin() || Auth::user()->isSuperReseller())
             <a href="{{ route('resellers.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('resellers.*') ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-gray-400 hover:text-white hover:bg-gray-800/60' }}">
                 <i data-lucide="user-plus" class="w-5 h-5"></i>
-                <span>Revendedores & Saldo</span>
+                <span>{{ Auth::user()->isAdmin() ? 'Revendedores & Saldo' : 'Mis Revendedores & Clones' }}</span>
             </a>
             @endif
 

@@ -283,4 +283,14 @@ class Sale extends Model
     {
         return $this->whats_app_reminder_message;
     }
+
+    public function renewalRequests()
+    {
+        return $this->hasMany(RenewalRequest::class);
+    }
+
+    public function latestRenewalRequest()
+    {
+        return $this->hasOne(RenewalRequest::class)->latestOfMany();
+    }
 }

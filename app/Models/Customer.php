@@ -58,6 +58,11 @@ class Customer extends Authenticatable
         return $this->sales()->whereIn('status', ['active', 'expiring_soon']);
     }
 
+    public function renewalRequests()
+    {
+        return $this->hasMany(RenewalRequest::class);
+    }
+
     // Limpia el número telefónico para WhatsApp API
     public function getCleanPhoneAttribute(): ?string
     {

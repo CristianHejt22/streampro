@@ -12,7 +12,13 @@
     viewPassModal: false,
     clonePanelModal: false,
     commissionsModal: false,
+    serviceCommissionsModal: false,
+    serviceReseller: null,
     selectedReseller: null,
+    openServiceCommissions(res) {
+        this.serviceReseller = res;
+        this.serviceCommissionsModal = true;
+    },
     revealedPassword: '',
     revealedAntiPhishing: '',
     revealedEmail: '',
@@ -88,6 +94,56 @@
         </div>
     </div>
 
+    @if(Auth::user()->isAdmin())
+    <!-- PREFERENCIAS DEL SUPER PANEL: SOPORTE WHATSAPP EN BÓVEDA DE CLIENTES -->
+    <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-md">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-800 mb-4">
+            <div class="flex items-center gap-2.5 text-emerald-400">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Preferencia de Administrador: Soporte por WhatsApp en Bóveda Clientes</h3>
+            </div>
+            <span class="text-xs text-gray-400 font-mono">Preferencia Global</span>
+        </div>
+
+        <form method="POST" action="{{ route('admin.settings.whatsapp_support') }}" class="space-y-4">
+            @csrf
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <!-- Toggle Habilitar/Deshabilitar -->
+                <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-white block">Botón WhatsApp en Bóveda</span>
+                        <span class="text-[11px] text-gray-400">Habilitar asistencia directa en cuentas</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="whatsapp_support_enabled" value="1" {{ $whatsappSupportEnabled ? 'checked' : '' }} class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </div>
+
+                <!-- Selección de Destino -->
+                <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
+                    <label class="text-xs font-bold text-white block mb-1">Destino de las Consultas</label>
+                    <select name="whatsapp_support_dest" class="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-emerald-500">
+                        <option value="reseller" {{ $whatsappSupportDest === 'reseller' ? 'selected' : '' }}>WhatsApp de cada Revendedor (Recomendado)</option>
+                        <option value="admin" {{ $whatsappSupportDest === 'admin' ? 'selected' : '' }}>Centralizar en WhatsApp del Administrador</option>
+                    </select>
+                </div>
+
+                <!-- Teléfono Central Admin -->
+                <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="text-xs font-bold text-white block mb-1">WhatsApp Admin Central</label>
+                        <input type="text" name="whatsapp_support_admin_phone" value="{{ $whatsappAdminPhone }}" placeholder="5491199887766" class="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-emerald-500 font-mono">
+                    </div>
+                    <button type="submit" class="self-end px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    @endif
+
     <!-- Header Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -155,13 +211,23 @@
                             </button>
                         </td>
                         <td class="py-3 px-4 text-xs font-mono">
-                            <span class="text-emerald-400 font-bold">Revendedor: {{ $res->reseller_commission_pct ?? 40 }}%</span>
+                            <span class="text-emerald-400 font-bold block">General: {{ $res->reseller_commission_pct ?? 40 }}%</span>
                             <span class="text-purple-400 block text-[11px]">Patrocinador: {{ $res->parent_commission_pct ?? 25 }}%</span>
-                            <button @click="selectedReseller = {{ json_encode($res) }}; commissionsModal = true;" class="text-[10px] text-gray-400 hover:text-white underline block mt-0.5 cursor-pointer">
-                                Ajustar %
+                            @if($res->customServiceCommissions && $res->customServiceCommissions->isNotEmpty())
+                            <div class="mt-1 flex flex-wrap gap-1">
+                                @foreach($res->customServiceCommissions as $csc)
+                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 font-sans" title="{{ $csc->service ? $csc->service->name : '' }}: {{ $csc->commission_pct }}%">
+                                    {{ $csc->service ? substr($csc->service->name, 0, 7) : 'Srv' }}: {{ (int)$csc->commission_pct }}%
+                                </span>
+                                @endforeach
+                            </div>
+                            @endif
+                            <button type="button" @click="openServiceCommissions({{ json_encode($res) }})" class="mt-1.5 px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="sliders" class="w-3 h-3"></i>
+                                <span>Comisiones por Servicio</span>
                             </button>
                         </td>
-                        <td class="py-3 px-4">
+                        <td class="py-3 px-4 text-xs">
                             @if($isCloned)
                                 @if($isExpired)
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 block w-max">
@@ -172,12 +238,30 @@
                                     🟢 Activo ({{ $daysLeft ?? 30 }} días restantes)
                                 </span>
                                 @endif
-                                <button @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="text-[10px] text-sky-400 hover:underline block mt-1 cursor-pointer">
-                                    Renovar 30d ($15.000)
+
+                                <div class="mt-1.5 text-[10px] font-mono space-y-0.5">
+                                    <span class="text-emerald-400 block font-bold">✓ Admin: Liquidado ($15k)</span>
+                                    <div class="flex items-center gap-1">
+                                        @if($res->cloned_store_paid_by_reseller)
+                                        <span class="text-emerald-400 font-bold">✓ Revendedor: Cobrado</span>
+                                        @else
+                                        <span class="text-amber-400 font-bold">⏳ Revendedor: Pendiente</span>
+                                        @endif
+                                        <form method="POST" action="{{ route('resellers.toggle_store_paid', $res) }}" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-[9px] text-sky-400 hover:underline cursor-pointer">
+                                                [{{ $res->cloned_store_paid_by_reseller ? 'Marcar Pendiente' : 'Marcar Cobrado' }}]
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="text-[10px] text-sky-400 hover:underline block mt-1.5 font-bold cursor-pointer">
+                                    🔄 Renovar Clonación ($15.000 / 30d)
                                 </button>
                             @else
-                            <button @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 text-[10px] font-bold border border-slate-700 transition-colors cursor-pointer">
-                                + Convertir a Clonado ($15k)
+                            <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-[10px] font-bold border border-sky-500/30 transition-colors cursor-pointer">
+                                + Clonar Tienda ($15.000 / 30d)
                             </button>
                             @endif
                         </td>
@@ -302,22 +386,24 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL 3: CLONAR PANEL ($15.000 / 30 DÍAS) -->
+    <!-- MODAL 3: CLONAR PANEL / TIENDA ($15.000 / 30 DÍAS) -->
     <!-- ========================================== -->
     <div x-show="clonePanelModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="clonePanelModal = false">
         <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
             <div class="flex items-center gap-2 text-sky-400">
                 <i data-lucide="copy" class="w-5 h-5"></i>
-                <h3 class="font-bold text-white text-base">Clonar / Renovar Panel ($15.000 / 30 Días)</h3>
+                <h3 class="font-bold text-white text-base">Clonar / Renovar Tienda de Revendedor</h3>
             </div>
-            <p class="text-xs text-gray-400">
-                Configura este panel como copia de revendedor por <strong>$15.000 x 30 días</strong>. El revendedor obtiene <strong>40% de ganancia</strong> y el panel patrocinador obtiene <strong>25% de comisión</strong> por copia de servicios.
+            <p class="text-xs text-gray-400 leading-relaxed">
+                La clonación de la tienda la paga el proveedor que da lugar a su revendedor. El abono es de <strong>$15.000 x 30 días</strong> al Administrador General por la plataforma, y el revendedor debe abonarle al proveedor para clonar su catálogo.
             </p>
 
             <form :action="'/resellers/' + selectedReseller?.id + '/clone-panel'" method="POST" class="space-y-4">
                 @csrf
+
+                @if(Auth::user()->isAdmin())
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Panel Patrocinador (Quien ofrece el servicio y gana el 25%)</label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor / Patrocinador de Cuentas</label>
                     <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                         <option value="">-- Sin Patrocinador (Super Panel Directo) --</option>
                         @foreach($superResellersList as $sres)
@@ -325,14 +411,100 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
+
+                @if(Auth::user()->isSuperReseller())
+                <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1">
+                    <div class="font-bold flex items-center gap-1.5">
+                        <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
+                        <span>Liquidación al Administrador General: $15.000</span>
+                    </div>
+                    <p class="text-[11px] text-amber-200/80">
+                        Tu saldo actual es de <strong>${{ number_format(Auth::user()->balance, 2) }}</strong>. Se debitarán $15.000 para habilitarle el catálogo por 30 días a tu revendedor.
+                    </p>
+                </div>
+                @endif
+
+                <!-- Cobro del Revendedor al Proveedor -->
+                <div class="p-3 rounded-2xl bg-[#0b0f19] border border-gray-800">
+                    <label class="flex items-center gap-2.5 cursor-pointer">
+                        <input type="checkbox" name="cloned_store_paid_by_reseller" value="1" class="rounded bg-gray-900 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4">
+                        <div class="text-xs">
+                            <span class="font-bold text-white block">El revendedor ya me abonó la clonación</span>
+                            <span class="text-[11px] text-gray-400">Registrar como cobrado al revendedor ($15.000)</span>
+                        </div>
+                    </label>
+                </div>
 
                 <div class="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs">
-                    ℹ️ Cuota mensual: <strong>$15.000</strong> por 30 días. Si no se abona a término, el panel se suspende automáticamente.
+                    ℹ️ Vigencia: <strong>+30 días</strong> desde la activación o desde el vencimiento actual.
                 </div>
 
                 <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" @click="clonePanelModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg">Activar Panel Clonado</button>
+                    <button type="button" @click="clonePanelModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg cursor-pointer">
+                        Confirmar & Activar Tienda ($15.000)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 7: COMISIONES ESPECÍFICAS POR CUENTA / SERVICIO -->
+    <!-- ========================================== -->
+    <div x-show="serviceCommissionsModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="serviceCommissionsModal = false">
+        <div class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-5 relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-sky-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-sky-400">
+                    <i data-lucide="sliders" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Comisiones por Servicio para Revendedor</h3>
+                        <span class="text-xs text-gray-400" x-text="'Configuración para: ' + (serviceReseller?.name || 'Revendedor')"></span>
+                    </div>
+                </div>
+                <button @click="serviceCommissionsModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <p class="text-xs text-gray-400 leading-relaxed">
+                El proveedor ajusta aquí la comisión porcentual de su revendedor por cada plataforma de streaming en particular, en lugar de utilizar una comisión general única.
+            </p>
+
+            <form :action="'/resellers/' + serviceReseller?.id + '/update-service-commissions'" method="POST" class="space-y-4">
+                @csrf
+
+                <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    @foreach($servicesList as $srv)
+                    <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-gray-800/80 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-3.5 h-3.5 rounded-full shrink-0 shadow" style="background-color: {{ $srv->color_hex ?? '#E50914' }}"></span>
+                            <div>
+                                <h4 class="font-bold text-white text-xs">{{ $srv->name }}</h4>
+                                <span class="text-[10px] text-gray-400 font-mono">Margen particular por cuenta</span>
+                            </div>
+                        </div>
+
+                        <div class="w-36 flex items-center gap-1.5">
+                            <input type="number" step="0.5" min="0" max="100" name="commissions[{{ $srv->id }}]" placeholder="40.0" class="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-700 text-xs text-emerald-400 font-black text-right outline-none focus:border-sky-500 font-mono">
+                            <span class="text-xs text-gray-400 font-bold">%</span>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+                    💡 Si dejas un servicio vacío, el sistema aplicará automáticamente la comisión general del revendedor (por defecto 40%).
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-800">
+                    <button type="button" @click="serviceCommissionsModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:opacity-90 text-white font-bold text-xs shadow-lg shadow-sky-600/30 flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Guardar Comisiones Específicas</span>
+                    </button>
                 </div>
             </form>
         </div>

@@ -112,7 +112,13 @@ class CustomerController extends Controller
 
         $basePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
         $price = $basePrice * $months;
-        $baseResellerPrice = (float)($plan->reseller_price > 0 ? $plan->reseller_price : $plan->price);
+
+        // Comisión específica por servicio configurada por el proveedor para este revendedor
+        $resellerMarginPct = $user->getCommissionForService($service->id);
+        $baseResellerPrice = ($plan->reseller_price > 0 && $resellerMarginPct == 40.00)
+            ? (float)$plan->reseller_price
+            : ((float)$plan->price * (1 - ($resellerMarginPct / 100)));
+
         $cost = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
         $profit = $price - $cost;
 
