@@ -26,6 +26,12 @@ Route::get('/catalogo', [CatalogController::class, 'index'])->name('catalog.inde
 Route::get('/ref/{code}', function ($code) {
     return redirect()->route('catalog.index', ['ref' => $code]);
 })->name('catalog.referral');
+Route::get('/p/{code}', function ($code) {
+    return redirect()->route('catalog.index', ['ref' => $code]);
+})->name('catalog.panel');
+Route::get('/panel/{code}', function ($code) {
+    return redirect()->route('catalog.index', ['ref' => $code]);
+});
 
 Route::get('/checkout/{plan}', [CatalogController::class, 'checkout'])->name('catalog.checkout');
 Route::post('/checkout/{plan}', [CatalogController::class, 'processCheckout'])->name('catalog.checkout.process');
@@ -141,6 +147,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/update-service-commissions', [ResellerController::class, 'updateServiceCommissions'])->name('resellers.update_service_commissions');
     Route::post('/resellers/{reseller}/update-commissions', [ResellerController::class, 'updateCommissions'])->name('resellers.update_commissions');
     Route::post('/resellers/{reseller}/reset-password', [ResellerController::class, 'resetPassword'])->name('resellers.reset_password');
+    Route::post('/resellers/{reseller}/sell-credits', [ResellerController::class, 'sellCredits'])->name('resellers.sell_credits');
+    Route::post('/resellers/{reseller}/activate-master', [ResellerController::class, 'activatePanelMaster'])->name('resellers.activate_master');
+    Route::post('/resellers/{reseller}/activate-credit', [ResellerController::class, 'activateWithCredit'])->name('resellers.activate_credit');
+    Route::post('/resellers/{reseller}/toggle-provider-override', [ResellerController::class, 'toggleProviderWhatsAppOverride'])->name('resellers.toggle_provider_override');
     Route::post('/admin/settings/whatsapp-support', [ResellerController::class, 'updateWhatsAppSupportSettings'])->name('admin.settings.whatsapp_support');
 
     // Módulo de Tesorería Multi-Usuario & Mini Nube de Comprobantes

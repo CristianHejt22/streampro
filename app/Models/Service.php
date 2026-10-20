@@ -11,6 +11,7 @@ class Service extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'slug',
         'category',
@@ -21,6 +22,16 @@ class Service extends Model
         'default_rules',
         'status',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function isIndividual(): bool
+    {
+        return !is_null($this->user_id);
+    }
 
     public function plans()
     {

@@ -11,6 +11,72 @@
     selectedService: null
 }">
 
+    <!-- Tier & Capacity Banner -->
+    @if(Auth::user()->isAdmin())
+    <div class="rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-slate-900 border border-red-500/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center font-bold">
+                <i data-lucide="crown" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider block">Super Panel Administrador</span>
+                <span class="text-xs text-gray-300">Gestión global de plataformas maestras. Las plataformas globales se sincronizan con todos los revendedores.</span>
+            </div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl bg-slate-950 border border-gray-800 text-xs font-mono text-gray-300">
+            Total Plataformas: <strong class="text-white">{{ $activeServicesCount }}</strong>
+        </div>
+    </div>
+    @elseif(Auth::user()->isPanelPro())
+    <div class="rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/30 border border-purple-500/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold">
+                <i data-lucide="gem" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Panel PRO (Ilimitado)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500 text-white">SIN LÍMITES</span>
+                </div>
+                <span class="text-xs text-gray-300">Puedes agregar todos los servicios y plataformas individuales que desees a tu catálogo.</span>
+            </div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-xs font-mono text-purple-300">
+            Plataformas en tu Panel: <strong class="text-white">{{ $activeServicesCount }}</strong> (Ilimitado)
+        </div>
+    </div>
+    @else
+    <div class="rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
+                <i data-lucide="package" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">Panel BÁSICO (Limitado a 10 Servicios)</span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {{ $activeServicesCount }} / 10 Ocupados
+                    </span>
+                </div>
+                <span class="text-xs text-gray-300">
+                    Tu plan permite un máximo de 10 plataformas en catálogo. 
+                    @if($activeServicesCount >= 10)
+                    <strong class="text-rose-400">¡Límite alcanzado! Actualiza a Panel PRO para añadir más plataformas.</strong>
+                    @else
+                    Te quedan <strong>{{ max(0, 10 - $activeServicesCount) }}</strong> plataformas disponibles.
+                    @endif
+                </span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-32 bg-slate-950 rounded-full h-2.5 overflow-hidden border border-gray-800">
+                <div class="h-2.5 rounded-full {{ $activeServicesCount >= 10 ? 'bg-rose-500' : 'bg-amber-500' }}" style="width: {{ min(100, ($activeServicesCount / 10) * 100) }}%"></div>
+            </div>
+            <span class="text-xs font-mono font-bold {{ $activeServicesCount >= 10 ? 'text-rose-400' : 'text-amber-400' }}">{{ $activeServicesCount }}/10</span>
+        </div>
+    </div>
+    @endif
+
     <!-- Top Action Bar -->
     <div class="flex items-center justify-between">
         <div>
@@ -37,18 +103,35 @@
                         </div>
                         <div>
                             <h4 class="text-sm font-bold text-white">{{ $serv->name }}</h4>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 font-medium">
-                                {{ strtoupper($serv->category) }} · {{ $serv->max_profiles_default }} Perfiles Max
-                            </span>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 font-medium">
+                                    {{ strtoupper($serv->category) }} · {{ $serv->max_profiles_default }} Perfiles Max
+                                </span>
+                                @if(!$serv->user_id)
+                                <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
+                                    👑 Oficial Global
+                                </span>
+                                @elseif($serv->user_id === Auth::id())
+                                <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-bold">
+                                    ✨ Tu Servicio Propio
+                                </span>
+                                @else
+                                <span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold">
+                                    🏢 Catálogo Proveedor
+                                </span>
+                                @endif
+                            </div>
                         </div>
                     </div>
+                    @if(Auth::user()->isAdmin() || $serv->user_id === Auth::id())
                     <form method="POST" action="{{ route('services.destroy', $serv) }}" onsubmit="return confirm('¿Seguro que deseas eliminar esta plataforma y sus planes?');" class="inline">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="text-gray-400 hover:text-rose-400 p-1">
+                        <button type="submit" class="text-gray-400 hover:text-rose-400 p-1" title="Eliminar Plataforma">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
 

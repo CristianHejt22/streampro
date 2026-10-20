@@ -30,6 +30,22 @@ class CatalogController extends Controller
             $q->where('is_active', true);
         }]);
 
+        // Si es revendedor, filtrar catálogo: servicios propios + servicios de su proveedor + del sistema
+        if ($seller && $seller->isReseller()) {
+            $query->where(function ($q) use ($seller) {
+                $q->where('user_id', $seller->id)
+                  ->orWhereNull('user_id');
+                if ($seller->parent_id) {
+                    $q->orWhere('user_id', $seller->parent_id);
+                }
+            });
+
+            // Si su panel es Básico, límite estricto de 10 servicios
+            if ($seller->isPanelBasic()) {
+                $query->take(10);
+            }
+        }
+
         if ($request->filled('category')) {
             $query->where('category', $request->query('category'));
         }
@@ -45,10 +61,22 @@ class CatalogController extends Controller
         $services = $query->latest()->get();
         $categories = Service::where('status', 'active')->distinct()->pluck('category');
 
-        $brandName = $seller->brand_name ?: SystemSetting::get('site_name', 'CStreame Streaming');
+        $brandName = $seller->brand_name ?: ($seller->isAdmin() ? 'CStreame Master Platform' : $seller->name);
         $brandLogo = $seller->brand_logo;
         $primaryColor = $seller->brand_primary_color ?: '#E50914';
-        $supportWhatsapp = $seller->support_whatsapp;
+
+        // Regla de WhatsApp: si es copia, usa su revendedor, salvo que el proveedor lo desee
+        $whatsappSupportPhone = $seller->support_whatsapp;
+        if ($seller && $seller->isReseller() && $seller->parent_id && $seller->parent) {
+            if ($seller->parent->provider_override_support_whatsapp && !empty($seller->parent->support_whatsapp)) {
+                $whatsappSupportPhone = $seller->parent->support_whatsapp;
+            }
+        }
+        if (empty($whatsappSupportPhone)) {
+            $whatsappSupportPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
+        }
+
+        $supportWhatsapp = $whatsappSupportPhone;
         $supportTelegram = $seller->support_telegram;
 
         return view('catalog.index', compact(

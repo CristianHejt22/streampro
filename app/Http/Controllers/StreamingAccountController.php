@@ -15,7 +15,26 @@ class StreamingAccountController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
         $query = StreamingAccount::with(['service', 'supplier', 'profiles.activeSale.customer', 'creator']);
+
+        if (!$user->isAdmin()) {
+            if ($user->isSuperReseller()) {
+                // Proveedor: ve sus cuentas propias + cuentas globales del sistema
+                $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)->orWhereNull('created_by');
+                });
+            } else {
+                // Revendedor: ve sus cuentas individuales + copia de cuentas de su proveedor + del sistema
+                $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhereNull('created_by');
+                    if ($user->parent_id) {
+                        $q->orWhere('created_by', $user->parent_id);
+                    }
+                });
+            }
+        }
 
         if ($request->filled('service_id')) {
             $query->where('service_id', $request->service_id);

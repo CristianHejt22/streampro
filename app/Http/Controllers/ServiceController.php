@@ -13,12 +13,57 @@ class ServiceController extends Controller
 {
     public function index()
     {
-        $services = Service::with('plans')->latest()->get();
-        return view('services.index', compact('services'));
+        $user = Auth::user();
+        $query = Service::with(['plans', 'user']);
+
+        if ($user->isAdmin()) {
+            // Admin ve todos los servicios
+        } elseif ($user->isSuperReseller()) {
+            // Proveedor ve servicios del sistema + sus servicios propios
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('user_id')->orWhere('user_id', $user->id);
+            });
+        } else {
+            // Revendedor ve:
+            // 1. Sus servicios individuales propios
+            // 2. Copia de servicios de su proveedor
+            // 3. Servicios globales del sistema
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereNull('user_id');
+                if ($user->parent_id) {
+                    $q->orWhere('user_id', $user->parent_id);
+                }
+            });
+        }
+
+        $services = $query->latest()->get();
+        $activeServicesCount = $services->where('status', 'active')->count();
+
+        return view('services.index', compact('services', 'user', 'activeServicesCount'));
     }
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        // Control de límite para Panel BÁSICO (máximo 10 servicios)
+        if (!$user->isAdmin()) {
+            $currentServicesCount = Service::where('status', 'active')
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->orWhereNull('user_id');
+                    if ($user->parent_id) {
+                        $q->orWhere('user_id', $user->parent_id);
+                    }
+                })->count();
+
+            if ($user->isPanelBasic() && $currentServicesCount >= 10) {
+                return back()->withErrors([
+                    'error' => "⛔ Límite alcanzado: Tu panel actual es BÁSICO (limitado a 10 servicios). Ya tienes {$currentServicesCount} servicios activos. Para agregar servicios individuales ilimitados, actualiza tu panel a PRO con créditos PRO."
+                ])->withInput();
+            }
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|in:video,music,anime,iptv,combo,other',
@@ -28,8 +73,10 @@ class ServiceController extends Controller
             'default_rules' => 'nullable|string',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
+        $suffix = $user->isAdmin() ? '' : '-' . $user->id . '-' . strtolower(Str::random(4));
+        $validated['slug'] = Str::slug($validated['name']) . $suffix;
         $validated['status'] = 'active';
+        $validated['user_id'] = $user->isAdmin() ? null : $user->id;
 
         $service = Service::create($validated);
 
@@ -59,6 +106,11 @@ class ServiceController extends Controller
 
     public function update(Request $request, Service $service)
     {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $service->user_id !== $user->id) {
+            return back()->withErrors(['error' => 'No puedes modificar un servicio global o de tu proveedor. Solo puedes editar tus servicios individuales propios.']);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|in:video,music,anime,iptv,combo,other',
@@ -117,6 +169,11 @@ class ServiceController extends Controller
 
     public function destroy(Service $service)
     {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $service->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para eliminar este servicio.');
+        }
+
         $name = $service->name;
         $service->delete();
 

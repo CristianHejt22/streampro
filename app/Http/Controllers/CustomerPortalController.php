@@ -177,7 +177,8 @@ class CustomerPortalController extends Controller
         // Datos del revendedor asignado (Marca blanca, WhatsApp, Logo, CBU/CVU)
         $reseller = $customer->user ?: User::where('role', 'admin')->first();
 
-        // Preferencia de Soporte de Cuenta por WhatsApp configurada por el Administrador General
+        // Preferencia de Soporte de Cuenta por WhatsApp:
+        // "El número de whatsapp que aparecerá en bóveda de cliente es de cada proveedor si lo desea, y del revendedor en caso de ser copia."
         $whatsappSupportEnabled = SystemSetting::get('whatsapp_support_enabled', 'true') === 'true';
         $whatsappSupportDest = SystemSetting::get('whatsapp_support_dest', 'reseller');
         $whatsappAdminPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
@@ -185,7 +186,18 @@ class CustomerPortalController extends Controller
         if ($whatsappSupportDest === 'admin') {
             $supportWhatsAppPhone = $whatsappAdminPhone;
         } else {
-            $supportWhatsAppPhone = ($reseller && $reseller->support_whatsapp) ? $reseller->support_whatsapp : $whatsappAdminPhone;
+            if ($reseller && $reseller->parent_id && $reseller->parent) {
+                $provider = $reseller->parent;
+                // Si el proveedor activó la opción de atender él mismo el soporte de sus tiendas clonadas
+                if ($provider->provider_override_support_whatsapp && !empty($provider->support_whatsapp)) {
+                    $supportWhatsAppPhone = $provider->support_whatsapp;
+                } else {
+                    // En caso de ser copia, se muestra el WhatsApp individual de su revendedor
+                    $supportWhatsAppPhone = $reseller->support_whatsapp ?: $provider->support_whatsapp ?: $whatsappAdminPhone;
+                }
+            } else {
+                $supportWhatsAppPhone = ($reseller && $reseller->support_whatsapp) ? $reseller->support_whatsapp : $whatsappAdminPhone;
+            }
         }
 
         // Catálogo de plataformas principales para activar nuevas cuentas

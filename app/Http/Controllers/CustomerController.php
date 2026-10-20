@@ -150,14 +150,32 @@ class CustomerController extends Controller
             }
         }
 
-        // Buscar stock disponible
+        // Buscar stock disponible (respetando inventario propio de proveedor y revendedor)
         $streamingAccount = null;
         $profile = null;
 
+        $stockAccountFilter = function ($q) use ($service, $user) {
+            $q->where('service_id', $service->id)->where('status', 'active');
+            if (!$user->isAdmin()) {
+                if ($service->user_id === $user->id) {
+                    $q->where('created_by', $user->id);
+                } elseif ($user->parent_id && $service->user_id === $user->parent_id) {
+                    $q->where('created_by', $user->parent_id);
+                } else {
+                    $q->where(function ($sq) use ($user) {
+                        $sq->where('created_by', $user->id)->orWhereNull('created_by');
+                        if ($user->parent_id) {
+                            $sq->orWhere('created_by', $user->parent_id);
+                        }
+                    });
+                }
+            }
+        };
+
         if ($plan->modality === 'profile') {
-            $profile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service) {
-                $q->where('service_id', $service->id)->where('status', 'active');
-            })->where('status', 'available')->first();
+            $profile = AccountProfile::whereHas('streamingAccount', $stockAccountFilter)
+                ->where('status', 'available')
+                ->first();
 
             if (!$profile) {
                 return back()->withErrors(['error' => "No hay pantallas disponibles en stock para {$service->name}. Reabastece cuentas en el Inventario primero."]);
@@ -166,9 +184,9 @@ class CustomerController extends Controller
             $streamingAccount = $profile->streamingAccount;
             $profile->update(['status' => 'assigned']);
         } else {
-            $streamingAccount = StreamingAccount::where('service_id', $service->id)
-                ->where('modality', 'full_account')
-                ->where('status', 'active')
+            $accountQuery = StreamingAccount::query();
+            $stockAccountFilter($accountQuery);
+            $streamingAccount = $accountQuery->where('modality', 'full_account')
                 ->whereDoesntHave('sales', function ($q) {
                     $q->whereIn('status', ['active', 'expiring_soon']);
                 })->first();

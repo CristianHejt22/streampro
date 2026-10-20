@@ -35,6 +35,7 @@ class User extends Authenticatable
         'anti_phishing_code',
         'plain_panel_token',
         'panel_type',
+        'panel_tier',
         'panel_monthly_fee',
         'panel_expires_at',
         'cloned_store_paid_to_admin',
@@ -42,6 +43,9 @@ class User extends Authenticatable
         'cloned_store_last_payment_date',
         'reseller_commission_pct',
         'parent_commission_pct',
+        'credits_basic',
+        'credits_pro',
+        'provider_override_support_whatsapp',
         'bank_cbu',
         'bank_cvu',
         'bank_alias',
@@ -68,6 +72,9 @@ class User extends Authenticatable
         'panel_monthly_fee' => 'decimal:2',
         'reseller_commission_pct' => 'decimal:2',
         'parent_commission_pct' => 'decimal:2',
+        'credits_basic' => 'integer',
+        'credits_pro' => 'integer',
+        'provider_override_support_whatsapp' => 'boolean',
     ];
 
     public function setPlainPasswordAttribute(?string $val): void
@@ -183,6 +190,78 @@ class User extends Authenticatable
     public function addBalance(float $amount): void
     {
         $this->increment('balance', $amount);
+    }
+
+    public function isPanelBasic(): bool
+    {
+        return ($this->panel_tier ?? 'pro') === 'basic';
+    }
+
+    public function isPanelPro(): bool
+    {
+        return ($this->panel_tier ?? 'pro') === 'pro';
+    }
+
+    public function maxServicesAllowed(): int
+    {
+        return $this->isPanelBasic() ? 10 : 999999;
+    }
+
+    public function hasCredits(string $tier, int $qty = 1): bool
+    {
+        if ($tier === 'basic') {
+            return (int)$this->credits_basic >= $qty;
+        }
+        return (int)$this->credits_pro >= $qty;
+    }
+
+    public function addCredits(string $tier, int $qty, ?float $unitPrice = null, ?int $adminId = null, ?string $notes = null): CreditTransaction
+    {
+        $field = $tier === 'basic' ? 'credits_basic' : 'credits_pro';
+        $this->increment($field, $qty);
+
+        return CreditTransaction::create([
+            'user_id' => $this->id,
+            'admin_id' => $adminId,
+            'type' => 'purchase',
+            'panel_tier' => $tier,
+            'credits_amount' => $qty,
+            'unit_price' => $unitPrice,
+            'total_price' => $unitPrice ? ($unitPrice * $qty) : null,
+            'notes' => $notes,
+        ]);
+    }
+
+    public function deductCredits(string $tier, int $qty = 1, ?string $targetPanel = null, ?string $notes = null): bool
+    {
+        if (!$this->hasCredits($tier, $qty)) {
+            return false;
+        }
+
+        $field = $tier === 'basic' ? 'credits_basic' : 'credits_pro';
+        $this->decrement($field, $qty);
+
+        CreditTransaction::create([
+            'user_id' => $this->id,
+            'admin_id' => null,
+            'type' => 'activation_use',
+            'panel_tier' => $tier,
+            'credits_amount' => -$qty,
+            'target_panel_name' => $targetPanel,
+            'notes' => $notes ?: "Activación de panel {$tier} para {$targetPanel}",
+        ]);
+
+        return true;
+    }
+
+    public function services()
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    public function creditTransactions()
+    {
+        return $this->hasMany(CreditTransaction::class);
     }
 
     public function sales()

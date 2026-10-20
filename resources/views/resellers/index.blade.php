@@ -14,6 +14,12 @@
     commissionsModal: false,
     serviceCommissionsModal: false,
     calculatorModal: false,
+    sellCreditsModal: false,
+    masterActivationModal: false,
+    creditActivationModal: false,
+    selectedCreditPack: 'basic_10',
+    selectedTier: 'basic',
+    selectedDays: 30,
     calcPrice: 4500,
     calcMonths: 1,
     calcMargin: 40,
@@ -149,6 +155,39 @@
     </div>
     @endif
 
+    @if(Auth::user()->isSuperReseller())
+    <div class="rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 border border-purple-500/30 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+        <div class="space-y-1">
+            <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Billetera de Créditos de Proveedor</span>
+            <div class="flex items-center gap-3">
+                <div class="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
+                    📦 Créditos Básicos: <strong>{{ Auth::user()->credits_basic ?? 0 }}</strong>
+                </div>
+                <div class="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold">
+                    💎 Créditos PRO: <strong>{{ Auth::user()->credits_pro ?? 0 }}</strong>
+                </div>
+            </div>
+            <p class="text-[11px] text-gray-400">Usa 1 crédito para activar o renovar sub-paneles clonados por 30 días.</p>
+        </div>
+
+        <!-- Toggle WhatsApp Proveedor vs Revendedor en Bóveda -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">WhatsApp en Bóveda de Clientes de tus Revendedores:</span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold {{ Auth::user()->provider_override_support_whatsapp ? 'text-emerald-400' : 'text-slate-400' }}">
+                    {{ Auth::user()->provider_override_support_whatsapp ? '✓ TU WhatsApp de Proveedor' : 'WhatsApp Individual del Revendedor' }}
+                </span>
+                <form method="POST" action="{{ route('resellers.toggle_provider_override', Auth::user()) }}" class="inline">
+                    @csrf
+                    <button type="submit" class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-bold cursor-pointer">
+                        {{ Auth::user()->provider_override_support_whatsapp ? 'Cambiar a Revendedor' : 'Cambiar a Mi WhatsApp' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Header Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -205,18 +244,38 @@
                             <span class="text-[10px] text-sky-400 font-mono">{{ $res->brand_name }} (Ref: {{ $res->referral_code }})</span>
                         </td>
                         <td class="py-3 px-4">
-                            @if($isCloned)
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 block w-max">
-                                📋 Panel Clonado
-                            </span>
-                            @if($res->parent)
-                            <span class="text-[10px] text-gray-400 block mt-1">Patrocinador: <strong class="text-white">{{ $res->parent->name }}</strong></span>
-                            @endif
-                            @else
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 block w-max">
-                                🛡️ Panel Master ({{ ucfirst($res->reseller_plan) }})
-                            </span>
-                            @endif
+                            <div class="space-y-1">
+                                <div>
+                                    @if($res->isPanelPro())
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm inline-flex items-center gap-1">
+                                        💎 PRO (ILIMITADO)
+                                    </span>
+                                    @else
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
+                                        📦 BÁSICO (10 SERV)
+                                    </span>
+                                    @endif
+                                </div>
+
+                                @if($isCloned)
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 block w-max">
+                                    📋 Panel Clonado
+                                </span>
+                                @if($res->parent)
+                                <span class="text-[10px] text-gray-400 block mt-0.5">Patrocinador: <strong class="text-white">{{ $res->parent->name }}</strong></span>
+                                @endif
+                                @else
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 block w-max">
+                                    🛡️ Panel Master ({{ ucfirst($res->reseller_plan) }})
+                                </span>
+                                @endif
+
+                                @if($res->role === 'super_reseller')
+                                <div class="text-[10px] text-gray-400 font-mono pt-1">
+                                    Créditos: <span class="text-amber-400 font-bold">{{ $res->credits_basic ?? 0 }} B</span> · <span class="text-purple-400 font-bold">{{ $res->credits_pro ?? 0 }} PRO</span>
+                                </div>
+                                @endif
+                            </div>
                         </td>
                         <td class="py-3 px-4">
                             <span class="text-sm font-black text-emerald-400 block">${{ number_format($res->balance, 2) }}</span>
@@ -278,15 +337,35 @@
                                     </span>
                                     @endif
                                 </div>
-
-                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="text-[10px] text-sky-400 hover:underline block mt-1.5 font-bold cursor-pointer">
-                                    🔄 Renovar Clonación ($15.000 / 30d)
-                                </button>
                             @else
-                            <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 text-[10px] font-bold border border-sky-500/30 transition-colors cursor-pointer">
-                                + Clonar Tienda ($15.000 / 30d)
-                            </button>
+                                <div class="text-[11px] text-cyan-400 font-mono font-bold block mb-1">
+                                    Vigencia: {{ $res->panel_expires_at ? \Carbon\Carbon::parse($res->panel_expires_at)->format('d/m/Y') : 'Permanente' }}
+                                </div>
                             @endif
+
+                            <!-- Botones de Activación Maestra & Créditos -->
+                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                @if(Auth::user()->isAdmin())
+                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; masterActivationModal = true;" class="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activación Maestra Super Admin">
+                                    <i data-lucide="zap" class="w-3 h-3"></i>
+                                    <span>⚡ Activar Maestro</span>
+                                </button>
+                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; sellCreditsModal = true;" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Vender Créditos de Paneles">
+                                    <i data-lucide="coins" class="w-3 h-3"></i>
+                                    <span>💰 Vender Créditos</span>
+                                </button>
+                                @endif
+
+                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; creditActivationModal = true;" class="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activar con 1 crédito">
+                                    <i data-lucide="gem" class="w-3 h-3"></i>
+                                    <span>💎 1 Crédito</span>
+                                </button>
+
+                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Clonar Catálogo $15.000">
+                                    <i data-lucide="copy" class="w-3 h-3"></i>
+                                    <span>$15k Clon</span>
+                                </button>
+                            </div>
                         </td>
                         <td class="py-3 px-4">
                             <code class="px-2 py-0.5 rounded bg-black/60 border border-gray-800 text-amber-400 font-mono text-[10px] block w-max">
@@ -614,12 +693,19 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Tipo de Panel</label>
                         <select name="panel_type" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                             <option value="master" selected>Panel Master</option>
                             <option value="cloned">Panel Clonado ($15k / 30d)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Capacidad / Tier</label>
+                        <select name="panel_tier" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="basic" selected>📦 Básico (10 Serv)</option>
+                            <option value="pro">💎 PRO (Ilimitado)</option>
                         </select>
                     </div>
                     <div>
@@ -757,6 +843,282 @@
                     Cerrar Cotizador
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 10: VENTA DE CRÉDITOS (SUPER ADMIN) -->
+    <!-- ========================================== -->
+    <div x-show="sellCreditsModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="sellCreditsModal = false">
+        <div class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-5 relative">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-emerald-400">
+                    <i data-lucide="coins" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Venta de Créditos de Activación</h3>
+                        <span class="text-xs text-gray-400">Asigna paquetes de créditos para revendedores y proveedores</span>
+                    </div>
+                </div>
+                <button @click="sellCreditsModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block">Comprador / Destinatario:</span>
+                    <strong class="text-white text-sm" x-text="selectedReseller?.name"></strong>
+                    <span class="text-xs text-sky-400 block" x-text="selectedReseller?.email"></span>
+                </div>
+                <div class="text-right font-mono text-[11px] space-y-0.5">
+                    <span class="text-gray-400 block">Créditos actuales:</span>
+                    <span class="text-amber-400 font-bold block" x-text="'📦 Básicos: ' + (selectedReseller?.credits_basic || 0)"></span>
+                    <span class="text-purple-400 font-bold block" x-text="'💎 PRO: ' + (selectedReseller?.credits_pro || 0)"></span>
+                </div>
+            </div>
+
+            <form :action="'/resellers/' + selectedReseller?.id + '/sell-credits'" method="POST" class="space-y-4">
+                @csrf
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Selecciona el Paquete de Créditos *</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <!-- Pack 10 Básicos -->
+                        <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                               :class="selectedCreditPack === 'basic_10' ? 'bg-amber-500/10 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="pack_type" value="basic_10" x-model="selectedCreditPack" class="text-amber-500 focus:ring-0">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-300">AHORRO</span>
+                            </div>
+                            <div class="mt-2">
+                                <div class="font-bold text-white text-sm">📦 10 Créditos Básicos</div>
+                                <div class="text-[11px] text-amber-400 font-mono mt-0.5">$2.500 c/u</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
+                                Total: $25.000
+                            </div>
+                        </label>
+
+                        <!-- Promo 5 Básicos -->
+                        <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                               :class="selectedCreditPack === 'basic_5' ? 'bg-amber-500/10 border-amber-500 text-white shadow-lg ring-1 ring-amber-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="pack_type" value="basic_5" x-model="selectedCreditPack" class="text-amber-500 focus:ring-0">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">PROMO</span>
+                            </div>
+                            <div class="mt-2">
+                                <div class="font-bold text-white text-sm">📦 5 Créditos Básicos</div>
+                                <div class="text-[11px] text-amber-400 font-mono mt-0.5">$3.000 c/u</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
+                                Total: $15.000
+                            </div>
+                        </label>
+
+                        <!-- Pack 10 PRO -->
+                        <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                               :class="selectedCreditPack === 'pro_10' ? 'bg-purple-500/10 border-purple-500 text-white shadow-lg ring-1 ring-purple-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="pack_type" value="pro_10" x-model="selectedCreditPack" class="text-purple-500 focus:ring-0">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300">MAYORISTA PRO</span>
+                            </div>
+                            <div class="mt-2">
+                                <div class="font-bold text-white text-sm">💎 10 Créditos PRO</div>
+                                <div class="text-[11px] text-purple-400 font-mono mt-0.5">$4.000 c/u · Ilimitado</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
+                                Total: $40.000
+                            </div>
+                        </label>
+
+                        <!-- Promo 5 PRO -->
+                        <label class="p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                               :class="selectedCreditPack === 'pro_5' ? 'bg-purple-500/10 border-purple-500 text-white shadow-lg ring-1 ring-purple-500/50' : 'bg-[#0b0f19] border-gray-800 text-gray-300 hover:border-gray-700'">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="pack_type" value="pro_5" x-model="selectedCreditPack" class="text-purple-500 focus:ring-0">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300">PROMO PRO</span>
+                            </div>
+                            <div class="mt-2">
+                                <div class="font-bold text-white text-sm">💎 5 Créditos PRO</div>
+                                <div class="text-[11px] text-purple-400 font-mono mt-0.5">$5.000 c/u · Ilimitado</div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-800/80 font-black text-white font-mono text-right">
+                                Total: $25.000
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Custom pack option -->
+                <div class="p-3 rounded-2xl bg-[#0b0f19] border border-gray-800 space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-300">
+                        <input type="radio" name="pack_type" value="custom" x-model="selectedCreditPack" class="text-sky-500 focus:ring-0">
+                        <span>Pack Personalizado / Cantidad a Medida</span>
+                    </label>
+
+                    <div x-show="selectedCreditPack === 'custom'" class="grid grid-cols-3 gap-2 pt-2">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">Tipo</label>
+                            <select name="custom_tier" class="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-gray-700 text-xs text-white">
+                                <option value="basic">Básico</option>
+                                <option value="pro">PRO</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">Cantidad</label>
+                            <input type="number" name="custom_qty" min="1" value="10" class="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-gray-700 text-xs text-white font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">Precio Unit ($)</label>
+                            <input type="number" step="0.01" name="custom_price" value="2500" class="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-gray-700 text-xs text-white font-bold">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Notas / Referencia de Pago</label>
+                    <input type="text" name="notes" placeholder="Ej: Pago recibido por transferencia banco / comprobante #8822" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="sellCreditsModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer">
+                        Confirmar Venta & Acreditar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 11: ACTIVACIÓN MAESTRA (SUPER ADMIN) -->
+    <!-- ========================================== -->
+    <div x-show="masterActivationModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="masterActivationModal = false">
+        <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4 relative">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-amber-400">
+                    <i data-lucide="zap" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Activación Maestra Super Admin</h3>
+                        <span class="text-xs text-gray-400">Control total directo sobre cualquier panel</span>
+                    </div>
+                </div>
+                <button @click="masterActivationModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs space-y-1">
+                <span class="font-bold block">⚡ Privilegio de Super Administrador</span>
+                <p class="text-[11px] text-amber-200/80">Esta acción activa o extiende el panel inmediatamente sin descontar créditos de ninguna billetera y habilita el catálogo de streaming al 100%.</p>
+            </div>
+
+            <form :action="'/resellers/' + selectedReseller?.id + '/activate-master'" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Panel a Activar</label>
+                    <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs font-bold text-white" x-text="selectedReseller?.name + ' (' + (selectedReseller?.email || '') + ')'"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nivel / Tier</label>
+                        <select name="panel_tier" x-model="selectedTier" class="w-full px-3 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="basic">📦 BÁSICO (10 Serv)</option>
+                            <option value="pro">💎 PRO (Ilimitado)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Duración</label>
+                        <select name="duration_days" x-model="selectedDays" class="w-full px-3 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="30">30 días (1 mes)</option>
+                            <option value="60">60 días (2 meses)</option>
+                            <option value="90">90 días (3 meses)</option>
+                            <option value="180">180 días (6 meses)</option>
+                            <option value="360">360 días (1 año)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="masterActivationModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 cursor-pointer">
+                        Ejecutar Activación Maestra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 12: ACTIVAR CON 1 CRÉDITO -->
+    <!-- ========================================== -->
+    <div x-show="creditActivationModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="creditActivationModal = false">
+        <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4 relative">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5 text-purple-400">
+                    <i data-lucide="gem" class="w-6 h-6"></i>
+                    <div>
+                        <h3 class="font-black text-white text-base">Activar Panel con 1 Crédito</h3>
+                        <span class="text-xs text-gray-400">Canje de 1 crédito por 30 días de suscripción</span>
+                    </div>
+                </div>
+                <button @click="creditActivationModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <!-- Saldo actual del usuario conectado -->
+            <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-purple-500/30 space-y-1">
+                <span class="text-[10px] uppercase font-bold text-gray-400 block">Tus Créditos Disponibles:</span>
+                <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
+                        📦 Básicos: {{ Auth::user()->credits_basic ?? 0 }}
+                    </span>
+                    <span class="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold">
+                        💎 PRO: {{ Auth::user()->credits_pro ?? 0 }}
+                    </span>
+                </div>
+            </div>
+
+            <form :action="'/resellers/' + selectedReseller?.id + '/activate-credit'" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Revendedor a Activar</label>
+                    <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs font-bold text-white" x-text="selectedReseller?.name + ' (' + (selectedReseller?.brand_name || '') + ')'"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Selecciona el Tipo de Panel *</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="p-3 rounded-xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-amber-500/50 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="panel_tier" value="basic" checked class="text-amber-500 focus:ring-0">
+                                <span class="text-[10px] font-mono text-amber-400 font-bold">-1 CR</span>
+                            </div>
+                            <div class="mt-2 font-bold text-white">📦 BÁSICO</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Hasta 10 servicios</div>
+                        </label>
+
+                        <label class="p-3 rounded-xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-purple-500/50 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <input type="radio" name="panel_tier" value="pro" class="text-purple-500 focus:ring-0">
+                                <span class="text-[10px] font-mono text-purple-400 font-bold">-1 CR</span>
+                            </div>
+                            <div class="mt-2 font-bold text-white">💎 PRO ILIMITADO</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Servicios ilimitados</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs">
+                    ℹ️ Se sumarán <strong>+30 días</strong> de vigencia activa y se habilitará la entrega y venta de cuentas.
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" @click="creditActivationModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 cursor-pointer">
+                        Descontar 1 Crédito & Activar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

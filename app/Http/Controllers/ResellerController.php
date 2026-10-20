@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Service;
+use App\Models\CreditTransaction;
 use App\Models\ResellerServiceCommission;
 use App\Models\SystemSetting;
 use App\Models\AuditLog;
@@ -85,6 +86,7 @@ class ResellerController extends Controller
             'referral_code' => $referralCode,
             'anti_phishing_code' => $antiPhishingCode,
             'panel_type' => $panelType,
+            'panel_tier' => $request->input('panel_tier', 'pro'),
             'panel_monthly_fee' => 15000.00,
             'panel_expires_at' => $panelExpiresAt,
             'reseller_commission_pct' => 40.00, // 40% Ganancia Revendedor
@@ -363,5 +365,193 @@ class ResellerController extends Controller
         ]);
 
         return back()->with('success', '¡Preferencias de Soporte de Cuenta por WhatsApp guardadas para todas las Bóvedas de Clientes!');
+    }
+
+    /**
+     * Venta de Créditos de Activación de Paneles por parte del Super Admin
+     * - Básico (10 Servicios): Pack 10 créditos ($2.500 c/u) = $25.000 / Pack 5 créditos ($3.000 c/u) = $15.000
+     * - PRO (Ilimitado): Pack 10 créditos ($4.000 c/u) = $40.000 / Pack 5 créditos ($5.000 c/u) = $25.000
+     */
+    public function sellCredits(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Solo el Super Administrador puede vender y asignar créditos de activación de paneles.');
+        }
+
+        $request->validate([
+            'pack_type' => 'required|in:basic_10,basic_5,pro_10,pro_5,custom',
+            'custom_tier' => 'nullable|required_if:pack_type,custom|in:basic,pro',
+            'custom_qty' => 'nullable|required_if:pack_type,custom|integer|min:1',
+            'custom_price' => 'nullable|required_if:pack_type,custom|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $packType = $request->pack_type;
+        $tier = 'basic';
+        $qty = 10;
+        $unitPrice = 2500.00;
+
+        switch ($packType) {
+            case 'basic_10':
+                $tier = 'basic';
+                $qty = 10;
+                $unitPrice = 2500.00;
+                break;
+            case 'basic_5':
+                $tier = 'basic';
+                $qty = 5;
+                $unitPrice = 3000.00;
+                break;
+            case 'pro_10':
+                $tier = 'pro';
+                $qty = 10;
+                $unitPrice = 4000.00;
+                break;
+            case 'pro_5':
+                $tier = 'pro';
+                $qty = 5;
+                $unitPrice = 5000.00;
+                break;
+            case 'custom':
+                $tier = $request->custom_tier;
+                $qty = (int)$request->custom_qty;
+                $unitPrice = (float)$request->custom_price;
+                break;
+        }
+
+        $totalPrice = $unitPrice * $qty;
+        $notes = $request->input('notes', "Pack de {$qty} créditos {$tier} vendido por Super Admin por $" . number_format($totalPrice, 2));
+
+        $reseller->addCredits($tier, $qty, $unitPrice, $user->id, $notes);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'sell_panel_credits',
+            'description' => "Super Admin vendió {$qty} créditos {$tier} a {$reseller->name} por \${$totalPrice} (\${$unitPrice} c/u).",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Créditos acreditados exitosamente! Se sumaron +{$qty} créditos " . strtoupper($tier) . " a {$reseller->name} (Total: \${$totalPrice}).");
+    }
+
+    /**
+     * Activación Maestra Super Admin de Paneles (Poder Absoluto)
+     * "El Super admin tendra la activacion de todos los paneles para activar"
+     */
+    public function activatePanelMaster(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin()) {
+            abort(403, 'Solo el Super Administrador puede realizar activaciones maestras directas.');
+        }
+
+        $request->validate([
+            'panel_tier' => 'required|in:basic,pro',
+            'duration_days' => 'required|integer|in:30,60,90,180,360',
+            'panel_type' => 'nullable|in:master,cloned',
+        ]);
+
+        $days = (int)$request->duration_days;
+        $tier = $request->panel_tier;
+        $type = $request->input('panel_type', 'cloned');
+
+        $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;
+        $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays($days) : Carbon::now()->addDays($days);
+
+        $reseller->panel_tier = $tier;
+        $reseller->panel_type = $type;
+        $reseller->status = 'active';
+        $reseller->panel_expires_at = $newExpiry;
+        $reseller->cloned_store_paid_to_admin = true;
+        $reseller->cloned_store_paid_by_reseller = true;
+        $reseller->cloned_store_last_payment_date = Carbon::now();
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'activate_panel_master',
+            'description' => "Super Admin activó directamente el panel de {$reseller->name} como " . strtoupper($tier) . " por {$days} días hasta {$newExpiry->format('d/m/Y')}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Panel de {$reseller->name} activado con éxito como " . strtoupper($tier) . " ({$days} días)! Vigente hasta el {$newExpiry->format('d/m/Y')}.");
+    }
+
+    /**
+     * Activación o Renovación de Panel usando Créditos del Revendedor/Proveedor
+     */
+    public function activateWithCredit(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id && $user->id !== $reseller->id) {
+            abort(403, 'No tienes permiso para activar este panel.');
+        }
+
+        $request->validate([
+            'panel_tier' => 'required|in:basic,pro',
+        ]);
+
+        $tier = $request->panel_tier;
+
+        if (!$user->hasCredits($tier, 1)) {
+            $costMsg = ($tier === 'basic') 
+                ? 'Básico ($2.500 c/u mínimo 10, o $3.000 c/u mínimo 5)' 
+                : 'PRO ($4.000 c/u mínimo 10, o $5.000 c/u mínimo 5)';
+            return back()->withErrors([
+                'error' => "⛔ Créditos insuficientes. No dispones de créditos " . strtoupper($tier) . " en tu billetera de créditos. Contacta al Super Admin para comprar un pack {$costMsg}."
+            ]);
+        }
+
+        $user->deductCredits($tier, 1, $reseller->name);
+
+        $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;
+        $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays($30) : Carbon::now()->addDays(30);
+
+        $reseller->panel_tier = $tier;
+        $reseller->panel_type = 'cloned';
+        $reseller->status = 'active';
+        $reseller->panel_expires_at = $newExpiry;
+        $reseller->cloned_store_paid_to_admin = true;
+        $reseller->cloned_store_paid_by_reseller = true;
+        $reseller->cloned_store_last_payment_date = Carbon::now();
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'activate_panel_credit',
+            'description' => "Panel de {$reseller->name} activado consumiendo 1 crédito " . strtoupper($tier) . " de {$user->name}. Vence el {$newExpiry->format('d/m/Y')}.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Panel " . strtoupper($tier) . " de {$reseller->name} activado con éxito! Se descontó 1 crédito {$tier}. Vigente por 30 días hasta el {$newExpiry->format('d/m/Y')}.");
+    }
+
+    /**
+     * Alternar si el Proveedor desea que aparezca su WhatsApp o el de su revendedor clonado
+     */
+    public function toggleProviderWhatsAppOverride(User $reseller)
+    {
+        $user = auth()->user();
+        $target = $reseller->isSuperReseller() ? $reseller : ($reseller->parent ?: $reseller);
+        if (!$user->isAdmin() && $user->id !== $target->id) {
+            abort(403);
+        }
+
+        $target->provider_override_support_whatsapp = !$target->provider_override_support_whatsapp;
+        $target->save();
+
+        $statusStr = $target->provider_override_support_whatsapp 
+            ? 'ACTIVADO: En la Bóveda de los clientes de tus revendedores aparecerá TU WhatsApp de Proveedor.' 
+            : 'DESACTIVADO: En la Bóveda de los clientes de tus revendedores aparecerá el WhatsApp individual de cada revendedor.';
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'toggle_provider_whatsapp_override',
+            'description' => "Preferencia de WhatsApp para Bóvedas de revendedores cambiada: {$statusStr}",
+            'ip_address' => request()->ip(),
+        ]);
+
+        return back()->with('success', $statusStr);
     }
 }
