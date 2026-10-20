@@ -134,7 +134,7 @@ class ResellerController extends Controller
             'reseller_plan' => 'required|in:standard,vip,mayorista',
             'initial_balance' => 'nullable|numeric|min:0',
             'brand_name' => 'nullable|string|max:255',
-            'panel_type' => 'nullable|in:master,cloned',
+            'panel_type' => 'nullable|in:master,cloned,individual',
         ]);
 
         $referralCode = 'RES-' . strtoupper(Str::random(6));
@@ -551,7 +551,7 @@ class ResellerController extends Controller
         $request->validate([
             'panel_tier' => 'required|in:basic,pro',
             'duration_days' => 'required|integer|in:30,60,90,180,360',
-            'panel_type' => 'nullable|in:master,cloned',
+            'panel_type' => 'nullable|in:master,cloned,individual',
         ]);
 
         $days = (int)$request->duration_days;
@@ -724,10 +724,12 @@ class ResellerController extends Controller
             'password' => 'required|string|min:6',
             'support_whatsapp' => 'required|string|max:50',
             'panel_tier' => 'required|in:basic,pro',
+            'panel_type' => 'nullable|in:cloned,individual',
             'brand_name' => 'nullable|string|max:100',
         ]);
 
         $tier = $request->panel_tier;
+        $panelType = $request->input('panel_type', 'cloned');
         $brandName = ($tier === 'basic') ? 'SPRO PLAY' : ($request->input('brand_name') ?: 'Mi Tienda Streaming');
         $referralCode = 'RES-' . strtoupper(Str::random(6));
         $antiPhishingCode = 'SEC-' . strtoupper(Str::random(8));
@@ -746,7 +748,7 @@ class ResellerController extends Controller
             'balance' => 0.00,
             'referral_code' => $referralCode,
             'anti_phishing_code' => $antiPhishingCode,
-            'panel_type' => 'cloned',
+            'panel_type' => $panelType,
             'panel_tier' => $tier,
             'panel_monthly_fee' => ($tier === 'pro') ? 6000.00 : 4000.00,
             'panel_expires_at' => null, // Se fija al activar con crédito

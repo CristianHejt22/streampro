@@ -97,9 +97,46 @@
                 </div>
             </div>
 
+            <!-- Modalidad de Inventario: Tienda Clonada vs Panel Individual -->
+            <div class="space-y-2.5 pt-2 border-t border-gray-800" x-data="{ selectedType: 'cloned' }">
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">2. Modalidad de Inventario *</label>
+                    <span class="text-[10px] text-sky-400 font-mono">Entrega y Cuentas</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                           :class="selectedType === 'cloned' ? 'bg-sky-500/10 border-sky-500 ring-2 ring-sky-500/30 text-white' : 'bg-[#0b0f19] border-gray-800 text-slate-400 hover:border-gray-700'">
+                        <div class="flex items-center justify-between">
+                            <input type="radio" name="panel_type" value="cloned" x-model="selectedType" class="text-sky-500 focus:ring-0">
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-sky-500/20 text-sky-300">RECOMENDADO</span>
+                        </div>
+                        <div class="mt-2 space-y-0.5">
+                            <strong class="text-white text-xs block">👥 Tienda Clonada (Sincronizada)</strong>
+                            <p class="text-[10px] text-slate-400 leading-relaxed">
+                                Accedes al inventario y cuentas de tu proveedor para entrega inmediata sin tener que cargar cuentas propias.
+                            </p>
+                        </div>
+                    </label>
+
+                    <label class="p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
+                           :class="selectedType === 'individual' ? 'bg-indigo-500/10 border-indigo-500 ring-2 ring-indigo-500/30 text-white' : 'bg-[#0b0f19] border-gray-800 text-slate-400 hover:border-gray-700'">
+                        <div class="flex items-center justify-between">
+                            <input type="radio" name="panel_type" value="individual" x-model="selectedType" class="text-indigo-500 focus:ring-0">
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-500/20 text-indigo-300">INDEPENDIENTE</span>
+                        </div>
+                        <div class="mt-2 space-y-0.5">
+                            <strong class="text-white text-xs block">👤 Panel Individual Propio</strong>
+                            <p class="text-[10px] text-slate-400 leading-relaxed">
+                                Panel con inventario propio. No comparte cuentas con el proveedor (cargas tus propias cuentas máster).
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <!-- Datos Fundamentales -->
             <div class="space-y-4 pt-2 border-t border-gray-800">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">2. Datos Fundamentales del Revendedor</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block">3. Datos Fundamentales del Revendedor</span>
 
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nombre Completo *</label>

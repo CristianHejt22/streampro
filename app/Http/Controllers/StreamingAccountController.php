@@ -18,23 +18,9 @@ class StreamingAccountController extends Controller
         $user = Auth::user();
         $query = StreamingAccount::with(['service', 'supplier', 'profiles.activeSale.customer', 'creator']);
 
-        if (!$user->isAdmin()) {
-            if ($user->isSuperReseller()) {
-                // Proveedor: ve sus cuentas propias + cuentas globales del sistema
-                $query->where(function ($q) use ($user) {
-                    $q->where('created_by', $user->id)->orWhereNull('created_by');
-                });
-            } else {
-                // Revendedor: ve sus cuentas individuales + copia de cuentas de su proveedor + del sistema
-                $query->where(function ($q) use ($user) {
-                    $q->where('created_by', $user->id)
-                      ->orWhereNull('created_by');
-                    if ($user->parent_id) {
-                        $q->orWhere('created_by', $user->parent_id);
-                    }
-                });
-            }
-        }
+        // Aplicar el scope estricto de inventario según tipo de panel:
+        // Admin: ve todo | Proveedor: ve lo suyo y global | Revendedor clonado: ve lo de su proveedor y propio | Individual: solo lo suyo
+        $user->applyInventoryScope($query);
 
         if ($request->filled('service_id')) {
             $query->where('service_id', $request->service_id);
@@ -67,22 +53,29 @@ class StreamingAccountController extends Controller
         $suppliers = Supplier::where('status', 'active')->get();
 
         // Resumen dinámico de stock en vivo por plataforma (estilo StreamPro)
+        // Estrictamente filtrado por el inventario real del usuario logueado
         $platformStockSummary = [];
         foreach ($services as $srv) {
-            $totalProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+            $totalProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv, $user) {
                 $q->where('service_id', $srv->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
             })->count();
 
-            $freeProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+            $freeProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv, $user) {
                 $q->where('service_id', $srv->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
             })->where('status', 'available')->count();
 
-            $occupiedProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv) {
+            $occupiedProf = AccountProfile::whereHas('streamingAccount', function ($q) use ($srv, $user) {
                 $q->where('service_id', $srv->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
             })->where('status', 'assigned')->count();
 
             $accountsWithCupo = StreamingAccount::where('service_id', $srv->id)
                 ->where('status', 'active')
+                ->where(function ($q) use ($user) {
+                    $user->applyInventoryScope($q);
+                })
                 ->whereHas('profiles', function ($q) {
                     $q->where('status', 'available');
                 })->count();
@@ -99,12 +92,16 @@ class StreamingAccountController extends Controller
             ];
         }
 
-        // Totales de métricas para la barra superior
-        $totalMasterAccounts = StreamingAccount::count();
-        $activeAccounts = StreamingAccount::where('status', 'active')->count();
-        $droppedAccounts = StreamingAccount::where('status', 'dropped')->count();
-        $totalAvailableProfiles = AccountProfile::where('status', 'available')->whereHas('streamingAccount', function ($q) {
+        // Totales de métricas para la barra superior (estrictamente filtrados por el inventario del usuario)
+        $baseStatsQuery = StreamingAccount::query();
+        $user->applyInventoryScope($baseStatsQuery);
+
+        $totalMasterAccounts = (clone $baseStatsQuery)->count();
+        $activeAccounts = (clone $baseStatsQuery)->where('status', 'active')->count();
+        $droppedAccounts = (clone $baseStatsQuery)->where('status', 'dropped')->count();
+        $totalAvailableProfiles = AccountProfile::where('status', 'available')->whereHas('streamingAccount', function ($q) use ($user) {
             $q->where('status', 'active');
+            $user->applyInventoryScope($q);
         })->count();
 
         return view('accounts.index', compact(
@@ -169,6 +166,11 @@ class StreamingAccountController extends Controller
 
     public function update(Request $request, StreamingAccount $account)
     {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+            return back()->withErrors(['error' => 'No tienes permiso para modificar una cuenta que no fue cargada por ti.']);
+        }
+
         $validated = $request->validate([
             'account_email' => 'required|string|max:255',
             'account_password' => 'required|string|max:255',
@@ -208,6 +210,11 @@ class StreamingAccountController extends Controller
 
     public function toggleStatus(Request $request, StreamingAccount $account)
     {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+            return back()->withErrors(['error' => 'No tienes permiso para modificar una cuenta que no fue cargada por ti.']);
+        }
+
         $newStatus = $account->status === 'active' ? 'dropped' : 'active';
         $account->update(['status' => $newStatus]);
 
@@ -223,6 +230,11 @@ class StreamingAccountController extends Controller
 
     public function destroy(StreamingAccount $account)
     {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+            return back()->withErrors(['error' => 'No tienes permiso para eliminar una cuenta que no fue cargada por ti.']);
+        }
+
         $hasActiveSales = $account->sales()->whereIn('status', ['active', 'expiring_soon'])->exists();
         if ($hasActiveSales) {
             return back()->withErrors(['error' => 'No puedes eliminar una cuenta que tiene ventas activas vigentes. Primero reemplaza las ventas por garantía o cancélalas.']);

@@ -569,12 +569,19 @@
                                     @endif
                                 </div>
 
-                                @if($isCloned)
+                                @if($res->panel_type === 'cloned')
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 block w-max">
-                                    📋 Panel Clonado
+                                    📋 Tienda Clonada
                                 </span>
                                 @if($res->parent)
                                 <span class="text-[10px] text-gray-400 block mt-0.5">Patrocinador: <strong class="text-white">{{ $res->parent->name }}</strong></span>
+                                @endif
+                                @elseif($res->panel_type === 'individual')
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 block w-max">
+                                    👤 Panel Individual (Propio)
+                                </span>
+                                @if($res->parent)
+                                <span class="text-[10px] text-gray-400 block mt-0.5">Afiliado a: <strong class="text-white">{{ $res->parent->name }}</strong></span>
                                 @endif
                                 @else
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 block w-max">
@@ -1047,8 +1054,9 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Tipo de Panel</label>
                         <select name="panel_type" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
-                            <option value="master" selected>Panel Master</option>
-                            <option value="cloned">Panel Clonado ($15k / 30d)</option>
+                            <option value="cloned" selected>👥 Tienda Clonada (Comparte inventario del proveedor)</option>
+                            <option value="individual">👤 Panel Individual (Inventario propio independiente)</option>
+                            <option value="master">👑 Panel Master</option>
                         </select>
                     </div>
                     <div>

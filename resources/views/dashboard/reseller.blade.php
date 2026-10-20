@@ -359,46 +359,54 @@
         </div>
     </div>
 
-    <!-- Catálogo de Cuentas Listas para Emitir -->
-    <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg">
-        <div class="flex items-center justify-between mb-4">
+    <!-- Disponibilidad de Stock por Plataforma (Tiempo Real) -->
+    <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg space-y-4">
+        <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <i data-lucide="shopping-cart" class="w-5 h-5 text-emerald-400"></i>
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Cuentas Disponibles para Vender (Precios Mayoristas)</h3>
+                <i data-lucide="tv" class="w-5 h-5 text-emerald-400"></i>
+                <div>
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider">Disponibilidad de Stock por Plataforma (Tiempo Real)</h3>
+                    <p class="text-[11px] text-gray-400">Capacidad total y perfiles libres listos para entrega inmediata a clientes y revendedores.</p>
+                </div>
             </div>
-            <a href="{{ route('sales.index') }}" class="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center gap-1">
-                Ir al Panel de Ventas <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            <a href="{{ route('services.index') }}" class="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+                Ver Catálogo Completo <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
             </a>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             @foreach($services as $serv)
-            @foreach($serv->plans as $plan)
-            <div class="p-4 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs px-2 py-0.5 rounded text-white font-bold" style="background-color: {{ $serv->color_hex }}">
-                            {{ $serv->name }}
-                        </span>
-                        <span class="text-xs font-semibold text-emerald-400">
-                            {{ $serv->available_profiles }} disp.
+            @php
+                $free = $serv->available_profiles ?? 0;
+                $tot = $serv->total_profiles ?? 0;
+                $badge = $serv->status_badge ?? ($free > 2 ? 'in_stock' : ($free > 0 ? 'low_stock' : 'out_of_stock'));
+            @endphp
+            <div class="p-4 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all flex flex-col justify-between space-y-3">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: {{ $serv->color_hex ?? '#E50914' }}"></span>
+                            <span class="text-xs font-mono font-bold text-slate-300 block truncate">{{ $serv->name }}</span>
+                        </div>
+                        <span class="text-2xl font-black {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
+                            {{ $free }}
+                            <span class="text-xs text-slate-500 font-normal">/ {{ $tot }} total</span>
                         </span>
                     </div>
-                    <h4 class="text-sm font-bold text-white mt-2">{{ $plan->name }}</h4>
-                    <p class="text-[11px] text-gray-400 mt-1">Duración: {{ $plan->duration_days }} días · Modalidad: {{ $plan->modality === 'profile' ? 'Pantalla con PIN' : 'Cuenta Completa' }}</p>
+                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono {{ $badge === 'in_stock' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : ($badge === 'low_stock' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30') }}">
+                        {{ $badge === 'in_stock' ? '🟢 Listo' : ($badge === 'low_stock' ? '🟡 Bajo' : '🔴 Agotado') }}
+                    </span>
                 </div>
-                <div class="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between">
-                    <div>
-                        <span class="text-[10px] text-gray-400 uppercase block">Costo Mayorista</span>
-                        <span class="text-base font-black text-cyan-400">${{ number_format($plan->reseller_price, 2) }}</span>
-                    </div>
-                    <div>
-                        <span class="text-[10px] text-gray-400 uppercase block">Sugerido Venta</span>
-                        <span class="text-base font-black text-emerald-400">${{ number_format($plan->price, 2) }}</span>
-                    </div>
+
+                <div class="pt-2 border-t border-gray-800/80 flex items-center justify-between text-xs">
+                    <a href="{{ route('accounts.index', ['service_id' => $serv->id]) }}" class="text-[11px] text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        + Cargar
+                    </a>
+                    <a href="{{ route('sales.index') }}" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-bold text-[10px] transition-all">
+                        Emitir
+                    </a>
                 </div>
             </div>
-            @endforeach
             @endforeach
         </div>
     </div>

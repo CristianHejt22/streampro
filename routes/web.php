@@ -113,9 +113,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/accounts/{account}/toggle', [StreamingAccountController::class, 'toggleStatus'])->name('accounts.toggle');
     Route::delete('/accounts/{account}', [StreamingAccountController::class, 'destroy'])->name('accounts.destroy');
 
-    // Plataformas y Servicios de Streaming con sus Planes
+    // Plataformas y Servicios de Streaming Disponibles
     Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
     Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
+    Route::post('/services/clone-catalog', [ServiceController::class, 'cloneCatalog'])->name('services.clone_catalog');
     Route::put('/services/{service}', [ServiceController::class, 'update'])->name('services.update');
     Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
     Route::post('/services/{service}/plans', [ServiceController::class, 'storePlan'])->name('services.plans.store');

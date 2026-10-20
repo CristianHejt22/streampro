@@ -216,6 +216,45 @@ class User extends Authenticatable
         return $this->isPanelPro();
     }
 
+    /**
+     * Aplica el scope de inventario de cuentas de streaming según el tipo de panel:
+     * - Super Admin: sin restricciones (ve todas las cuentas).
+     * - Proveedor / Super Reseller: ve su inventario propio (created_by = $this->id) y cuentas del sistema (created_by IS NULL).
+     * - Revendedor con Tienda Clonada (panel_type === 'cloned' y parent_id):
+     *     ve las cuentas de su proveedor (created_by = $this->parent_id) y las suyas propias (created_by = $this->id).
+     * - Panel Individual (panel_type !== 'cloned' o sin clonación):
+     *     "No a los que soliciten el panel individual" -> ÚNICAMENTE ve su propio inventario (created_by = $this->id).
+     */
+    public function applyInventoryScope($query)
+    {
+        if ($this->isAdmin()) {
+            return $query;
+        }
+
+        if ($this->isSuperReseller()) {
+            return $query->where(function ($q) {
+                $q->where('created_by', $this->id)
+                  ->orWhereNull('created_by');
+                if ($this->isPanelCloned() && $this->parent_id) {
+                    $q->orWhere('created_by', $this->parent_id);
+                }
+            });
+        }
+
+        if ($this->isPanelCloned() && $this->parent_id) {
+            return $query->where(function ($q) {
+                $q->where('created_by', $this->id)
+                  ->orWhere('created_by', $this->parent_id);
+                if ($this->parent && ($this->parent->isAdmin() || $this->parent->isSuperReseller())) {
+                    $q->orWhereNull('created_by');
+                }
+            });
+        }
+
+        // Panel Individual: Únicamente su inventario propio
+        return $query->where('created_by', $this->id);
+    }
+
     public function maxServicesAllowed(): int
     {
         return $this->isPanelBasic() ? 10 : 999999;

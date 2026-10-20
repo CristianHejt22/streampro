@@ -173,11 +173,21 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Stock disponible general que puede vender
-        $services = Service::where('status', 'active')->with('plans')->get()->map(function ($s) {
-            $s->available_profiles = AccountProfile::whereHas('streamingAccount', function ($q) use ($s) {
+        // Stock disponible general que puede vender (estrictamente filtrado por su alcance de inventario)
+        $services = Service::where('status', 'active')->get()->map(function ($s) use ($user) {
+            $total = AccountProfile::whereHas('streamingAccount', function ($q) use ($s, $user) {
                 $q->where('service_id', $s->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
+            })->count();
+
+            $free = AccountProfile::whereHas('streamingAccount', function ($q) use ($s, $user) {
+                $q->where('service_id', $s->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
             })->where('status', 'available')->count();
+
+            $s->total_profiles = $total;
+            $s->available_profiles = $free;
+            $s->status_badge = $free > 2 ? 'in_stock' : ($free > 0 ? 'low_stock' : 'out_of_stock');
             return $s;
         });
 

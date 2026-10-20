@@ -1,18 +1,31 @@
 @extends('layouts.app')
 
-@section('title', 'Servicios & Planes de Streaming')
-@section('page_title', 'Plataformas & Planes')
-@section('page_subtitle', 'Configuración de catálogo, precios para clientes finales y mayoristas para revendedores')
+@section('title', 'Servicios Disponibles & Stock en Tiempo Real')
+@section('page_title', 'Servicios Disponibles')
+@section('page_subtitle', 'Disponibilidad de stock por plataforma en tiempo real: capacidad total y perfiles libres listos para entrega inmediata')
 
 @section('content')
 <div class="space-y-6" x-data="{
     newServiceModal: false,
-    newPlanModal: false,
-    myPvpModal: false,
-    selectedService: null
+    editServiceModal: false,
+    editingService: { id: null, name: '', category: 'video', color_hex: '#E50914', max_profiles_default: 5, default_rules: '', status: 'active' },
+    openEdit(serv) {
+        this.editingService = {
+            id: serv.id,
+            name: serv.name,
+            category: serv.category || 'video',
+            color_hex: serv.color_hex || '#E50914',
+            max_profiles_default: serv.max_profiles_default || 5,
+            default_rules: serv.default_rules || '',
+            status: serv.status || 'active'
+        };
+        this.editServiceModal = true;
+    }
 }">
 
-    <!-- Tier & Capacity Banner -->
+    <!-- ======================================================== -->
+    <!-- TIER & CAPACITY BANNER -->
+    <!-- ======================================================== -->
     @if(Auth::user()->isAdmin())
     <div class="rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-slate-900 border border-red-500/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
         <div class="flex items-center gap-3">
@@ -21,7 +34,7 @@
             </div>
             <div>
                 <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider block">Super Panel Administrador</span>
-                <span class="text-xs text-gray-300">Gestión global de plataformas maestras. Las plataformas globales se sincronizan con todos los revendedores.</span>
+                <span class="text-xs text-gray-300">Gestión global de plataformas maestras e inventario integral del sistema.</span>
             </div>
         </div>
         <div class="px-3 py-1.5 rounded-xl bg-slate-950 border border-gray-800 text-xs font-mono text-gray-300">
@@ -39,11 +52,11 @@
                     <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Panel PRO (Ilimitado)</span>
                     <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500 text-white">SIN LÍMITES</span>
                 </div>
-                <span class="text-xs text-gray-300">Puedes agregar todos los servicios y plataformas individuales que desees a tu catálogo.</span>
+                <span class="text-xs text-gray-300">Puedes agregar todos los servicios disponibles que desees y clonar el catálogo de tu proveedor.</span>
             </div>
         </div>
         <div class="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-xs font-mono text-purple-300">
-            Plataformas en tu Panel: <strong class="text-white">{{ $activeServicesCount }}</strong> (Ilimitado)
+            Servicios en tu Catálogo: <strong class="text-white">{{ $activeServicesCount }}</strong> (Ilimitado)
         </div>
     </div>
     @else
@@ -54,17 +67,17 @@
             </div>
             <div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">Panel BÁSICO (Limitado a 10 Servicios)</span>
+                    <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">Panel BÁSICO SPRO PLAY (Hasta 10 Servicios)</span>
                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         {{ $activeServicesCount }} / 10 Ocupados
                     </span>
                 </div>
                 <span class="text-xs text-gray-300">
-                    Tu plan permite un máximo de 10 plataformas en catálogo. 
+                    Tu plan permite un máximo de 10 plataformas disponibles.
                     @if($activeServicesCount >= 10)
-                    <strong class="text-rose-400">¡Límite alcanzado! Actualiza a Panel PRO para añadir más plataformas.</strong>
+                    <strong class="text-rose-400">¡Límite alcanzado! Actualiza a Panel PRO para añadir servicios ilimitados.</strong>
                     @else
-                    Te quedan <strong>{{ max(0, 10 - $activeServicesCount) }}</strong> plataformas disponibles.
+                    Te quedan <strong>{{ max(0, 10 - $activeServicesCount) }}</strong> servicios disponibles para agregar.
                     @endif
                 </span>
             </div>
@@ -106,7 +119,7 @@
             </div>
             <a href="{{ route('dashboard') }}" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-purple-600/30 shrink-0">
                 <i data-lucide="crown" class="w-4 h-4"></i>
-                <span>Ascender a Panel PRO ($15k)</span>
+                <span>Ascender a Panel PRO</span>
             </a>
         </div>
     </div>
@@ -126,7 +139,7 @@
                         </span>
                     </div>
                     <p class="text-xs text-slate-300 mt-0.5">
-                        Esto es para <strong>revender acceso a las funciones de panel</strong> a tus revendedores (no son cuentas generales). Las solicitudes se activan desde tu panel consumiendo 1 crédito según el plan adquirido.
+                        Esto es para <strong>revender acceso a las funciones de panel</strong> a tus revendedores. Las solicitudes se activan desde tu panel consumiendo 1 crédito según el plan adquirido.
                     </p>
                 </div>
             </div>
@@ -148,21 +161,21 @@
             </div>
         </div>
 
-        <!-- 2 Planes Disponibles para Ofrecer a los Revendedores -->
+        <!-- 2 Opciones Disponibles para Ofrecer a los Revendedores -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <!-- Plan 1: Panel Básico SPRO PLAY -->
             <div class="p-5 rounded-2xl bg-[#0b0f19] border border-amber-500/30 flex flex-col justify-between space-y-4 hover:border-amber-500/60 transition-all shadow-lg">
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
-                            📦 PLAN BÁSICO (10 SERVICIOS)
+                            📦 PANEL BÁSICO (10 SERVICIOS)
                         </span>
                         <span class="text-[11px] font-mono text-slate-400">Marca: <strong>SPRO PLAY</strong></span>
                     </div>
                     <div>
                         <h4 class="text-base font-black text-white">Panel Revendedor Básico (SPRO PLAY)</h4>
                         <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                            Acceso para vender hasta 10 servicios con catálogo sincronizado. 
+                            Acceso para vender hasta 10 servicios con catálogo sincronizado.
                             <strong class="text-amber-300 block mt-0.5">El básico no revende ningún plan</strong> (sólo comercializa cuentas generales a clientes finales).
                         </p>
                     </div>
@@ -184,7 +197,7 @@
                 </div>
 
                 <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span class="text-slate-400 text-[11px]">Activación desde panel</span>
+                    <span class="text-slate-400 text-[11px]">Activación desde solicitudes</span>
                     <a href="{{ route('resellers.index') }}" class="text-amber-400 hover:underline font-bold text-xs flex items-center gap-1">
                         Activar con 1 Crédito Básico <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                     </a>
@@ -196,14 +209,14 @@
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-mono shadow-sm">
-                            💎 PLAN PRO (ILIMITADO)
+                            💎 PANEL PRO (ILIMITADO)
                         </span>
                         <span class="text-[11px] font-mono text-purple-300">100% Marca Blanca</span>
                     </div>
                     <div>
                         <h4 class="text-base font-black text-white">Panel PRO Mayorista Ilimitado</h4>
                         <p class="text-xs text-slate-400 mt-1 leading-relaxed">
-                            Servicios ilimitados, personalización de marca completa y 
+                            Servicios ilimitados, personalización de marca completa y
                             <strong class="text-purple-300 block mt-0.5">el PRO tiene acceso a la posibilidad de revender paneles a sus revendedores.</strong>
                         </p>
                     </div>
@@ -225,7 +238,7 @@
                 </div>
 
                 <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span class="text-slate-400 text-[11px]">Activación desde panel</span>
+                    <span class="text-slate-400 text-[11px]">Activación desde solicitudes</span>
                     <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline font-bold text-xs flex items-center gap-1">
                         Activar con 1 Crédito PRO <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                     </a>
@@ -234,40 +247,71 @@
         </div>
     </div>
     @endif
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+    <!-- ======================================================== -->
+    <!-- BARRA SUPERIOR: CATÁLOGO DE SERVICIOS & ACCIONES -->
+    <!-- ======================================================== -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0f172a] p-5 rounded-2xl border border-slate-800">
         <div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Catálogo de Plataformas</h3>
-            <p class="text-xs text-gray-400">Servicios disponibles para venta, reglas de entrega y planes</p>
+            <h3 class="text-base font-black text-white flex items-center gap-2">
+                <span>📺</span>
+                <span>Disponibilidad de Stock por Plataforma (Tiempo Real)</span>
+            </h3>
+            <p class="text-xs text-slate-400">Capacidad total y perfiles libres listos para entrega inmediata a clientes y revendedores.</p>
         </div>
 
-        <div class="flex items-center gap-2">
-            <button @click="myPvpModal = true" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer">
-                <i data-lucide="tag" class="w-4 h-4"></i>
-                <span>Ajustar Mis Precios PVP</span>
+        <div class="flex flex-wrap items-center gap-2.5">
+            @if(Auth::user()->canResellPanels())
+            <!-- Botón Clonar Catálogo para PRO / Proveedor / Admin -->
+            <form method="POST" action="{{ route('services.clone_catalog') }}" onsubmit="return confirm('¿Deseas clonar y sincronizar las plataformas maestras disponibles a tu catálogo propio?');" class="inline">
+                @csrf
+                <button type="submit" class="px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-2 transition-all border border-purple-500/30 shadow-md cursor-pointer">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>🔄 Clonar Servicios</span>
+                </button>
+            </form>
+            @endif
+
+            @if(Auth::user()->isPanelBasic() && $activeServicesCount >= 10)
+            <button disabled class="px-4 py-2.5 rounded-xl bg-gray-800 text-gray-500 font-bold text-xs flex items-center gap-2 cursor-not-allowed">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+                <span>Límite 10/10 (Actualiza a PRO)</span>
             </button>
+            @else
             <button @click="newServiceModal = true" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-red-600/30 cursor-pointer">
                 <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                <span>Nueva Plataforma</span>
+                <span>+ Agregar Servicio Disponible</span>
             </button>
+            @endif
         </div>
     </div>
 
-    <!-- Services Grid -->
+    <!-- ======================================================== -->
+    <!-- GRILLA DE SERVICIOS DISPONIBLES CON STOCK EN TIEMPO REAL -->
+    <!-- ======================================================== -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @foreach($services as $serv)
+        @forelse($services as $serv)
+        @php
+            $free = $serv->scoped_free_profiles ?? 0;
+            $total = $serv->scoped_total_profiles ?? 0;
+            $occupied = $serv->scoped_occupied_profiles ?? 0;
+            $badge = $serv->scoped_status_badge ?? 'out_of_stock';
+            $accountsCount = $serv->scoped_accounts_count ?? 0;
+            $pctFree = $total > 0 ? round(($free / $total) * 100) : 0;
+        @endphp
         <div class="rounded-2xl bg-[#111827] border border-gray-800 shadow-xl overflow-hidden flex flex-col justify-between hover:border-gray-700 transition-all">
             <!-- Header de Plataforma -->
             <div class="p-5 border-b border-gray-800/80 bg-[#0d1322]">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-md text-sm" style="background-color: {{ $serv->color_hex }}">
+                        <div class="w-11 h-11 rounded-xl flex items-center justify-center font-black text-white shadow-md text-sm shrink-0" style="background-color: {{ $serv->color_hex ?? '#E50914' }}">
                             {{ substr($serv->name, 0, 2) }}
                         </div>
                         <div>
                             <h4 class="text-sm font-bold text-white">{{ $serv->name }}</h4>
                             <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 font-medium">
-                                    {{ strtoupper($serv->category) }} · {{ $serv->max_profiles_default }} Perfiles Max
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 font-medium font-mono">
+                                    {{ strtoupper($serv->category) }} · {{ $serv->max_profiles_default }} Perfiles Máx
                                 </span>
                                 @if(!$serv->user_id)
                                 <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
@@ -279,90 +323,130 @@
                                 </span>
                                 @else
                                 <span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold">
-                                    🏢 Catálogo de Proveedor o Revendedor
+                                    🏢 Catálogo Sincronizado
                                 </span>
                                 @endif
                             </div>
                         </div>
                     </div>
+
+                    <!-- Botones de Edición / Eliminación (si es dueño o admin) -->
                     @if(Auth::user()->isAdmin() || $serv->user_id === Auth::id())
-                    <form method="POST" action="{{ route('services.destroy', $serv) }}" onsubmit="return confirm('¿Seguro que deseas eliminar esta plataforma y sus planes?');" class="inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="text-gray-400 hover:text-rose-400 p-1" title="Eliminar Plataforma">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <div class="flex items-center gap-1">
+                        <button type="button" @click="openEdit({{ json_encode($serv) }})" class="text-gray-400 hover:text-sky-400 p-1 cursor-pointer" title="Editar Servicio">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
                         </button>
-                    </form>
+                        <form method="POST" action="{{ route('services.destroy', $serv) }}" onsubmit="return confirm('¿Seguro que deseas eliminar este servicio?');" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-gray-400 hover:text-rose-400 p-1 cursor-pointer" title="Eliminar Plataforma">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </form>
+                    </div>
                     @endif
                 </div>
             </div>
 
-            <!-- Planes Asociados -->
-            <div class="p-5 flex-1 space-y-3">
-                <div class="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-wider">
-                    <span>Planes Ofrecidos ({{ $serv->plans->count() }})</span>
-                    <button @click="selectedService = {{ json_encode($serv) }}; newPlanModal = true;" class="text-red-400 hover:text-red-300 text-[11px] font-semibold flex items-center gap-1">
-                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Añadir Plan
-                    </button>
+            <!-- Cuerpo: Disponibilidad de Stock en Tiempo Real -->
+            <div class="p-5 flex-1 space-y-4">
+                <!-- Estado y Capacidad -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 font-semibold">{{ $accountsCount }} cuenta(s) en tu inventario</span>
+                    <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border font-mono {{ $badge === 'in_stock' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : ($badge === 'low_stock' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30') }}">
+                        {{ $badge === 'in_stock' ? '🟢 Listo para Entrega' : ($badge === 'low_stock' ? '🟡 Stock Bajo' : '🔴 Agotado') }}
+                    </span>
                 </div>
 
-                <div class="space-y-2">
-                    @forelse($serv->plans as $plan)
-                    @php
-                        $pricing = Auth::user()->getEffectivePlanPricing($plan);
-                        $margin = max(0, $pricing['reseller_pvp'] - $pricing['provider_cost']);
-                    @endphp
-                    <div class="p-3 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between text-xs hover:border-gray-700 transition-colors">
+                <!-- Métricas Visuales de Capacidad y Perfiles Libres -->
+                <div class="p-4 rounded-2xl bg-[#0b0f19] border border-gray-800 space-y-3">
+                    <div class="flex items-end justify-between">
                         <div>
-                            <div class="font-bold text-white">{{ $plan->name }}</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">
-                                {{ $plan->duration_days }} días · {{ $plan->modality === 'profile' ? 'Pantalla con PIN' : 'Cuenta Completa' }}
-                            </div>
-                            <div class="text-[10px] text-emerald-400 font-mono mt-0.5">
-                                Ganancia neta: <strong>+${{ number_format($margin, 2) }}</strong>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Perfiles Libres en Stock</span>
+                            <div class="text-3xl font-black {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
+                                {{ $free }}
+                                <span class="text-xs text-gray-500 font-normal">/ {{ $total }} capacidad total</span>
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="font-black text-white text-sm">${{ number_format($pricing['reseller_pvp'], 2) }} <span class="text-[9px] font-normal text-gray-400">PVP</span></div>
-                            <div class="text-[10px] text-cyan-400 font-mono font-semibold">Costo: ${{ number_format($pricing['provider_cost'], 2) }}</div>
+                            <span class="text-xs font-mono font-bold {{ $free > 0 ? 'text-emerald-400' : 'text-gray-500' }}">{{ $pctFree }}% libre</span>
                         </div>
                     </div>
-                    @empty
-                    <div class="text-center py-4 text-gray-400 text-xs">
-                        Sin planes configurados. Haz clic en "Añadir Plan".
+
+                    <!-- Barra de Progreso de Disponibilidad -->
+                    <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-gray-800">
+                        <div class="h-2 rounded-full {{ $free > 2 ? 'bg-emerald-500' : ($free > 0 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $pctFree }}%"></div>
                     </div>
-                    @endforelse
+
+                    <!-- Desglose de perfiles -->
+                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800/80 text-center">
+                        <div class="p-1.5 rounded-lg bg-gray-900/60">
+                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Libres</span>
+                            <span class="text-xs font-mono font-bold text-emerald-400">{{ $free }}</span>
+                        </div>
+                        <div class="p-1.5 rounded-lg bg-gray-900/60">
+                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Ocupados</span>
+                            <span class="text-xs font-mono font-bold text-amber-400">{{ $occupied }}</span>
+                        </div>
+                        <div class="p-1.5 rounded-lg bg-gray-900/60">
+                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Total Cupo</span>
+                            <span class="text-xs font-mono font-bold text-white">{{ $total }}</span>
+                        </div>
+                    </div>
                 </div>
 
                 @if($serv->default_rules)
-                <div class="mt-3 p-3 rounded-xl bg-gray-900 border border-gray-800/80 text-[10px] text-gray-400">
-                    <span class="font-bold text-gray-300 block mb-0.5">Reglas de Uso Predeterminadas:</span>
-                    <pre class="font-sans whitespace-pre-line truncate">{{ $serv->default_rules }}</pre>
+                <div class="p-3 rounded-xl bg-gray-900/80 border border-gray-800/80 text-[10px] text-gray-400">
+                    <span class="font-bold text-gray-300 block mb-0.5">Reglas de Uso para el Cliente:</span>
+                    <p class="font-sans line-clamp-2 text-slate-300">{{ $serv->default_rules }}</p>
                 </div>
                 @endif
             </div>
 
-            <div class="p-4 border-t border-gray-800/80 bg-[#0e1424] flex items-center justify-between text-xs">
-                <span class="text-gray-400">Disponibilidad en Stock:</span>
-                <span class="text-emerald-400 font-bold">{{ $serv->available_profiles_count }} pantallas libres</span>
+            <!-- Footer: Acciones Rápidas -->
+            <div class="p-4 border-t border-gray-800/80 bg-[#0e1424] flex items-center justify-between gap-2">
+                <a href="{{ route('accounts.index', ['service_id' => $serv->id]) }}" class="px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-white border border-sky-500/20 font-bold text-xs flex items-center gap-1.5 transition-all">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>+ Cargar Cuentas</span>
+                </a>
+
+                <a href="{{ route('sales.index') }}" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all">
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                    <span>Emitir a Cliente</span>
+                </a>
             </div>
         </div>
-        @endforeach
+        @empty
+        <div class="col-span-full py-12 text-center bg-[#111827] rounded-3xl border border-gray-800 p-8 space-y-3">
+            <div class="w-16 h-16 rounded-2xl bg-gray-800 text-gray-500 mx-auto flex items-center justify-center text-2xl">
+                <i data-lucide="tv" class="w-8 h-8"></i>
+            </div>
+            <h4 class="text-base font-bold text-white">No hay servicios disponibles registrados</h4>
+            <p class="text-xs text-gray-400 max-w-md mx-auto">
+                Agrega nuevas plataformas de streaming a tu panel o sincroniza las plataformas oficiales de tu proveedor.
+            </p>
+            <div class="pt-2">
+                <button @click="newServiceModal = true" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30">
+                    + Agregar Primer Servicio
+                </button>
+            </div>
+        </div>
+        @endforelse
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL: NUEVA PLATAFORMA STREAMING -->
-    <!-- ========================================== -->
+    <!-- ======================================================== -->
+    <!-- MODAL: AGREGAR SERVICIO DISPONIBLE -->
+    <!-- ======================================================== -->
     <div x-show="newServiceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div @click.away="newServiceModal = false" class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6">
-            <h3 class="text-base font-bold text-white mb-1">Nueva Plataforma de Streaming</h3>
-            <p class="text-xs text-gray-400 mb-4">Registra una nueva aplicación (Netflix, Disney+, IPTV, etc.)</p>
+            <h3 class="text-base font-bold text-white mb-1">Agregar Servicio Disponible</h3>
+            <p class="text-xs text-gray-400 mb-4">Registra una nueva plataforma de streaming en tu catálogo</p>
 
             <form method="POST" action="{{ route('services.store') }}" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nombre de la Plataforma *</label>
-                    <input type="text" name="name" placeholder="Ej: Paramount+ UHD" required class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-red-500">
+                    <input type="text" name="name" placeholder="Ej: Paramount+ UHD, HBO Max, Crunchyroll" required class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-red-500">
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
@@ -373,6 +457,7 @@
                             <option value="music">Música</option>
                             <option value="iptv">IPTV / TV</option>
                             <option value="anime">Anime</option>
+                            <option value="combo">Combo</option>
                             <option value="other">Otro</option>
                         </select>
                     </div>
@@ -387,140 +472,72 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Reglas de Uso Obligatorias (Se enviarán al cliente)</label>
-                    <textarea name="default_rules" rows="3" placeholder="- Solo ingresar al perfil asignado&#10;- Prohibido cambiar correo o contraseña" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-red-500"></textarea>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Reglas de Uso para el Cliente (Opcional)</label>
+                    <textarea name="default_rules" rows="3" placeholder="- Solo ingresar al perfil asignado con su PIN&#10;- Prohibido cambiar correo o contraseña&#10;- Garantía válida por 30 días" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-red-500"></textarea>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
-                    <button type="button" @click="newServiceModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30">Guardar Plataforma</button>
+                    <button type="button" @click="newServiceModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 cursor-pointer">Guardar Servicio</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAL: AÑADIR PLAN A SERVICIO -->
-    <!-- ========================================== -->
-    <div x-show="newPlanModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div @click.away="newPlanModal = false" class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6">
-            <h3 class="text-base font-bold text-white mb-1">Añadir Plan a <span class="text-red-400" x-text="selectedService?.name"></span></h3>
-            <p class="text-xs text-gray-400 mb-4">Define modalidades (pantalla con PIN o cuenta completa) y precios</p>
+    <!-- ======================================================== -->
+    <!-- MODAL: EDITAR SERVICIO DISPONIBLE -->
+    <!-- ======================================================== -->
+    <div x-show="editServiceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div @click.away="editServiceModal = false" class="w-full max-w-lg bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6">
+            <h3 class="text-base font-bold text-white mb-1">Editar Servicio Disponible</h3>
+            <p class="text-xs text-gray-400 mb-4">Modifica los detalles y reglas de la plataforma</p>
 
-            <form :action="'/services/' + selectedService?.id + '/plans'" method="POST" class="space-y-4">
+            <form :action="'/services/' + editingService.id" method="POST" class="space-y-4">
                 @csrf
+                @method('PUT')
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nombre del Plan *</label>
-                    <input type="text" name="name" placeholder="Ej: 1 Pantalla con PIN (30 días)" required class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-red-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Modalidad</label>
-                        <select name="modality" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
-                            <option value="profile">1 Pantalla / Perfil Individual</option>
-                            <option value="full_account">Cuenta Completa (Todos los perfiles)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Duración (Días)</label>
-                        <input type="number" name="duration_days" value="30" min="1" max="365" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
-                    </div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Nombre de la Plataforma *</label>
+                    <input type="text" name="name" x-model="editingService.name" required class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-sky-500">
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">Precio Público ($) *</label>
-                        <input type="number" step="0.01" name="price" placeholder="4500.00" required class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white font-bold">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Categoría</label>
+                        <select name="category" x-model="editingService.category" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="video">Películas & Series</option>
+                            <option value="music">Música</option>
+                            <option value="iptv">IPTV / TV</option>
+                            <option value="anime">Anime</option>
+                            <option value="combo">Combo</option>
+                            <option value="other">Otro</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1">Mayorista ($) *</label>
-                        <input type="number" step="0.01" name="reseller_price" placeholder="3200.00" required class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white font-bold">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Color Distintivo</label>
+                        <input type="color" name="color_hex" x-model="editingService.color_hex" class="w-full h-10 rounded-xl bg-[#0b0f19] border border-gray-800 p-1 cursor-pointer">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Costo Prov. ($)</label>
-                        <input type="number" step="0.01" name="cost_estimate" placeholder="2000.00" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Perfiles Máx</label>
+                        <input type="number" name="max_profiles_default" x-model="editingService.max_profiles_default" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                     </div>
                 </div>
 
-                <input type="hidden" name="screens_count" value="1">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Estado</label>
+                    <select name="status" x-model="editingService.status" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Reglas de Uso para el Cliente</label>
+                    <textarea name="default_rules" x-model="editingService.default_rules" rows="3" class="w-full px-3.5 py-2 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-sky-500"></textarea>
+                </div>
 
                 <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
-                    <button type="button" @click="newPlanModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30">Crear Plan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- MODAL: AJUSTAR MIS PRECIOS DE VENTA (PVP) -->
-    <!-- ========================================== -->
-    <div x-show="myPvpModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="myPvpModal = false">
-        <div class="w-full max-w-2xl bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
-                <div class="flex items-center gap-2.5 text-emerald-400">
-                    <i data-lucide="badge-dollar-sign" class="w-6 h-6"></i>
-                    <div>
-                        <h3 class="font-black text-white text-base">Definir Mis Precios al Público (PVP)</h3>
-                        <span class="text-xs text-gray-400">Fija el precio de venta en tu tienda y visualiza tu ganancia neta en tiempo real</span>
-                    </div>
-                </div>
-                <button @click="myPvpModal = false" class="text-gray-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
-            </div>
-
-            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
-                💵 <strong>Tú decides tu margen:</strong> El costo mayorista es lo que se descontará de tu billetera al entregar cada cuenta. Lo que cobres por encima en tu tienda es tu <strong>Ganancia Neta directa</strong>.
-            </div>
-
-            <form action="{{ route('services.plans.update_my_pvp') }}" method="POST" class="space-y-4">
-                @csrf
-
-                <div class="rounded-2xl border border-gray-800 overflow-hidden">
-                    <table class="w-full text-left text-xs text-gray-200">
-                        <thead>
-                            <tr class="bg-gray-900 border-b border-gray-800 text-[10px] uppercase font-bold text-gray-400">
-                                <th class="py-2.5 px-3">Plataforma / Plan</th>
-                                <th class="py-2.5 px-3">Tu Costo Mayorista</th>
-                                <th class="py-2.5 px-3">PVP Sugerido Base</th>
-                                <th class="py-2.5 px-3">Tu Precio al Público (PVP)</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-800/60 font-mono">
-                            @foreach($services as $s)
-                            @foreach($s->plans as $p)
-                            @php
-                                $pricing = Auth::user()->getEffectivePlanPricing($p);
-                            @endphp
-                            <tr class="hover:bg-gray-800/30">
-                                <td class="py-2.5 px-3 font-sans">
-                                    <span class="font-bold text-white block">{{ $s->name }}</span>
-                                    <span class="text-[11px] text-gray-400">{{ $p->name }}</span>
-                                </td>
-                                <td class="py-2.5 px-3 text-cyan-400 font-bold">
-                                    ${{ number_format($pricing['provider_cost'], 2) }}
-                                </td>
-                                <td class="py-2.5 px-3 text-gray-400">
-                                    ${{ number_format($p->price, 2) }}
-                                </td>
-                                <td class="py-2.5 px-3">
-                                    <input type="number" step="0.01" min="{{ $pricing['provider_cost'] }}" 
-                                           name="reseller_pvps[{{ $p->id }}]" 
-                                           value="{{ $pricing['reseller_pvp'] }}" 
-                                           class="w-32 px-3 py-1.5 rounded-xl bg-gray-950 border border-gray-700 text-xs font-mono text-emerald-400 font-bold focus:border-emerald-500 outline-none">
-                                </td>
-                            </tr>
-                            @endforeach
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" @click="myPvpModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 cursor-pointer">
-                        Guardar Mis Precios PVP
-                    </button>
+                    <button type="button" @click="editServiceModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg shadow-sky-600/30 cursor-pointer">Actualizar Servicio</button>
                 </div>
             </form>
         </div>
