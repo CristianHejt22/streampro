@@ -184,6 +184,63 @@
             </div>
         </div>
 
+        <!-- Visualizador de Créditos PRO y Básicos para Proveedor -->
+        <div class="p-4 rounded-2xl bg-[#0b0f19] border border-purple-500/40 space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                    <i data-lucide="gem" class="w-4 h-4 text-purple-400"></i>
+                    Billetera de Créditos de Activación de Paneles
+                </span>
+                <a href="{{ route('resellers.index') }}" class="text-[11px] font-mono text-purple-300 hover:underline font-bold flex items-center gap-1">
+                    Activar Solicitudes <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase text-amber-400 font-mono">📦 Créditos BÁSICO</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <span class="text-2xl font-black text-white font-mono">{{ $user->credits_basic ?? 0 }}</span>
+                            <span class="text-[11px] text-amber-300 font-mono font-bold">disponibles</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Paneles SPRO PLAY (10 serv)</span>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+                        <i data-lucide="package" class="w-4 h-4"></i>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-purple-500/30 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase text-purple-400 font-mono">💎 Créditos PRO</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <span class="text-2xl font-black text-white font-mono">{{ $user->credits_pro ?? 0 }}</span>
+                            <span class="text-[11px] text-purple-300 font-mono font-bold">disponibles</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Paneles PRO Marca Blanca</span>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">
+                        <i data-lucide="crown" class="w-4 h-4"></i>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase text-emerald-400 font-mono">🌟 Total Créditos</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <span class="text-2xl font-black text-emerald-400 font-mono">{{ ($user->credits_basic ?? 0) + ($user->credits_pro ?? 0) }}</span>
+                            <span class="text-[11px] text-slate-400 font-mono">en billetera</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Listos para activar</span>
+                    </div>
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Caja de Afiliación con Formulario de Registro para Revendedores -->
         <div class="p-4 rounded-xl bg-[#0b0f19] border border-purple-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

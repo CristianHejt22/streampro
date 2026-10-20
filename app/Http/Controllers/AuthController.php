@@ -33,6 +33,10 @@ class AuthController extends Controller
 
             if ($user->status !== 'active') {
                 Auth::guard('web')->logout();
+                if ($user->status === 'pending') {
+                    $tierLabel = ($user->panel_tier === 'pro') ? 'PRO (Ilimitado)' : 'BÁSICO (SPRO PLAY)';
+                    return back()->withErrors(['email' => "Tu solicitud para el Panel {$tierLabel} está registrada y PENDIENTE DE ACTIVACIÓN. El Administrador o Proveedor debe activarte mediante créditos de plataforma."]);
+                }
                 return back()->withErrors(['email' => 'Tu cuenta se encuentra suspendida. Contacta a tu administrador.']);
             }
 

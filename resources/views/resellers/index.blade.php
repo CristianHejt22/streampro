@@ -180,35 +180,184 @@
     </div>
     @endif
 
-    @if(Auth::user()->isSuperReseller())
-    <div class="rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 border border-purple-500/30 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div class="space-y-1">
-            <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider block">Billetera de Créditos para Proveedor o Revendedor</span>
+    @if(Auth::user()->isSuperReseller() || Auth::user()->isAdmin())
+    <!-- ======================================================== -->
+    <!-- VISUALIZADOR DE CRÉDITOS PRO Y BÁSICOS EN PROVEEDORES / ADMIN -->
+    <!-- ======================================================== -->
+    <div class="rounded-3xl bg-gradient-to-r from-[#141b2d] via-slate-900 to-[#141b2d] border-2 border-purple-500/40 p-6 shadow-2xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-3">
             <div class="flex items-center gap-3">
-                <div class="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
-                    📦 Créditos Básicos: <strong>{{ Auth::user()->credits_basic ?? 0 }}</strong>
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-purple-600/30">
+                    <i data-lucide="gem" class="w-6 h-6"></i>
                 </div>
-                <div class="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold">
-                    💎 Créditos PRO: <strong>{{ Auth::user()->credits_pro ?? 0 }}</strong>
+                <div>
+                    <h3 class="text-base font-black text-white flex items-center gap-2">
+                        <span>Billetera de Créditos de Activación de Paneles</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase tracking-wider font-mono">
+                            {{ Auth::user()->isAdmin() ? 'Super Panel Central' : 'Proveedor Mayorista' }}
+                        </span>
+                    </h3>
+                    <p class="text-xs text-slate-400">
+                        Los paneles solicitados se activan exclusivamente consumiendo 1 crédito según el plan adquirido (Básico o PRO).
+                    </p>
                 </div>
             </div>
-            <p class="text-[11px] text-gray-400">Usa 1 crédito para activar o renovar sub-paneles clonados por 30 días.</p>
+
+            @if(Auth::user()->isSuperReseller())
+            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsappAdminPhone) }}?text=Hola,%20quisiera%20comprar%20un%20pack%20de%20cr%C3%A9ditos%20para%20activaci%C3%B3n%20de%20paneles." target="_blank" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 w-max cursor-pointer">
+                <i data-lucide="coins" class="w-3.5 h-3.5"></i>
+                <span>Comprar Créditos al Admin</span>
+            </a>
+            @endif
         </div>
 
-        <!-- Toggle WhatsApp Proveedor o Revendedor en Bóveda -->
-        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span class="text-[10px] font-bold uppercase text-slate-400 block">WhatsApp en Bóveda de Clientes (Proveedor o Revendedor):</span>
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-bold {{ Auth::user()->provider_override_support_whatsapp ? 'text-emerald-400' : 'text-slate-400' }}">
-                    {{ Auth::user()->provider_override_support_whatsapp ? '✓ TU WhatsApp Central (Proveedor o Revendedor)' : 'WhatsApp Individual del Sub-Revendedor' }}
-                </span>
-                <form method="POST" action="{{ route('resellers.toggle_provider_override', Auth::user()) }}" class="inline">
-                    @csrf
-                    <button type="submit" class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-bold cursor-pointer">
-                        {{ Auth::user()->provider_override_support_whatsapp ? 'Cambiar a Sub-Revendedor' : 'Cambiar a Mi WhatsApp' }}
-                    </button>
-                </form>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Créditos Básicos -->
+            <div class="p-4 rounded-2xl bg-[#0b0f19] border border-amber-500/30 flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block font-mono">📦 Créditos BÁSICO (10 Serv)</span>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-black text-white font-mono">{{ Auth::user()->credits_basic ?? 0 }}</span>
+                        <span class="text-xs text-amber-300 font-mono font-bold">disponibles</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block mt-1">Tarifa: $2.500 c/u · Marca SPRO PLAY</span>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
+                    <i data-lucide="package" class="w-6 h-6"></i>
+                </div>
             </div>
+
+            <!-- Créditos PRO -->
+            <div class="p-4 rounded-2xl bg-[#0b0f19] border border-purple-500/30 flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block font-mono">💎 Créditos PRO (Ilimitado)</span>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-black text-white font-mono">{{ Auth::user()->credits_pro ?? 0 }}</span>
+                        <span class="text-xs text-purple-300 font-mono font-bold">disponibles</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block mt-1">Tarifa: $4.000 c/u · Marca Blanca Total</span>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold">
+                    <i data-lucide="crown" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Total Créditos -->
+            <div class="p-4 rounded-2xl bg-[#0b0f19] border border-emerald-500/30 flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block font-mono">🌟 Total Créditos Activación</span>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-black text-emerald-400 font-mono">{{ (Auth::user()->credits_basic ?? 0) + (Auth::user()->credits_pro ?? 0) }}</span>
+                        <span class="text-xs text-slate-400 font-mono">créditos totales</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block mt-1">Combo Dúo: 5 Básicos + 5 PRO por $40.000</span>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                    <i data-lucide="zap" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </div>
+
+        @if(Auth::user()->isSuperReseller())
+        <!-- Toggle WhatsApp Proveedor o Revendedor en Bóveda -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span class="text-xs font-bold text-slate-300">
+                Soporte de WhatsApp en la Bóveda de tus Clientes:
+                <strong class="{{ Auth::user()->provider_override_support_whatsapp ? 'text-emerald-400' : 'text-sky-400' }}">
+                    {{ Auth::user()->provider_override_support_whatsapp ? 'TU WhatsApp Central de Proveedor' : 'WhatsApp Individual del Revendedor' }}
+                </strong>
+            </span>
+            <form method="POST" action="{{ route('resellers.toggle_provider_override', Auth::user()) }}" class="inline">
+                @csrf
+                <button type="submit" class="px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-xs font-bold cursor-pointer transition-all">
+                    {{ Auth::user()->provider_override_support_whatsapp ? 'Cambiar a WhatsApp Individual' : 'Centralizar en Mi WhatsApp' }}
+                </button>
+            </form>
+        </div>
+        @endif
+    </div>
+    @endif
+
+    <!-- ======================================================== -->
+    <!-- SECCIÓN: SOLICITUDES DE PANEL PENDIENTES DE ACTIVACIÓN -->
+    <!-- ======================================================== -->
+    @if(isset($pendingRequests) && $pendingRequests->isNotEmpty())
+    <div class="p-6 rounded-3xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-[#10182b] border-2 border-amber-500/50 shadow-2xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold">
+                    <i data-lucide="user-plus" class="w-5 h-5 animate-bounce"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-white flex items-center gap-2">
+                        <span>Solicitudes de Panel Pendientes de Activación con Crédito</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-amber-500 text-slate-950 shadow">
+                            {{ $pendingRequests->count() }} PENDIENTE(S)
+                        </span>
+                    </h3>
+                    <p class="text-xs text-slate-300">
+                        Los revendedores registrados sólo se activan con créditos de plataforma según el plan solicitado.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @foreach($pendingRequests as $req)
+            <div class="p-4 rounded-2xl bg-[#0b0f19] border border-amber-500/30 flex flex-col justify-between space-y-3 shadow-lg">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        @if($req->isPanelPro())
+                        <span class="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm">
+                            💎 PLAN PRO (ILIMITADO)
+                        </span>
+                        @else
+                        <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            📦 PLAN BÁSICO (10 SERV)
+                        </span>
+                        @endif
+                        <span class="text-[10px] text-slate-400 font-mono">{{ $req->created_at ? $req->created_at->diffForHumans() : 'Reciente' }}</span>
+                    </div>
+
+                    <div>
+                        <strong class="text-white text-sm block">{{ $req->name }}</strong>
+                        <span class="text-xs text-slate-400 block font-mono">{{ $req->email }}</span>
+                        @if($req->support_whatsapp || $req->phone)
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $req->support_whatsapp ?: $req->phone) }}" target="_blank" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-1 font-mono">
+                            <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                            {{ $req->support_whatsapp ?: $req->phone }}
+                        </a>
+                        @endif
+                        @if($req->brand_name && $req->isPanelPro())
+                        <span class="text-[10px] text-purple-300 block mt-0.5 font-mono">Marca: {{ $req->brand_name }}</span>
+                        @endif
+                        @if($req->parent && Auth::user()->isAdmin())
+                        <span class="text-[10px] text-slate-400 block mt-0.5">Patrocinador: <strong class="text-white">{{ $req->parent->name }}</strong></span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                    <!-- Formulario de Activación con 1 Crédito -->
+                    <form method="POST" action="{{ route('resellers.activate_credit', $req) }}" class="flex-1">
+                        @csrf
+                        <input type="hidden" name="panel_tier" value="{{ $req->panel_tier ?? 'basic' }}">
+                        <button type="submit" onclick="return confirm('¿Confirmas activar el panel {{ strtoupper($req->panel_tier ?? 'basic') }} de {{ $req->name }} consumiendo 1 crédito?')" class="w-full py-2 px-3 rounded-xl {{ $req->isPanelPro() ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black' }} font-bold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all">
+                            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                            <span>Activar con 1 Crédito {{ strtoupper($req->panel_tier ?? 'basic') }}</span>
+                        </button>
+                    </form>
+
+                    <!-- Descartar solicitud -->
+                    <form method="POST" action="{{ route('resellers.reject_request', $req) }}">
+                        @csrf
+                        <button type="submit" onclick="return confirm('¿Descartar esta solicitud de panel?')" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs cursor-pointer" title="Descartar solicitud">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endforeach
         </div>
     </div>
     @endif
@@ -313,6 +462,7 @@
                 <select name="status" class="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-sky-500">
                     <option value="">Todos los Estados</option>
                     <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>🟢 Activos</option>
+                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>🟡 Pendientes de Activación ({{ $stats['pending_panels'] ?? 0 }})</option>
                     <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>🔴 Suspendidos</option>
                     <option value="expired" {{ request('status') === 'expired' ? 'selected' : '' }}>⏳ Vencidos</option>
                 </select>
@@ -474,7 +624,20 @@
                             </div>
                         </td>
                         <td class="py-3 px-4 text-xs">
-                            @if($isCloned)
+                            @if($res->status === 'pending')
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 block w-max shadow-sm animate-pulse">
+                                    🟡 SOLICITUD PENDIENTE
+                                </span>
+                                <span class="text-[10px] text-amber-400 font-mono block mt-1">Plan: {{ strtoupper($res->panel_tier ?? 'basic') }}</span>
+                                <form method="POST" action="{{ route('resellers.activate_credit', $res) }}" class="mt-2">
+                                    @csrf
+                                    <input type="hidden" name="panel_tier" value="{{ $res->panel_tier ?? 'basic' }}">
+                                    <button type="submit" onclick="return confirm('¿Activar panel {{ strtoupper($res->panel_tier ?? 'basic') }} de {{ $res->name }} consumiendo 1 crédito?')" class="px-2.5 py-1 rounded-lg {{ $res->isPanelPro() ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' : 'bg-amber-500 text-slate-950' }} font-bold text-[10px] flex items-center gap-1 shadow cursor-pointer">
+                                        <i data-lucide="zap" class="w-3 h-3"></i>
+                                        <span>⚡ Activar con 1 Crédito {{ strtoupper($res->panel_tier ?? 'basic') }}</span>
+                                    </button>
+                                </form>
+                            @elseif($isCloned)
                                 @if($isExpired)
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 block w-max">
                                     🔴 Suspendido ($15.000 Vencido)

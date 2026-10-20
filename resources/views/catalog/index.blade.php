@@ -774,13 +774,20 @@
                 </button>
                 <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        <strong>Panel Básico (10 Servicios):</strong> Diseñado para revendedores iniciales. Incluye hasta 10 servicios con la marca oficial <strong>SPRO PLAY</strong>. Los créditos cuestan $2.500 c/u (pack mín. 10 créditos = $25.000).
+                        <strong>📦 Panel Básico (10 Servicios - SPRO PLAY):</strong> Diseñado para revendedores iniciales. Incluye hasta 10 servicios oficiales bajo la marca y logo <strong>SPRO PLAY</strong> para venta directa a clientes finales. 
+                        <strong class="text-amber-300 block mt-1">⚠️ El básico no revende ningún plan de panel ni afilia revendedores.</strong>
+                        Su costo de activación es de <strong>1 Crédito Básico</strong> ($2.500 c/u en pack mínimo de 10 = $25.000).
                     </p>
                     <p>
-                        <strong>Panel PRO (Ilimitado):</strong> Para proveedores o revendedores consolidados. Permite catálogo ilimitado, carga de servicios individuales propios y personalización <strong>100% Marca Blanca</strong> (logo, nombre comercial y colores propios). Los créditos cuestan $4.000 c/u (pack mín. 10 créditos = $40.000).
+                        <strong>💎 Panel PRO (Ilimitado - Marca Blanca):</strong> Para proveedores o revendedores consolidados. Ofrece servicios ilimitados, posibilidad de agregar plataformas propias y personalización <strong>100% Marca Blanca</strong> (logo, nombre comercial y colores propios).
+                        <strong class="text-purple-300 block mt-1">✓ El PRO tiene acceso a la posibilidad de revender acceso a funciones de panel a sus propios revendedores.</strong>
+                        Su costo de activación es de <strong>1 Crédito PRO</strong> ($4.000 c/u en pack mínimo de 10 = $40.000).
                     </p>
-                    <p class="text-emerald-400 font-semibold">
-                        💡 También dispones del <strong>Pack Combo Dúo</strong>: 5 Créditos Básicos ($3.000 c/u) + 5 Créditos PRO ($5.000 c/u) por un total de $40.000 juntos.
+                    <p class="text-emerald-400 font-semibold pt-1">
+                        🌟 <strong>Pack Combo Dúo (5 de cada uno juntos):</strong> 5 Créditos Básicos ($3.000 c/u = $15.000) + 5 Créditos PRO ($5.000 c/u = $25.000) por un total de <strong>$40.000 juntos</strong> en tu billetera.
+                    </p>
+                    <p class="text-sky-300 text-xs pt-1 border-t border-slate-800">
+                        ⚡ <strong>Regla de Activación:</strong> Las solicitudes de panel quedan registradas en estado <em>Pendiente</em> y <strong>son activadas desde el panel de administrador exclusivamente consumiendo 1 crédito según el plan adquirido</strong> (Básico o PRO).
                     </p>
                 </div>
             </div>

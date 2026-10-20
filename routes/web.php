@@ -156,6 +156,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/sell-credits', [ResellerController::class, 'sellCredits'])->name('resellers.sell_credits');
     Route::post('/resellers/{reseller}/activate-master', [ResellerController::class, 'activatePanelMaster'])->name('resellers.activate_master');
     Route::post('/resellers/{reseller}/activate-credit', [ResellerController::class, 'activateWithCredit'])->name('resellers.activate_credit');
+    Route::post('/resellers/{reseller}/reject-request', [ResellerController::class, 'rejectPendingRequest'])->name('resellers.reject_request');
     Route::post('/resellers/{reseller}/toggle-provider-override', [ResellerController::class, 'toggleProviderWhatsAppOverride'])->name('resellers.toggle_provider_override');
     Route::post('/resellers/{reseller}/update-whatsapp-preference', [ResellerController::class, 'updatePanelWhatsAppPreference'])->name('resellers.update_whatsapp_preference');
     Route::post('/resellers/{reseller}/update-plan-prices', [ResellerController::class, 'updatePlanPrices'])->name('resellers.update_plan_prices');

@@ -42,7 +42,10 @@
 
             <!-- Selector de Nivel de Panel -->
             <div class="space-y-2.5">
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">1. Selecciona Tu Nivel de Panel *</label>
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">1. Selecciona Tu Nivel de Panel *</label>
+                    <span class="text-[10px] text-amber-400 font-mono font-bold">Activación exclusiva mediante créditos</span>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <!-- Opción BÁSICO -->
                     <label class="p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between"
@@ -54,10 +57,14 @@
                         <div class="mt-3 space-y-1">
                             <div class="font-black text-white text-base">📦 Panel BÁSICO</div>
                             <span class="text-[11px] text-amber-300 block font-semibold">Marca Oficial: SPRO PLAY</span>
-                            <p class="text-[10px] text-slate-400 mt-1">Catálogo limitado a 10 servicios. Utiliza la identidad oficial predeterminada SPRO PLAY.</p>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                Catálogo limitado a 10 servicios. Venta directa a clientes finales. 
+                                <strong class="text-amber-300 block mt-0.5">⚠️ No revende ningún plan de panel.</strong>
+                            </p>
                         </div>
-                        <div class="mt-3 pt-2 border-t border-gray-800/80 flex items-center gap-2">
+                        <div class="mt-3 pt-2 border-t border-gray-800/80 flex items-center justify-between">
                             <img src="{{ asset('images/spro-play-logo.svg') }}" alt="SPRO PLAY" class="h-5 object-contain">
+                            <span class="text-[10px] font-mono text-amber-400 font-bold">1 Crédito ($2.500)</span>
                         </div>
                     </label>
 
@@ -71,10 +78,14 @@
                         <div class="mt-3 space-y-1">
                             <div class="font-black text-white text-base">💎 Panel PRO</div>
                             <span class="text-[11px] text-purple-300 block font-semibold">Servicios ILIMITADOS</span>
-                            <p class="text-[10px] text-slate-400 mt-1">Marca blanca 100% habilitada. Agrega tus propios servicios y personaliza tu marca.</p>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                Marca Blanca total (logo y nombre propios). Servicios ilimitados y 
+                                <strong class="text-purple-300 block mt-0.5">✓ TIENE ACCESO a revender funciones de panel.</strong>
+                            </p>
                         </div>
-                        <div class="mt-3 pt-2 border-t border-gray-800/80 text-[10px] text-purple-300 font-mono">
-                            ✓ Tu propio nombre y logo
+                        <div class="mt-3 pt-2 border-t border-gray-800/80 flex items-center justify-between">
+                            <span class="text-[10px] text-purple-300 font-mono font-bold">Reventa habilitada</span>
+                            <span class="text-[10px] font-mono text-purple-400 font-bold">1 Crédito ($4.000)</span>
                         </div>
                     </label>
                 </div>
@@ -123,10 +134,19 @@
                 </div>
             </div>
 
+            <!-- Aviso de Activación por Créditos -->
+            <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300 flex items-start gap-2.5">
+                <i data-lucide="info" class="w-4 h-4 text-sky-400 shrink-0 mt-0.5"></i>
+                <div class="text-[11px] leading-relaxed">
+                    <strong class="text-white block font-sans">Activación exclusivamente por créditos:</strong>
+                    Tu solicitud quedará registrada en estado <strong>PENDIENTE</strong>. Tu Administrador o Proveedor activará tu panel desde su plataforma consumiendo 1 crédito según el plan seleccionado (<span x-text="selectedTier === 'pro' ? '1 Crédito PRO' : '1 Crédito BÁSICO'"></span>).
+                </div>
+            </div>
+
             <div class="pt-2">
                 <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer">
-                    <i data-lucide="user-plus" class="w-4 h-4"></i>
-                    <span>Crear Mi Panel & Comenzar a Vender</span>
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span>Enviar Solicitud de Panel (Activación con Crédito)</span>
                 </button>
             </div>
         </form>

@@ -40,7 +40,7 @@ class ResellerController extends Controller
         if ($request->filled('tier') && in_array($request->tier, ['basic', 'pro'])) {
             $query->where('panel_tier', $request->tier);
         }
-        if ($request->filled('status') && in_array($request->status, ['active', 'suspended', 'expired'])) {
+        if ($request->filled('status') && in_array($request->status, ['active', 'suspended', 'expired', 'pending'])) {
             if ($request->status === 'expired') {
                 $query->whereNotNull('panel_expires_at')->where('panel_expires_at', '<', Carbon::now());
             } else {
@@ -83,6 +83,7 @@ class ResellerController extends Controller
                 $q->where('panel_tier', 'pro')->orWhereNull('panel_tier');
             })->count(),
             'active_panels' => (clone $baseCountQuery)->where('status', 'active')->count(),
+            'pending_panels' => (clone $baseCountQuery)->where('status', 'pending')->count(),
             'expired_panels' => (clone $baseCountQuery)->where(function($q) {
                 $q->where('status', 'suspended')
                   ->orWhere(function($sub) {
@@ -93,6 +94,9 @@ class ResellerController extends Controller
             'total_credits_basic' => (int)(clone $baseCountQuery)->sum('credits_basic'),
             'total_credits_pro' => (int)(clone $baseCountQuery)->sum('credits_pro'),
         ];
+
+        // Solicitudes de panel pendientes de activación con crédito
+        $pendingRequests = (clone $baseCountQuery)->where('status', 'pending')->with('parent')->latest()->get();
 
         // Transferencias de saldo pendientes de revisión
         $pendingTransfers = $user->isAdmin()
@@ -110,6 +114,7 @@ class ResellerController extends Controller
             'servicesList',
             'servicePlansList',
             'stats',
+            'pendingRequests',
             'pendingTransfers',
             'whatsappSupportEnabled',
             'whatsappSupportDest',
@@ -591,16 +596,22 @@ class ResellerController extends Controller
 
         $tier = $request->panel_tier;
 
-        if (!$user->hasCredits($tier, 1)) {
-            $costMsg = ($tier === 'basic') 
-                ? 'Básico ($2.500 c/u mínimo 10, o $3.000 c/u mínimo 5)' 
-                : 'PRO ($4.000 c/u mínimo 10, o $5.000 c/u mínimo 5)';
-            return back()->withErrors([
-                'error' => "⛔ Créditos insuficientes. No dispones de créditos " . strtoupper($tier) . " en tu billetera de créditos. Contacta al Super Admin para comprar un pack {$costMsg}."
-            ]);
+        if (!$user->isAdmin()) {
+            if (!$user->hasCredits($tier, 1)) {
+                $costMsg = ($tier === 'basic') 
+                    ? 'Básico ($2.500 c/u mínimo 10, o $3.000 c/u mínimo 5)' 
+                    : 'PRO ($4.000 c/u mínimo 10, o $5.000 c/u mínimo 5)';
+                return back()->withErrors([
+                    'error' => "⛔ Créditos insuficientes. No dispones de créditos " . strtoupper($tier) . " en tu billetera de créditos. Contacta al Super Admin para comprar un pack {$costMsg}."
+                ]);
+            }
+            $user->deductCredits($tier, 1, $reseller->name);
+        } else {
+            // El Super Admin descuenta crédito si lo tiene registrado en su saldo
+            if ($user->hasCredits($tier, 1) && ($user->credits_basic > 0 || $user->credits_pro > 0)) {
+                $user->deductCredits($tier, 1, $reseller->name);
+            }
         }
-
-        $user->deductCredits($tier, 1, $reseller->name);
 
         $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;
         $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays(30) : Carbon::now()->addDays(30);
@@ -622,6 +633,26 @@ class ResellerController extends Controller
         ]);
 
         return back()->with('success', "¡Panel " . strtoupper($tier) . " de {$reseller->name} activado con éxito! Se descontó 1 crédito {$tier}. Vigente por 30 días hasta el {$newExpiry->format('d/m/Y')}.");
+    }
+
+    /**
+     * Descartar / Rechazar una solicitud de panel pendiente
+     */
+    public function rejectPendingRequest(User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id) {
+            abort(403, 'No tienes permiso para descartar esta solicitud.');
+        }
+
+        if ($reseller->status !== 'pending') {
+            return back()->with('error', 'Solo se pueden descartar solicitudes en estado pendiente.');
+        }
+
+        $name = $reseller->name;
+        $reseller->delete();
+
+        return back()->with('info', "Solicitud de panel de {$name} descartada.");
     }
 
     /**
@@ -665,6 +696,11 @@ class ResellerController extends Controller
             abort(404, 'Enlace de afiliación no válido o el proveedor ya no se encuentra activo.');
         }
 
+        // El Básico NO revende ningún plan de panel; solo PRO o Proveedor
+        if (!$provider->canResellPanels()) {
+            abort(403, 'Este panel no tiene habilitada la reventa de funciones de panel a revendedores (exclusivo para Paneles PRO).');
+        }
+
         return view('portal.affiliate_register', compact('provider'));
     }
 
@@ -676,6 +712,11 @@ class ResellerController extends Controller
         $provider = User::where('referral_code', $code)
             ->orWhere('id', $code)
             ->firstOrFail();
+
+        // El Básico NO revende ningún plan de panel
+        if (!$provider->canResellPanels()) {
+            abort(403, 'Este panel no tiene habilitada la reventa de funciones de panel.');
+        }
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -691,6 +732,7 @@ class ResellerController extends Controller
         $referralCode = 'RES-' . strtoupper(Str::random(6));
         $antiPhishingCode = 'SEC-' . strtoupper(Str::random(8));
 
+        // Se registra como PENDIENTE de activación con crédito por el Administrador / Proveedor
         $reseller = new User([
             'name' => $request->name,
             'email' => $request->email,
@@ -699,7 +741,7 @@ class ResellerController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'reseller',
             'parent_id' => $provider->id,
-            'status' => 'active',
+            'status' => 'pending', // PENDIENTE DE ACTIVACIÓN
             'reseller_plan' => $tier === 'pro' ? 'mayorista' : 'standard',
             'balance' => 0.00,
             'referral_code' => $referralCode,
@@ -707,9 +749,9 @@ class ResellerController extends Controller
             'panel_type' => 'cloned',
             'panel_tier' => $tier,
             'panel_monthly_fee' => 15000.00,
-            'panel_expires_at' => Carbon::now()->addDays(30),
-            'cloned_store_paid_to_admin' => true,
-            'cloned_store_paid_by_reseller' => true,
+            'panel_expires_at' => null, // Se fija al activar con crédito
+            'cloned_store_paid_to_admin' => false,
+            'cloned_store_paid_by_reseller' => false,
             'reseller_commission_pct' => 40.00,
             'parent_commission_pct' => 25.00,
             'brand_name' => $brandName,
@@ -722,12 +764,12 @@ class ResellerController extends Controller
 
         AuditLog::create([
             'user_id' => $provider->id,
-            'action' => 'affiliate_register_reseller',
-            'description' => "Nuevo revendedor afiliado {$reseller->name} ({$reseller->email}) registrado con {$provider->name} como Panel " . strtoupper($tier) . " ({$brandName}).",
+            'action' => 'affiliate_request_reseller',
+            'description' => "Nueva solicitud de panel {$reseller->name} ({$reseller->email}) para {$provider->name} (Plan " . strtoupper($tier) . "). Pendiente de activación con crédito.",
             'ip_address' => $request->ip(),
         ]);
 
-        return redirect()->route('login')->with('success', "¡Registro completado con éxito! Tu panel " . strtoupper($tier) . " ({$brandName}) ha sido creado bajo la red de {$provider->name}. Ya puedes ingresar con tu correo y contraseña.");
+        return redirect()->route('login')->with('info', "¡Solicitud de Panel " . strtoupper($tier) . " ({$brandName}) enviada con éxito! Tu registro ha quedado guardado y PENDIENTE DE ACTIVACIÓN. El Administrador o Proveedor ({$provider->name}) activará tu panel mediante créditos de plataforma.");
     }
 
     /**

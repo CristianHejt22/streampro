@@ -203,6 +203,19 @@ class User extends Authenticatable
         return ($this->panel_tier ?? 'pro') === 'pro';
     }
 
+    /**
+     * Determina si el usuario puede revender acceso a las funciones de panel a sub-revendedores.
+     * "El basico no revende ningun plan, el pro tiene acceso a la posibilidad de revender."
+     */
+    public function canResellPanels(): bool
+    {
+        if ($this->isAdmin() || $this->isSuperReseller()) {
+            return true;
+        }
+
+        return $this->isPanelPro();
+    }
+
     public function maxServicesAllowed(): int
     {
         return $this->isPanelBasic() ? 10 : 999999;
@@ -210,6 +223,9 @@ class User extends Authenticatable
 
     public function hasCredits(string $tier, int $qty = 1): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
         if ($tier === 'basic') {
             return (int)$this->credits_basic >= $qty;
         }

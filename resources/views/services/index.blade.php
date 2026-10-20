@@ -78,7 +78,162 @@
     </div>
     @endif
 
-    <!-- Top Action Bar -->
+    <!-- ======================================================== -->
+    <!-- SERVICIO DE REVENTA DE ACCESO A PANELES (SOLO REVENDEDORES) -->
+    <!-- ======================================================== -->
+    @if(Auth::user()->isReseller() && Auth::user()->isPanelBasic())
+    <!-- Candado informativo para Panel BÁSICO -->
+    <div class="rounded-3xl bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 border border-amber-500/30 p-6 shadow-xl space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-xl shrink-0">
+                    <i data-lucide="lock" class="w-6 h-6"></i>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <h4 class="text-base font-black text-white">Reventa de Acceso a Funciones de Panel (Solo Revendedores)</h4>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                            BLOQUEADO EN BÁSICO
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 max-w-3xl leading-relaxed">
+                        Tu panel actual es <strong>BÁSICO (SPRO PLAY)</strong>. <strong>El básico no revende ningún plan</strong> de panel, su alcance es exclusivamente la venta de cuentas y pantallas de streaming generales a clientes finales.
+                    </p>
+                    <span class="text-[11px] text-amber-300 block font-semibold">
+                        💡 Para habilitar la posibilidad de revender funciones de panel a tus propios revendedores, actualiza tu panel a PRO.
+                    </span>
+                </div>
+            </div>
+            <a href="{{ route('dashboard') }}" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-purple-600/30 shrink-0">
+                <i data-lucide="crown" class="w-4 h-4"></i>
+                <span>Ascender a Panel PRO ($15k)</span>
+            </a>
+        </div>
+    </div>
+    @elseif(Auth::user()->canResellPanels())
+    <!-- Panel HABILITADO para revender funciones de panel a revendedores (PRO, Proveedor o Admin) -->
+    <div class="rounded-3xl bg-gradient-to-r from-[#141b2d] via-slate-900 to-[#141b2d] border-2 border-purple-500/40 p-6 sm:p-7 shadow-2xl space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-purple-600/30 shrink-0">
+                    <i data-lucide="network" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base sm:text-lg font-black text-white">Servicio de Reventa de Paneles a Revendedores</h3>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white uppercase tracking-wider font-mono">
+                            ✓ HABILITADO EN PRO
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Esto es para <strong>revender acceso a las funciones de panel</strong> a tus revendedores (no son cuentas generales). Las solicitudes se activan desde tu panel consumiendo 1 crédito según el plan adquirido.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Botones de Acción / Compartir Enlace -->
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <button type="button" onclick="navigator.clipboard.writeText('{{ route('affiliate.register', ['code' => Auth::user()->referral_code ?: Auth::id()]) }}'); alert('¡Enlace de invitación de revendedores copiado al portapapeles!');" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    <span>Copiar Enlace Afiliación</span>
+                </button>
+                <a href="https://wa.me/?text={{ urlencode('¡Hola! Súmate como revendedor a mi red de streaming y adquiere tu panel propio aquí: ' . route('affiliate.register', ['code' => Auth::user()->referral_code ?: Auth::id()])) }}" target="_blank" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                    <span>WhatsApp</span>
+                </a>
+                <a href="{{ route('resellers.index') }}" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30">
+                    <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                    <span>Ver Solicitudes de Panel</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 2 Planes Disponibles para Ofrecer a los Revendedores -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Plan 1: Panel Básico SPRO PLAY -->
+            <div class="p-5 rounded-2xl bg-[#0b0f19] border border-amber-500/30 flex flex-col justify-between space-y-4 hover:border-amber-500/60 transition-all shadow-lg">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                            📦 PLAN BÁSICO (10 SERVICIOS)
+                        </span>
+                        <span class="text-[11px] font-mono text-slate-400">Marca: <strong>SPRO PLAY</strong></span>
+                    </div>
+                    <div>
+                        <h4 class="text-base font-black text-white">Panel Revendedor Básico (SPRO PLAY)</h4>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            Acceso para vender hasta 10 servicios con catálogo sincronizado. 
+                            <strong class="text-amber-300 block mt-0.5">El básico no revende ningún plan</strong> (sólo comercializa cuentas generales a clientes finales).
+                        </p>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1.5">
+                        <div class="flex items-center justify-between text-slate-300">
+                            <span>Costo de Activación (Tus Créditos):</span>
+                            <span class="font-bold text-amber-400 font-mono">1 Crédito Básico ($2.500)</span>
+                        </div>
+                        <div class="flex items-center justify-between text-slate-400 text-[11px]">
+                            <span>PVP Sugerido al Revendedor:</span>
+                            <span class="text-white font-mono font-bold">$15.000 / 30 días</span>
+                        </div>
+                        <div class="flex items-center justify-between text-emerald-400 font-bold pt-1 border-t border-slate-800">
+                            <span>Margen Neto Estimado:</span>
+                            <span class="font-mono">+$12.500 por panel</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <span class="text-slate-400 text-[11px]">Activación desde panel</span>
+                    <a href="{{ route('resellers.index') }}" class="text-amber-400 hover:underline font-bold text-xs flex items-center gap-1">
+                        Activar con 1 Crédito Básico <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Plan 2: Panel PRO Ilimitado Marca Blanca -->
+            <div class="p-5 rounded-2xl bg-[#0b0f19] border border-purple-500/40 flex flex-col justify-between space-y-4 hover:border-purple-500/70 transition-all shadow-lg">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-mono shadow-sm">
+                            💎 PLAN PRO (ILIMITADO)
+                        </span>
+                        <span class="text-[11px] font-mono text-purple-300">100% Marca Blanca</span>
+                    </div>
+                    <div>
+                        <h4 class="text-base font-black text-white">Panel PRO Mayorista Ilimitado</h4>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            Servicios ilimitados, personalización de marca completa y 
+                            <strong class="text-purple-300 block mt-0.5">el PRO tiene acceso a la posibilidad de revender paneles a sus revendedores.</strong>
+                        </p>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-1.5">
+                        <div class="flex items-center justify-between text-slate-300">
+                            <span>Costo de Activación (Tus Créditos):</span>
+                            <span class="font-bold text-purple-400 font-mono">1 Crédito PRO ($4.000)</span>
+                        </div>
+                        <div class="flex items-center justify-between text-slate-400 text-[11px]">
+                            <span>PVP Sugerido al Revendedor:</span>
+                            <span class="text-white font-mono font-bold">$25.000 / 30 días</span>
+                        </div>
+                        <div class="flex items-center justify-between text-emerald-400 font-bold pt-1 border-t border-slate-800">
+                            <span>Margen Neto Estimado:</span>
+                            <span class="font-mono">+$21.000 por panel</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <span class="text-slate-400 text-[11px]">Activación desde panel</span>
+                    <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline font-bold text-xs flex items-center gap-1">
+                        Activar con 1 Crédito PRO <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Catálogo de Plataformas</h3>
