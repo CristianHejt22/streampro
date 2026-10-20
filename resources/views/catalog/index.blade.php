@@ -5,6 +5,10 @@
 @section('content')
 <div class="space-y-16 pb-16" x-data="{
     calcPack: 'combo_5_5',
+    openFaq: null,
+    toggleFaq(id) {
+        this.openFaq = this.openFaq === id ? null : id;
+    },
     get packDetails() {
         if (this.calcPack === 'basic_10') {
             return {
@@ -120,7 +124,17 @@
 
                 <a href="#cotizador-creditos" class="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-xs uppercase tracking-wider border border-slate-700 flex items-center gap-2 transition-all cursor-pointer">
                     <i data-lucide="calculator" class="w-4 h-4"></i>
-                    <span>Cotizar Créditos de Panel</span>
+                    <span>Cotizar Créditos</span>
+                </a>
+
+                <a href="#como-funciona" class="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs uppercase tracking-wider border border-slate-800 flex items-center gap-2 transition-all cursor-pointer">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-red-400"></i>
+                    <span>¿Cómo Funciona?</span>
+                </a>
+
+                <a href="#faq" class="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs uppercase tracking-wider border border-slate-800 flex items-center gap-2 transition-all cursor-pointer">
+                    <i data-lucide="message-square" class="w-4 h-4 text-amber-400"></i>
+                    <span>FAQ</span>
                 </a>
 
                 <a href="{{ route('boveda.login') }}" class="px-6 py-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs uppercase tracking-wider border border-amber-500/30 flex items-center gap-2 transition-all cursor-pointer">
@@ -556,6 +570,302 @@
                     </div>
                     <h3 class="text-base font-bold text-white">Guía Smart TV & Anti-Hogar</h3>
                     <p class="text-xs text-slate-400">Tutorial interactivo dentro de tu Bóveda para vincular tu televisor sin bloqueos ni caídas por ubicación.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- SECCIÓN: CÓMO FUNCIONA EL ECOSISTEMA CSTREAME -->
+    <!-- ======================================================== -->
+    <section id="como-funciona" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
+        <div class="text-center max-w-3xl mx-auto space-y-3">
+            <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">Flujo de Negocio Paso a Paso</span>
+            <h2 class="text-3xl sm:text-4xl font-black text-white">¿Cómo Funciona el Ecosistema?</h2>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Un sistema automatizado y seguro diseñado para que mayoristas, proveedores y revendedores comiencen a operar y generar ingresos hoy mismo sin fricciones.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Paso 1 -->
+            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-red-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 font-mono font-black text-sm flex items-center justify-center border border-red-500/30">
+                            01
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                            Activación
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-white group-hover:text-red-400 transition-colors">
+                        1. Adquiere Tu Panel
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Elige tu <strong>Panel Básico (SPRO PLAY)</strong> de 10 servicios o el <strong>Panel PRO Ilimitado</strong> con Marca Blanca. Si eres revendedor, puedes actualizar a <strong>Panel Administrador ($15.000 / 30 días)</strong> para crear tu propia red de sub-revendedores.
+                    </p>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Entrega Inmediata
+                    </span>
+                </div>
+            </div>
+
+            <!-- Paso 2 -->
+            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-amber-500/30">
+                            02
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                            Saldo & PVP
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                        <i data-lucide="wallet" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
+                        2. Carga Saldo y Fija Margen
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Carga saldo en tu billetera con tu proveedor o administrador patrocinador. Define tus propios <strong>Precios de Venta al Público (PVP)</strong>. Cada venta deduce el costo mayorista y tu ganancia neta queda en tu bolsillo.
+                    </p>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <span class="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 font-bold">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Margen 100% Libre
+                    </span>
+                </div>
+            </div>
+
+            <!-- Paso 3 -->
+            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-sky-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-sky-500/30">
+                            03
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                            Bóveda
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                        <i data-lucide="fingerprint" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
+                        3. Entrega en Bóveda Cliente
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Tus clientes reciben su acceso privado a la <strong>Bóveda Cifrada</strong> con desbloqueo por <strong>Biometría o PIN de 4 dígitos</strong>. Sin saldo en tu billetera, el sistema protege las cuentas y no revela credenciales.
+                    </p>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <span class="text-[11px] font-mono text-sky-400 flex items-center gap-1.5 font-bold">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Cero Fugas & Anti-Phishing
+                    </span>
+                </div>
+            </div>
+
+            <!-- Paso 4 -->
+            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-purple-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 font-mono font-black text-sm flex items-center justify-center border border-purple-500/30">
+                            04
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                            Red & Comisión
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                        <i data-lucide="copy" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-white group-hover:text-purple-400 transition-colors">
+                        4. Clona y Gana 25% Pasivo
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        El proveedor o panel administrador clona su catálogo a sus revendedores en segundos. Cada vez que ellos vendan de tus servicios, <strong>se te acredita automáticamente el 25% de comisión neta</strong> en tu saldo.
+                    </p>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <span class="text-[11px] font-mono text-purple-400 flex items-center gap-1.5 font-bold">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Comisión Automática 25%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- SECCIÓN: PREGUNTAS FRECUENTES (FAQ) -->
+    <!-- ======================================================== -->
+    <section id="faq" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
+        <div class="text-center space-y-3">
+            <span class="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">Centro de Respuestas</span>
+            <h2 class="text-3xl sm:text-4xl font-black text-white">Preguntas Frecuentes (FAQ)</h2>
+            <p class="text-xs sm:text-sm text-slate-400">
+                Todo lo que necesitas saber sobre el funcionamiento de los paneles, billeteras, bóveda de clientes y comisiones.
+            </p>
+        </div>
+
+        <div class="space-y-3">
+            <!-- FAQ 1 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 1 ? 'border-red-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(1)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="help-circle" class="w-5 h-5 text-red-400 shrink-0"></i>
+                        ¿Puedo empezar a vender y trabajar hoy mismo?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 1 ? 'rotate-180 text-red-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 1" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        <strong>¡Sí, totalmente!</strong> El sistema cuenta con inventario real y perfiles precargados con PINs individuales (Netflix 4K UHD, Disney+ Estándar, Disney+ Premium VIP y Max Platino).
+                    </p>
+                    <p>
+                        Al registrarte o activar tu panel, sólo necesitas disponer de saldo en tu billetera para emitir licencias de inmediato a tus clientes. La entrega se realiza al segundo a través de la Bóveda Privada de Clientes.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 2 ? 'border-amber-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(2)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="crown" class="w-5 h-5 text-amber-400 shrink-0"></i>
+                        ¿Cómo funciona la compra del Panel Administrador ($15.000 / 30 días)?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        Cualquier revendedor puede evolucionar a <strong>Panel Administrador / Super Revendedor</strong> pagando $15.000 por 30 días. La compra se realiza con 1 solo clic utilizando el saldo de su billetera o reportando el comprobante de pago por WhatsApp a su patrocinador.
+                    </p>
+                    <p>
+                        Al ser Administrador Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 3 ? 'border-purple-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(3)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="package" class="w-5 h-5 text-purple-400 shrink-0"></i>
+                        ¿Qué diferencia hay entre el Panel Básico y el Panel PRO Ilimitado?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 3 ? 'rotate-180 text-purple-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        <strong>Panel Básico (10 Servicios):</strong> Diseñado para revendedores iniciales. Incluye hasta 10 servicios con la marca oficial <strong>SPRO PLAY</strong>. Los créditos cuestan $2.500 c/u (pack mín. 10 créditos = $25.000).
+                    </p>
+                    <p>
+                        <strong>Panel PRO (Ilimitado):</strong> Para proveedores o revendedores consolidados. Permite catálogo ilimitado, carga de servicios individuales propios y personalización <strong>100% Marca Blanca</strong> (logo, nombre comercial y colores propios). Los créditos cuestan $4.000 c/u (pack mín. 10 créditos = $40.000).
+                    </p>
+                    <p class="text-emerald-400 font-semibold">
+                        💡 También dispones del <strong>Pack Combo Dúo</strong>: 5 Créditos Básicos ($3.000 c/u) + 5 Créditos PRO ($5.000 c/u) por un total de $40.000 juntos.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 4 ? 'border-sky-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(4)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="fingerprint" class="w-5 h-5 text-sky-400 shrink-0"></i>
+                        ¿Cómo funciona la Bóveda de Cliente con PIN y Biometría?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 4 ? 'rotate-180 text-sky-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 4" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        Cada cliente final accede a su portal personal en <code class="text-sky-300 font-mono text-xs">/boveda/login</code> ingresando su número de WhatsApp.
+                    </p>
+                    <p>
+                        Para revelar contraseñas y pines, el cliente debe validar su identidad mediante <strong>Huella dactilar, Face ID o un PIN personal de 4 dígitos</strong>. Esto evita que terceros o capturas de pantalla comprometan las cuentas y reduce drásticamente las quejas por accesos no autorizados.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 5 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 5 ? 'border-emerald-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(5)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="clock" class="w-5 h-5 text-emerald-400 shrink-0"></i>
+                        ¿Cómo funcionan las licencias en consignación y el plazo de 48 horas?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 5 ? 'rotate-180 text-emerald-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 5" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        El revendedor puede emitir licencias de streaming en modalidad <strong>consignación</strong> por meses seleccionables (1, 2, 3 o 6 meses) para habilitar a su cliente al momento.
+                    </p>
+                    <p>
+                        La plataforma otorga una <strong>ventana estricta de 48 horas de gracia</strong>. Si la licencia o el costo mayorista no es liquidado antes del vencimiento del plazo, la cuenta se deshabilita automáticamente, protegiendo al proveedor y al revendedor de pérdidas por impagos.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 6 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 6 ? 'border-rose-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(6)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-rose-400 shrink-0"></i>
+                        ¿Por qué no se entregan cuentas si no hay saldo en billetera?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 6 ? 'rotate-180 text-rose-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 6" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        Por seguridad financiera y operativa: <strong>ninguna cuenta se entrega o revela sin el costo mayorista cubierto en la billetera</strong> o sin el pago asentado del proveedor.
+                    </p>
+                    <p>
+                        Esto garantiza que los inventarios nunca queden expuestos ni se originen deudas incobrables entre revendedores y proveedores.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ 7 -->
+            <div class="rounded-2xl border transition-all overflow-hidden"
+                 :class="openFaq === 7 ? 'border-teal-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                <button type="button" @click="toggleFaq(7)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                        <i data-lucide="message-square" class="w-5 h-5 text-teal-400 shrink-0"></i>
+                        ¿A qué número de WhatsApp van las consultas y renovaciones?
+                    </span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                       :class="openFaq === 7 ? 'rotate-180 text-teal-400' : ''"></i>
+                </button>
+                <div x-show="openFaq === 7" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <p>
+                        Cada panelista (proveedor o revendedor) configura su número de WhatsApp en la sección de Preferencias de su panel.
+                    </p>
+                    <p>
+                        En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
+                    </p>
                 </div>
             </div>
         </div>

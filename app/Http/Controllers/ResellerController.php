@@ -28,10 +28,13 @@ class ResellerController extends Controller
             $query->whereIn('role', ['reseller', 'super_reseller']);
         } elseif ($user->isSuperReseller()) {
             // El Proveedor ve únicamente a sus revendedores patrocinados/sub-paneles
-            $query->where('parent_id', $user->id);
+            $query->where('parent_id', $user->id)->where('role', 'reseller');
         } else {
             abort(403, 'Acceso denegado al módulo de revendedores.');
         }
+
+        // Estricto: NUNCA mostrar cuentas de Admin ni Staff en los paneles
+        $query->whereNotIn('role', ['admin', 'staff']);
 
         // Filtros rápidos del Super Admin / Proveedor
         if ($request->filled('tier') && in_array($request->tier, ['basic', 'pro'])) {
@@ -217,6 +220,10 @@ class ResellerController extends Controller
             abort(403, 'Solo el Super Administrador puede ver contraseñas de paneles.');
         }
 
+        if ($reseller->isAdmin() || $reseller->role === 'staff') {
+            abort(403, 'Acceso denegado. No se permite visualizar credenciales de administradores ni staff.');
+        }
+
         $password = $reseller->plain_password ?: 'Clave inicial encriptada / No registrada';
 
         AuditLog::create([
@@ -242,6 +249,10 @@ class ResellerController extends Controller
     {
         if (!auth()->user()->isAdmin()) {
             abort(403, 'Solo el Super Administrador puede modificar contraseñas de paneles.');
+        }
+
+        if ($reseller->isAdmin() || $reseller->role === 'staff') {
+            abort(403, 'Acceso denegado. No se permite modificar accesos de administradores ni staff desde este panel.');
         }
 
         $request->validate([
@@ -892,5 +903,75 @@ class ResellerController extends Controller
         ]);
 
         return back()->with('success', "¡Preferencia de WhatsApp para la Bóveda de {$reseller->name} actualizada con éxito!");
+    }
+
+    /**
+     * Permite a un Revendedor adquirir / ascender su panel a Panel Administrador / Proveedor (Super Reseller)
+     */
+    public function upgradeToSuperReseller(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isReseller() || $user->isAdmin()) {
+            return back()->with('info', 'Ya cuentas con las funciones de Administrador / Proveedor.');
+        }
+
+        if ($user->isSuperReseller()) {
+            return back()->with('info', 'Tu panel ya cuenta con el rol de Proveedor (Super Reseller).');
+        }
+
+        $cost = 15000.00;
+        if ($user->balance < $cost) {
+            return back()->with('error', "Saldo insuficiente en tu billetera (\${$user->balance} disponible). Se requieren \$" . number_format($cost, 2) . " para adquirir el Panel Administrador. Puedes recargar saldo transfiriendo a tu proveedor.");
+        }
+
+        $user->deductBalance($cost);
+        $user->role = 'super_reseller';
+        $user->panel_tier = 'pro'; // Al ascender a proveedor se le habilita PRO ilimitado
+        $user->panel_type = 'cloned';
+        $user->panel_expires_at = ($user->panel_expires_at && Carbon::parse($user->panel_expires_at)->isFuture())
+            ? Carbon::parse($user->panel_expires_at)->addDays(30)
+            : Carbon::now()->addDays(30);
+        $user->cloned_store_paid_by_reseller = true;
+        $user->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'upgrade_to_super_reseller',
+            'description' => "Revendedor {$user->name} adquirió Panel Administrador / Proveedor por \$" . number_format($cost, 2) . ". Descontado de su billetera.",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', '¡Felicitaciones! Has activado tu Panel Administrador / Proveedor. Ahora puedes dar de alta a tus revendedores, clonar tu catálogo y ganar el 25% de comisión.');
+    }
+
+    /**
+     * Super Admin cambia el rol de un usuario entre reseller y super_reseller con 1 clic
+     */
+    public function toggleRole(User $reseller)
+    {
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Solo el Super Administrador puede cambiar roles de paneles.');
+        }
+
+        if ($reseller->isAdmin() || $reseller->role === 'staff') {
+            abort(403, 'No se puede modificar el rol de un Administrador o Staff.');
+        }
+
+        $newRole = ($reseller->role === 'super_reseller') ? 'reseller' : 'super_reseller';
+        $reseller->role = $newRole;
+        if ($newRole === 'super_reseller') {
+            $reseller->panel_tier = 'pro';
+        }
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'toggle_reseller_role',
+            'description' => "Super Admin cambió el rol de {$reseller->name} a " . strtoupper($newRole) . ".",
+            'ip_address' => request()->ip(),
+        ]);
+
+        $roleLabel = ($newRole === 'super_reseller') ? 'Proveedor / Super Reseller' : 'Revendedor Estándar';
+        return back()->with('success', "Rol de {$reseller->name} actualizado a {$roleLabel}.");
     }
 }

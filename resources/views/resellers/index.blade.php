@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'Super Panel - Control de Paneles y Revendedores')
-@section('page_title', 'Super Panel de Revendedores & Paneles Clonados')
-@section('page_subtitle', 'Control maestro de contraseñas, licencias en consignación 48hs y clonación de paneles ($15.000 / 30 días)')
+@section('title', Auth::user()->isAdmin() ? 'Super Panel - Control Maestro' : 'Panel de Proveedor - Mis Revendedores')
+@section('page_title', Auth::user()->isAdmin() ? 'Super Panel de Revendedores & Paneles Clonados' : 'Gestión de Mis Revendedores & Tiendas Clonadas')
+@section('page_subtitle', Auth::user()->isAdmin() ? 'Control maestro de licencias, contraseñas y activación de paneles ($15.000 / 30 días)' : 'Administración de revendedores afiliados, activación con créditos y precios mayoristas')
 
 @section('content')
 <div class="space-y-6" x-data="{
@@ -349,8 +349,12 @@
     <!-- Header Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Control Maestro de Paneles Generados</h3>
-            <p class="text-xs text-gray-400">Como Super Panel puedes ver y cambiar cualquier contraseña, activar copias clonadas y ajustar comisiones.</p>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">
+                {{ Auth::user()->isAdmin() ? 'Control Maestro de Paneles Generados' : 'Gestión de Mis Revendedores Afiliados' }}
+            </h3>
+            <p class="text-xs text-gray-400">
+                {{ Auth::user()->isAdmin() ? 'Como Super Panel puedes gestionar accesos, activar copias clonadas y ajustar comisiones.' : 'Administra tus revendedores, ajusta precios de costo de proveedor y activa sus paneles.' }}
+            </p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -543,17 +547,28 @@
                         </td>
                         <td class="py-3 px-4 text-right">
                             <div class="flex items-center justify-end gap-1.5">
-                                <!-- Botón VER CLAVE (Super Admin) -->
+                                @if(Auth::user()->isAdmin())
+                                <!-- Botón VER CLAVE (Exclusivo Super Admin) -->
                                 <button @click="revealPassword({{ json_encode($res) }})" title="Ver Contraseña Actual del Panel" class="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
                                     <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                                     <span>Ver Clave</span>
                                 </button>
 
-                                <!-- Botón CAMBIAR CLAVE (Super Admin) -->
+                                <!-- Botón CAMBIAR CLAVE (Exclusivo Super Admin) -->
                                 <button @click="selectedReseller = {{ json_encode($res) }}; changePassModal = true;" title="Cambiar Contraseña del Panel" class="px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
                                     <i data-lucide="key" class="w-3.5 h-3.5"></i>
                                     <span>Cambiar</span>
                                 </button>
+
+                                <!-- Botón TOGGLE ROL (Revendedor <-> Super Reseller) -->
+                                <form method="POST" action="{{ route('resellers.toggle_role', $res) }}" class="inline">
+                                    @csrf
+                                    <button type="submit" onclick="return confirm('¿Cambiar el rol de este panel entre Revendedor y Proveedor / Super Reseller?')" class="px-2 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-xs flex items-center gap-1 cursor-pointer" title="Ascender a Proveedor o Cambiar Rol">
+                                        <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                                        <span>Rol</span>
+                                    </button>
+                                </form>
+                                @endif
 
                                 <form method="POST" action="{{ route('resellers.toggle', $res) }}" class="inline">
                                     @csrf
@@ -582,8 +597,9 @@
         @endif
     </div>
 
+    @if(Auth::user()->isAdmin())
     <!-- ========================================== -->
-    <!-- MODAL 1: VER CONTRASEÑA ACTUAL DEL PANEL -->
+    <!-- MODAL 1: VER CONTRASEÑA ACTUAL DEL PANEL (EXCLUSIVO SUPER ADMIN) -->
     <!-- ========================================== -->
     <div x-show="viewPassModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="viewPassModal = false">
         <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
@@ -655,6 +671,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <!-- ========================================== -->
     <!-- MODAL 3: CLONAR PANEL / TIENDA ($15.000 / 30 DÍAS) -->
@@ -836,8 +853,9 @@
         </div>
     </div>
 
+    @if(Auth::user()->isAdmin())
     <!-- ========================================== -->
-    <!-- MODAL 6: NUEVO REVENDEDOR / PANEL -->
+    <!-- MODAL 6: NUEVO REVENDEDOR / PANEL (SUPER ADMIN) -->
     <!-- ========================================== -->
     <div x-show="newResellerModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="newResellerModal = false">
         <div class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
@@ -914,6 +932,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <!-- ========================================== -->
     <!-- MODAL 9: COTIZADOR & CALCULADORA DE GANANCIAS -->
@@ -1015,6 +1034,7 @@
         </div>
     </div>
 
+    @if(Auth::user()->isAdmin())
     <!-- ========================================== -->
     <!-- MODAL 10: VENTA DE CRÉDITOS (SUPER ADMIN) -->
     <!-- ========================================== -->
@@ -1206,6 +1226,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <!-- ========================================== -->
     <!-- MODAL 12: ACTIVAR CON 1 CRÉDITO -->

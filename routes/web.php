@@ -163,6 +163,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/balance-transfers', [ResellerController::class, 'storeBalanceTransfer'])->name('resellers.balance_transfers.store');
     Route::post('/resellers/balance-transfers/{transfer}/approve', [ResellerController::class, 'approveBalanceTransfer'])->name('resellers.balance_transfers.approve');
     Route::post('/resellers/balance-transfers/{transfer}/reject', [ResellerController::class, 'rejectBalanceTransfer'])->name('resellers.balance_transfers.reject');
+    Route::post('/resellers/upgrade-admin-panel', [ResellerController::class, 'upgradeToSuperReseller'])->name('resellers.upgrade_admin_panel');
+    Route::post('/resellers/{reseller}/toggle-role', [ResellerController::class, 'toggleRole'])->name('resellers.toggle_role');
     Route::post('/admin/settings/whatsapp-support', [ResellerController::class, 'updateWhatsAppSupportSettings'])->name('admin.settings.whatsapp_support');
 
     // Módulo de Tesorería Multi-Usuario & Mini Nube de Comprobantes

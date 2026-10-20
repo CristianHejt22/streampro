@@ -80,6 +80,71 @@
         </div>
     </div>
 
+    @if(!$user->isSuperReseller())
+    <!-- Venta y Ascenso a Panel Administrador / Proveedor para Revendedores -->
+    <div class="p-6 rounded-3xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/40 border-2 border-purple-500/40 shadow-2xl space-y-4 relative overflow-hidden">
+        <div class="absolute -top-12 -right-12 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+            <div class="flex items-start gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-purple-600/30 text-2xl font-black shrink-0">
+                    <i data-lucide="crown" class="w-7 h-7"></i>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-mono">
+                            💎 ADQUIRIR PANEL ADMINISTRADOR
+                        </span>
+                        <span class="text-xs font-mono font-bold text-purple-300">$15.000 / 30 Días</span>
+                    </div>
+                    <h3 class="text-xl font-black text-white">¿Quieres Vender Paneles y Tener Tus Propios Revendedores?</h3>
+                    <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                        Conviértete en <strong>Proveedor / Administrador (Super Reseller)</strong>. Podrás afiliar revendedores con tu propio formulario, clonarles tu catálogo ajustando tus precios mayoristas de costo y ganar un <strong>25% de comisión neta automática</strong> por cada cuenta que vendan.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:items-end justify-center shrink-0 space-y-2">
+                <form method="POST" action="{{ route('resellers.upgrade_admin_panel') }}" class="w-full sm:w-auto">
+                    @csrf
+                    <button type="submit" onclick="return confirm('¿Confirmas adquirir tu Panel Administrador / Proveedor por $15.000 descontados de tu saldo de billetera?')" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-purple-600/30 transition-all cursor-pointer">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                        <span>Activar con Mi Saldo ($15.000)</span>
+                    </button>
+                </form>
+
+                <div class="flex items-center gap-2 text-xs">
+                    <button type="button" @click="rechargeModal = true" class="text-sky-400 hover:underline font-bold cursor-pointer">
+                        Cargar Saldo para Activar
+                    </button>
+                    @if($user->parent && $user->parent->support_whatsapp)
+                    <span class="text-slate-600">•</span>
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->parent->support_whatsapp) }}?text=Hola,%20quiero%20adquirir%20mi%20Panel%20Administrador%20/%20Proveedor%20para%20crear%20mis%20propios%20revendedores." target="_blank" class="text-emerald-400 hover:underline font-bold flex items-center gap-1">
+                        <i data-lucide="message-circle" class="w-3 h-3"></i>
+                        Pedir a mi Proveedor
+                    </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-purple-500/20 text-xs text-slate-300">
+            <div class="flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>Formulario público propio para registrar revendedores</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>Ajuste individual de tus costos mayoristas</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>25% comisión acreditada de inmediato</span>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Módulo Proveedor: Sub-Revendedores, Tiendas Clonadas y Ganancias 25% -->
     @if($user->isSuperReseller())
     <div class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/20 to-gray-900 border border-purple-500/40 shadow-xl space-y-4">

@@ -36,6 +36,15 @@
                 </div>
             </a>
 
+            <!-- Center Nav Links -->
+            <nav class="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-400">
+                <a href="{{ route('catalog.index') }}#planes-paneles" class="hover:text-white transition-colors">Planes</a>
+                <a href="{{ route('catalog.index') }}#cotizador-creditos" class="hover:text-white transition-colors">Cotizador</a>
+                <a href="{{ route('catalog.index') }}#catalogo" class="hover:text-white transition-colors">Catálogo</a>
+                <a href="{{ route('catalog.index') }}#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                <a href="{{ route('catalog.index') }}#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+            </nav>
+
             <!-- Right Actions -->
             <div class="flex items-center gap-3">
                 @if(isset($supportWhatsapp) && $supportWhatsapp)
