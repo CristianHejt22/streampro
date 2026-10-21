@@ -126,6 +126,9 @@
                     <p class="text-xs text-gray-400 leading-relaxed">
                         Cada panelista (proveedor o revendedor) configura su número de WhatsApp. En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
                     </p>
+                    <p class="text-[11px] text-teal-300 font-semibold">
+                        Las renovaciones también se envían por su Bóveda y le llegan a su panel de ventas; desde allí, el mismo revendedor podrá solicitar revisión a su proveedor con un solo clic.
+                    </p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2" x-data="{ currentPref: '{{ old('whatsapp_support_preference', $user->whatsapp_support_preference ?? 'reseller') }}' }">

@@ -71,12 +71,19 @@ class SaleController extends Controller
         $sales = $query->latest()->paginate(15)->withQueryString();
 
         // Solicitudes de Renovación pendientes enviadas desde la Bóveda de Clientes
-        $renewalQuery = RenewalRequest::with(['sale.customer', 'sale.service', 'sale.plan', 'customer', 'service', 'plan', 'user'])
+        $renewalQuery = RenewalRequest::with(['sale.customer', 'sale.service', 'sale.plan', 'customer', 'service', 'plan', 'user', 'provider'])
             ->where('status', 'pending');
         if ($user->isReseller()) {
             if ($user->isSuperReseller()) {
                 $renewalQuery->where(function($q) use ($user) {
                     $q->where('user_id', $user->id)
+                      ->orWhere('provider_id', $user->id)
+                      ->orWhere(function($qu) use ($user) {
+                          $qu->where('review_requested_to_provider', true)
+                             ->whereHas('user', function($quu) use ($user) {
+                                 $quu->where('parent_id', $user->id);
+                             });
+                      })
                       ->orWhereHas('user', function($qu) use ($user) {
                           $qu->where('parent_id', $user->id)
                              ->where('whatsapp_support_preference', 'provider');
@@ -570,7 +577,11 @@ class SaleController extends Controller
     {
         $user = Auth::user();
         $isOwner = $renewalRequest->user_id === $user->id;
-        $isParentSponsor = $user->isSuperReseller() && $renewalRequest->user && $renewalRequest->user->parent_id === $user->id && $renewalRequest->user->whatsapp_support_preference === 'provider';
+        $isParentSponsor = ($user->isSuperReseller() || $user->isAdmin()) && (
+            ($renewalRequest->user && $renewalRequest->user->parent_id === $user->id) ||
+            $renewalRequest->provider_id === $user->id ||
+            ($renewalRequest->user && $renewalRequest->user->whatsapp_support_preference === 'provider')
+        );
         if ($user->isReseller() && !$isOwner && !$isParentSponsor) {
             abort(403, 'No tienes permiso para aprobar esta solicitud.');
         }
@@ -648,7 +659,11 @@ class SaleController extends Controller
     {
         $user = Auth::user();
         $isOwner = $renewalRequest->user_id === $user->id;
-        $isParentSponsor = $user->isSuperReseller() && $renewalRequest->user && $renewalRequest->user->parent_id === $user->id && $renewalRequest->user->whatsapp_support_preference === 'provider';
+        $isParentSponsor = ($user->isSuperReseller() || $user->isAdmin()) && (
+            ($renewalRequest->user && $renewalRequest->user->parent_id === $user->id) ||
+            $renewalRequest->provider_id === $user->id ||
+            ($renewalRequest->user && $renewalRequest->user->whatsapp_support_preference === 'provider')
+        );
         if ($user->isReseller() && !$isOwner && !$isParentSponsor) {
             abort(403);
         }
@@ -669,5 +684,53 @@ class SaleController extends Controller
         ]);
 
         return back()->with('info', "La solicitud de renovación ha sido rechazada. Motivo: {$reason}");
+    }
+
+    /**
+     * El revendedor solicita revisión de la renovación a su proveedor patrocinador
+     */
+    public function requestProviderReview(Request $request, RenewalRequest $renewalRequest)
+    {
+        $user = Auth::user();
+        if ($renewalRequest->user_id !== $user->id && !$user->isAdmin()) {
+            abort(403, 'No tienes permiso para solicitar revisión sobre esta solicitud.');
+        }
+
+        if (!$user->parent_id && !$user->parent) {
+            return back()->withErrors(['error' => 'Tu panel no tiene un proveedor patrocinador vinculado para solicitarle revisión.']);
+        }
+
+        $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $provider = $user->parent;
+        $notes = $request->input('notes') ?: 'Solicitud de revisión para renovación de cuenta elevada al proveedor';
+
+        $renewalRequest->update([
+            'review_requested_to_provider' => true,
+            'provider_id' => $provider->id,
+            'provider_review_notes' => $notes,
+            'provider_review_requested_at' => Carbon::now(),
+        ]);
+
+        $custName = optional($renewalRequest->customer)->name ?: (optional($renewalRequest->sale)->customer ? $renewalRequest->sale->customer->name : 'Cliente');
+        $srvName = optional($renewalRequest->service)->name ?: (optional($renewalRequest->sale)->service ? $renewalRequest->sale->service->name : 'Streaming');
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'request_provider_renewal_review',
+            'description' => "El revendedor {$user->name} solicitó revisión a su proveedor {$provider->name} para la renovación de {$custName} ({$srvName}). Notas: {$notes}",
+            'ip_address' => $request->ip(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $provider->id,
+            'action' => 'reseller_renewal_review_notice',
+            'description' => "Tu revendedor {$user->name} solicitó tu revisión para renovar la cuenta del cliente {$custName} ({$srvName}) por {$renewalRequest->months_duration} mes(es). Notas: {$notes}",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "¡Revisión solicitada a tu proveedor patrocinador ({$provider->name}) exitosamente! Se generó el registro y aviso para su atención.");
     }
 }

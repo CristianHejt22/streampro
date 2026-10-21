@@ -100,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/sales/{sale}/renew', [SaleController::class, 'renew'])->name('sales.renew');
     Route::post('/sales/renewal-requests/{renewalRequest}/approve', [SaleController::class, 'approveRenewalRequest'])->name('sales.renewals.approve');
     Route::post('/sales/renewal-requests/{renewalRequest}/reject', [SaleController::class, 'rejectRenewalRequest'])->name('sales.renewals.reject');
+    Route::post('/sales/renewal-requests/{renewalRequest}/request-provider-review', [SaleController::class, 'requestProviderReview'])->name('sales.renewals.request_provider_review');
     Route::post('/sales/{sale}/pay-consignment', [SaleController::class, 'payConsignment'])->name('sales.pay_consignment');
     Route::post('/sales/{sale}/warranty', [SaleController::class, 'replaceWarranty'])->name('sales.warranty');
     Route::post('/sales/{sale}/reminder-sent', [SaleController::class, 'markReminderSent'])->name('sales.reminder_sent');

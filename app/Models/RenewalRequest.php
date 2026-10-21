@@ -22,12 +22,19 @@ class RenewalRequest extends Model
         'customer_notes',
         'admin_notes',
         'status', // pending, approved, rejected
+        'review_requested_to_provider',
+        'provider_id',
+        'provider_review_notes',
+        'provider_review_requested_at',
+        'provider_response_notes',
         'processed_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'months_duration' => 'integer',
+        'review_requested_to_provider' => 'boolean',
+        'provider_review_requested_at' => 'datetime',
         'processed_at' => 'datetime',
     ];
 
@@ -46,6 +53,11 @@ class RenewalRequest extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function provider()
+    {
+        return $this->belongsTo(User::class, 'provider_id');
+    }
+
     public function service()
     {
         return $this->belongsTo(Service::class);
@@ -59,6 +71,11 @@ class RenewalRequest extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function isReviewRequestedToProvider(): bool
+    {
+        return (bool) $this->review_requested_to_provider;
     }
 
     public function isApproved(): bool

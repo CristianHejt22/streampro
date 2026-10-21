@@ -871,13 +871,10 @@
                 </button>
                 <div x-show="openFaq === 7" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        Cada panelista (proveedor o revendedor) configura su número de WhatsApp en la sección de Preferencias de su panel.
-                    </p>
-                    <p>
-                        En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
+                        Cada panelista (proveedor o revendedor) configura su número de WhatsApp en la sección de Preferencias de su panel. En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
                     </p>
                     <p class="text-teal-300 font-semibold pt-1 border-t border-slate-800/80">
-                        📱 El revendedor deberá solicitarlo desde su panel de revendedor (el mismo queda registrado con mensajes al revendedor o proveedor).
+                        📱 Todo el proceso también se gestiona por la Bóveda del Cliente y le llega directamente a su panel. El mismo revendedor deberá solicitar revisión al proveedor desde su panel si requiere soporte o autorización directa, quedando registros y mensajes de auditoría entre ambos.
                     </p>
                 </div>
             </div>

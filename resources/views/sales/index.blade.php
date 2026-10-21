@@ -10,6 +10,8 @@
     viewCredsModal: false,
     renewModal: false,
     warrantyModal: false,
+    providerReviewModal: false,
+    selectedRenewal: null,
     selectedSale: null,
     showPassword: false,
     copyFeedback: false,
@@ -119,7 +121,7 @@
                             {{ $pendingRenewals->count() }} Pendiente(s)
                         </span>
                     </h3>
-                    <p class="text-xs text-gray-400">Solicitudes enviadas directamente por clientes para extender vigencia de cuentas</p>
+                    <p class="text-xs text-gray-400">Solicitudes enviadas directamente por clientes desde su Bóveda. Llegan a tu panel y puedes gestionarlas directamente o solicitar revisión a tu proveedor.</p>
                 </div>
             </div>
         </div>
@@ -132,7 +134,8 @@
                         <th class="px-4 py-3">Servicio / Cuenta</th>
                         <th class="px-4 py-3">Duración</th>
                         <th class="px-4 py-3">Monto & Método</th>
-                        <th class="px-4 py-3">Comprobante / Notas</th>
+                        <th class="px-4 py-3">Comprobante / Bóveda</th>
+                        <th class="px-4 py-3">Estado / Derivación</th>
                         <th class="px-4 py-3 text-right">Acciones</th>
                     </tr>
                 </thead>
@@ -142,6 +145,8 @@
                         $rSale = $req->sale;
                         $rSrv = $req->service ?: ($rSale ? $rSale->service : null);
                         $rCustomer = $req->customer ?: ($rSale ? $rSale->customer : null);
+                        $isOwner = $req->user_id === Auth::id();
+                        $isProviderViewing = (Auth::user()->isSuperReseller() || Auth::user()->isAdmin()) && !$isOwner;
                     @endphp
                     <tr class="hover:bg-gray-800/40 transition-colors">
                         <td class="px-4 py-3 font-semibold text-white">
@@ -152,6 +157,9 @@
                                 <div>
                                     <div class="font-bold">{{ $rCustomer ? $rCustomer->name : 'Cliente' }}</div>
                                     <div class="text-[10px] text-gray-400 font-mono">{{ $rCustomer ? $rCustomer->phone : '' }}</div>
+                                    @if($isProviderViewing && $req->user)
+                                    <div class="text-[10px] text-amber-300 font-mono mt-0.5">Revendedor: {{ $req->user->name }}</div>
+                                    @endif
                                 </div>
                             </div>
                         </td>
@@ -181,8 +189,59 @@
                             <p class="text-[11px] text-gray-300 truncate" title="{{ $req->customer_notes }}">"{{ $req->customer_notes }}"</p>
                             @endif
                         </td>
+                        <td class="px-4 py-3">
+                            @if($req->review_requested_to_provider)
+                                @if($isOwner)
+                                    <div class="space-y-1">
+                                        <span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold inline-flex items-center gap-1">
+                                            <i data-lucide="clock" class="w-3 h-3"></i>
+                                            <span>En Revisión con Proveedor</span>
+                                        </span>
+                                        @if($req->provider)
+                                            <div class="text-[10px] text-gray-400">Proveedor: <strong class="text-amber-200">{{ $req->provider->name }}</strong></div>
+                                        @endif
+                                        @if($req->provider_review_notes)
+                                            <div class="text-[10px] text-gray-400 italic truncate max-w-[180px]" title="{{ $req->provider_review_notes }}">"{{ $req->provider_review_notes }}"</div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="space-y-1">
+                                        <span class="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold inline-flex items-center gap-1">
+                                            <i data-lucide="bell" class="w-3 h-3"></i>
+                                            <span>Revisión Solicitada</span>
+                                        </span>
+                                        <div class="text-[10px] text-gray-400">Revendedor: <strong class="text-cyan-200">{{ optional($req->user)->name }}</strong></div>
+                                        @if($req->provider_review_notes)
+                                            <div class="text-[10px] text-gray-300 italic truncate max-w-[200px]" title="{{ $req->provider_review_notes }}">"{{ $req->provider_review_notes }}"</div>
+                                        @endif
+                                    </div>
+                                @endif
+                            @else
+                                <span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold inline-flex items-center gap-1">
+                                    <i data-lucide="inbox" class="w-3 h-3"></i>
+                                    <span>Recibido en tu Panel</span>
+                                </span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-1.5">
+                            <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                <!-- Botón Solicitar Revisión al Proveedor (Si es revendedor patrocinado) -->
+                                @if($isOwner && (Auth::user()->parent_id || Auth::user()->parent) && !$req->review_requested_to_provider)
+                                <button type="button" 
+                                    @click="selectedRenewal = {
+                                        id: {{ $req->id }},
+                                        customer: '{{ addslashes($rCustomer ? $rCustomer->name : 'Cliente') }}',
+                                        service: '{{ addslashes($rSrv ? $rSrv->name : 'Streaming') }}',
+                                        amount: '{{ number_format($req->amount, 2) }}',
+                                        provider_name: '{{ addslashes(Auth::user()->parent ? Auth::user()->parent->name : 'Proveedor Patrocinador') }}'
+                                    }; providerReviewModal = true;"
+                                    class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs flex items-center gap-1 border border-amber-500/30 transition cursor-pointer" 
+                                    title="Solicitar revisión y soporte a mi proveedor patrocinador">
+                                    <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                                    <span class="hidden md:inline">Solicitar al Proveedor</span>
+                                </button>
+                                @endif
+
                                 <form method="POST" action="{{ route('sales.renewals.approve', $req) }}" onsubmit="return confirm('¿Aprobar y extender la cuenta por {{ $req->months_duration }} mes(es)?');">
                                     @csrf
                                     <button type="submit" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow cursor-pointer" title="Aprobar y extender vigencia">
@@ -724,6 +783,55 @@
                     <button type="button" @click="warrantyModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
                     <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30">
                         Reemplazar y Asignar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 5: SOLICITAR REVISIÓN AL PROVEEDOR PATROCINADOR -->
+    <!-- ======================================================== -->
+    <div x-show="providerReviewModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div @click.away="providerReviewModal = false" class="w-full max-w-md bg-[#111827] border border-amber-500/30 rounded-3xl shadow-2xl p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                    <i data-lucide="share-2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">Solicitar Revisión al Proveedor</h3>
+                    <p class="text-xs text-gray-400">Elevar renovación de Bóveda para revisión y soporte</p>
+                </div>
+            </div>
+
+            <form :action="'/sales/renewal-requests/' + selectedRenewal?.id + '/request-provider-review'" method="POST" class="space-y-4">
+                @csrf
+                <div class="p-4 rounded-xl bg-[#0b0f19] border border-gray-800 space-y-1.5 text-xs">
+                    <div class="text-gray-400">Cliente: <strong class="text-white" x-text="selectedRenewal?.customer"></strong></div>
+                    <div class="text-gray-400">Servicio: <strong class="text-cyan-400" x-text="selectedRenewal?.service"></strong></div>
+                    <div class="text-gray-400">Monto informado: <strong class="text-emerald-400 font-mono" x-text="'$' + selectedRenewal?.amount"></strong></div>
+                    <div class="text-gray-400 pt-1 border-t border-gray-800">
+                        Proveedor Patrocinador: <strong class="text-amber-300" x-text="selectedRenewal?.provider_name"></strong>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
+                        Mensaje / Observaciones para tu Proveedor
+                    </label>
+                    <textarea name="notes" rows="3" placeholder="Ej: Hola, el cliente envió comprobante pero solicito tu revisión o acreditación directa..." class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:border-amber-500 focus:outline-none"></textarea>
+                    <span class="text-[11px] text-gray-500 mt-1 block">El proveedor recibirá aviso en su panel y podrá revisar y aprobar la extensión.</span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-amber-300 text-[11px] leading-relaxed">
+                    Al solicitar revisión, la renovación aparecerá en el panel de tu proveedor con registro de auditoría mutuo y el mensaje indicado.
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+                    <button type="button" @click="providerReviewModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center gap-1.5">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Enviar Solicitud al Proveedor</span>
                     </button>
                 </div>
             </form>
