@@ -12,6 +12,22 @@
     selectedAccount: null,
     totalProfiles: 5,
     showPasswords: {},
+    editForm: {
+        id: null,
+        service_id: '',
+        service_name: '',
+        supplier_id: '',
+        account_email: '',
+        account_password: '',
+        recovery_email: '',
+        supplier_cost: 0,
+        supplier_expiration_date: '',
+        status: 'active',
+        notes: '',
+        sync_clients: true,
+        showPassword: false,
+        profiles: []
+    },
     togglePassword(id) {
         this.showPasswords[id] = !this.showPasswords[id];
     },
@@ -22,6 +38,38 @@
     openPasswordModal(acc) {
         this.selectedAccount = acc;
         this.privatePasswordModal = true;
+    },
+    openEditModal(acc) {
+        this.selectedAccount = acc;
+        this.editForm = {
+            id: acc.id,
+            service_id: acc.service_id || '',
+            service_name: acc.service ? acc.service.name : 'Streaming',
+            supplier_id: acc.supplier_id || '',
+            account_email: acc.account_email || '',
+            account_password: acc.account_password || '',
+            recovery_email: acc.recovery_email || '',
+            supplier_cost: acc.supplier_cost ? parseFloat(acc.supplier_cost) : 0,
+            supplier_expiration_date: acc.supplier_expiration_date ? (typeof acc.supplier_expiration_date === 'string' ? acc.supplier_expiration_date.substring(0, 10) : '') : '',
+            status: acc.status || 'active',
+            notes: acc.notes || '',
+            sync_clients: true,
+            showPassword: false,
+            profiles: acc.profiles ? JSON.parse(JSON.stringify(acc.profiles)) : []
+        };
+        this.editAccountModal = true;
+    },
+    addProfileToEditForm() {
+        let nextNum = this.editForm.profiles.length + 1;
+        let randPin = Math.floor(1000 + Math.random() * 9000).toString();
+        this.editForm.profiles.push({
+            id: 'new_' + Date.now(),
+            is_new: true,
+            profile_number: nextNum,
+            profile_name: 'Pantalla ' + nextNum,
+            pin: randPin,
+            status: 'available'
+        });
     }
 }">
 
@@ -233,8 +281,8 @@
                         <span>🔒 Clave Privada</span>
                     </button>
 
-                    <!-- Editar Cuenta Completa -->
-                    <button @click="selectedAccount = {{ json_encode($acc->load('profiles')) }}; editAccountModal = true;" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300" title="Editar cuenta">
+                    <!-- Editar Cuenta Completa / Lote de Streaming -->
+                    <button type="button" @click="openEditModal({{ json_encode($acc->load(['profiles', 'service', 'supplier'])) }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Editar Lote Completo">
                         <i data-lucide="edit-3" class="w-4 h-4"></i>
                     </button>
 
@@ -381,54 +429,182 @@
     </div>
 
     <!-- ======================================================== -->
-    <!-- MODAL: EDITAR CUENTA MAESTRA -->
+    <!-- MODAL: EDITAR LOTE DE STREAMING COMPLETO -->
     <!-- ======================================================== -->
     <div x-show="editAccountModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="editAccountModal = false">
-        <div class="bg-[#0f172a] p-6 rounded-3xl border border-slate-800 shadow-2xl max-w-lg w-full space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-                <h3 class="font-black text-white text-base">Editar Lote de Streaming</h3>
-                <button @click="editAccountModal = false" class="text-slate-400 hover:text-white">✕</button>
+        <div class="bg-[#0f172a] p-6 rounded-3xl border border-slate-700 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col space-y-4">
+            <!-- Header Modal -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center gap-2">
+                            <span>Editar Lote de Streaming</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 font-mono text-slate-300 border border-slate-700" x-text="'Lote #' + editForm.id"></span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Modifica credenciales máster, proveedor, fechas y perfiles/PINs individuales</p>
+                    </div>
+                </div>
+                <button type="button" @click="editAccountModal = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
 
-            <form x-bind:action="'/accounts/' + (selectedAccount ? selectedAccount.id : '')" method="POST" class="space-y-4">
+            <!-- Scrollable Form Body -->
+            <form :action="'/accounts/' + editForm.id" method="POST" class="space-y-4 overflow-y-auto pr-1 flex-1">
                 @csrf
                 @method('PUT')
 
-                <div class="grid grid-cols-2 gap-3">
+                <!-- Fila 1: Plataforma y Proveedor -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Correo Máster</label>
-                        <input type="text" name="account_email" x-bind:value="selectedAccount?.account_email" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Contraseña</label>
-                        <input type="text" name="account_password" x-bind:value="selectedAccount?.account_password" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
-                        <select name="status" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white outline-none">
-                            <option value="active" :selected="selectedAccount?.status === 'active'">Activa</option>
-                            <option value="in_review" :selected="selectedAccount?.status === 'in_review'">En Revisión</option>
-                            <option value="dropped" :selected="selectedAccount?.status === 'dropped'">Caída</option>
-                            <option value="expired" :selected="selectedAccount?.status === 'expired'">Vencida</option>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Plataforma / Servicio *</label>
+                        <select name="service_id" x-model="editForm.service_id" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none focus:border-red-500">
+                            @foreach($services as $srv)
+                            <option value="{{ $srv->id }}">{{ $srv->name }}</option>
+                            @endforeach
                         </select>
                     </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Costo Proveedor ($)</label>
-                        <input type="number" step="0.01" name="supplier_cost" x-bind:value="selectedAccount?.supplier_cost" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none">
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Proveedor / Mayorista</label>
+                        <select name="supplier_id" x-model="editForm.supplier_id" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none focus:border-red-500">
+                            <option value="">Mayorista Directo / Sin Asignar</option>
+                            @foreach($suppliers as $sup)
+                            <option value="{{ $sup->id }}">{{ $sup->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Notas Internas</label>
-                    <textarea name="notes" rows="2" x-bind:value="selectedAccount?.notes" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white outline-none"></textarea>
+                <!-- Fila 2: Correo Máster y Contraseña Máster -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Correo Máster *</label>
+                        <input type="text" name="account_email" x-model="editForm.account_email" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none focus:border-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1 flex items-center justify-between">
+                            <span>Contraseña Máster *</span>
+                            <button type="button" @click="editForm.showPassword = !editForm.showPassword" class="text-[10px] text-amber-400 hover:underline">
+                                <span x-text="editForm.showPassword ? 'Ocultar' : 'Mostrar'"></span>
+                            </button>
+                        </label>
+                        <div class="relative">
+                            <input :type="editForm.showPassword ? 'text' : 'password'" name="account_password" x-model="editForm.account_password" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none focus:border-red-500">
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                    <button type="button" @click="editAccountModal = false" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-lg">Guardar Cambios</button>
+                <!-- Fila 3: Correo de Recuperación y Estado -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Correo de Recuperación (Opcional)</label>
+                        <input type="text" name="recovery_email" x-model="editForm.recovery_email" placeholder="recov@gmail.com" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none focus:border-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Estado de la Cuenta *</label>
+                        <select name="status" x-model="editForm.status" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none focus:border-red-500">
+                            <option value="active">🟢 Activa (Operativa para venta)</option>
+                            <option value="in_review">🟡 En Revisión (Bloqueada temporalmente)</option>
+                            <option value="dropped">🔴 Caída (Requiere reposición)</option>
+                            <option value="expired">⚪ Vencida</option>
+                            <option value="paused">⏸️ Pausada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Fila 4: Costo Proveedor y Fecha de Vencimiento -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Costo Proveedor / Lote ($ ARS)</label>
+                        <input type="number" step="0.01" name="supplier_cost" x-model="editForm.supplier_cost" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none focus:border-red-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Fecha de Vencimiento Proveedor</label>
+                        <input type="date" name="supplier_expiration_date" x-model="editForm.supplier_expiration_date" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-white outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: PANTALLAS / PERFILES DEL LOTE -->
+                <div class="pt-3 border-t border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                <i data-lucide="tv" class="w-4 h-4"></i>
+                                <span>Pantallas & Perfiles del Lote</span>
+                            </h4>
+                            <p class="text-[11px] text-slate-400">Edita el nombre de pantalla, su PIN de 4 dígitos y su disponibilidad.</p>
+                        </div>
+
+                        <button type="button" @click="addProfileToEditForm()" class="px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>+ Agregar Pantalla</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <template x-for="(prof, idx) in editForm.profiles" :key="prof.id">
+                            <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                                <div class="sm:col-span-1 text-center font-mono font-bold text-xs text-slate-400">
+                                    <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center mx-auto" x-text="prof.profile_number || (idx + 1)"></span>
+                                </div>
+
+                                <div class="sm:col-span-5">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Nombre Perfil</label>
+                                    <input type="text" :name="'profiles[' + prof.id + '][name]'" x-model="prof.profile_name" required class="w-full p-2 rounded-xl bg-[#0b0f19] border border-slate-700 text-xs text-white outline-none focus:border-amber-500">
+                                    <input type="hidden" :name="'profiles[' + prof.id + '][is_new]'" :value="prof.is_new ? 1 : 0">
+                                </div>
+
+                                <div class="sm:col-span-3">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">PIN 4 Dígitos</label>
+                                    <input type="text" maxlength="8" :name="'profiles[' + prof.id + '][pin]'" x-model="prof.pin" required class="w-full p-2 rounded-xl bg-[#0b0f19] border border-slate-700 text-xs font-mono font-bold text-amber-400 outline-none focus:border-amber-500 text-center">
+                                </div>
+
+                                <div class="sm:col-span-3">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Estado</label>
+                                    <select :name="'profiles[' + prof.id + '][status]'" x-model="prof.status" class="w-full p-2 rounded-xl bg-[#0b0f19] border border-slate-700 text-xs font-semibold text-white outline-none focus:border-amber-500">
+                                        <option value="available">🟢 Libre</option>
+                                        <option value="assigned">🔵 Vendido</option>
+                                        <option value="in_review">🟡 En Revisión</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- SINCRONIZACIÓN CON BÓVEDA DE CLIENTES -->
+                <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" name="sync_clients" value="1" x-model="editForm.sync_clients" class="mt-0.5 rounded bg-slate-800 border-slate-700 text-red-600 focus:ring-0">
+                        <div class="text-xs space-y-0.5">
+                            <span class="font-bold text-white block">Sincronizar cambios en Bóveda de Clientes Activos</span>
+                            <span class="text-[11px] text-slate-400 block">Actualiza automáticamente el correo, la clave y los PINs en las compras activas de los clientes para que no tengan que pedir soporte.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Notas Internas -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Notas Internas del Lote</label>
+                    <textarea name="notes" rows="2" x-model="editForm.notes" placeholder="Detalles de compra, método de pago, datos del proveedor..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white outline-none focus:border-red-500"></textarea>
+                </div>
+
+                <!-- Footer Acciones -->
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800 shrink-0">
+                    <button type="button" @click="editAccountModal = false" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-lg shadow-red-600/30 flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Guardar Lote Completo</span>
+                    </button>
                 </div>
             </form>
         </div>

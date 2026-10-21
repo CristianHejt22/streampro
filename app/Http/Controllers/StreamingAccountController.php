@@ -167,51 +167,95 @@ class StreamingAccountController extends Controller
     public function update(Request $request, StreamingAccount $account)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+        if (!$user->isAdmin() && !$user->isSuperReseller() && $account->created_by !== $user->id && $account->created_by !== null) {
             return back()->withErrors(['error' => 'No tienes permiso para modificar una cuenta que no fue cargada por ti.']);
         }
 
         $validated = $request->validate([
+            'service_id' => 'nullable|exists:services,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'account_email' => 'required|string|max:255',
             'account_password' => 'required|string|max:255',
             'recovery_email' => 'nullable|string|max:255',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'supplier_cost' => 'nullable|numeric|min:0',
             'supplier_expiration_date' => 'nullable|date',
             'status' => 'required|in:active,in_review,dropped,expired,paused',
             'notes' => 'nullable|string',
+            'profiles' => 'nullable|array',
+            'sync_clients' => 'nullable',
         ]);
 
-        $account->update($validated);
+        $account->update([
+            'service_id' => $validated['service_id'] ?? $account->service_id,
+            'supplier_id' => $request->filled('supplier_id') ? $validated['supplier_id'] : $account->supplier_id,
+            'account_email' => $validated['account_email'],
+            'account_password' => $validated['account_password'],
+            'recovery_email' => $validated['recovery_email'] ?? $account->recovery_email,
+            'supplier_cost' => $request->filled('supplier_cost') ? $validated['supplier_cost'] : $account->supplier_cost,
+            'supplier_expiration_date' => $request->filled('supplier_expiration_date') ? $validated['supplier_expiration_date'] : $account->supplier_expiration_date,
+            'status' => $validated['status'],
+            'notes' => $validated['notes'] ?? $account->notes,
+        ]);
 
-        // Actualizar perfiles si se enviaron
-        if ($request->has('profiles')) {
+        // Actualizar o crear perfiles/pantallas si se enviaron
+        if ($request->has('profiles') && is_array($request->input('profiles'))) {
             foreach ($request->input('profiles') as $pId => $pData) {
-                $prof = AccountProfile::where('streaming_account_id', $account->id)->find($pId);
-                if ($prof) {
-                    $prof->update([
-                        'profile_name' => $pData['name'] ?? $prof->profile_name,
-                        'pin' => $pData['pin'] ?? $prof->pin,
-                        'status' => $pData['status'] ?? $prof->status,
+                if (str_starts_with((string)$pId, 'new_') || !empty($pData['is_new'])) {
+                    $nextNum = (int) $account->profiles()->max('profile_number') + 1;
+                    AccountProfile::create([
+                        'streaming_account_id' => $account->id,
+                        'profile_number' => $nextNum,
+                        'profile_name' => $pData['name'] ?? "Pantalla {$nextNum}",
+                        'pin' => !empty($pData['pin']) ? $pData['pin'] : str_pad((string)rand(1000, 9999), 4, '0', STR_PAD_LEFT),
+                        'status' => $pData['status'] ?? 'available',
                     ]);
+                    $account->increment('total_profiles');
+                } else {
+                    $prof = AccountProfile::where('streaming_account_id', $account->id)->find($pId);
+                    if ($prof) {
+                        $prof->update([
+                            'profile_name' => $pData['name'] ?? $prof->profile_name,
+                            'pin' => $pData['pin'] ?? $prof->pin,
+                            'status' => $pData['status'] ?? $prof->status,
+                        ]);
+
+                        // Sincronizar PIN y Nombre en venta activa si se seleccionó sincronizar
+                        if ($request->boolean('sync_clients') && $prof->activeSale) {
+                            $prof->activeSale->update([
+                                'profile_name_snapshot' => $prof->profile_name,
+                                'profile_pin_snapshot' => $prof->pin,
+                            ]);
+                        }
+                    }
                 }
+            }
+        }
+
+        // Sincronizar credenciales maestras (correo y contraseña) en todas las ventas activas del lote si se marcó el checkbox
+        if ($request->boolean('sync_clients')) {
+            $activeSales = $account->sales()->whereIn('status', ['active', 'expiring_soon'])->get();
+            foreach ($activeSales as $sale) {
+                $sale->update([
+                    'account_email_snapshot' => $account->account_email,
+                    'account_password_snapshot' => $account->account_password,
+                ]);
             }
         }
 
         AuditLog::create([
             'user_id' => Auth::id(),
             'action' => 'update_streaming_account',
-            'description' => "Cuenta maestra {$account->account_email} actualizada (Estado: {$account->status}).",
+            'description' => "Lote de streaming ID #{$account->id} ({$account->account_email} - " . ($account->service ? $account->service->name : 'Streaming') . ") actualizado exitosamente. Estado: {$account->status}.",
             'ip_address' => $request->ip(),
         ]);
 
-        return redirect()->route('accounts.index')->with('success', 'Cuenta actualizada correctamente.');
+        return redirect()->route('accounts.index')->with('success', "¡Lote de streaming #{$account->id} (" . ($account->service ? $account->service->name : 'Streaming') . ") y sus pantallas actualizados con éxito!");
     }
 
     public function toggleStatus(Request $request, StreamingAccount $account)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+        if (!$user->isAdmin() && !$user->isSuperReseller() && $account->created_by !== $user->id && $account->created_by !== null) {
             return back()->withErrors(['error' => 'No tienes permiso para modificar una cuenta que no fue cargada por ti.']);
         }
 
@@ -231,7 +275,7 @@ class StreamingAccountController extends Controller
     public function destroy(StreamingAccount $account)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && $account->created_by !== $user->id) {
+        if (!$user->isAdmin() && !$user->isSuperReseller() && $account->created_by !== $user->id && $account->created_by !== null) {
             return back()->withErrors(['error' => 'No tienes permiso para eliminar una cuenta que no fue cargada por ti.']);
         }
 
