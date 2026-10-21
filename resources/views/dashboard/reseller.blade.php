@@ -176,7 +176,8 @@
             </div>
             <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
                 <span class="text-[11px] text-gray-400 uppercase font-bold block">Tiendas Clonadas Activas</span>
-                <span class="text-xl font-black text-sky-400 mt-1 block">{{ $clonedPanelsCount }} tiendas ($15k/mes)</span>
+                <span class="text-xl font-black text-sky-400 mt-1 block">{{ $clonedPanelsCount }} tiendas</span>
+                <span class="text-[10px] text-emerald-400 font-mono font-bold block mt-0.5">+${{ number_format($clonedPanelsProviderRevenue ?? ($clonedPanelsCount * 7000), 0) }} / mes ($7k c/u)</span>
             </div>
             <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
                 <span class="text-[11px] text-gray-400 uppercase font-bold block">Comisiones Ganadas (25% Patrocinio)</span>

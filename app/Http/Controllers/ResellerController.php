@@ -280,64 +280,128 @@ class ResellerController extends Controller
 
     /**
      * Clona o Renueva un sub-panel / tienda para el revendedor.
-     * La clonación la paga el proveedor al Administrador General ($15.000 / 30 días),
-     * y el revendedor le abona a su proveedor de cuentas por clonar su catálogo.
+     * Costo oficial: $15.000 / 30 días.
+     * Reparto: $8.000 para el Administrador, $7.000 para el Proveedor.
      */
     public function clonePanel(Request $request, User $reseller)
     {
         $user = auth()->user();
-        $fee = 15000.00;
+        $totalFee = 15000.00;
+        $adminFee = 8000.00;
+        $providerFee = 7000.00;
 
-        // Si es Proveedor (Super Reseller), paga la clonación de la tienda al Administrador General
+        // Caso 1: Proveedor (Super Reseller) que clona o renueva la tienda para su revendedor afiliado
         if ($user->isSuperReseller()) {
-            if (!$user->hasBalance($fee)) {
-                return back()->withErrors([
-                    'error' => "Saldo insuficiente para abonar la clonación de la tienda al Administrador General. Requiere \${$fee} y tu saldo actual es de \${$user->balance}. Por favor recarga saldo antes de habilitar la tienda a tu revendedor."
-                ]);
+            if ($reseller->parent_id && $reseller->parent_id !== $user->id) {
+                abort(403, 'Solo puedes clonar o renovar la tienda de tus propios revendedores afiliados.');
             }
 
-            // Descontar $15.000 al proveedor
-            $user->deductBalance($fee);
+            // Opción A: Cobrar los $15.000 directamente del saldo de billetera del revendedor
+            if ($request->boolean('debit_from_reseller_balance')) {
+                if (!$reseller->hasBalance($totalFee)) {
+                    return back()->withErrors([
+                        'error' => "Saldo insuficiente en la billetera del revendedor ({$reseller->name}). Requiere \${$totalFee} y dispone de \${$reseller->balance}. Desmarca la casilla para abonar la cuota de plataforma (\$8.000) desde tu billetera de proveedor."
+                    ]);
+                }
+                $reseller->deductBalance($totalFee);
 
-            // Acreditar $15.000 al Administrador General
-            $admin = User::where('role', 'admin')->first();
-            if ($admin) {
-                $admin->addBalance($fee);
+                // $7.000 se acreditan a la billetera del proveedor
+                $user->addBalance($providerFee);
+
+                // $8.000 se acreditan al Administrador General
+                $admin = User::where('role', 'admin')->first();
+                if ($admin) {
+                    $admin->addBalance($adminFee);
+                }
+
+                $reseller->cloned_store_paid_by_reseller = true;
+            } else {
+                // Opción B: El proveedor abona la cuota de plataforma ($8.000) al Administrador General
+                if (!$user->hasBalance($adminFee)) {
+                    return back()->withErrors([
+                        'error' => "Saldo insuficiente para abonar la cuota de la tienda al Administrador General. Requiere \${$adminFee} (de los \$15.000 de la tienda) y tu saldo actual es de \${$user->balance}. Por favor recarga saldo antes de habilitar la tienda a tu revendedor."
+                    ]);
+                }
+
+                // Descontar $8.000 al proveedor
+                $user->deductBalance($adminFee);
+
+                // Acreditar $8.000 al Administrador General
+                $admin = User::where('role', 'admin')->first();
+                if ($admin) {
+                    $admin->addBalance($adminFee);
+                }
+
+                // Estado de cobro del revendedor a su proveedor ($15.000 cobrados externamente o pendiente)
+                if ($request->has('cloned_store_paid_by_reseller')) {
+                    $reseller->cloned_store_paid_by_reseller = $request->boolean('cloned_store_paid_by_reseller');
+                }
             }
 
             $reseller->parent_id = $user->id;
             $reseller->cloned_store_paid_to_admin = true;
         } elseif ($user->isAdmin()) {
+            // Caso 2: Super Admin
             $reseller->cloned_store_paid_to_admin = true;
+            $reseller->cloned_store_paid_by_reseller = true;
             if ($request->filled('parent_id')) {
                 $reseller->parent_id = $request->parent_id;
             }
+
+            // Si tiene proveedor patrocinador y se marcó acreditar la comisión del proveedor ($7.000)
+            if ($reseller->parent_id && $request->boolean('credit_provider_share')) {
+                $parent = User::find($reseller->parent_id);
+                if ($parent) {
+                    $parent->addBalance($providerFee);
+                }
+            }
+        } elseif ($user->id === $reseller->id) {
+            // Caso 3: El revendedor renueva su propia tienda clonada con su billetera ($15.000)
+            if (!$user->hasBalance($totalFee)) {
+                return back()->withErrors([
+                    'error' => "Saldo insuficiente en tu billetera para renovar tu Tienda Clonada. Se requieren \${$totalFee} y dispones de \${$user->balance}."
+                ]);
+            }
+
+            $user->deductBalance($totalFee);
+
+            if ($user->parent_id && $parent = User::find($user->parent_id)) {
+                $parent->addBalance($providerFee); // $7.000 para el proveedor
+                $admin = User::where('role', 'admin')->first();
+                if ($admin) {
+                    $admin->addBalance($adminFee); // $8.000 para el administrador
+                }
+            } else {
+                $admin = User::where('role', 'admin')->first();
+                if ($admin) {
+                    $admin->addBalance($totalFee);
+                }
+            }
+
+            $reseller->cloned_store_paid_to_admin = true;
+            $reseller->cloned_store_paid_by_reseller = true;
+        } else {
+            abort(403);
         }
 
         $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;
         $newExpiry = ($currentExpiry && $currentExpiry->isFuture()) ? $currentExpiry->addDays(30) : Carbon::now()->addDays(30);
 
         $reseller->panel_type = 'cloned';
-        $reseller->panel_monthly_fee = $fee;
+        $reseller->panel_monthly_fee = $totalFee;
         $reseller->panel_expires_at = $newExpiry;
         $reseller->status = 'active';
         $reseller->cloned_store_last_payment_date = Carbon::now();
-
-        // Estado de cobro del revendedor a su proveedor
-        if ($request->has('cloned_store_paid_by_reseller')) {
-            $reseller->cloned_store_paid_by_reseller = $request->boolean('cloned_store_paid_by_reseller');
-        }
-
         $reseller->save();
 
         AuditLog::create([
             'user_id' => $user->id,
-            'action' => 'clone_store_paid_to_admin',
-            'description' => "Clonación de tienda activada para {$reseller->name} por \$15.000 (30 días). Abonado al Administrador General por " . ($user->isSuperReseller() ? "Proveedor {$user->name}" : "Administrador") . ". Vence el {$newExpiry->format('d/m/Y')}.",
+            'action' => 'clone_store_paid',
+            'description' => "Tienda Clonada activada/renovada para {$reseller->name} ($15.000/mes: $8.000 Admin / $7.000 Proveedor). Vence el {$newExpiry->format('d/m/Y')}.",
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', "¡Tienda y catálogo clonados con éxito para {$reseller->name}! Suscripción activa hasta el {$newExpiry->format('d/m/Y')}. Cobro de \$15.000 liquidado al Administrador General.");
+        return back()->with('success', "¡Tienda y catálogo clonados con éxito para {$reseller->name}! Suscripción activa hasta el {$newExpiry->format('d/m/Y')} (\$15.000/mes: \$8.000 Admin / \$7.000 Proveedor).");
     }
 
     /**
@@ -994,24 +1058,43 @@ class ResellerController extends Controller
         }
 
         $cost = 15000.00;
+        $adminFee = 8000.00;
+        $providerFee = 7000.00;
+
         if ($user->balance < $cost) {
             return back()->with('error', "Saldo insuficiente en tu billetera (\${$user->balance} disponible). Se requieren \$" . number_format($cost, 2) . " para adquirir el Panel Administrador. Puedes recargar saldo transfiriendo a tu proveedor.");
         }
 
         $user->deductBalance($cost);
+
+        // Reparto oficial de Tienda / Panel: $8.000 para Administrador, $7.000 para Proveedor patrocinador
+        if ($user->parent_id && $parent = User::find($user->parent_id)) {
+            $parent->addBalance($providerFee);
+            $admin = User::where('role', 'admin')->first();
+            if ($admin) {
+                $admin->addBalance($adminFee);
+            }
+        } else {
+            $admin = User::where('role', 'admin')->first();
+            if ($admin) {
+                $admin->addBalance($cost);
+            }
+        }
+
         $user->role = 'super_reseller';
         $user->panel_tier = 'pro'; // Al ascender a proveedor se le habilita PRO ilimitado
         $user->panel_type = 'cloned';
         $user->panel_expires_at = ($user->panel_expires_at && Carbon::parse($user->panel_expires_at)->isFuture())
             ? Carbon::parse($user->panel_expires_at)->addDays(30)
             : Carbon::now()->addDays(30);
+        $user->cloned_store_paid_to_admin = true;
         $user->cloned_store_paid_by_reseller = true;
         $user->save();
 
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'upgrade_to_super_reseller',
-            'description' => "Revendedor {$user->name} adquirió Panel Administrador / Proveedor por \$" . number_format($cost, 2) . ". Descontado de su billetera.",
+            'description' => "Revendedor {$user->name} adquirió Panel Administrador / Proveedor por \$" . number_format($cost, 2) . " (\$8.000 Admin / \$7.000 Proveedor). Descontado de su billetera.",
             'ip_address' => $request->ip(),
         ]);
 

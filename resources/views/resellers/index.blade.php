@@ -2,7 +2,7 @@
 
 @section('title', Auth::user()->isAdmin() ? 'Super Panel - Control Maestro' : 'Panel de Proveedor - Mis Revendedores')
 @section('page_title', Auth::user()->isAdmin() ? 'Super Panel de Revendedores & Paneles Clonados' : 'Gestión de Mis Revendedores & Tiendas Clonadas')
-@section('page_subtitle', Auth::user()->isAdmin() ? 'Control maestro de licencias, contraseñas y activación de paneles ($15.000 / 30 días)' : 'Administración de revendedores afiliados, activación con créditos y precios mayoristas')
+@section('page_subtitle', Auth::user()->isAdmin() ? 'Control maestro de licencias, activación de paneles y tiendas clonadas ($15.000 / mes: $8.000 Admin | $7.000 Proveedor)' : 'Administración de revendedores afiliados, activación con créditos y precios mayoristas')
 
 @section('content')
 <div class="space-y-6" x-data="{
@@ -653,7 +653,7 @@
                             @elseif($isCloned)
                                 @if($isExpired)
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 block w-max">
-                                    🔴 Suspendido ($15.000 Vencido)
+                                    🔴 Suspendido (Tienda $15k Vencida)
                                 </span>
                                 @else
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 block w-max">
@@ -662,7 +662,7 @@
                                 @endif
 
                                 <div class="mt-1.5 text-[10px] font-mono space-y-0.5">
-                                    <span class="text-emerald-400 block font-bold">✓ Admin: Liquidado ($15k)</span>
+                                    <span class="text-emerald-400 block font-bold">✓ Tienda $15k ($8k Admin | $7k Prov)</span>
                                     <div class="flex items-center gap-1">
                                         @if($res->cloned_store_paid_by_reseller)
                                         <span class="text-emerald-400 font-bold">✓ Revendedor: Cobrado</span>
@@ -859,46 +859,82 @@
                 <h3 class="font-bold text-white text-base">Clonar / Renovar Tienda de Revendedor</h3>
             </div>
             <p class="text-xs text-gray-400 leading-relaxed">
-                La clonación de la tienda la paga el proveedor o revendedor patrocinador que da lugar a su revendedor. El abono es de <strong>$15.000 x 30 días</strong> al Administrador General por la plataforma, y el revendedor debe abonarle a su proveedor o revendedor patrocinador para clonar su catálogo.
+                Tiendas Clonadas: <strong>$15.000 / mes</strong> (30 días).<br>
+                Distribución oficial: <span class="text-purple-300 font-bold">$8.000 para el Administrador</span> y <span class="text-emerald-400 font-bold">$7.000 para el Proveedor</span>.
             </p>
 
             <form :action="'/resellers/' + selectedReseller?.id + '/clone-panel'" method="POST" class="space-y-4">
                 @csrf
 
                 @if(Auth::user()->isAdmin())
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor o Revendedor Patrocinador de Cuentas</label>
-                    <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
-                        <option value="">-- Sin Patrocinador (Super Panel Directo) --</option>
-                        @foreach($superResellersList as $sres)
-                        <option value="{{ $sres->id }}">{{ $sres->name }} ({{ $sres->brand_name }})</option>
-                        @endforeach
-                    </select>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor o Revendedor Patrocinador de Cuentas</label>
+                        <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="">-- Sin Patrocinador (Super Panel Directo) --</option>
+                            @foreach($superResellersList as $sres)
+                            <option value="{{ $sres->id }}">{{ $sres->name }} ({{ $sres->brand_name }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs space-y-1">
+                        <span class="font-bold block">Distribución del abono mensual ($15.000):</span>
+                        <p class="text-[11px] text-purple-200">
+                            • <strong>$8.000</strong> plataforma para el Administrador General.<br>
+                            • <strong>$7.000</strong> asignados al Proveedor patrocinador.
+                        </p>
+                    </div>
+
+                    <label class="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-xl bg-[#0b0f19] border border-gray-800">
+                        <input type="checkbox" name="credit_provider_share" value="1" checked class="rounded bg-gray-900 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4">
+                        <div class="text-xs">
+                            <span class="font-bold text-white block">Acreditar $7.000 en billetera del proveedor patrocinador</span>
+                            <span class="text-[11px] text-gray-400">Si se recibió el abono de $15.000, le acredita su ganancia correspondiente.</span>
+                        </div>
+                    </label>
                 </div>
                 @endif
 
                 @if(Auth::user()->isSuperReseller())
-                <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1">
-                    <div class="font-bold flex items-center gap-1.5">
-                        <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
-                        <span>Liquidación al Administrador General: $15.000</span>
+                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-2">
+                    <div class="font-bold flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
+                            <span>Cuota de Plataforma al Admin: $8.000</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
+                            +$7.000 ganancia Proveedor
+                        </span>
                     </div>
-                    <p class="text-[11px] text-amber-200/80">
-                        Tu saldo actual es de <strong>${{ number_format(Auth::user()->balance, 2) }}</strong>. Se debitarán $15.000 para habilitarle el catálogo por 30 días a tu revendedor.
+                    <p class="text-[11px] text-amber-200/90 leading-relaxed">
+                        Costo total de la Tienda Clonada: <strong>$15.000 / mes</strong>.<br>
+                        De tu billetera se debitarán únicamente <strong>$8.000</strong> para el Administrador General. Tu ganancia neta de <strong>$7.000</strong> queda en tu poder.
                     </p>
+                    <div class="text-[11px] text-gray-400 pt-1.5 border-t border-amber-500/20">
+                        Tu saldo actual en billetera: <strong>${{ number_format(Auth::user()->balance, 2) }}</strong>
+                    </div>
                 </div>
-                @endif
 
                 <!-- Cobro del Revendedor al Proveedor o Revendedor Patrocinador -->
-                <div class="p-3 rounded-2xl bg-[#0b0f19] border border-gray-800">
+                <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-gray-800 space-y-2.5">
                     <label class="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" name="cloned_store_paid_by_reseller" value="1" class="rounded bg-gray-900 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4">
+                        <input type="checkbox" name="cloned_store_paid_by_reseller" value="1" checked class="rounded bg-gray-900 border-gray-700 text-emerald-600 focus:ring-0 w-4 h-4">
                         <div class="text-xs">
-                            <span class="font-bold text-white block">El revendedor ya me abonó la clonación</span>
-                            <span class="text-[11px] text-gray-400">Registrar como cobrado al revendedor ($15.000)</span>
+                            <span class="font-bold text-white block">El revendedor ya me abonó la tienda ($15.000)</span>
+                            <span class="text-[11px] text-gray-400">Registrar como cobrado al revendedor ($7.000 ganancia para ti, $8.000 debitados para admin)</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-2.5 cursor-pointer pt-2 border-t border-gray-800">
+                        <input type="checkbox" name="debit_from_reseller_balance" value="1" class="rounded bg-gray-900 border-gray-700 text-sky-600 focus:ring-0 w-4 h-4">
+                        <div class="text-xs">
+                            <span class="font-medium text-slate-300 block">Cobrar $15.000 del saldo de billetera del revendedor</span>
+                            <span class="text-[10px] text-gray-400">Si el revendedor tiene saldo, se le descuentan $15.000 (te acredita $7.000 a ti y $8.000 al admin).</span>
                         </div>
                     </label>
                 </div>
+                @endif
 
                 <div class="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs">
                     ℹ️ Vigencia: <strong>+30 días</strong> desde la activación o desde el vencimiento actual.

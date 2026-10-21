@@ -125,15 +125,15 @@ class User extends Authenticatable
 
         // Si es un panel clonado o depende de un proveedor:
         if ($this->isPanelCloned() || $this->parent_id) {
-            // 1. Debe haberse recibido el pago del revendedor al proveedor por la tienda clonada
+            // 1. Debe haberse recibido el pago de la tienda clonada ($15.000 / mes)
             if (!$this->cloned_store_paid_by_reseller) {
-                $reason = 'No se ha recibido el pago del proveedor. El proveedor tiene pendiente de cobro la suscripción de esta tienda clonada.';
+                $reason = 'No se ha recibido el pago del proveedor. El proveedor tiene pendiente de cobro la suscripción de esta tienda clonada ($15.000 / mes).';
                 return false;
             }
 
-            // 2. El proveedor debe haber abonado al Administrador y no estar vencido ($15.000 / 30d)
+            // 2. El proveedor debe haber abonado la cuota al Administrador ($8.000 / 30d) y no estar vencido
             if (!$this->cloned_store_paid_to_admin || $this->isPanelExpired()) {
-                $reason = 'La suscripción del panel ante el Administrador General no está abonada o se encuentra vencida ($15.000 / 30 días).';
+                $reason = 'La suscripción de la tienda ante el Administrador General no está abonada o se encuentra vencida ($8.000 / 30 días al Admin).';
                 return false;
             }
         }

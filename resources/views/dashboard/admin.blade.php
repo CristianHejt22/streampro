@@ -74,7 +74,7 @@
             </div>
         </div>
 
-        <!-- Tiendas Clonadas Activas ($15.000 / 30d) -->
+        <!-- Tiendas Clonadas Activas ($15.000 / 30d: $8.000 Admin | $7.000 Proveedor) -->
         <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg relative overflow-hidden">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Tiendas Clonadas</span>
@@ -85,6 +85,9 @@
             <div class="mt-4 flex items-baseline gap-2">
                 <span class="text-2xl font-black text-white">{{ $clonedPanelsCount }}</span>
                 <span class="text-xs text-purple-400 font-mono font-bold">${{ number_format($clonedPanelsRevenue, 0) }} / mes</span>
+            </div>
+            <div class="mt-1 text-[11px] text-gray-400">
+                $8.000 Administrador / $7.000 Proveedor por tienda
             </div>
             <div class="mt-1 text-xs text-gray-400">
                 <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline">Ver paneles de revendedores &rarr;</a>

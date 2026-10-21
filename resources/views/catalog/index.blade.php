@@ -756,6 +756,9 @@
                         Cualquier revendedor puede evolucionar a <strong>Panel Administrador / Super Revendedor</strong> pagando $15.000 por 30 días. La compra se realiza con 1 solo clic utilizando el saldo de su billetera o reportando el comprobante de pago por WhatsApp a su patrocinador.
                     </p>
                     <p>
+                        <strong>Tiendas Clonadas ($15.000/mes):</strong> El abono mensual se distribuye en <strong>$8.000 para el administrador</strong> de la plataforma y <strong>$7.000 para el proveedor</strong> patrocinador.
+                    </p>
+                    <p>
                         Al ser Administrador Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red.
                     </p>
                 </div>

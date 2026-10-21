@@ -111,9 +111,10 @@ class DashboardController extends Controller
         // Solicitudes de renovación pendientes desde Bóveda de Clientes
         $pendingRenewalsCount = RenewalRequest::where('status', 'pending')->count();
 
-        // Paneles clonados activos y recaudación mensual
+        // Paneles clonados activos y recaudación mensual ($8.000 para el administrador de cada $15.000)
         $clonedPanelsCount = User::where('panel_type', 'cloned')->where('status', 'active')->count();
-        $clonedPanelsRevenue = $clonedPanelsCount * 15000.00;
+        $clonedPanelsRevenue = $clonedPanelsCount * 8000.00;
+        $clonedPanelsTotalMarket = $clonedPanelsCount * 15000.00;
 
         return view('dashboard.admin', compact(
             'totalSalesCount',
@@ -232,6 +233,7 @@ class DashboardController extends Controller
         // Estadísticas de Proveedor (si es Super Revendedor)
         $subResellersCount = User::where('parent_id', $user->id)->count();
         $clonedPanelsCount = User::where('parent_id', $user->id)->where('panel_type', 'cloned')->count();
+        $clonedPanelsProviderRevenue = $clonedPanelsCount * 7000.00; // $7.000 para el proveedor de cada tienda ($15k)
         $sponsorshipEarnings = (float) Sale::whereHas('user', function($q) use ($user) {
             $q->where('parent_id', $user->id);
         })->sum('parent_commission_amount');
@@ -252,6 +254,7 @@ class DashboardController extends Controller
             'myTransfers',
             'subResellersCount',
             'clonedPanelsCount',
+            'clonedPanelsProviderRevenue',
             'sponsorshipEarnings'
         ));
     }
