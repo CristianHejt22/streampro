@@ -61,6 +61,26 @@
                         <input type="email" name="customer_email" placeholder="tu.correo@gmail.com" class="w-full px-4 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white focus:outline-none focus:border-red-500">
                     </div>
                 </div>
+
+                <!-- PIN de Seguridad de la Bóveda (Ajuste en la Primera Compra) -->
+                <div class="p-4 rounded-2xl bg-[#0b0f19] border border-amber-500/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="key" class="w-4 h-4"></i>
+                            <span>PIN Personal de Bóveda (4 Dígitos) *</span>
+                        </label>
+                        <span class="text-[10px] font-mono text-amber-300 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                            Llave Privada
+                        </span>
+                    </div>
+
+                    <input type="password" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" name="boveda_pin" placeholder="Ej: 1234" required class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono text-center tracking-[0.5em] text-white focus:outline-none focus:border-amber-400 font-black">
+
+                    <p class="text-[11px] text-slate-300 leading-relaxed">
+                        🔒 <strong>¿Para qué sirve este PIN que debes recordar?</strong>
+                        Este PIN de 4 dígitos es tu <strong>clave privada de desbloqueo para la Bóveda Cifrada</strong>. Te servirá para consultar y revelar tus contraseñas, usuario y perfiles asignados en cualquier celular o PC, o cuando tu dispositivo no use biometría. <strong>Guárdalo y recuérdalo siempre</strong> para tus futuras consultas y renovaciones.
+                    </p>
+                </div>
             </div>
 
             <!-- Selección de Método de Pago -->

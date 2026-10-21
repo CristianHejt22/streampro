@@ -12,6 +12,7 @@
 @endphp
 
 <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8" x-data="{
+    changePinModal: false,
     reportModal: false,
     unlockModal: false,
     renewModal: false,
@@ -172,6 +173,11 @@
                     </button>
                 </template>
 
+                <button @click="changePinModal = true" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all cursor-pointer" title="Ajustar tu PIN personal de Bóveda">
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                    <span>{{ $customer->security_pin ? 'Mi PIN (4 Dígitos)' : 'Ajustar PIN de Bóveda' }}</span>
+                </button>
+
                 @if($whatsappSupportEnabled)
                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20soy%20{{ urlencode($customer->name) }}%20(N°%20Cliente:%20{{ $customer->customer_code }})%20y%20tengo%20una%20consulta%20sobre%20mi%20boveda%20de%20streaming." target="_blank" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
@@ -205,6 +211,29 @@
     <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2.5">
         <i data-lucide="check-circle" class="w-5 h-5 shrink-0"></i>
         <span class="font-semibold">{{ session('success') }}</span>
+    </div>
+    @endif
+
+    @if(empty($customer->security_pin))
+    <!-- Alerta: Ajustar PIN de Bóveda en Primera Compra -->
+    <div class="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/30 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <i data-lucide="key" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h4 class="text-sm font-black text-white">Ajusta tu PIN de Bóveda (4 Dígitos)</h4>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-black font-mono">SEGURIDAD</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                    Define tu PIN personal de 4 dígitos. Sirve para consultar y revelar tus contraseñas en cualquier celular o PC cuando no uses biometría. ¡Debes recordarlo siempre!
+                </p>
+            </div>
+        </div>
+        <button @click="changePinModal = true" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 shrink-0 cursor-pointer">
+            Establecer Mi PIN
+        </button>
     </div>
     @endif
 
@@ -825,6 +854,46 @@
                     Entendido, Cerrar Guía
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: AJUSTAR PIN PERSONAL DE BÓVEDA (4 DÍGITOS) -->
+    <!-- ========================================== -->
+    <div x-show="changePinModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md" @click.self="changePinModal = false">
+        <div class="bg-[#0f172a] p-6 sm:p-8 rounded-3xl border border-amber-500/40 shadow-2xl max-w-md w-full space-y-5 relative overflow-hidden">
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2.5 text-amber-400">
+                    <i data-lucide="key" class="w-6 h-6"></i>
+                    <h3 class="font-black text-white text-base">Ajustar PIN de Bóveda (4 Dígitos)</h3>
+                </div>
+                <button @click="changePinModal = false" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form method="POST" action="{{ route('boveda.update_pin') }}" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">PIN Personal de 4 Dígitos *</label>
+                    <input type="password" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" name="security_pin" value="{{ $customer->security_pin }}" required placeholder="••••" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-lg font-mono text-center tracking-[0.5em] text-white placeholder-slate-500 outline-none focus:border-amber-400 font-black">
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed space-y-1.5">
+                    <strong class="block text-white">🔒 ¿Para qué sirve este PIN que debes recordar?</strong>
+                    <p>
+                        Este PIN de 4 dígitos es tu <strong>clave privada de desbloqueo para la Bóveda Cifrada</strong>. Te servirá para consultar y revelar tus contraseñas, usuario y perfiles asignados en cualquier celular o PC, o cuando tu dispositivo no use biometría. <strong>Guárdalo y recuérdalo siempre</strong> para tus futuras consultas y renovaciones.
+                    </p>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-3">
+                    <button type="button" @click="changePinModal = false" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20">
+                        Guardar Mi PIN
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

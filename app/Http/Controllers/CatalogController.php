@@ -120,6 +120,7 @@ class CatalogController extends Controller
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:50',
             'customer_email' => 'nullable|email|max:255',
+            'boveda_pin' => 'nullable|string|size:4',
             'payment_method' => 'required|in:bank_transfer,mercadopago,binance',
             'receipt' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp,svg|max:10240',
             'seller_id' => 'required|exists:users,id',
@@ -133,6 +134,7 @@ class CatalogController extends Controller
         $order->customer_name = $request->customer_name;
         $order->customer_phone = $request->customer_phone;
         $order->customer_email = $request->customer_email;
+        $order->boveda_pin = $request->boveda_pin;
         $order->amount = $plan->price;
         $order->payment_method = $request->payment_method;
         $order->payment_status = 'pending';

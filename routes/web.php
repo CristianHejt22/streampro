@@ -63,6 +63,7 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::post('/boveda/report-issue/{sale}', [\App\Http\Controllers\CustomerPortalController::class, 'reportIssue'])->name('boveda.report');
     Route::post('/boveda/renovar/{sale}', [\App\Http\Controllers\CustomerPortalController::class, 'submitRenewalRequest'])->name('boveda.renovar');
     Route::post('/boveda/verify-unlock', [\App\Http\Controllers\CustomerPortalController::class, 'verifyUnlock'])->name('boveda.verify_unlock');
+    Route::post('/boveda/update-pin', [\App\Http\Controllers\CustomerPortalController::class, 'updatePin'])->name('boveda.update_pin');
 });
 
 /*

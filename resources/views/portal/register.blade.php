@@ -80,6 +80,26 @@
                     </div>
                 </div>
 
+                <!-- PIN de Seguridad de la Bóveda (4 dígitos) -->
+                <div class="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="key" class="w-4 h-4"></i>
+                            <span>PIN Personal de Bóveda (4 Dígitos) *</span>
+                        </label>
+                        <span class="text-[10px] font-mono text-amber-300 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                            Llave Privada
+                        </span>
+                    </div>
+
+                    <input type="password" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" name="security_pin" value="{{ old('security_pin') }}" placeholder="Ej: 1234" required class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center tracking-[0.5em] text-white focus:outline-none focus:border-amber-400 font-black">
+
+                    <p class="text-[11px] text-slate-300 leading-relaxed">
+                        🔒 <strong>¿Para qué sirve este PIN que debes recordar?</strong>
+                        Este PIN de 4 dígitos es tu <strong>clave de desbloqueo personal para la Bóveda Cifrada</strong>. Te servirá para consultar y revelar tus contraseñas, usuario y perfiles asignados en cualquier celular o PC, o cuando no uses biometría. <strong>Guárdalo y recuérdalo siempre</strong>.
+                    </p>
+                </div>
+
                 <!-- Selección Opcional de Servicio Inicial -->
                 <div class="pt-2">
                     <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Plataforma de Interés Inicial</label>

@@ -57,12 +57,14 @@ class CustomerPortalController extends Controller
             'email' => 'required|email|max:255|unique:customers,email',
             'phone' => 'required|string|max:50',
             'password' => 'required|string|min:6|confirmed',
+            'security_pin' => 'nullable|string|size:4',
             'reseller_id' => 'nullable|exists:users,id',
             'plan_id' => 'nullable|exists:service_plans,id',
         ], [
             'email.unique' => 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión en tu Bóveda.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'security_pin.size' => 'El PIN de seguridad de la Bóveda debe tener exactamente 4 dígitos.',
         ]);
 
         $resellerId = $request->reseller_id ?: User::where('role', 'admin')->value('id');
@@ -73,6 +75,7 @@ class CustomerPortalController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
+            'security_pin' => $request->security_pin,
             'status' => 'active',
         ]);
 
@@ -277,6 +280,31 @@ class CustomerPortalController extends Controller
             'success' => false,
             'message' => 'La contraseña o PIN ingresado es incorrecto. Vuelve a intentarlo.',
         ], 422);
+    }
+
+    /**
+     * Ajuste o Actualización del PIN Personal de 4 Dígitos de la Bóveda del Cliente
+     */
+    public function updatePin(Request $request)
+    {
+        $customer = Auth::guard('customer')->user();
+        if (!$customer) {
+            return redirect()->route('boveda.login');
+        }
+
+        $request->validate([
+            'security_pin' => 'required|string|size:4|regex:/^[0-9]{4}$/',
+        ], [
+            'security_pin.required' => 'Ingresa tu PIN de 4 dígitos.',
+            'security_pin.size' => 'El PIN debe contener exactamente 4 dígitos numéricos.',
+            'security_pin.regex' => 'El PIN solo puede contener números del 0 al 9.',
+        ]);
+
+        $customer->update([
+            'security_pin' => $request->security_pin,
+        ]);
+
+        return back()->with('success', '¡Tu PIN de Bóveda de 4 dígitos ha sido guardado exitosamente! Recuérdalo para desbloquear tus credenciales.');
     }
 
     /**

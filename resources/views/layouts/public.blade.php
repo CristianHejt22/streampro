@@ -22,7 +22,7 @@
             <!-- Brand / Logo -->
             <a href="{{ route('catalog.index') }}" class="flex items-center gap-3">
                 @if(isset($brandLogo) && $brandLogo)
-                    <img src="{{ $brandLogo }}" alt="{{ $brandName }}" class="h-10 w-auto object-contain">
+                    <img src="{{ $brandLogo }}" alt="{{ $brandName ?? 'CStreame Streaming' }}" class="h-10 w-auto object-contain">
                 @else
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-rose-500 to-amber-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-red-600/20">
                         🍿

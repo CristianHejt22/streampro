@@ -606,7 +606,7 @@
                         1. Adquiere Tu Panel
                     </h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Elige tu <strong>Panel Básico (SPRO PLAY)</strong> de 10 servicios o el <strong>Panel PRO Ilimitado</strong> con Marca Blanca. Si eres revendedor, puedes actualizar a <strong>Panel Administrador ($15.000 / 30 días)</strong> para crear tu propia red de sub-revendedores.
+                        Elige tu <strong>Panel Básico (SPRO PLAY)</strong> de 10 servicios o el <strong>Panel PRO Ilimitado</strong> con Marca Blanca. Si eres revendedor, puedes actualizar a <strong>Panel Administrador (${{ number_format($seller->panel_monthly_fee ?: 15000, 0, ',', '.') }} / 30 días)</strong> para crear tu propia red de sub-revendedores.
                     </p>
                 </div>
                 <div class="mt-6 pt-4 border-t border-slate-800/80">
@@ -664,7 +664,7 @@
                         3. Entrega en Bóveda Cliente
                     </h3>
                     <p class="text-xs text-slate-400 leading-relaxed">
-                        Tus clientes reciben su acceso privado a la <strong>Bóveda Cifrada</strong> con desbloqueo por <strong>Biometría o PIN de 4 dígitos</strong>. Sin saldo en tu billetera, el sistema protege las cuentas y no revela credenciales.
+                        Tus clientes reciben su acceso privado a la <strong>Bóveda Cifrada</strong> con desbloqueo por <strong>Biometría o PIN de 4 dígitos</strong> (Ajusta en la primera compra su pin de Bóveda: este PIN sirve para consultar y revelar sus contraseñas en cualquier dispositivo o cuando no use biometría, debiendo recordarlo siempre). Sin saldo en tu billetera, el sistema protege las cuentas y no revela credenciales.
                     </p>
                 </div>
                 <div class="mt-6 pt-4 border-t border-slate-800/80">
@@ -805,10 +805,13 @@
                 </button>
                 <div x-show="openFaq === 4" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        Cada cliente final accede a su portal personal en <code class="text-sky-300 font-mono text-xs">/boveda/login</code> ingresando su número de WhatsApp.
+                        Cada cliente final accede a su portal personal en <code class="text-sky-300 font-mono text-xs">/boveda/login</code> con su número de WhatsApp y contraseña.
                     </p>
                     <p>
-                        Para revelar contraseñas y pines, el cliente debe validar su identidad mediante <strong>Huella dactilar, Face ID o un PIN personal de 4 dígitos</strong>. Esto evita que terceros o capturas de pantalla comprometan las cuentas y reduce drásticamente las quejas por accesos no autorizados.
+                        <strong>🔑 Ajuste en la primera compra:</strong> Al realizar su primera compra o registro, el cliente define su <strong>PIN de Bóveda de 4 dígitos</strong>. Este PIN es su llave personal de seguridad que le servirá para revelar y consultar sus contraseñas, perfiles y pines en cualquier celular o PC cuando no utilice biometría (Face ID o Huella dactilar). <strong>Debe recordarlo siempre</strong> para consultar sus credenciales en el futuro.
+                    </p>
+                    <p>
+                        <strong>🛡️ Cero Fugas & Anti-Phishing:</strong> Si el revendedor no tiene saldo suficiente en su billetera o si no se ha recibido el pago del proveedor, el sistema retiene las credenciales protegiendo las cuentas maestras de fugas o exposiciones no autorizadas.
                     </p>
                 </div>
             </div>

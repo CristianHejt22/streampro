@@ -18,6 +18,7 @@ class Order extends Model
         'customer_name',
         'customer_phone',
         'customer_email',
+        'boveda_pin',
         'amount',
         'payment_method',
         'payment_status',
@@ -125,8 +126,14 @@ class Order extends Model
             [
                 'name' => $this->customer_name,
                 'email' => $this->customer_email,
+                'password' => bcrypt($this->boveda_pin ?: '123456'),
+                'security_pin' => $this->boveda_pin,
             ]
         );
+
+        if ($this->boveda_pin && (empty($customer->security_pin) || $customer->wasRecentlyCreated)) {
+            $customer->update(['security_pin' => $this->boveda_pin]);
+        }
 
         // Descontar saldo si el vendedor es revendedor
         $seller = $this->seller;
