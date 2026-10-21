@@ -776,6 +776,20 @@
                     <textarea name="customer_notes" rows="2" placeholder="Ej: Ya transferí desde Mercado Pago titular Juan Pérez..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 outline-none focus:border-emerald-500"></textarea>
                 </div>
 
+                @if($whatsappSupportEnabled && $supportWhatsAppPhone)
+                <!-- Botón de Renovación Directa por WhatsApp -->
+                <div class="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 text-xs text-emerald-300">
+                        <i data-lucide="message-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                        <span>¿Prefieres consultar o enviar tu comprobante directamente por WhatsApp?</span>
+                    </div>
+                    <a :href="'https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20quiero%20renovar%20mi%20servicio%20de%20*' + encodeURIComponent(renewSale?.service?.name || '') + '*%20(Código:%20' + (renewSale?.sale_code || '') + ')%20por%20' + renewMonths + '%20mes(es).%20Cliente:%20{{ urlencode($customer->name) }}%20(Tel:%20{{ $customer->phone }}).'" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 transition-all shadow-md shadow-emerald-600/30 cursor-pointer">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Renovar por WhatsApp</span>
+                    </a>
+                </div>
+                @endif
+
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" @click="renewModal = false" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 cursor-pointer">
                         Cancelar

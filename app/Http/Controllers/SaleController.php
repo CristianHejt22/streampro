@@ -74,7 +74,17 @@ class SaleController extends Controller
         $renewalQuery = RenewalRequest::with(['sale.customer', 'sale.service', 'sale.plan', 'customer', 'service', 'plan', 'user'])
             ->where('status', 'pending');
         if ($user->isReseller()) {
-            $renewalQuery->where('user_id', $user->id);
+            if ($user->isSuperReseller()) {
+                $renewalQuery->where(function($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereHas('user', function($qu) use ($user) {
+                          $qu->where('parent_id', $user->id)
+                             ->where('whatsapp_support_preference', 'provider');
+                      });
+                });
+            } else {
+                $renewalQuery->where('user_id', $user->id);
+            }
         }
         $pendingRenewals = $renewalQuery->latest()->get();
 
@@ -550,7 +560,9 @@ class SaleController extends Controller
     public function approveRenewalRequest(Request $request, RenewalRequest $renewalRequest)
     {
         $user = Auth::user();
-        if ($user->isReseller() && $renewalRequest->user_id !== $user->id) {
+        $isOwner = $renewalRequest->user_id === $user->id;
+        $isParentSponsor = $user->isSuperReseller() && $renewalRequest->user && $renewalRequest->user->parent_id === $user->id && $renewalRequest->user->whatsapp_support_preference === 'provider';
+        if ($user->isReseller() && !$isOwner && !$isParentSponsor) {
             abort(403, 'No tienes permiso para aprobar esta solicitud.');
         }
 
@@ -625,7 +637,9 @@ class SaleController extends Controller
     public function rejectRenewalRequest(Request $request, RenewalRequest $renewalRequest)
     {
         $user = Auth::user();
-        if ($user->isReseller() && $renewalRequest->user_id !== $user->id) {
+        $isOwner = $renewalRequest->user_id === $user->id;
+        $isParentSponsor = $user->isSuperReseller() && $renewalRequest->user && $renewalRequest->user->parent_id === $user->id && $renewalRequest->user->whatsapp_support_preference === 'provider';
+        if ($user->isReseller() && !$isOwner && !$isParentSponsor) {
             abort(403);
         }
 

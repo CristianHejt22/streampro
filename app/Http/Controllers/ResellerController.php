@@ -919,7 +919,7 @@ class ResellerController extends Controller
     }
 
     /**
-     * Super Admin ajusta la preferencia de WhatsApp específica para un panel
+     * Super Admin, Proveedor o Revendedor ajusta la preferencia de WhatsApp para la Bóveda de un panel
      */
     public function updatePanelWhatsAppPreference(Request $request, User $reseller)
     {
@@ -929,24 +929,54 @@ class ResellerController extends Controller
         }
 
         $request->validate([
-            'whatsapp_support_preference' => 'required|in:auto,reseller,provider,admin',
+            'whatsapp_support_preference' => 'required_without:preference|in:auto,reseller,provider,admin',
+            'preference' => 'nullable|in:auto,reseller,provider,admin',
             'support_whatsapp' => 'nullable|string|max:50',
         ]);
 
-        $reseller->whatsapp_support_preference = $request->whatsapp_support_preference;
+        $pref = $request->input('whatsapp_support_preference') ?: $request->input('preference');
+        $reseller->whatsapp_support_preference = $pref;
         if ($request->filled('support_whatsapp')) {
             $reseller->support_whatsapp = $request->support_whatsapp;
         }
         $reseller->save();
 
+        $destLabel = match($pref) {
+            'provider' => 'WhatsApp de su Proveedor Patrocinador (' . ($reseller->parent ? $reseller->parent->name . ' - ' . $reseller->parent->support_whatsapp : 'Admin') . ')',
+            'reseller' => 'WhatsApp Propio del Revendedor (' . ($reseller->support_whatsapp ?: 'Sin número') . ')',
+            'admin' => 'WhatsApp Central del Super Admin',
+            default => 'Modo Automático'
+        };
+
+        // Auditoría para quien ejecutó el cambio
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'update_panel_whatsapp_preference',
-            'description' => "Preferencia de WhatsApp para panel de {$reseller->name} actualizada a: {$reseller->whatsapp_support_preference} ({$reseller->support_whatsapp}).",
+            'description' => "Preferencia de WhatsApp para panel de {$reseller->name} actualizada a: {$destLabel}.",
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', "¡Preferencia de WhatsApp para la Bóveda de {$reseller->name} actualizada con éxito!");
+        // Si el cambio lo hizo el revendedor y tiene proveedor, notificar al proveedor
+        if ($reseller->parent_id && $reseller->parent_id !== $user->id) {
+            AuditLog::create([
+                'user_id' => $reseller->parent_id,
+                'action' => 'reseller_panel_whatsapp_notice',
+                'description' => "Tu revendedor {$reseller->name} solicitó atención de Bóveda: {$destLabel}.",
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
+        // Si el cambio lo hizo el proveedor/admin y no el revendedor, registrar en la auditoría del revendedor
+        if ($user->id !== $reseller->id) {
+            AuditLog::create([
+                'user_id' => $reseller->id,
+                'action' => 'provider_panel_whatsapp_notice',
+                'description' => "Tu patrocinador {$user->name} configuró la atención de WhatsApp para tu Bóveda: {$destLabel}.",
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
+        return back()->with('success', "¡Preferencia de WhatsApp para la Bóveda de {$reseller->name} actualizada con éxito ({$pref})!");
     }
 
     /**

@@ -205,13 +205,11 @@
                 <span>Atajos Rápidos (Dock)</span>
             </a>
 
-            <!-- Marca Blanca -->
-            @if(Auth::user()->isAdmin() || Auth::user()->reseller_plan === 'vip' || Auth::user()->reseller_plan === 'mayorista')
+            <!-- Preferencias de Panel & Marca Blanca -->
             <a href="{{ route('whitelabel.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('whitelabel.*') ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-gray-400 hover:text-white hover:bg-gray-800/60' }}">
-                <i data-lucide="palette" class="w-5 h-5"></i>
-                <span>Marca Blanca</span>
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+                <span>Preferencias de Panel</span>
             </a>
-            @endif
 
             <div class="pt-3 mt-3 border-t border-gray-800/80">
                 <span class="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Tienda Digital</span>

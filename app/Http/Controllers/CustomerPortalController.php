@@ -356,6 +356,16 @@ class CustomerPortalController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
+        // Si la tienda revendedora derivó la atención a su proveedor patrocinador, registrar aviso al proveedor
+        if ($sale->user && $sale->user->parent_id && $sale->user->whatsapp_support_preference === 'provider') {
+            AuditLog::create([
+                'user_id' => $sale->user->parent_id,
+                'action' => 'customer_renewal_provider_notice',
+                'description' => "El cliente {$customer->name} del revendedor {$sale->user->name} solicitó renovación de {$sale->sale_code} ({$sale->service->name}) por {$months} mes(es) (\${$totalAmount}). Atención de Bóveda asignada a tu WhatsApp.",
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
         return back()->with('success', "¡Solicitud de renovación enviada con éxito! Tu distribuidor ha recibido la alerta por {$months} mes(es) (\${$totalAmount}) y confirmará la extensión en tu Bóveda.");
     }
 }

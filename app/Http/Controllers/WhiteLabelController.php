@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\SystemSetting;
+use App\Models\AuditLog;
 use Illuminate\Support\Facades\Storage;
 
 class WhiteLabelController extends Controller
@@ -20,49 +21,98 @@ class WhiteLabelController extends Controller
     public function update(Request $request)
     {
         $user = Auth::user();
+        $isBasic = $user->isReseller() && $user->isPanelBasic();
 
-        // Control estricto de nivel de panel: Marca Blanca habilitada únicamente en PRO
-        if ($user->isReseller() && $user->isPanelBasic()) {
-            return back()->withErrors([
-                'error' => '⛔ Tu panel actual es BÁSICO (Marca oficial SPRO PLAY). La personalización completa de Marca Blanca (logo, colores y nombre propio) está habilitada exclusivamente para Paneles PRO.'
-            ]);
-        }
-
-        $validated = $request->validate([
-            'brand_name' => 'required|string|max:100',
-            'brand_logo' => 'nullable|image|max:2048',
-            'brand_favicon' => 'nullable|image|max:1024',
-            'brand_primary_color' => 'required|string|max:20',
-            'brand_accent_color' => 'required|string|max:20',
-            'custom_login_bg' => 'nullable|image|max:4096',
+        $rules = [
             'support_whatsapp' => 'nullable|string|max:50',
             'support_telegram' => 'nullable|string|max:50',
-        ]);
+            'whatsapp_support_preference' => 'nullable|in:auto,reseller,provider,admin',
+        ];
 
-        $user->brand_name = $validated['brand_name'];
-        $user->brand_primary_color = $validated['brand_primary_color'];
-        $user->brand_accent_color = $validated['brand_accent_color'];
-        $user->support_whatsapp = $validated['support_whatsapp'];
-        $user->support_telegram = $validated['support_telegram'];
-
-        if ($request->hasFile('brand_logo')) {
-            $user->brand_logo = $request->file('brand_logo')->store('branding', 'public');
+        // Marca blanca completa sólo permitida si no es panel básico
+        if (!$isBasic) {
+            $rules['brand_name'] = 'required|string|max:100';
+            $rules['brand_logo'] = 'nullable|image|max:2048';
+            $rules['brand_favicon'] = 'nullable|image|max:1024';
+            $rules['brand_primary_color'] = 'required|string|max:20';
+            $rules['brand_accent_color'] = 'required|string|max:20';
+            $rules['custom_login_bg'] = 'nullable|image|max:4096';
         }
 
-        if ($request->hasFile('brand_favicon')) {
-            $user->brand_favicon = $request->file('brand_favicon')->store('branding', 'public');
-        }
+        $validated = $request->validate($rules);
 
-        if ($request->hasFile('custom_login_bg')) {
-            $user->custom_login_bg = $request->file('custom_login_bg')->store('branding', 'public');
+        // Guardar datos de contacto de soporte
+        $user->support_whatsapp = $validated['support_whatsapp'] ?? null;
+        $user->support_telegram = $validated['support_telegram'] ?? null;
+
+        // Gestión de preferencia de WhatsApp para Bóveda
+        $oldPref = $user->whatsapp_support_preference ?? 'auto';
+        $newPref = $request->input('whatsapp_support_preference', $oldPref);
+        $prefChanged = ($oldPref !== $newPref);
+        $user->whatsapp_support_preference = $newPref;
+
+        // Si es panel PRO o Admin, actualizar datos de marca
+        if (!$isBasic) {
+            $user->brand_name = $validated['brand_name'];
+            $user->brand_primary_color = $validated['brand_primary_color'];
+            $user->brand_accent_color = $validated['brand_accent_color'];
+
+            if ($request->hasFile('brand_logo')) {
+                $user->brand_logo = $request->file('brand_logo')->store('branding', 'public');
+            }
+
+            if ($request->hasFile('brand_favicon')) {
+                $user->brand_favicon = $request->file('brand_favicon')->store('branding', 'public');
+            }
+
+            if ($request->hasFile('custom_login_bg')) {
+                $user->custom_login_bg = $request->file('custom_login_bg')->store('branding', 'public');
+            }
+
+            if ($user->isAdmin()) {
+                SystemSetting::set('site_name', $user->brand_name);
+            }
+        } else {
+            // En panel básico, fijar SPRO PLAY
+            $user->brand_name = 'SPRO PLAY';
         }
 
         $user->save();
 
-        if ($user->isAdmin()) {
-            SystemSetting::set('site_name', $user->brand_name);
+        // Registro de Auditoría y Notificaciones si cambió la preferencia de WhatsApp
+        if ($prefChanged) {
+            $destLabel = match($newPref) {
+                'provider' => 'WhatsApp de su Proveedor Patrocinador (' . ($user->parent ? $user->parent->name . ' - ' . $user->parent->support_whatsapp : 'Admin') . ')',
+                'reseller' => 'WhatsApp Propio del Revendedor (' . ($user->support_whatsapp ?: 'Sin número') . ')',
+                'admin' => 'WhatsApp Central del Super Admin',
+                default => 'Modo Automático'
+            };
+
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'update_whatsapp_support_preference',
+                'description' => "El usuario {$user->name} actualizó su preferencia de atención por WhatsApp para Bóveda Clientes a: {$destLabel}.",
+                'ip_address' => $request->ip(),
+            ]);
+
+            // Si el revendedor tiene proveedor patrocinador, registrar mensaje de aviso en la auditoría del proveedor
+            if ($user->parent_id) {
+                AuditLog::create([
+                    'user_id' => $user->parent_id,
+                    'action' => 'reseller_whatsapp_preference_change',
+                    'description' => "Tu revendedor {$user->name} ha configurado la atención de consultas y renovaciones de Bóveda: {$destLabel}.",
+                    'ip_address' => $request->ip(),
+                ]);
+            }
         }
 
-        return back()->with('success', '¡Identidad de Marca Blanca actualizada con éxito!');
+        $msg = '¡Preferencias de panel actualizadas con éxito!';
+        if ($prefChanged && $newPref === 'provider') {
+            $msg .= ' Se ha solicitado y registrado que las consultas y renovaciones de Bóveda lleguen al WhatsApp de tu Proveedor Patrocinador.';
+        } elseif ($prefChanged && $newPref === 'reseller') {
+            $msg .= ' Las consultas y renovaciones de Bóveda llegarán directamente a tu número de WhatsApp.';
+        }
+
+        return back()->with('success', $msg);
     }
 }

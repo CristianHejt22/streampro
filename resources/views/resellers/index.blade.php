@@ -1564,7 +1564,7 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-400">Seleccionar Destino del Botón WhatsApp *</label>
 
                     <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
-                        <input type="radio" name="preference" value="auto" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <input type="radio" name="whatsapp_support_preference" value="auto" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
                         <div>
                             <span class="text-xs font-bold text-white block">🤖 Automático (Recomendado)</span>
                             <span class="text-[11px] text-gray-400">Usa el WhatsApp propio del revendedor si configuró teléfono; de lo contrario usa el del proveedor o Super Admin.</span>
@@ -1572,7 +1572,7 @@
                     </label>
 
                     <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
-                        <input type="radio" name="preference" value="reseller" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <input type="radio" name="whatsapp_support_preference" value="reseller" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
                         <div>
                             <span class="text-xs font-bold text-white block">👤 WhatsApp Propio del Revendedor</span>
                             <span class="text-[11px] text-gray-400">Todas las consultas de cuentas de este panel van directo al teléfono de este revendedor.</span>
@@ -1580,7 +1580,7 @@
                     </label>
 
                     <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
-                        <input type="radio" name="preference" value="provider" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <input type="radio" name="whatsapp_support_preference" value="provider" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
                         <div>
                             <span class="text-xs font-bold text-white block">🛡️ WhatsApp Central del Proveedor Patrocinador</span>
                             <span class="text-[11px] text-gray-400">El proveedor patrocinador atiende las consultas técnicas y garantías de este panel.</span>
@@ -1588,7 +1588,7 @@
                     </label>
 
                     <label class="p-3 rounded-2xl border border-gray-800 bg-[#0b0f19] cursor-pointer hover:border-teal-500/40 flex items-start gap-3">
-                        <input type="radio" name="preference" value="admin" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
+                        <input type="radio" name="whatsapp_support_preference" value="admin" x-model="currentWhatsAppPref" class="mt-1 text-teal-500 focus:ring-0">
                         <div>
                             <span class="text-xs font-bold text-white block">⚡ WhatsApp Central del Super Admin</span>
                             <span class="text-[11px] text-gray-400">Centralizar el soporte en el número maestro de la plataforma streaming.</span>

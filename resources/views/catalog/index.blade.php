@@ -876,6 +876,9 @@
                     <p>
                         En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
                     </p>
+                    <p class="text-teal-300 font-semibold pt-1 border-t border-slate-800/80">
+                        📱 El revendedor deberá solicitarlo desde su panel de revendedor (el mismo queda registrado con mensajes al revendedor o proveedor).
+                    </p>
                 </div>
             </div>
         </div>
