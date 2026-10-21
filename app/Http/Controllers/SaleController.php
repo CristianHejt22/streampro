@@ -157,14 +157,15 @@ class SaleController extends Controller
         $months = max(1, (int) $request->input('months_duration', 1));
         $isConsignment = $request->boolean('is_consignment');
 
-        $baseSalePrice = $request->filled('custom_price') ? (float)$request->custom_price : (float)$plan->price;
+        $pricing = $user->getEffectivePlanPricing($plan);
+        $defaultSalePrice = ($user->isReseller() && !empty($pricing['reseller_pvp'])) ? (float)$pricing['reseller_pvp'] : (float)$plan->price;
+        $baseSalePrice = $request->filled('custom_price') ? (float)$request->custom_price : $defaultSalePrice;
         $salePrice = $baseSalePrice * $months;
 
-        // Comisión por Servicio ajustada por el Proveedor para este revendedor
-        $resellerMarginPct = $user->getCommissionForService($service->id);
-        $baseResellerPrice = ($plan->reseller_price > 0 && $resellerMarginPct == 40.00)
-            ? (float)$plan->reseller_price
-            : ((float)$plan->price * (1 - ($resellerMarginPct / 100)));
+        // Costo mayorista de proveedor efectivo para este revendedor
+        $baseResellerPrice = ($user->isReseller() && !empty($pricing['provider_cost']))
+            ? (float)$pricing['provider_cost']
+            : (($plan->reseller_price > 0) ? (float)$plan->reseller_price : ((float)$plan->price * (1 - ($user->getCommissionForService($service->id) / 100))));
 
         $costPrice = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
         $profit = $salePrice - $costPrice;
@@ -386,6 +387,11 @@ class SaleController extends Controller
             abort(403);
         }
 
+        $providerBlockReason = null;
+        if (!$user->canDeliverAccounts($providerBlockReason)) {
+            return back()->withErrors(['error' => "⛔ Garantía Bloqueada: {$providerBlockReason} Regulariza el estado de tu panel con tu proveedor antes de entregar reemplazos."]);
+        }
+
         if ($sale->is_consignment && !$sale->is_consignment_paid) {
             return back()->withErrors(['error' => 'No puedes modificar ni aplicar cambios a una cuenta en consignación hasta que sea liquidada y pagada dentro del plazo de 48 horas.']);
         }
@@ -399,17 +405,18 @@ class SaleController extends Controller
         $oldAccount = $sale->streamingAccount;
         $oldProfile = $sale->profile;
 
-        // Buscar reemplazo en stock disponible
+        // Buscar reemplazo en stock disponible dentro de su alcance de inventario
         $newAccount = null;
         $newProfile = null;
 
         if ($sale->modality === 'profile') {
-            $newProfile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service) {
+            $newProfile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service, $user) {
                 $q->where('service_id', $service->id)->where('status', 'active');
+                $user->applyInventoryScope($q);
             })->where('status', 'available')->first();
 
             if (!$newProfile) {
-                return back()->withErrors(['error' => "No hay pantallas disponibles en stock para reemplazar la cuenta de {$service->name}. Carga stock primero."]);
+                return back()->withErrors(['error' => "No hay pantallas disponibles en tu stock para reemplazar la cuenta de {$service->name}. Carga stock primero."]);
             }
 
             $newAccount = $newProfile->streamingAccount;
@@ -420,14 +427,15 @@ class SaleController extends Controller
                 $oldProfile->update(['status' => 'in_review']);
             }
         } else {
-            $newAccount = StreamingAccount::where('service_id', $service->id)
+            $accountQuery = StreamingAccount::where('service_id', $service->id)
                 ->where('modality', 'full_account')
                 ->where('status', 'active')
-                ->where('id', '!=', $oldAccount->id)
-                ->first();
+                ->where('id', '!=', $oldAccount->id);
+            $user->applyInventoryScope($accountQuery);
+            $newAccount = $accountQuery->first();
 
             if (!$newAccount) {
-                return back()->withErrors(['error' => "No hay cuentas completas de reemplazo en stock para {$service->name}."]);
+                return back()->withErrors(['error' => "No hay cuentas completas de reemplazo en tu stock para {$service->name}."]);
             }
 
             $oldAccount->update(['status' => 'dropped']);
@@ -529,15 +537,16 @@ class SaleController extends Controller
             ]);
 
             foreach ($sales as $s) {
+                $canDeliver = $s->canDeliverCredentials();
                 fputcsv($file, [
                     $s->sale_code,
                     $s->service ? $s->service->name : '',
                     $s->customer ? $s->customer->name : '',
                     $s->customer ? $s->customer->phone : '',
-                    $s->account_email_snapshot,
-                    $s->account_password_snapshot,
+                    $canDeliver ? $s->account_email_snapshot : '[RETENIDO - PAGO PENDIENTE]',
+                    $canDeliver ? $s->account_password_snapshot : '[RETENIDO - PAGO PENDIENTE]',
                     $s->profile_name_snapshot,
-                    $s->profile_pin_snapshot,
+                    $canDeliver ? $s->profile_pin_snapshot : '[RETENIDO]',
                     $s->sale_price,
                     $s->cost_price,
                     $s->profit,
@@ -576,29 +585,30 @@ class SaleController extends Controller
         $plan = $sale->plan;
 
         // Descontar costo del revendedor si corresponde
-        if ($user->isReseller() && $plan) {
+        $sellerToDeduct = $renewalRequest->user ?: $user;
+        if ($sellerToDeduct->isReseller() && $plan) {
             $providerBlockReason = null;
-            if (!$user->canDeliverAccounts($providerBlockReason)) {
+            if (!$sellerToDeduct->canDeliverAccounts($providerBlockReason)) {
                 return back()->withErrors(['error' => "⛔ Renovación Bloqueada: {$providerBlockReason} No se pueden entregar renovaciones sin el pago del proveedor al día."]);
             }
 
-            $resellerPct = $user->getCommissionForService($sale->service_id);
-            $unitCost = $plan->reseller_price > 0 ? (float)$plan->reseller_price : ((float)$plan->price * (1 - ($resellerPct / 100)));
+            $pricing = $sellerToDeduct->getEffectivePlanPricing($plan);
+            $unitCost = !empty($pricing['provider_cost']) ? (float)$pricing['provider_cost'] : ($plan->reseller_price > 0 ? (float)$plan->reseller_price : ((float)$plan->price * 0.60));
             $totalCost = $unitCost * $months;
 
-            if (!$user->hasBalance($totalCost)) {
-                return back()->withErrors(['error' => "⛔ No se puede entregar la renovación sin monto en billetera. Requiere \${$totalCost} y tu saldo actual es de \${$user->balance}. Recarga tu saldo antes de aprobar."]);
+            if (!$sellerToDeduct->hasBalance($totalCost)) {
+                return back()->withErrors(['error' => "⛔ No se puede entregar la renovación sin monto en billetera de {$sellerToDeduct->name}. Requiere \${$totalCost} y su saldo actual es de \${$sellerToDeduct->balance}. Recarga saldo antes de aprobar."]);
             }
 
-            $user->deductBalance($totalCost);
+            $sellerToDeduct->deductBalance($totalCost);
 
             // Acreditar comisión al patrocinador si corresponde
-            if ($user->parent) {
-                $parentPct = (float)($user->parent_commission_pct ?: 25.00);
+            if ($sellerToDeduct->parent) {
+                $parentPct = (float)($sellerToDeduct->parent_commission_pct ?: 25.00);
                 $profit = ($renewalRequest->amount - $totalCost);
                 $parentCut = round(max(0, $profit) * ($parentPct / 100), 2);
                 if ($parentCut > 0) {
-                    $user->parent->addBalance($parentCut);
+                    $sellerToDeduct->parent->addBalance($parentCut);
                 }
             }
         }

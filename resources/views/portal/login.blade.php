@@ -34,19 +34,19 @@
         <form method="POST" action="{{ route('boveda.login.process') }}" class="space-y-4 relative z-10">
             @csrf
             <div>
-                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Correo Electrónico de Cliente</label>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Correo Electrónico o WhatsApp de Cliente</label>
                 <div class="relative">
-                    <input type="email" name="email" value="{{ old('email') }}" required placeholder="tu-correo@cliente.com" class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors">
-                    <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" name="login" value="{{ old('login', old('email')) }}" required placeholder="tu-correo@cliente.com o 54911..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors">
+                    <i data-lucide="user-check" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Contraseña de Bóveda</label>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Contraseña o PIN de Bóveda (4 Dígitos)</label>
                 <div class="relative" x-data="{ show: false }">
-                    <input :type="show ? 'text' : 'password'" name="password" required placeholder="••••••••" class="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors">
+                    <input :type="show ? 'text' : 'password'" name="password" required placeholder="Tu contraseña o PIN de 4 dígitos" class="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors">
                     <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                    <button type="button" @click="show = !show" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+                    <button type="button" @click="show = !show" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer">
                         <span x-text="show ? 'Ocultar' : 'Ver'"></span>
                     </button>
                 </div>

@@ -88,15 +88,22 @@ class Order extends Model
 
         $service = $plan->service;
 
-        // Buscar stock disponible según modalidad
+        $seller = $this->seller;
+
+        // Buscar stock disponible según modalidad y alcance de inventario del vendedor
         $streamingAccount = null;
         $profile = null;
 
         if ($plan->modality === 'profile') {
-            // Buscar perfil libre
-            $profile = AccountProfile::whereHas('streamingAccount', function ($q) use ($service) {
+            // Buscar perfil libre dentro del inventario habilitado para este vendedor
+            $profileQuery = AccountProfile::whereHas('streamingAccount', function ($q) use ($service, $seller) {
                 $q->where('service_id', $service->id)->where('status', 'active');
-            })->where('status', 'available')->first();
+                if ($seller) {
+                    $seller->applyInventoryScope($q);
+                }
+            })->where('status', 'available');
+
+            $profile = $profileQuery->first();
 
             if (!$profile) {
                 throw new \Exception("No hay pantallas disponibles en stock para {$service->name}. Carga stock primero antes de aprobar la orden.");
@@ -104,13 +111,19 @@ class Order extends Model
 
             $streamingAccount = $profile->streamingAccount;
         } else {
-            // Cuenta completa
-            $streamingAccount = StreamingAccount::where('service_id', $service->id)
+            // Cuenta completa dentro del alcance de inventario
+            $accountQuery = StreamingAccount::where('service_id', $service->id)
                 ->where('modality', 'full_account')
                 ->where('status', 'active')
                 ->whereDoesntHave('sales', function ($q) {
                     $q->whereIn('status', ['active', 'expiring_soon']);
-                })->first();
+                });
+
+            if ($seller) {
+                $seller->applyInventoryScope($accountQuery);
+            }
+
+            $streamingAccount = $accountQuery->first();
 
             if (!$streamingAccount) {
                 throw new \Exception("No hay cuentas completas en stock para {$service->name}. Carga stock primero antes de aprobar la orden.");
@@ -135,14 +148,26 @@ class Order extends Model
             $customer->update(['security_pin' => $this->boveda_pin]);
         }
 
-        // Descontar saldo si el vendedor es revendedor
-        $seller = $this->seller;
+        // Validación estricta de entrega y descuento de billetera si el vendedor es revendedor
+        $parentCommission = 0.00;
         if ($seller && $seller->isReseller()) {
-            $cost = $plan->reseller_price > 0 ? $plan->reseller_price : $plan->price;
+            $providerBlockReason = null;
+            if (!$seller->canDeliverAccounts($providerBlockReason)) {
+                throw new \Exception("⛔ Entrega Bloqueada: {$providerBlockReason}");
+            }
+
+            $cost = $plan->reseller_price > 0 ? (float)$plan->reseller_price : (float)$plan->price;
             if (!$seller->hasBalance($cost)) {
-                throw new \Exception("El revendedor no dispone de saldo suficiente (${$cost}) en su billetera para autorizar esta orden.");
+                throw new \Exception("⛔ El revendedor no dispone de saldo suficiente (\${$cost}) en su billetera para autorizar esta orden. Saldo actual: \${$seller->balance}.");
             }
             $seller->deductBalance($cost);
+
+            // Acreditar comisión automática del 25% al patrocinador si corresponde
+            if ($seller->parent) {
+                $pct = (float) ($seller->parent_commission_pct ?: 25.00);
+                $parentCommission = round($this->amount * ($pct / 100), 2);
+                $seller->parent->addBalance($parentCommission);
+            }
         }
 
         // Asignar y crear venta
@@ -167,6 +192,7 @@ class Order extends Model
             'sale_price' => $this->amount,
             'cost_price' => $plan->cost_estimate ?: 0,
             'profit' => $this->amount - ($plan->cost_estimate ?: 0),
+            'parent_commission_amount' => $parentCommission,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'status' => 'active',

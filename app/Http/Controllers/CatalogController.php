@@ -75,7 +75,11 @@ class CatalogController extends Controller
             }
         }
 
-        $categories = Service::where('status', 'active')->distinct()->pluck('category');
+        $categories = Service::where('status', 'active')
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->pluck('category');
 
         // Marca Oficial SPRO PLAY para Paneles Básicos
         if ($seller && $seller->isReseller() && $seller->isPanelBasic()) {
@@ -120,10 +124,13 @@ class CatalogController extends Controller
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:50',
             'customer_email' => 'nullable|email|max:255',
-            'boveda_pin' => 'nullable|string|size:4',
+            'boveda_pin' => 'nullable|string|size:4|regex:/^[0-9]{4}$/',
             'payment_method' => 'required|in:bank_transfer,mercadopago,binance',
             'receipt' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp,svg|max:10240',
             'seller_id' => 'required|exists:users,id',
+        ], [
+            'boveda_pin.size' => 'El PIN de la Bóveda debe tener exactamente 4 dígitos numéricos.',
+            'boveda_pin.regex' => 'El PIN de la Bóveda solo debe contener números del 0 al 9.',
         ]);
 
         $seller = User::findOrFail($request->seller_id);

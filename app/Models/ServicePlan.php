@@ -35,6 +35,11 @@ class ServicePlan extends Model
         return $this->belongsTo(Service::class);
     }
 
+    public function getRetailPriceAttribute(): float
+    {
+        return (float) $this->price;
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class);

@@ -66,7 +66,7 @@
                 </div>
 
                 <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-                    Bienvenido a <span class="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">{{ $brandName }}</span>
+                    Bienvenido a <span class="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">{{ $brandName ?? ($seller->brand_name ?? 'CStreame Streaming') }}</span>
                 </h1>
 
                 <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
@@ -86,7 +86,7 @@
                     </a>
 
                     @if($supportWhatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName) }},%20tengo%20una%20consulta%20sobre%20tus%20servicios%20de%20streaming." target="_blank" class="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-emerald-600/20 transition-all">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName ?? 'CStreame') }},%20tengo%20una%20consulta%20sobre%20tus%20servicios%20de%20streaming." target="_blank" class="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-emerald-600/20 transition-all">
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
                         <span>Contactar por WhatsApp</span>
                     </a>

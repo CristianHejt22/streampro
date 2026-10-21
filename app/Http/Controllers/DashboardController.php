@@ -173,8 +173,21 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Stock disponible general que puede vender (estrictamente filtrado por su alcance de inventario)
-        $services = Service::where('status', 'active')->get()->map(function ($s) use ($user) {
+        // Stock disponible general que puede vender (estrictamente filtrado por catálogo y alcance de inventario)
+        $servicesQuery = Service::where('status', 'active');
+        if (!$user->isAdmin()) {
+            $servicesQuery->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)->orWhereNull('user_id');
+                if ($user->parent_id) {
+                    $q->orWhere('user_id', $user->parent_id);
+                }
+            });
+            if ($user->isPanelBasic()) {
+                $servicesQuery->take(10);
+            }
+        }
+
+        $services = $servicesQuery->get()->map(function ($s) use ($user) {
             $total = AccountProfile::whereHas('streamingAccount', function ($q) use ($s, $user) {
                 $q->where('service_id', $s->id)->where('status', 'active');
                 $user->applyInventoryScope($q);

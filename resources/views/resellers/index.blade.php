@@ -644,6 +644,12 @@
                                         <span>⚡ Activar con 1 Crédito {{ strtoupper($res->panel_tier ?? 'basic') }}</span>
                                     </button>
                                 </form>
+                                <form method="POST" action="{{ route('resellers.reject_request', $res) }}" class="mt-1">
+                                    @csrf
+                                    <button type="submit" onclick="return confirm('¿Descartar la solicitud de panel de {{ $res->name }}?')" class="text-[9px] text-rose-400 hover:text-rose-300 underline cursor-pointer">
+                                        Descartar solicitud
+                                    </button>
+                                </form>
                             @elseif($isCloned)
                                 @if($isExpired)
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 block w-max">
@@ -1514,7 +1520,7 @@
                                     <span class="text-[11px] text-gray-400">{{ $sp->name }}</span>
                                 </td>
                                 <td class="py-2.5 px-3 text-sky-400">
-                                    ${{ number_format($sp->retail_price, 2) }}
+                                    ${{ number_format($sp->price, 2) }}
                                 </td>
                                 <td class="py-2.5 px-3 text-gray-400">
                                     ${{ number_format($sp->reseller_price, 2) }}

@@ -13,25 +13,26 @@ class TreasuryController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Order::with(['seller', 'servicePlan.service', 'sale']);
+        $baseQuery = Order::with(['seller', 'servicePlan.service', 'sale']);
 
         if ($user->isReseller()) {
-            $query->where('seller_id', $user->id);
+            $baseQuery->where('seller_id', $user->id);
         }
 
+        if ($request->filled('method')) {
+            $baseQuery->where('payment_method', $request->method);
+        }
+
+        // Stats globales para el usuario
+        $pendingCount = (clone $baseQuery)->where('payment_status', 'pending')->count();
+        $approvedTotal = (clone $baseQuery)->where('payment_status', 'approved')->sum('amount');
+
+        $query = clone $baseQuery;
         if ($request->filled('status')) {
             $query->where('payment_status', $request->status);
         }
 
-        if ($request->filled('method')) {
-            $query->where('payment_method', $request->method);
-        }
-
-        $orders = $query->latest()->paginate(15);
-
-        // Stats
-        $pendingCount = (clone $query)->where('payment_status', 'pending')->count();
-        $approvedTotal = (clone $query)->where('payment_status', 'approved')->sum('amount');
+        $orders = $query->latest()->paginate(15)->withQueryString();
 
         return view('treasury.index', compact('orders', 'user', 'pendingCount', 'approvedTotal'));
     }

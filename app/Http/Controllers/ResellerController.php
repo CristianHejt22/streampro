@@ -26,8 +26,8 @@ class ResellerController extends Controller
 
         if ($user->isAdmin()) {
             $query->whereIn('role', ['reseller', 'super_reseller']);
-        } elseif ($user->isSuperReseller()) {
-            // El Proveedor ve únicamente a sus revendedores patrocinados/sub-paneles
+        } elseif ($user->isSuperReseller() || $user->canResellPanels()) {
+            // El Proveedor o Revendedor PRO ve únicamente a sus revendedores patrocinados/sub-paneles
             $query->where('parent_id', $user->id)->where('role', 'reseller');
         } else {
             abort(403, 'Acceso denegado al módulo de revendedores.');

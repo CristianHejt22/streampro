@@ -191,8 +191,8 @@
                 @endif
             </a>
 
-            <!-- Revendedores (Admin & Proveedor / Super Reseller) -->
-            @if(Auth::user()->isAdmin() || Auth::user()->isSuperReseller())
+            <!-- Revendedores (Admin & Proveedor / Super Reseller / Revendedor PRO) -->
+            @if(Auth::user()->isAdmin() || Auth::user()->isSuperReseller() || Auth::user()->canResellPanels())
             <a href="{{ route('resellers.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('resellers.*') ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-gray-400 hover:text-white hover:bg-gray-800/60' }}">
                 <i data-lucide="user-plus" class="w-5 h-5"></i>
                 <span>{{ Auth::user()->isAdmin() ? 'Revendedores & Saldo' : 'Mis Revendedores & Clones' }}</span>

@@ -421,7 +421,7 @@ class User extends Authenticatable
             return $this->support_whatsapp ?: $adminPhone;
         }
         if ($pref === 'provider') {
-            return ($this->parent && $this->parent->support_whatsapp) ? $this->parent->support_whatsapp : $adminPhone;
+            return ($this->parent && $this->parent->support_whatsapp) ? $this->parent->support_whatsapp : ($this->support_whatsapp ?: $adminPhone);
         }
         if ($pref === 'admin') {
             return $adminPhone;

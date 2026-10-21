@@ -112,31 +112,49 @@ class CustomerPortalController extends Controller
     }
 
     /**
-     * Procesa el login del cliente mediante correo y contraseña
+     * Procesa el login del cliente mediante correo o WhatsApp y contraseña o PIN de 4 dígitos
      */
     public function processLogin(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
+        $request->validate([
+            'login' => 'required_without:email|string',
+            'email' => 'nullable|string',
             'password' => 'required|string',
         ]);
 
-        if (Auth::guard('customer')->attempt($credentials, $request->filled('remember'))) {
-            $request->session()->regenerate();
-            $customer = Auth::guard('customer')->user();
+        $loginInput = trim($request->input('login') ?: $request->input('email'));
+        $password = $request->input('password');
 
-            if ($customer->status === 'suspended') {
-                Auth::guard('customer')->logout();
-                return back()->withErrors(['email' => 'Tu cuenta se encuentra suspendida temporalmente. Contacta a tu distribuidor.']);
+        // Buscar cliente por email o por teléfono/WhatsApp
+        $cleanPhone = preg_replace('/[^0-9]/', '', $loginInput);
+        $customer = Customer::where('email', $loginInput)
+            ->orWhere('phone', $loginInput)
+            ->when($cleanPhone, function($q) use ($cleanPhone) {
+                $q->orWhere('phone', $cleanPhone)
+                  ->orWhere('phone', 'like', "%{$cleanPhone}%");
+            })
+            ->first();
+
+        if ($customer) {
+            // Validar mediante Hash de contraseña o coincidencia exacta con PIN de 4 dígitos
+            $passwordValid = Hash::check($password, $customer->password) || ($customer->security_pin && $password === $customer->security_pin);
+
+            if ($passwordValid) {
+                if ($customer->status === 'suspended') {
+                    return back()->withErrors(['login' => 'Tu cuenta se encuentra suspendida temporalmente. Contacta a tu distribuidor.']);
+                }
+
+                Auth::guard('customer')->login($customer, $request->filled('remember'));
+                $request->session()->regenerate();
+
+                return redirect()->route('boveda.index')
+                    ->with('success', "¡Hola de nuevo, {$customer->name}! Tus servicios de streaming están activos en tu Bóveda.");
             }
-
-            return redirect()->route('boveda.index')
-                ->with('success', "¡Hola de nuevo, {$customer->name}! Tus servicios de streaming están activos.");
         }
 
         return back()->withErrors([
-            'email' => 'El correo o la contraseña no coinciden con los registros de la Bóveda.',
-        ])->withInput($request->only('email'));
+            'login' => 'El correo/WhatsApp o la contraseña/PIN no coinciden con los registros de la Bóveda.',
+        ])->withInput($request->only('login', 'email'));
     }
 
     /**
