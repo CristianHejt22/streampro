@@ -217,8 +217,8 @@
                     <input type="number" step="0.01" name="custom_price" placeholder="Monto convenido o dejar vacío para precio regular" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-red-500">
                 </div>
 
-                <!-- Duración y Consignación -->
-                <div class="grid grid-cols-2 gap-3">
+                <!-- Duración y Forma de Pago (Sin Consignación) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" x-data="{ payMethod: 'wallet' }">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Duración (Meses) *</label>
                         <select name="months_duration" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none">
@@ -229,23 +229,34 @@
                             <option value="12">12 Meses (1 Año)</option>
                         </select>
                     </div>
-                    <div class="flex items-center pt-5">
-                        <label class="flex items-center gap-2 text-xs text-amber-300 font-bold cursor-pointer">
-                            <input type="checkbox" name="is_consignment" value="1" class="rounded bg-slate-900 border-amber-500 text-amber-500 focus:ring-0">
-                            <span>📦 Consignación 48h</span>
-                        </label>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Forma de Pago *</label>
+                        <select name="payment_method" x-model="payMethod" class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none">
+                            <option value="wallet">💳 Billetera (Entrega Automática)</option>
+                            <option value="bank_transfer">🏦 Transferencia (Aceptación Requerida)</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed space-y-1">
-                    <div class="flex items-center gap-1.5 font-bold text-amber-400">
-                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
-                        <span>Regla de Entrega Estricta:</span>
+                <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-cyan-500/30 text-xs space-y-1.5">
+                    <div class="flex items-center gap-1.5 font-bold text-cyan-400">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Condiciones de Pago & Entrega:</span>
                     </div>
-                    <p>
-                        <strong>No se entregará sin monto en billetera o si no se recibe el pago del proveedor.</strong>
-                        Si se activa en consignación o sin saldo suficiente, las credenciales quedan retenidas y solo se desbloquearán en la Bóveda del cliente cuando liquides el costo desde tu saldo.
-                    </p>
+                    <ul class="space-y-1 text-[11px] text-gray-300">
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-emerald-400 font-bold">✓</span>
+                            <span><strong>Revendedor con saldo en billetera:</strong> Entrega automática e inmediata en la Bóveda del cliente.</span>
+                        </li>
+                        <li class="flex items-start gap-1.5">
+                            <span class="text-amber-400 font-bold">✓</span>
+                            <span><strong>Transferencia bancaria:</strong> La transferencia será aceptada para entregar la(s) cuenta(s).</span>
+                        </li>
+                        <li class="flex items-start gap-1.5 text-rose-400 font-semibold border-t border-slate-800 pt-1">
+                            <span class="font-bold">⚠️</span>
+                            <span><strong>Sin consignación:</strong> Consignación de gracia (NO ES UNA OPCIÓN).</span>
+                        </li>
+                    </ul>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">

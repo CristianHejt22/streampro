@@ -101,11 +101,14 @@ class CustomerController extends Controller
             'service_plan_id' => 'required|exists:service_plans,id',
             'custom_price' => 'nullable|numeric|min:0',
             'months_duration' => 'nullable|integer|in:1,2,3,6,12',
-            'is_consignment' => 'nullable|boolean',
+            'payment_method' => 'nullable|in:wallet,bank_transfer',
         ]);
 
         $months = max(1, (int) $request->input('months_duration', 1));
-        $isConsignment = $request->boolean('is_consignment');
+        $paymentMethod = $request->input('payment_method', 'wallet');
+        if (!in_array($paymentMethod, ['wallet', 'bank_transfer'])) {
+            $paymentMethod = 'wallet';
+        }
 
         $plan = ServicePlan::with('service')->findOrFail($request->service_plan_id);
         $service = $plan->service;
@@ -129,7 +132,7 @@ class CustomerController extends Controller
             $parentCommission = round($profit * ($pct / 100), 2);
         }
 
-        // Regla: No se entregará sin monto en billetera o si no se recibe el pago del proveedor
+        $isPaid = true;
         if ($user->isReseller()) {
             $providerBlockReason = null;
             if (!$user->canDeliverAccounts($providerBlockReason)) {
@@ -138,15 +141,20 @@ class CustomerController extends Controller
                 ]);
             }
 
-            if (!$isConsignment) {
+            if ($paymentMethod === 'wallet') {
+                // Revendedor con saldo en billetera: entrega automática
                 if (!$user->hasBalance($cost)) {
-                    return back()->withErrors(['error' => "⛔ Entrega Bloqueada: No se puede entregar la cuenta sin monto en billetera. Costo requerido: \${$cost} para {$months} mes(es) y tu saldo actual es de \${$user->balance}. Recarga tu billetera para entregar el servicio."]);
+                    return back()->withErrors(['error' => "⛔ Saldo Insuficiente en Billetera para Entrega Automática (\${$cost} requeridos, saldo actual \${$user->balance}). Recarga saldo o selecciona 'Abonar por Transferencia Bancaria' para su aceptación."]);
                 }
                 $user->deductBalance($cost);
 
                 if ($parentCommission > 0 && $user->parent) {
                     $user->parent->addBalance($parentCommission);
                 }
+                $isPaid = true;
+            } else {
+                // Abonar por transferencia: requiere ser aceptada para entregar
+                $isPaid = false;
             }
         }
 
@@ -219,25 +227,28 @@ class CustomerController extends Controller
             'profit' => $profit,
             'parent_commission_amount' => $parentCommission,
             'months_duration' => $months,
-            'is_consignment' => $isConsignment,
-            'is_consignment_paid' => !$isConsignment,
-            'consignment_expires_at' => $isConsignment ? Carbon::now()->addHours(48) : null,
+            'payment_method' => $paymentMethod,
+            'is_consignment' => false,
+            'is_consignment_paid' => $isPaid,
+            'consignment_expires_at' => null,
+            'transfer_accepted_at' => $isPaid && $paymentMethod === 'bank_transfer' ? Carbon::now() : null,
+            'transfer_accepted_by' => $isPaid && $paymentMethod === 'bank_transfer' ? $user->id : null,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'status' => 'active',
-            'notes' => 'Activada para el cliente ' . $customer->name . ($isConsignment ? ' [CONSIGNACIÓN 48H]' : ''),
+            'notes' => 'Activada para el cliente ' . $customer->name . ' [' . ($paymentMethod === 'wallet' ? 'Billetera Automática' : 'Transferencia Bancaria') . ']',
         ]);
 
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'activate_customer_service',
-            'description' => "Servicio {$service->name} activado para cliente {$customer->name} ({$customer->email}). Venta {$saleCode}.",
+            'description' => "Servicio {$service->name} activado para cliente {$customer->name} ({$customer->email}). Venta {$saleCode}. Método: {$paymentMethod}. Estado pago: " . ($isPaid ? 'Pagada / Entregada' : 'Pendiente Aceptación Transferencia'),
             'ip_address' => $request->ip(),
         ]);
 
-        $msg = $isConsignment 
-            ? "¡Cuenta en consignación apartada para {$customer->name}! 🔒 ATENCIÓN: Las credenciales quedan RETENIDAS y NO se entregarán en la Bóveda del cliente hasta liquidar el costo de $" . number_format($cost, 2) . " desde tu billetera." 
-            : "¡Activación completada con éxito! {$service->name} asignado a {$customer->name}. Las credenciales han sido entregadas en su Bóveda.";
+        $msg = $isPaid 
+            ? "¡Activación completada con éxito! {$service->name} entregado automáticamente a {$customer->name} en su Bóveda." 
+            : "¡Activación registrada con pago por Transferencia Bancaria! Las credenciales quedan retenidas y se entregarán al cliente una vez que el proveedor o administración acepte la transferencia.";
 
         return back()->with('success', $msg);
     }

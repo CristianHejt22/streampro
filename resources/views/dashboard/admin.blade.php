@@ -111,37 +111,43 @@
     </div>
     @endif
 
-    <!-- Alert Box: Cuentas en Consignación 48hs -->
+    <!-- Alert Box: Ventas por Transferencia Pendientes de Aceptación -->
     @if(isset($consignmentsActive) && $consignmentsActive->isNotEmpty())
     <div class="p-5 rounded-2xl bg-[#111827] border border-amber-500/40 shadow-xl space-y-3">
         <div class="flex items-center justify-between border-b border-gray-800 pb-2">
             <div class="flex items-center gap-2 text-amber-400">
-                <i data-lucide="clock" class="w-5 h-5 animate-pulse"></i>
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Cuentas en Consignación (Plazo de 48hs Activo)</h3>
+                <i data-lucide="credit-card" class="w-5 h-5 animate-pulse"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Ventas por Transferencia Bancaria (Pendientes de Aceptación)</h3>
             </div>
             <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                {{ $consignmentsActive->count() }} por Liquidar
+                {{ $consignmentsActive->count() }} por Aceptar & Entregar
             </span>
         </div>
+        <p class="text-xs text-gray-400">
+            Cuentas vendidas por transferencia bancaria. Al aceptar la transferencia, las credenciales se liberan de inmediato en la Bóveda del Cliente.
+        </p>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach($consignmentsActive as $cSale)
-            @php
-                $hrs = $cSale->consignment_hours_remaining ?? 48;
-            @endphp
             <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
                 <div>
                     <span class="font-bold text-white text-xs block">{{ $cSale->service ? $cSale->service->name : 'Streaming' }}</span>
-                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Consignatario' }}</span>
+                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Cliente' }}</span>
                     <span class="text-[10px] text-sky-400 font-mono block">Vendedor: {{ $cSale->user ? $cSale->user->name : '' }}</span>
+                    <span class="text-[10px] text-amber-400 font-mono block">Costo: ${{ number_format($cSale->cost_price, 2) }}</span>
+                    @if($cSale->payment_proof)
+                    <a href="{{ asset('storage/' . $cSale->payment_proof) }}" target="_blank" class="inline-flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 font-mono underline mt-1">
+                        <i data-lucide="paperclip" class="w-3 h-3"></i> Ver Comprobante
+                    </a>
+                    @endif
                 </div>
                 <div class="text-right">
-                    <span class="text-xs font-mono font-bold {{ $hrs <= 12 ? 'text-rose-400 animate-pulse' : 'text-amber-400' }} block">
-                        ⏳ {{ $hrs }}h restantes
+                    <span class="text-xs font-mono font-bold text-amber-400 block mb-1.5">
+                        🏦 Por Aceptar
                     </span>
-                    <form method="POST" action="{{ route('sales.pay_consignment', $cSale) }}" class="mt-1">
+                    <form method="POST" action="{{ route('sales.accept_transfer', $cSale) }}" onsubmit="return confirm('¿Confirmas que recibiste la transferencia y deseas liberar las credenciales al cliente?')">
                         @csrf
-                        <button type="submit" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 cursor-pointer">
-                            Liquidar ${{ number_format($cSale->cost_price, 2) }}
+                        <button type="submit" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow cursor-pointer transition">
+                            ✓ Aceptar & Entregar
                         </button>
                     </form>
                 </div>

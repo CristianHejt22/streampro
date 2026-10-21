@@ -142,6 +142,8 @@ class SaleController extends Controller
             'customer_phone' => 'nullable|required_if:customer_mode,new|string|max:50',
             'customer_email' => 'nullable|email|max:255',
             'custom_price' => 'nullable|numeric|min:0',
+            'payment_method' => 'nullable|in:wallet,bank_transfer',
+            'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'notes' => 'nullable|string',
         ]);
 
@@ -160,9 +162,15 @@ class SaleController extends Controller
             $customer = Customer::findOrFail($request->customer_id);
         }
 
-        // 2. Control de Saldo, Duración en Meses y Consignación para Revendedores
+        // 2. Control de Duración en Meses y Modalidad de Pago
+        // "Para las cuentas se deberá abonar por transferencia y/o Dinero disponible en billetera proveedor y revendedor.
+        // Transferencia será aceptada para entregar la cuenta/s. Revendedor con saldo en billetera entrega automática.
+        // Consignación de gracia (NO SERÁ UNA OPCIÓN)."
         $months = max(1, (int) $request->input('months_duration', 1));
-        $isConsignment = $request->boolean('is_consignment');
+        $paymentMethod = $request->input('payment_method', 'wallet');
+        if (!in_array($paymentMethod, ['wallet', 'bank_transfer'])) {
+            $paymentMethod = 'wallet';
+        }
 
         $pricing = $user->getEffectivePlanPricing($plan);
         $defaultSalePrice = ($user->isReseller() && !empty($pricing['reseller_pvp'])) ? (float)$pricing['reseller_pvp'] : (float)$plan->price;
@@ -184,6 +192,7 @@ class SaleController extends Controller
             $parentCommission = round($profit * ($pct / 100), 2);
         }
 
+        $isPaid = true;
         if ($user->isReseller()) {
             $providerBlockReason = null;
             if (!$user->canDeliverAccounts($providerBlockReason)) {
@@ -192,18 +201,23 @@ class SaleController extends Controller
                 ])->withInput();
             }
 
-            if (!$isConsignment) {
+            if ($paymentMethod === 'wallet') {
+                // Revendedor con saldo en billetera: entrega automática e inmediata
                 if (!$user->hasBalance($costPrice)) {
                     return back()->withErrors([
-                        'error' => "⛔ Entrega Bloqueada: No se puede entregar la cuenta sin monto en billetera. Costo requerido: \${$costPrice}, Saldo actual: \${$user->balance}. Por favor recarga saldo antes de realizar la entrega."
+                        'error' => "⛔ Saldo Insuficiente en Billetera para Entrega Automática. Costo requerido: \${$costPrice}, Saldo actual: \${$user->balance}. Por favor recarga tu saldo o selecciona 'Abonar por Transferencia Bancaria' para que tu proveedor acepte la transferencia y libere la cuenta."
                     ])->withInput();
                 }
                 $user->deductBalance($costPrice);
+                $isPaid = true;
 
                 // Acreditar comisión del 25% al panel que ofreció/clonó el servicio
                 if ($parentCommission > 0 && $user->parent) {
                     $user->parent->addBalance($parentCommission);
                 }
+            } else {
+                // Abonar por Transferencia Bancaria: requiere ser aceptada para entregar la cuenta
+                $isPaid = false;
             }
         }
 
@@ -242,7 +256,13 @@ class SaleController extends Controller
             }
         }
 
-        // 4. Crear registro inmutable de Venta
+        // Subir comprobante de pago por transferencia si se adjuntó
+        $proofPath = null;
+        if ($request->hasFile('payment_proof')) {
+            $proofPath = $request->file('payment_proof')->store('proofs', 'public');
+        }
+
+        // 4. Crear registro inmutable de Venta (Sin consignación; pago por billetera o transferencia)
         $startDate = Carbon::today();
         $endDate = $startDate->copy()->addMonths($months);
         $saleCode = 'CST-' . date('Ymd') . '-' . strtoupper(Str::random(4));
@@ -266,9 +286,13 @@ class SaleController extends Controller
             'profit' => $profit,
             'parent_commission_amount' => $parentCommission,
             'months_duration' => $months,
-            'is_consignment' => $isConsignment,
-            'is_consignment_paid' => !$isConsignment,
-            'consignment_expires_at' => $isConsignment ? Carbon::now()->addHours(48) : null,
+            'payment_method' => $paymentMethod,
+            'payment_proof' => $proofPath,
+            'is_consignment' => false,
+            'is_consignment_paid' => $isPaid,
+            'consignment_expires_at' => null,
+            'transfer_accepted_at' => $isPaid && $paymentMethod === 'bank_transfer' ? Carbon::now() : null,
+            'transfer_accepted_by' => $isPaid && $paymentMethod === 'bank_transfer' ? $user->id : null,
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
             'status' => 'active',
@@ -278,68 +302,86 @@ class SaleController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'create_sale',
-            'description' => "Venta {$saleCode} creada para {$customer->name} ({$service->name}). Duración: {$months} mes(es). Consignación: " . ($isConsignment ? 'SÍ (48h)' : 'NO (Pagada)'),
+            'description' => "Venta {$saleCode} creada para {$customer->name} ({$service->name}). Duración: {$months} mes(es). Método: " . ($paymentMethod === 'wallet' ? 'Billetera (Entrega Automática)' : 'Transferencia Bancaria') . ". Estado de pago: " . ($isPaid ? 'Pagada / Entregada' : 'Pendiente de Aceptación de Transferencia'),
             'ip_address' => $request->ip(),
         ]);
 
-        $consMsg = $isConsignment 
-            ? ' [EN CONSIGNACIÓN: Las credenciales quedan RETENIDAS y NO se entregarán en la Bóveda del cliente hasta liquidar los $' . number_format($costPrice, 2) . ' desde tu billetera]' 
-            : ' [Credenciales entregadas al cliente en su Bóveda]';
+        if ($isPaid) {
+            $msg = "¡Venta {$saleCode} registrada con éxito! Saldo debitado de billetera y credenciales entregadas automáticamente en la Bóveda del cliente.";
+        } else {
+            $msg = "¡Venta {$saleCode} registrada con pago por Transferencia Bancaria! Las credenciales quedan retenidas y se entregarán al cliente una vez que el proveedor o administración acepte la transferencia.";
+        }
 
         return redirect()->route('sales.index')
-            ->with('success', "¡Venta {$saleCode} registrada con éxito!{$consMsg}")
+            ->with('success', $msg)
             ->with('new_sale_id', $sale->id);
     }
 
     /**
-     * Liquidar / Pagar cuenta emitida en Consignación antes de las 48hs
+     * Aceptar Transferencia Bancaria y Entregar Cuenta(s) al Cliente
      */
-    public function payConsignment(Request $request, Sale $sale)
+    public function acceptTransferPayment(Request $request, Sale $sale)
     {
         $user = Auth::user();
-        if ($user->isReseller() && $sale->user_id !== $user->id) {
-            abort(403);
+        $isOwner = $sale->user_id === $user->id;
+        $isParentProvider = ($user->isSuperReseller() || $user->isAdmin()) && (
+            $sale->user && $sale->user->parent_id === $user->id
+        );
+        $isAdmin = $user->isAdmin();
+
+        if (!$isOwner && !$isParentProvider && !$isAdmin) {
+            abort(403, 'No tienes permiso para aceptar esta transferencia.');
         }
 
-        if (!$sale->is_consignment || $sale->is_consignment_paid) {
-            return back()->with('info', 'Esta venta ya se encuentra liquidada y pagada.');
+        if ($sale->is_consignment_paid) {
+            return back()->with('info', 'Esta venta ya se encuentra aceptada, pagada y entregada.');
         }
 
-        if ($sale->isConsignmentExpired()) {
-            return back()->withErrors(['error' => 'El plazo de 48 horas de consignación ya expiró y la cuenta ha caído.']);
-        }
-
-        // Si es revendedor, descontar el costo de su balance
-        if ($user->isReseller()) {
+        // Si es el revendedor dueño que decide liquidarla desde su saldo disponible en billetera:
+        if ($isOwner && $user->isReseller() && !$isParentProvider && !$isAdmin) {
             $providerBlockReason = null;
             if (!$user->canDeliverAccounts($providerBlockReason)) {
-                return back()->withErrors(['error' => "⛔ Liquidación Bloqueada: {$providerBlockReason} Regulariza el estado con tu proveedor."]);
+                return back()->withErrors(['error' => "⛔ Entrega Bloqueada: {$providerBlockReason} Regulariza el estado con tu proveedor."]);
             }
 
             if (!$user->hasBalance($sale->cost_price)) {
-                return back()->withErrors(['error' => "Saldo insuficiente para liquidar y entregar. Requiere \${$sale->cost_price} y tu saldo actual es de \${$user->balance}. Recarga tu billetera."]);
+                return back()->withErrors(['error' => "Saldo insuficiente en billetera para entregar. Requiere \${$sale->cost_price} y tu saldo actual es de \${$user->balance}. Recarga tu billetera o solicita la aceptación de transferencia a tu proveedor."]);
             }
             $user->deductBalance($sale->cost_price);
 
-            // Acreditar 25% de comisión al panel padre patrocinador
             if ($sale->parent_commission_amount > 0 && $user->parent) {
                 $user->parent->addBalance($sale->parent_commission_amount);
+            }
+        } elseif ($isParentProvider || $isAdmin) {
+            // El proveedor o super admin confirma la recepción de la transferencia y libera la entrega
+            if ($sale->parent_commission_amount > 0 && $sale->user && $sale->user->parent_id === $user->id) {
+                // Comisión cubierta en la transferencia
             }
         }
 
         $sale->update([
             'is_consignment_paid' => true,
+            'transfer_accepted_at' => Carbon::now(),
+            'transfer_accepted_by' => $user->id,
             'status' => 'active',
         ]);
 
         AuditLog::create([
             'user_id' => $user->id,
-            'action' => 'pay_consignment',
-            'description' => "Consignación {$sale->sale_code} liquidada con éxito por \${$sale->cost_price}. Credenciales entregadas al cliente.",
+            'action' => 'accept_transfer_payment',
+            'description' => "Transferencia bancaria aceptada por {$user->name} para la venta {$sale->sale_code} ({$sale->service->name}). Cuenta entregada al cliente {$sale->customer->name} en su Bóveda.",
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', "¡Consignación de la venta {$sale->sale_code} pagada exitosamente! Las credenciales han sido entregadas y desbloqueadas en la Bóveda del Cliente.");
+        return back()->with('success', "¡Transferencia bancaria aceptada! Las credenciales de la venta {$sale->sale_code} han sido entregadas y desbloqueadas en la Bóveda del Cliente.");
+    }
+
+    /**
+     * Alias compatible para liquidación / aceptación de pago
+     */
+    public function payConsignment(Request $request, Sale $sale)
+    {
+        return $this->acceptTransferPayment($request, $sale);
     }
 
     public function renew(Request $request, Sale $sale)
@@ -399,8 +441,8 @@ class SaleController extends Controller
             return back()->withErrors(['error' => "⛔ Garantía Bloqueada: {$providerBlockReason} Regulariza el estado de tu panel con tu proveedor antes de entregar reemplazos."]);
         }
 
-        if ($sale->is_consignment && !$sale->is_consignment_paid) {
-            return back()->withErrors(['error' => 'No puedes modificar ni aplicar cambios a una cuenta en consignación hasta que sea liquidada y pagada dentro del plazo de 48 horas.']);
+        if (!$sale->is_consignment_paid) {
+            return back()->withErrors(['error' => 'No puedes modificar ni aplicar garantías a una cuenta con pago por transferencia pendiente de aceptación. Acepta el pago o abónalo con saldo para desbloquear la gestión.']);
         }
 
         $request->validate([

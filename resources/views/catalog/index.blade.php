@@ -113,7 +113,7 @@
             </h1>
 
             <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto">
-                Gestiona y vende Netflix 4K, Disney+, Max y más. Panel propio, activación con créditos, <strong>Bóveda con Biometría</strong> para clientes, consignación 48hs y comisiones en tiempo real.
+                Gestiona y vende Netflix 4K, Disney+, Max y más. Panel propio, activación con créditos, <strong>Bóveda con Biometría</strong> para clientes, entrega automática con saldo en billetera o transferencia bancaria y comisiones en tiempo real.
             </p>
 
             <div class="flex flex-wrap items-center justify-center gap-3 pt-3">
@@ -155,8 +155,8 @@
                 <span class="text-xs text-slate-400">Uptime & Garantía</span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                <span class="text-2xl font-black text-sky-400 block">48hs</span>
-                <span class="text-xs text-slate-400">Consignación de Gracia</span>
+                <span class="text-2xl font-black text-sky-400 block">Inmediata</span>
+                <span class="text-xs text-slate-400">Entrega Automática</span>
             </div>
             <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
                 <span class="text-2xl font-black text-amber-400 block">WebAuthn</span>
@@ -220,7 +220,7 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
-                            <span>Ventas a consignación con 48hs de gracia</span>
+                            <span>Entrega automática con saldo o transferencia bancaria aceptada</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
@@ -821,18 +821,24 @@
                  :class="openFaq === 5 ? 'border-emerald-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
                 <button type="button" @click="toggleFaq(5)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
                     <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
-                        <i data-lucide="clock" class="w-5 h-5 text-emerald-400 shrink-0"></i>
-                        ¿Cómo funcionan las licencias en consignación y el plazo de 48 horas?
+                        <i data-lucide="credit-card" class="w-5 h-5 text-emerald-400 shrink-0"></i>
+                        ¿Cómo se abonan y entregan las cuentas de streaming?
                     </span>
                     <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
                        :class="openFaq === 5 ? 'rotate-180 text-emerald-400' : ''"></i>
                 </button>
                 <div x-show="openFaq === 5" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        El revendedor puede emitir licencias de streaming en modalidad <strong>consignación</strong> por meses seleccionables (1, 2, 3 o 6 meses) para habilitar a su cliente al momento.
+                        Para las cuentas se deberá abonar por <strong>transferencia bancaria</strong> y/o con <strong>dinero disponible en la billetera</strong> (tanto para proveedor como revendedor).
                     </p>
                     <p>
-                        La plataforma otorga una <strong>ventana estricta de 48 horas de gracia</strong>. Si la licencia o el costo mayorista no es liquidado antes del vencimiento del plazo, la cuenta se deshabilita automáticamente, protegiendo al proveedor y al revendedor de pérdidas por impagos.
+                        ⚡ <strong>Revendedor con saldo en billetera:</strong> La entrega es <strong>100% automática e inmediata</strong>. Las credenciales y PINs se asignan al instante en la Bóveda Privada del cliente.
+                    </p>
+                    <p>
+                        🏦 <strong>Abono por transferencia bancaria:</strong> La transferencia será aceptada y acreditada por el proveedor o administración para liberar y entregar la(s) cuenta(s).
+                    </p>
+                    <p class="text-rose-400 font-semibold pt-1 border-t border-slate-800/80">
+                        🚫 <strong>Consignación de gracia (NO ES UNA OPCIÓN):</strong> No existen plazos de 48hs ni cuentas fiadas. Todo el stock se entrega protegido con saldo disponible o transferencia aceptada.
                     </p>
                 </div>
             </div>
@@ -843,17 +849,17 @@
                 <button type="button" @click="toggleFaq(6)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
                     <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
                         <i data-lucide="shield-alert" class="w-5 h-5 text-rose-400 shrink-0"></i>
-                        ¿Por qué no se entregan cuentas si no hay saldo en billetera?
+                        ¿Por qué no se entregan cuentas sin saldo en billetera o transferencia aceptada?
                     </span>
                     <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
                        :class="openFaq === 6 ? 'rotate-180 text-rose-400' : ''"></i>
                 </button>
                 <div x-show="openFaq === 6" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        Por seguridad financiera y operativa: <strong>ninguna cuenta se entrega o revela sin el costo mayorista cubierto en la billetera</strong> o sin el pago asentado del proveedor.
+                        Por seguridad financiera y protección del stock: <strong>ninguna cuenta se entrega o revela sin el costo mayorista cubierto</strong>.
                     </p>
                     <p>
-                        Esto garantiza que los inventarios nunca queden expuestos ni se originen deudas incobrables entre revendedores y proveedores.
+                        El revendedor con saldo en billetera disfruta de entrega automática al segundo. Si opta por abonar por transferencia, la cuenta permanece retenida en la Bóveda hasta que el proveedor la acepte. Esto elimina deudas incobrables y garantiza un modelo 100% seguro y rentable.
                     </p>
                 </div>
             </div>

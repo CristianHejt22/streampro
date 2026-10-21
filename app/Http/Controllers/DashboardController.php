@@ -100,13 +100,13 @@ class DashboardController extends Controller
             $chartValues[] = (float) $salesAmount;
         }
 
-        // Cuentas en Consignación activas pendientes de pago (48hs)
-        $consignmentsActive = Sale::where('is_consignment', true)
-            ->where('is_consignment_paid', false)
+        // Ventas por transferencia bancaria pendientes de aceptación para entregar cuentas
+        $pendingTransfersActive = Sale::where('is_consignment_paid', false)
             ->where('status', 'active')
             ->with(['customer', 'service', 'user'])
             ->latest()
             ->get();
+        $consignmentsActive = $pendingTransfersActive;
 
         // Solicitudes de renovación pendientes desde Bóveda de Clientes
         $pendingRenewalsCount = RenewalRequest::where('status', 'pending')->count();
@@ -214,14 +214,14 @@ class DashboardController extends Controller
             $chartValues[] = (float) $salesAmount;
         }
 
-        // Cuentas en Consignación del revendedor pendientes de liquidar (48hs)
-        $consignmentsActive = Sale::where('user_id', $user->id)
-            ->where('is_consignment', true)
+        // Ventas por transferencia bancaria pendientes de aceptación para entregar cuentas
+        $pendingTransfersActive = Sale::where('user_id', $user->id)
             ->where('is_consignment_paid', false)
             ->where('status', 'active')
             ->with(['customer', 'service'])
             ->latest()
             ->get();
+        $consignmentsActive = $pendingTransfersActive;
 
         // Solicitudes de renovación pendientes de sus clientes
         $pendingRenewalsCount = RenewalRequest::where('user_id', $user->id)->where('status', 'pending')->count();

@@ -274,8 +274,6 @@
                     'icon' => 'check-circle'
                 ];
                 $endDate = $sale->end_date ? \Carbon\Carbon::parse($sale->end_date)->format('d/m/Y') : '30 días';
-                $isConsignment = $sale->is_consignment && !$sale->is_consignment_paid;
-                $hoursLeft = $sale->consignment_hours_remaining;
 
                 // REGLA: No se entregará sin monto en billetera o si no se recibe el pago del proveedor
                 $blockReason = null;
@@ -312,13 +310,6 @@
                             <span>Consultar a Soporte</span>
                         </a>
                         @endif
-                    </div>
-                </div>
-                @elseif($isConsignment)
-                <div class="p-3 mx-5 mt-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="clock" class="w-4 h-4 text-amber-400 animate-pulse"></i>
-                        <span><strong>Cuenta en Consignación:</strong> {{ $hoursLeft ?? 48 }} horas restantes para liquidación por tu revendedor.</span>
                     </div>
                 </div>
                 @endif

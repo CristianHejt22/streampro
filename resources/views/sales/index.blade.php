@@ -339,22 +339,24 @@
                         <td class="py-3 px-4">
                             <div class="font-semibold text-white">{{ $s->end_date->format('d/m/Y') }} ({{ $s->months_duration ?: 1 }}m)</div>
                             <div class="mt-0.5">
-                                @if($s->is_consignment && !$s->is_consignment_paid)
-                                    @if($s->isConsignmentExpired())
-                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold block w-max">
-                                            🔴 Caída (48h Vencidas)
-                                        </span>
-                                    @else
-                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold block w-max animate-pulse">
-                                            📦 Consignación ({{ $s->consignment_hours_remaining ?? 48 }}h restantes)
-                                        </span>
-                                        <span class="text-[9px] text-amber-400 font-mono block mt-0.5">🔒 Credenciales Retenidas</span>
-                                        <form method="POST" action="{{ route('sales.pay_consignment', $s) }}" class="inline mt-1 block">
-                                            @csrf
-                                            <button type="submit" onclick="return confirm('¿Confirmas liquidar la cuenta por ${{ number_format($s->cost_price, 2) }} y entregar credenciales?');" class="text-[10px] text-emerald-400 hover:underline font-bold block">
-                                                💰 Liquidar & Entregar
-                                            </button>
-                                        </form>
+                                @if(!$s->is_consignment_paid)
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold block w-max animate-pulse">
+                                        🏦 Transferencia Pendiente
+                                    </span>
+                                    <span class="text-[9px] text-amber-400 font-mono block mt-0.5">🔒 Retenida hasta Aceptar</span>
+                                    @if($s->payment_proof)
+                                    <a href="{{ asset('storage/' . $s->payment_proof) }}" target="_blank" class="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 underline mt-0.5">
+                                        <i data-lucide="image" class="w-3 h-3"></i>
+                                        <span>Comprobante</span>
+                                    </a>
+                                    @endif
+                                    @if(Auth::user()->isAdmin() || (Auth::user()->isSuperReseller() && optional($s->user)->parent_id === Auth::id()) || $s->user_id === Auth::id())
+                                    <form method="POST" action="{{ route('sales.accept_transfer', $s) }}" class="inline mt-1 block">
+                                        @csrf
+                                        <button type="submit" onclick="return confirm('¿Confirmas que la transferencia fue aceptada para entregar la(s) cuenta(s) al cliente?');" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded-lg border border-emerald-500/30 block cursor-pointer transition">
+                                            ✓ Aceptar Transferencia & Entregar
+                                        </button>
+                                    </form>
                                     @endif
                                 @elseif($calcStatus === 'active')
                                     <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
@@ -413,8 +415,8 @@
                                 </button>
 
                                 <!-- Garantía / Caída -->
-                                @if($s->is_consignment && !$s->is_consignment_paid)
-                                <span title="Cuenta en Consignación: No se permiten cambios hasta liquidar el pago" class="p-2 rounded-lg bg-gray-800 text-gray-500 cursor-not-allowed">
+                                @if(!$s->is_consignment_paid)
+                                <span title="Transferencia Pendiente: Acepta o abona el pago para activar la garantía" class="p-2 rounded-lg bg-gray-800 text-gray-500 cursor-not-allowed">
                                     <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
                                 </span>
                                 @else
@@ -474,7 +476,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('sales.store') }}" class="p-6 overflow-y-auto space-y-4">
+            <form method="POST" action="{{ route('sales.store') }}" enctype="multipart/form-data" class="p-6 overflow-y-auto space-y-4" x-data="{ payMethod: 'wallet' }">
                 @csrf
 
                 <!-- Selección de Plan y Plataforma -->
@@ -545,8 +547,8 @@
                     </div>
                 </div>
 
-                <!-- Duración en Meses y Consignación -->
-                <div class="grid grid-cols-2 gap-3 pt-2">
+                <!-- Duración y Forma de Pago (Sin Consignación) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                     <div>
                         <label class="block text-xs text-gray-400 font-bold uppercase mb-1">Duración (Meses) *</label>
                         <select name="months_duration" class="w-full px-3 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
@@ -557,23 +559,42 @@
                             <option value="12">12 Meses (1 Año - 360 días)</option>
                         </select>
                     </div>
-                    <div class="flex items-center pt-5">
-                        <label class="flex items-center gap-2 text-xs text-amber-300 font-bold cursor-pointer">
-                            <input type="checkbox" name="is_consignment" value="1" class="rounded bg-gray-900 border-amber-500 text-amber-500 focus:ring-0">
-                            <span>📦 En Consignación (48h)</span>
-                        </label>
+                    <div>
+                        <label class="block text-xs text-gray-400 font-bold uppercase mb-1">Forma de Pago del Lote / Cuenta *</label>
+                        <select name="payment_method" x-model="payMethod" class="w-full px-3 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
+                            <option value="wallet">💳 Billetera (Entrega Automática)</option>
+                            <option value="bank_transfer">🏦 Transferencia Bancaria (Aceptación Requerida)</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] leading-relaxed space-y-1">
-                    <div class="flex items-center gap-1.5 font-bold text-amber-400">
-                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
-                        <span>Regla de Entrega Estricta:</span>
+                <!-- Campo de Comprobante si abona por Transferencia -->
+                <div x-show="payMethod === 'bank_transfer'" x-collapse class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+                    <label class="block text-xs font-bold text-sky-400 uppercase">Adjuntar Comprobante de Transferencia (Opcional)</label>
+                    <input type="file" name="payment_proof" accept="image/*,application/pdf" class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-sky-500/20 file:text-sky-300 file:font-bold">
+                    <span class="text-[11px] text-gray-500 block">La transferencia será aceptada por tu proveedor para habilitar la entrega de la cuenta.</span>
+                </div>
+
+                <!-- Banner Informativo Oficial -->
+                <div class="p-4 rounded-2xl bg-[#0b0f19] border border-cyan-500/30 text-xs space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-cyan-400">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Condiciones de Pago & Entrega:</span>
                     </div>
-                    <p>
-                        <strong>No se entregará sin monto en billetera o si no se recibe el pago del proveedor.</strong>
-                        Si emites en consignación o tu panel no tiene saldo suficiente, las credenciales permanecerán <strong>retenidas</strong> en la Bóveda del cliente y solo se entregarán cuando liquides el costo mayorista con saldo disponible. Plazo de gracia: 48 horas.
-                    </p>
+                    <ul class="space-y-1 text-[11px] text-gray-300">
+                        <li class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">✓</span>
+                            <span><strong>Revendedor con saldo en billetera:</strong> Entrega 100% automática e inmediata de credenciales en la Bóveda del cliente.</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">✓</span>
+                            <span><strong>Abono por transferencia bancaria:</strong> La transferencia será aceptada por el proveedor o administración para liberar y entregar la(s) cuenta(s).</span>
+                        </li>
+                        <li class="flex items-start gap-2 text-rose-400 font-semibold border-t border-gray-800 pt-1.5">
+                            <span class="font-bold">⚠️</span>
+                            <span><strong>Sin consignación:</strong> Consignación de gracia (NO ES UNA OPCIÓN). No se entregan cuentas sin saldo en billetera o transferencia aceptada.</span>
+                        </li>
+                    </ul>
                 </div>
 
                 <div class="pt-4 border-t border-gray-800 flex items-center justify-end gap-3">

@@ -291,37 +291,37 @@
     </div>
     @endif
 
-    <!-- Alert Box: Cuentas en Consignación 48hs -->
+    <!-- Alert Box: Ventas por Transferencia Pendientes de Aceptación -->
     @if(isset($consignmentsActive) && $consignmentsActive->isNotEmpty())
     <div class="p-5 rounded-2xl bg-[#111827] border border-amber-500/40 shadow-xl space-y-3">
         <div class="flex items-center justify-between border-b border-gray-800 pb-2">
             <div class="flex items-center gap-2 text-amber-400">
-                <i data-lucide="clock" class="w-5 h-5 animate-pulse"></i>
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Tus Cuentas en Consignación (48 Horas de Plazo)</h3>
+                <i data-lucide="credit-card" class="w-5 h-5 animate-pulse"></i>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Ventas por Transferencia (Pendientes de Aceptación)</h3>
             </div>
             <span class="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                {{ $consignmentsActive->count() }} activas por liquidar
+                {{ $consignmentsActive->count() }} por entregar
             </span>
         </div>
+        <p class="text-xs text-gray-400">
+            Revendedor con saldo en billetera entrega automáticamente. Para ventas abonadas por transferencia, la cuenta se entregará al cliente una vez aceptada por el proveedor o liquidada desde tu billetera.
+        </p>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach($consignmentsActive as $cSale)
-            @php
-                $hrs = $cSale->consignment_hours_remaining ?? 48;
-            @endphp
             <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center justify-between">
                 <div>
                     <span class="font-bold text-white text-xs block">{{ $cSale->service ? $cSale->service->name : 'Streaming' }}</span>
-                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Consignatario' }}</span>
+                    <span class="text-[11px] text-gray-400">Cliente: {{ $cSale->customer ? $cSale->customer->name : 'Cliente' }}</span>
                     <span class="text-[10px] text-amber-400 font-mono block">Costo: ${{ number_format($cSale->cost_price, 2) }}</span>
                 </div>
                 <div class="text-right">
-                    <span class="text-xs font-mono font-bold {{ $hrs <= 12 ? 'text-rose-400 animate-pulse' : 'text-amber-400' }} block">
-                        ⏳ {{ $hrs }}h restantes
+                    <span class="text-xs font-mono font-bold text-amber-400 block">
+                        🏦 Transferencia
                     </span>
                     <form method="POST" action="{{ route('sales.pay_consignment', $cSale) }}" class="mt-1">
                         @csrf
                         <button type="submit" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow cursor-pointer">
-                            Liquidar Ahora
+                            Entregar con Billetera
                         </button>
                     </form>
                 </div>

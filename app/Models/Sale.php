@@ -30,6 +30,10 @@ class Sale extends Model
         'start_date',
         'end_date',
         'months_duration',
+        'payment_method',
+        'payment_proof',
+        'transfer_accepted_at',
+        'transfer_accepted_by',
         'is_consignment',
         'is_consignment_paid',
         'consignment_expires_at',
@@ -49,6 +53,7 @@ class Sale extends Model
         'parent_commission_amount' => 'decimal:2',
         'renewal_count' => 'integer',
         'reminder_sent_at' => 'datetime',
+        'transfer_accepted_at' => 'datetime',
         'is_consignment' => 'boolean',
         'is_consignment_paid' => 'boolean',
         'consignment_expires_at' => 'datetime',
@@ -112,6 +117,31 @@ class Sale extends Model
         }
     }
 
+    public function isWalletPayment(): bool
+    {
+        return ($this->payment_method ?? 'wallet') === 'wallet';
+    }
+
+    public function isTransferPayment(): bool
+    {
+        return ($this->payment_method ?? 'wallet') === 'bank_transfer';
+    }
+
+    public function isTransferPending(): bool
+    {
+        return $this->isTransferPayment() && !$this->is_consignment_paid;
+    }
+
+    public function isTransferAccepted(): bool
+    {
+        return $this->isTransferPayment() && (bool) $this->is_consignment_paid;
+    }
+
+    public function transferAcceptedBy()
+    {
+        return $this->belongsTo(User::class, 'transfer_accepted_by');
+    }
+
     public function isConsignment(): bool
     {
         return (bool) $this->is_consignment;
@@ -127,20 +157,21 @@ class Sale extends Model
 
     /**
      * Regla de Entrega Estricta:
-     * "No se entregará sin monto en billetera o si no se recibe el pago del proveedor."
+     * "Se deberá abonar por transferencia y/o Dinero disponible en billetera proveedor y revendedor.
+     * Transferencia será aceptada para entregar la cuenta/s. Revendedor con saldo en billetera entrega automática."
      * Determina si las credenciales (correo, contraseña, perfil, PIN) pueden ser entregadas/visibles al cliente.
      */
     public function canDeliverCredentials(&$blockReason = null): bool
     {
-        // 1. Si la cuenta fue emitida en consignación y aún no ha sido pagada/liquidada con saldo en billetera
-        if ($this->is_consignment && !$this->is_consignment_paid) {
-            $blockReason = 'Entrega retenida: Esta cuenta fue emitida en consignación y aún no cuenta con el costo mayorista liquidado desde la billetera.';
+        // 1. Si el pago por transferencia aún no fue aceptado o no está liquidado
+        if (!$this->is_consignment_paid) {
+            $blockReason = 'Entrega retenida: Esta cuenta fue registrada para abonar por Transferencia Bancaria y está pendiente de ser aceptada por el proveedor para liberar la entrega.';
             return false;
         }
 
-        // 2. Si la cuenta cayó por vencimiento del plazo de consignación (48hs)
-        if ($this->isConsignmentExpired() || $this->status === 'cancelled') {
-            $blockReason = 'Entrega cancelada: El plazo de consignación de 48 horas venció sin registrarse el pago de la cuenta.';
+        // 2. Si la cuenta cayó o fue cancelada
+        if ($this->status === 'cancelled') {
+            $blockReason = 'Entrega cancelada: La suscripción se encuentra cancelada.';
             return false;
         }
 
@@ -177,12 +208,16 @@ class Sale extends Model
 
     public function getCalculatedStatusAttribute(): string
     {
+        if ($this->isTransferPending()) {
+            return 'transfer_pending';
+        }
+
         if ($this->isConsignmentExpired()) {
             return 'consignment_dropped';
         }
 
         if ($this->is_consignment && !$this->is_consignment_paid) {
-            return 'consignment_pending';
+            return 'transfer_pending';
         }
 
         if (in_array($this->status, ['renewed', 'replaced', 'cancelled'])) {
@@ -205,16 +240,21 @@ class Sale extends Model
     {
         $status = $this->calculated_status;
         switch ($status) {
-            case 'consignment_pending':
-                $hours = $this->consignment_hours_remaining ?? 0;
+            case 'transfer_pending':
                 return [
-                    'label' => "Consignación ({$hours}h para liquidar)",
+                    'label' => 'Transferencia Pendiente (Por Aceptar)',
                     'class' => 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse',
-                    'icon' => 'clock',
+                    'icon' => 'credit-card',
+                ];
+            case 'consignment_pending':
+                return [
+                    'label' => 'Transferencia Pendiente (Por Aceptar)',
+                    'class' => 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse',
+                    'icon' => 'credit-card',
                 ];
             case 'consignment_dropped':
                 return [
-                    'label' => 'Caída (48h Consignación Vencida)',
+                    'label' => 'No Acreditada (Cancelada)',
                     'class' => 'bg-rose-500/10 text-rose-400 border-rose-500/20 font-bold',
                     'icon' => 'x-circle',
                 ];

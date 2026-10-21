@@ -58,9 +58,12 @@ class CStreameCronCommand extends Command
 
         $this->info("[✓] Ventas marcadas 'expiring_soon' (<= 3 días): {$expiringSales}");
 
-        // 3. Detectar y tirar cuentas en Consignación no pagadas tras 48 horas ("Auto-Caída")
+        // 3. Consignación de Gracia eliminada (NO ES UNA OPCIÓN).
+        // Las cuentas se abonan por saldo en billetera (entrega automática) o por transferencia (entrega al ser aceptada por proveedor).
+        // Si existen registros pendientes con plazo expirado, se cancelan y liberan perfiles.
         $droppedConsignments = Sale::where('is_consignment', true)
             ->where('is_consignment_paid', false)
+            ->whereNotNull('consignment_expires_at')
             ->where('consignment_expires_at', '<', Carbon::now())
             ->whereNotIn('status', ['cancelled', 'expired'])
             ->get();
@@ -69,7 +72,7 @@ class CStreameCronCommand extends Command
         foreach ($droppedConsignments as $consSale) {
             $consSale->update([
                 'status' => 'cancelled',
-                'notes' => trim(($consSale->notes ?: '') . ' | CAÍDA AUTOMÁTICA: Consignación no liquidada a las 48hs.')
+                'notes' => trim(($consSale->notes ?: '') . ' | Cancelada: plazo de pago no acreditado.')
             ]);
 
             // Liberar perfil de nuevo a stock libre
@@ -78,7 +81,9 @@ class CStreameCronCommand extends Command
             }
             $droppedCount++;
         }
-        $this->info("[✓] Cuentas en consignación caídas por falta de pago (plazo de 48h vencido): {$droppedCount}");
+        if ($droppedCount > 0) {
+            $this->info("[✓] Cuentas no liquidadas canceladas y stock liberado: {$droppedCount}");
+        }
 
         // 4. Suspensión de Paneles Clonados que no renovaron su suscripción mensual de $15.000 (30 días)
         $expiredPanels = \App\Models\User::where('panel_type', 'cloned')
