@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Catálogo de Cuentas') | {{ $brandName ?? 'CStreame Streaming' }}</title>
+
+    <!-- PWA Primary Meta Tags -->
+    <meta name="theme-color" content="{{ $primaryColor ?? '#E50914' }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ $brandName ?? 'CStreame Streaming' }}">
+    <link rel="manifest" href="{{ route('pwa.manifest', ['ref' => request('ref') ?? (isset($seller) ? $seller->referral_code : '')]) }}">
+    <link rel="apple-touch-icon" href="{{ isset($brandLogo) && $brandLogo ? asset($brandLogo) : asset('images/cstreame-icon.svg') }}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -47,6 +57,11 @@
 
             <!-- Right Actions -->
             <div class="flex items-center gap-3">
+                <a href="{{ route('pwa.install', ['code' => request('ref') ?? (isset($seller) ? $seller->referral_code : '')]) }}" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-red-600/20 to-purple-600/20 hover:from-red-600/30 hover:to-purple-600/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all shadow-sm">
+                    <i data-lucide="smartphone" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Instalar App</span>
+                </a>
+
                 @if(isset($supportWhatsapp) && $supportWhatsapp)
                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20consultar%20por%20cuentas%20streaming" target="_blank" class="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
@@ -105,6 +120,11 @@
     </footer>
 
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
         lucide.createIcons();
     </script>
 </body>

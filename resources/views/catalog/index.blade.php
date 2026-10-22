@@ -96,6 +96,111 @@
         </div>
     </section>
 
+    @if($seller && $seller->isReseller() && $seller->canResellPanels() && $seller->isPanelSalesOffered())
+    <!-- OFERTA DE PANELES CON PRECIOS PERSONALIZADOS DEL PROVEEDOR/REVENDEDOR -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="text-center max-w-2xl mx-auto space-y-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">Emprende con Tu Propio Panel</span>
+            <h2 class="text-2xl sm:text-3xl font-black text-white">Lanza Tu Propia Franquicia Streaming con {{ $brandName }}</h2>
+            <p class="text-xs text-slate-400">
+                Obtén tu panel independiente con Bóveda de Clientes, entrega automática y soporte directo.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <!-- PANEL BÁSICO -->
+            <div class="rounded-3xl bg-[#111827] border border-amber-500/30 p-6 flex flex-col justify-between space-y-6 shadow-xl hover:border-amber-500/60 transition-all">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            📦 PANEL BÁSICO
+                        </span>
+                        <span class="text-xs text-slate-400 font-bold">10 Servicios</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-white">Panel Franquicia Básico</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Hasta 10 servicios de streaming activos simultáneos.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                        <span class="text-[10px] text-gray-400 block uppercase font-bold">Suscripción Mensual:</span>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span class="text-3xl font-black text-white font-mono">${{ number_format($seller->basic_panel_price, 0, ',', '.') }}</span>
+                            <span class="text-xs text-slate-400 font-mono">/ mes</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                            <span>Catálogo con 10 servicios</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                            <span>Bóveda Privada para tus clientes</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                            <span>Soporte por WhatsApp de {{ $brandName }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    @if($supportWhatsapp)
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName) }},%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20B%C3%81SICO%20por%20${{ number_format($seller->basic_panel_price, 0) }}." target="_blank" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span>Solicitar Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }})</span>
+                    </a>
+                    @endif
+                </div>
+            </div>
+
+            <!-- PANEL PRO -->
+            <div class="rounded-3xl bg-gradient-to-b from-[#141b2d] to-[#0f172a] border-2 border-purple-500/50 p-6 flex flex-col justify-between space-y-6 shadow-xl hover:border-purple-400 transition-all">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            💎 PANEL PRO (ILIMITADO)
+                        </span>
+                        <span class="text-xs text-purple-300 font-bold">Sin Límites</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-white">Panel Franquicia PRO Ilimitado</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Servicios ilimitados, marca personalizada y reventa.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-900 border border-purple-500/30">
+                        <span class="text-[10px] text-purple-400 block uppercase font-bold">Suscripción Mensual:</span>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span class="text-3xl font-black text-purple-400 font-mono">${{ number_format($seller->pro_panel_price, 0, ',', '.') }}</span>
+                            <span class="text-xs text-slate-400 font-mono">/ mes</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>Servicios y plataformas ILIMITADAS</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>Marca Blanca Propia (Logo, nombre y colores)</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>Capacidad de crear y revender sub-paneles</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    @if($supportWhatsapp)
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName) }},%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20PRO%20por%20${{ number_format($seller->pro_panel_price, 0) }}." target="_blank" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-purple-600/30">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span>Solicitar Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }})</span>
+                    </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </section>
+    @endif
+
     @else
     <!-- ========================================== -->
     <!-- LANDING PAGE SUPER ADMIN (VENTA DE PANELES & CRÉDITOS) -->

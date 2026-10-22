@@ -17,6 +17,24 @@
     sellCreditsModal: false,
     masterActivationModal: false,
     creditActivationModal: false,
+    transferAuditModal: false,
+    activeTransfer: null,
+    transferReceiptUrl: '',
+    transferResellerName: '',
+    transferAmount: '',
+    transferMethod: '',
+    transferRef: '',
+    transferNotes: '',
+    openTransferAudit(tr) {
+        this.activeTransfer = tr;
+        this.transferReceiptUrl = tr.receipt_path ? ('/storage/' + tr.receipt_path) : '';
+        this.transferResellerName = tr.reseller ? tr.reseller.name : 'Revendedor';
+        this.transferAmount = parseFloat(tr.amount).toLocaleString('es-AR', {minimumFractionDigits: 2});
+        this.transferMethod = tr.payment_method || 'transfer';
+        this.transferRef = tr.reference_code || '';
+        this.transferNotes = tr.reseller_notes || '';
+        this.transferAuditModal = true;
+    },
     selectedCreditPack: 'basic_10',
     selectedTier: 'basic',
     selectedDays: 30,
@@ -121,7 +139,13 @@
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
                 <span class="text-[11px] font-bold text-gray-400 uppercase">Créditos de Activación</span>
-                <h4 class="text-2xl font-black text-purple-400 mt-1">{{ $stats['total_credits_basic'] ?? 0 }} B / {{ $stats['total_credits_pro'] ?? 0 }} P</h4>
+                <h4 class="text-2xl font-black text-purple-400 mt-1">
+                    @if(Auth::user()->isAdmin())
+                        <span class="text-emerald-400">∞</span> <span class="text-xs text-emerald-400 font-sans uppercase font-bold">Ilimitados</span>
+                    @else
+                        {{ $stats['total_credits_basic'] ?? 0 }} B / {{ $stats['total_credits_pro'] ?? 0 }} P
+                    @endif
+                </h4>
                 <span class="text-[10px] text-purple-300 font-mono">Básicos ($2.5k) · PRO ($4k)</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-xl">
@@ -217,8 +241,14 @@
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block font-mono">📦 Créditos BÁSICO (10 Serv)</span>
                     <div class="flex items-baseline gap-2 mt-1">
-                        <span class="text-3xl font-black text-white font-mono">{{ Auth::user()->credits_basic ?? 0 }}</span>
-                        <span class="text-xs text-amber-300 font-mono font-bold">disponibles</span>
+                        <span class="text-3xl font-black text-white font-mono">
+                            @if(Auth::user()->isAdmin())
+                                <span class="text-amber-400">∞</span>
+                            @else
+                                {{ Auth::user()->credits_basic ?? 0 }}
+                            @endif
+                        </span>
+                        <span class="text-xs text-amber-300 font-mono font-bold">{{ Auth::user()->isAdmin() ? 'Ilimitados' : 'disponibles' }}</span>
                     </div>
                     <span class="text-[11px] text-slate-400 block mt-1">Tarifa: $2.500 c/u · Marca SPRO PLAY</span>
                 </div>
@@ -232,8 +262,14 @@
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block font-mono">💎 Créditos PRO (Ilimitado)</span>
                     <div class="flex items-baseline gap-2 mt-1">
-                        <span class="text-3xl font-black text-white font-mono">{{ Auth::user()->credits_pro ?? 0 }}</span>
-                        <span class="text-xs text-purple-300 font-mono font-bold">disponibles</span>
+                        <span class="text-3xl font-black text-white font-mono">
+                            @if(Auth::user()->isAdmin())
+                                <span class="text-purple-400">∞</span>
+                            @else
+                                {{ Auth::user()->credits_pro ?? 0 }}
+                            @endif
+                        </span>
+                        <span class="text-xs text-purple-300 font-mono font-bold">{{ Auth::user()->isAdmin() ? 'Ilimitados' : 'disponibles' }}</span>
                     </div>
                     <span class="text-[11px] text-slate-400 block mt-1">Tarifa: $4.000 c/u · Marca Blanca Total</span>
                 </div>
@@ -247,8 +283,14 @@
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block font-mono">🌟 Total Créditos Activación</span>
                     <div class="flex items-baseline gap-2 mt-1">
-                        <span class="text-3xl font-black text-emerald-400 font-mono">{{ (Auth::user()->credits_basic ?? 0) + (Auth::user()->credits_pro ?? 0) }}</span>
-                        <span class="text-xs text-slate-400 font-mono">créditos totales</span>
+                        <span class="text-3xl font-black text-emerald-400 font-mono">
+                            @if(Auth::user()->isAdmin())
+                                <span>∞</span>
+                            @else
+                                {{ (Auth::user()->credits_basic ?? 0) + (Auth::user()->credits_pro ?? 0) }}
+                            @endif
+                        </span>
+                        <span class="text-xs text-slate-400 font-mono">{{ Auth::user()->isAdmin() ? 'Créditos Infinitos' : 'créditos totales' }}</span>
                     </div>
                     <span class="text-[11px] text-slate-400 block mt-1">Combo Dúo: 5 Básicos + 5 PRO por $40.000</span>
                 </div>
@@ -404,12 +446,12 @@
                         </td>
                         <td class="py-2.5 px-3">
                             @if($tr->receipt_path)
-                            <a href="{{ asset('storage/' . $tr->receipt_path) }}" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 text-[11px] font-sans font-bold">
+                            <button type="button" @click="openTransferAudit({{ json_encode($tr) }})" class="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer font-sans">
                                 <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
-                                Ver Comprobante
-                            </a>
+                                <span>Ver Comprobante (Mini Nube)</span>
+                            </button>
                             @else
-                            <span class="text-gray-500 text-[10px] font-sans">Sin adjunto</span>
+                            <span class="text-gray-500 text-[10px] font-sans italic">Sin archivo adjunto</span>
                             @endif
                         </td>
                         <td class="py-2.5 px-3 text-[11px] font-sans text-gray-300">
@@ -417,11 +459,15 @@
                         </td>
                         <td class="py-2.5 px-3 text-right">
                             <div class="flex items-center justify-end gap-2">
+                                <button type="button" @click="openTransferAudit({{ json_encode($tr) }})" class="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 font-bold text-xs flex items-center gap-1 cursor-pointer font-sans transition-all">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                    Auditar
+                                </button>
                                 <form method="POST" action="{{ route('resellers.balance_transfers.approve', $tr) }}" class="inline">
                                     @csrf
                                     <button type="submit" onclick="return confirm('¿Aprobar y acreditar ${{ number_format($tr->amount, 2) }} a la billetera de {{ $tr->reseller ? $tr->reseller->name : 'este revendedor' }}?')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md cursor-pointer font-sans">
                                         <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                                        Aprobar Saldo
+                                        Aprobar
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ route('resellers.balance_transfers.reject', $tr) }}" class="inline">
@@ -554,6 +600,32 @@
                             </div>
                             <span class="text-[11px] text-gray-400 block">{{ $res->email }}</span>
                             <span class="text-[10px] text-sky-400 font-mono">{{ $res->brand_name }} (Ref: {{ $res->referral_code }})</span>
+                            @if($res->support_whatsapp || $res->phone)
+                            <div class="mt-1 flex items-center gap-1.5">
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $res->support_whatsapp ?: $res->phone) }}" target="_blank" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono">
+                                    <i data-lucide="message-circle" class="w-3 h-3"></i>
+                                    {{ $res->support_whatsapp ?: $res->phone }}
+                                </a>
+                                @php
+                                    $resAgreement = "📋 *CONVENIO ADMINISTRATIVO - PLATAFORMA CSTREAME*\n\n"
+                                        . "Hola *" . $res->name . "* (" . ($res->brand_name ?: 'Panel') . "):\n"
+                                        . "Te notificamos los términos y condiciones del acuerdo administrativo vigente para tu panel:\n\n"
+                                        . "1️⃣ *CUENTAS Y PANELES:*\n"
+                                        . "• Cuentas y pantallas con entrega automática por saldo en billetera o transferencia bancaria aceptada.\n"
+                                        . "• Sin excepción: NO hay consignación de gracia de 48hs sin abono confirmado.\n\n"
+                                        . "2️⃣ *TIENDAS CLONADAS ($15.000/mes):*\n"
+                                        . "• Distribución: $8.000 Administrador General | $7.000 Proveedor Patrocinador.\n\n"
+                                        . "3️⃣ *CRÉDITOS Y PRECIOS AL PÚBLICO:*\n"
+                                        . "• Como proveedor o revendedor puedes configurar tu propio precio de venta de paneles en tu landing page. El Super Admin brinda el PVP sugerido ($4.000 Básico / $6.000 PRO).\n\n"
+                                        . "Por favor confirma la recepción para mantener la operatividad activa.\n\n"
+                                        . "Administración Central CStreame";
+                                @endphp
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $res->support_whatsapp ?: $res->phone) }}?text={{ urlencode($resAgreement) }}" target="_blank" class="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold flex items-center gap-1" title="Enviar Convenio Administrativo por WhatsApp">
+                                    <i data-lucide="file-check" class="w-3 h-3"></i>
+                                    <span>Convenio</span>
+                                </a>
+                            </div>
+                            @endif
                         </td>
                         <td class="py-3 px-4">
                             <div class="space-y-1">
@@ -1462,10 +1534,10 @@
                 <span class="text-[10px] uppercase font-bold text-gray-400 block">Tus Créditos Disponibles:</span>
                 <div class="flex items-center gap-3">
                     <span class="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
-                        📦 Básicos: {{ Auth::user()->credits_basic ?? 0 }}
+                        📦 Básicos: {{ Auth::user()->isAdmin() ? '∞ Ilimitado' : (Auth::user()->credits_basic ?? 0) }}
                     </span>
                     <span class="px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold">
-                        💎 PRO: {{ Auth::user()->credits_pro ?? 0 }}
+                        💎 PRO: {{ Auth::user()->isAdmin() ? '∞ Ilimitado' : (Auth::user()->credits_pro ?? 0) }}
                     </span>
                 </div>
             </div>
@@ -1645,6 +1717,81 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL: AUDITORÍA DE COMPROBANTE MINI NUBE (TRANSFERENCIAS) -->
+    <!-- ======================================================== -->
+    <div x-show="transferAuditModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div @click.away="transferAuditModal = false" class="w-full max-w-2xl bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-gray-800 flex items-center justify-between bg-[#0e1424]">
+                <div>
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span>Auditoría de Comprobante (Mini Nube)</span>
+                        <span class="font-mono text-cyan-400" x-text="transferRef ? ('Ref: ' + transferRef) : ''"></span>
+                    </h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5">
+                        Revendedor: <strong class="text-white" x-text="transferResellerName"></strong> · Monto Notificado: <strong class="text-emerald-400" x-text="'$' + transferAmount"></strong> · Método: <span class="uppercase text-sky-300 font-mono" x-text="transferMethod"></span>
+                    </p>
+                </div>
+                <button @click="transferAuditModal = false" class="text-gray-400 hover:text-white cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content: Preview Comprobante -->
+            <div class="p-5 overflow-y-auto flex-1 space-y-4">
+                <div class="rounded-2xl border border-gray-800 bg-black/40 overflow-hidden flex items-center justify-center min-h-[300px] p-2">
+                    <template x-if="transferReceiptUrl">
+                        <img :src="transferReceiptUrl" alt="Comprobante en Mini Nube" class="max-h-[380px] w-auto object-contain rounded-xl shadow-lg">
+                    </template>
+                    <template x-if="!transferReceiptUrl">
+                        <div class="text-center text-gray-500 py-12 text-xs">
+                            Sin archivo de comprobante adjunto o ya fue purgado.
+                        </div>
+                    </template>
+                </div>
+
+                <template x-if="transferNotes">
+                    <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-gray-300">
+                        <strong class="text-gray-400 block mb-0.5 text-[10px] uppercase">Notas del Revendedor:</strong>
+                        <span x-text="transferNotes"></span>
+                    </div>
+                </template>
+
+                <div class="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 text-amber-300 text-xs space-y-1">
+                    <div class="flex items-center gap-2 font-bold">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+                        <span>Inspección Segura Mini Nube:</span>
+                    </div>
+                    <p class="text-[11px] text-amber-200/90 leading-relaxed">
+                        Verifica que el monto y titular del comprobante coincidan con tu cuenta receptora. Al presionar <strong>"Aprobar y Acreditar Saldo"</strong>, el saldo se acreditará automáticamente en la billetera de <span x-text="transferResellerName" class="font-bold"></span> para la entrega de cuentas.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Footer: Aprobar o Rechazar -->
+            <div class="p-5 border-t border-gray-800 bg-[#0e1424] flex items-center justify-between gap-3">
+                <!-- Rechazar -->
+                <form :action="'/resellers/balance-transfers/' + activeTransfer?.id + '/reject'" method="POST" onsubmit="return confirm('¿Seguro que deseas rechazar esta solicitud de saldo?');">
+                    @csrf
+                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/30 text-xs font-bold transition-all cursor-pointer">
+                        Rechazar Solicitud
+                    </button>
+                </form>
+
+                <!-- Aprobar -->
+                <form :action="'/resellers/balance-transfers/' + activeTransfer?.id + '/approve'" method="POST">
+                    @csrf
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Aprobar y Acreditar Saldo (<span x-text="'$' + transferAmount"></span>)</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 

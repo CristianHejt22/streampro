@@ -88,6 +88,40 @@
                     <span class="font-bold text-rose-400">{{ $sup->dropped_accounts_count }}</span>
                 </div>
             </div>
+
+            <!-- Estado en Catálogo y Acciones de Convenio -->
+            <div class="pt-3 border-t border-gray-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] uppercase font-bold text-gray-400">Oferta en Catálogo:</span>
+                    <form method="POST" action="{{ route('suppliers.toggle_status', $sup) }}" class="inline">
+                        @csrf
+                        <button type="submit" class="px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer {{ $sup->status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700' }}">
+                            {{ $sup->status === 'active' ? '🟢 Activo en Catálogo' : '⚪ Desactivado' }}
+                        </button>
+                    </form>
+                </div>
+
+                @if($sup->whatsapp)
+                @php
+                    $supAgreement = "📋 *CONVENIO ADMINISTRATIVO - PLATAFORMA CSTREAME*\n\n"
+                        . "Estimado proveedor *" . $sup->name . "*:\n"
+                        . "Te notificamos los términos y acuerdos administrativos para el suministro de cuentas en CStreame:\n\n"
+                        . "1️⃣ *CUENTAS Y PANELES:*\n"
+                        . "• Cuentas y pantallas con entrega automática por saldo en billetera o transferencia bancaria aceptada.\n"
+                        . "• Sin excepción: NO hay consignación de gracia de 48hs sin abono confirmado.\n\n"
+                        . "2️⃣ *TIENDAS CLONADAS Y FRANQUICIAS ($15.000/mes):*\n"
+                        . "• Distribución: $8.000 Administrador General | $7.000 Proveedor Patrocinador.\n\n"
+                        . "3️⃣ *PANELES Y PRECIOS AL PÚBLICO:*\n"
+                        . "• El Administrador fija el PVP sugerido ($4.000 Básico / $6.000 PRO). Cada proveedor ajusta su propio precio en su landing page.\n\n"
+                        . "Por favor confirma la conformidad de este convenio para mantener la vinculación activa.\n\n"
+                        . "Administración Central CStreame";
+                @endphp
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $sup->whatsapp) }}?text={{ urlencode($supAgreement) }}" target="_blank" class="w-full py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                    <span>Notificar Convenio por WhatsApp</span>
+                </a>
+                @endif
+            </div>
         </div>
         @empty
         <div class="col-span-3 p-12 text-center text-gray-400 rounded-2xl bg-[#111827] border border-gray-800">

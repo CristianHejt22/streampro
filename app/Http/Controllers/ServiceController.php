@@ -297,4 +297,25 @@ class ServiceController extends Controller
 
         return redirect()->route('services.index')->with('success', "Plataforma eliminada.");
     }
+
+    public function toggleStatus(Service $service)
+    {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $service->user_id !== $user->id) {
+            abort(403, 'No tienes permiso para modificar este servicio.');
+        }
+
+        $service->status = $service->status === 'active' ? 'inactive' : 'active';
+        $service->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'toggle_service_status',
+            'description' => "Servicio {$service->name} cambiado a {$service->status}.",
+            'ip_address' => request()->ip(),
+        ]);
+
+        $stateMsg = $service->status === 'active' ? 'activado para ofrecer a clientes' : 'pausado / desactivado';
+        return back()->with('success', "Servicio {$service->name} {$stateMsg}.");
+    }
 }

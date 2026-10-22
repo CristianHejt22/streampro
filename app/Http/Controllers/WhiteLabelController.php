@@ -77,6 +77,17 @@ class WhiteLabelController extends Controller
             $user->brand_name = 'SPRO PLAY';
         }
 
+        // Configuración de reventa de paneles para Proveedores / PRO
+        if ($user->canResellPanels()) {
+            $user->offer_panels_on_catalog = $request->boolean('offer_panels_on_catalog');
+            if ($request->filled('panel_basic_sale_price')) {
+                $user->panel_basic_sale_price = max(0, (float) $request->input('panel_basic_sale_price'));
+            }
+            if ($request->filled('panel_pro_sale_price')) {
+                $user->panel_pro_sale_price = max(0, (float) $request->input('panel_pro_sale_price'));
+            }
+        }
+
         $user->save();
 
         // Registro de Auditoría y Notificaciones si cambió la preferencia de WhatsApp

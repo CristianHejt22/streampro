@@ -671,10 +671,8 @@ class ResellerController extends Controller
             }
             $user->deductCredits($tier, 1, $reseller->name);
         } else {
-            // El Super Admin descuenta crédito si lo tiene registrado en su saldo
-            if ($user->hasCredits($tier, 1) && ($user->credits_basic > 0 || $user->credits_pro > 0)) {
-                $user->deductCredits($tier, 1, $reseller->name);
-            }
+            // El Super Admin activa de forma directa e ilimitada
+            $user->deductCredits($tier, 1, $reseller->name);
         }
 
         $currentExpiry = $reseller->panel_expires_at ? Carbon::parse($reseller->panel_expires_at) : null;

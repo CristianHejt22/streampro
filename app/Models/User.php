@@ -54,6 +54,9 @@ class User extends Authenticatable
         'bank_dni',
         'binance_id',
         'bank_instructions',
+        'panel_basic_sale_price',
+        'panel_pro_sale_price',
+        'offer_panels_on_catalog',
     ];
 
     protected $hidden = [
@@ -76,6 +79,9 @@ class User extends Authenticatable
         'credits_basic' => 'integer',
         'credits_pro' => 'integer',
         'provider_override_support_whatsapp' => 'boolean',
+        'panel_basic_sale_price' => 'decimal:2',
+        'panel_pro_sale_price' => 'decimal:2',
+        'offer_panels_on_catalog' => 'boolean',
     ];
 
     public function setPlainPasswordAttribute(?string $val): void
@@ -290,6 +296,20 @@ class User extends Authenticatable
 
     public function deductCredits(string $tier, int $qty = 1, ?string $targetPanel = null, ?string $notes = null): bool
     {
+        // El Administrador Principal cuenta con créditos ilimitados (∞)
+        if ($this->isAdmin()) {
+            CreditTransaction::create([
+                'user_id' => $this->id,
+                'admin_id' => null,
+                'type' => 'activation_use',
+                'panel_tier' => $tier,
+                'credits_amount' => 0,
+                'target_panel_name' => $targetPanel,
+                'notes' => $notes ?: "Activación de panel {$tier} por Administrador (Crédito Ilimitado) para {$targetPanel}",
+            ]);
+            return true;
+        }
+
         if (!$this->hasCredits($tier, $qty)) {
             return false;
         }
@@ -308,6 +328,21 @@ class User extends Authenticatable
         ]);
 
         return true;
+    }
+
+    public function getBasicPanelPriceAttribute(): float
+    {
+        return (float) ($this->panel_basic_sale_price ?? 4000.00);
+    }
+
+    public function getProPanelPriceAttribute(): float
+    {
+        return (float) ($this->panel_pro_sale_price ?? 6000.00);
+    }
+
+    public function isPanelSalesOffered(): bool
+    {
+        return $this->offer_panels_on_catalog !== false;
     }
 
     public function services()

@@ -33,6 +33,17 @@ Route::get('/panel/{code}', function ($code) {
     return redirect()->route('catalog.index', ['ref' => $code]);
 });
 
+// PWA Manifest & App Installation Routes (URL corta para compartir por WhatsApp)
+Route::get('/sw.js', function () {
+    return response()->file(public_path('sw.js'), [
+        'Content-Type' => 'application/javascript',
+        'Service-Worker-Allowed' => '/',
+    ]);
+});
+Route::get('/manifest.json', [\App\Http\Controllers\PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/app/{code?}', [\App\Http\Controllers\PwaController::class, 'installPage'])->name('pwa.install');
+Route::get('/instalar/{code?}', [\App\Http\Controllers\PwaController::class, 'installPage'])->name('pwa.instalar');
+
 Route::get('/checkout/{plan}', [CatalogController::class, 'checkout'])->name('catalog.checkout');
 Route::post('/checkout/{plan}', [CatalogController::class, 'processCheckout'])->name('catalog.checkout.process');
 Route::get('/checkout/mercadopago/{order}', [CatalogController::class, 'mpRedirect'])->name('catalog.mp_redirect');
@@ -120,6 +131,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
     Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
     Route::post('/services/clone-catalog', [ServiceController::class, 'cloneCatalog'])->name('services.clone_catalog');
+    Route::post('/services/{service}/toggle-status', [ServiceController::class, 'toggleStatus'])->name('services.toggle_status');
     Route::put('/services/{service}', [ServiceController::class, 'update'])->name('services.update');
     Route::delete('/services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
     Route::post('/services/{service}/plans', [ServiceController::class, 'storePlan'])->name('services.plans.store');
@@ -137,6 +149,7 @@ Route::middleware(['auth'])->group(function () {
     // Proveedores de Cuentas
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+    Route::post('/suppliers/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('suppliers.toggle_status');
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
 

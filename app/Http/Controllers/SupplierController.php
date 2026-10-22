@@ -81,4 +81,20 @@ class SupplierController extends Controller
 
         return back()->with('success', "Proveedor eliminado.");
     }
+
+    public function toggleStatus(Supplier $supplier)
+    {
+        $supplier->status = $supplier->status === 'active' ? 'inactive' : 'active';
+        $supplier->save();
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'toggle_supplier_status',
+            'description' => "Proveedor {$supplier->name} actualizado a estado {$supplier->status}.",
+            'ip_address' => request()->ip(),
+        ]);
+
+        $state = $supplier->status === 'active' ? 'activado para ofrecer cuentas' : 'pausado / desactivado';
+        return back()->with('success', "Proveedor {$supplier->name} {$state}.");
+    }
 }

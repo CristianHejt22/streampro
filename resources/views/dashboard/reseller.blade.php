@@ -202,8 +202,8 @@
                     <div>
                         <span class="text-[10px] font-bold uppercase text-amber-400 font-mono">📦 Créditos BÁSICO</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
-                            <span class="text-2xl font-black text-white font-mono">{{ $user->credits_basic ?? 0 }}</span>
-                            <span class="text-[11px] text-amber-300 font-mono font-bold">disponibles</span>
+                            <span class="text-2xl font-black text-white font-mono">{{ $user->isAdmin() ? '∞' : ($user->credits_basic ?? 0) }}</span>
+                            <span class="text-[11px] text-amber-300 font-mono font-bold">{{ $user->isAdmin() ? 'Ilimitados' : 'disponibles' }}</span>
                         </div>
                         <span class="text-[10px] text-slate-400 block mt-0.5">Paneles SPRO PLAY (10 serv)</span>
                     </div>
@@ -216,8 +216,8 @@
                     <div>
                         <span class="text-[10px] font-bold uppercase text-purple-400 font-mono">💎 Créditos PRO</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
-                            <span class="text-2xl font-black text-white font-mono">{{ $user->credits_pro ?? 0 }}</span>
-                            <span class="text-[11px] text-purple-300 font-mono font-bold">disponibles</span>
+                            <span class="text-2xl font-black text-white font-mono">{{ $user->isAdmin() ? '∞' : ($user->credits_pro ?? 0) }}</span>
+                            <span class="text-[11px] text-purple-300 font-mono font-bold">{{ $user->isAdmin() ? 'Ilimitados' : 'disponibles' }}</span>
                         </div>
                         <span class="text-[10px] text-slate-400 block mt-0.5">Paneles PRO Marca Blanca</span>
                     </div>
@@ -230,8 +230,8 @@
                     <div>
                         <span class="text-[10px] font-bold uppercase text-emerald-400 font-mono">🌟 Total Créditos</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
-                            <span class="text-2xl font-black text-emerald-400 font-mono">{{ ($user->credits_basic ?? 0) + ($user->credits_pro ?? 0) }}</span>
-                            <span class="text-[11px] text-slate-400 font-mono">en billetera</span>
+                            <span class="text-2xl font-black text-emerald-400 font-mono">{{ $user->isAdmin() ? '∞' : (($user->credits_basic ?? 0) + ($user->credits_pro ?? 0)) }}</span>
+                            <span class="text-[11px] text-slate-400 font-mono">{{ $user->isAdmin() ? 'Ilimitados' : 'en billetera' }}</span>
                         </div>
                         <span class="text-[10px] text-slate-400 block mt-0.5">Listos para activar</span>
                     </div>

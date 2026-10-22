@@ -349,6 +349,64 @@
                 </div>
             </div>
 
+            @if($user->canResellPanels())
+            <!-- SECCIÓN 3: PRECIOS DE REVENTA DE PANELES EN TU LANDING PAGE -->
+            <div class="pt-6 border-t border-gray-800 space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-white">Reventa de Paneles en Tu Landing Page / Catálogo</h3>
+                        <p class="text-xs text-gray-400">Configura tus propios precios de venta para ofrecer franquicias de paneles streaming a tus clientes y revendedores.</p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="offer_panels_on_catalog" value="1" {{ old('offer_panels_on_catalog', $user->offer_panels_on_catalog ?? true) ? 'checked' : '' }}
+                            class="w-4 h-4 rounded text-red-600 focus:ring-0 bg-slate-900 border-gray-700">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Ofrecer venta de Paneles en mi Catálogo Público / Landing</span>
+                            <span class="text-[11px] text-gray-400">Permite que quienes visiten tu link de referido puedan adquirir un Panel Básico o PRO a tu precio definido.</span>
+                        </div>
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-800/80">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                                Precio de Venta: Panel BÁSICO (10 Servicios) ($)
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                                <input type="number" step="0.01" min="0" name="panel_basic_sale_price" 
+                                    value="{{ old('panel_basic_sale_price', $user->panel_basic_sale_price ?? 4000.00) }}"
+                                    class="w-full pl-8 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-white font-mono text-sm focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <span class="text-[10px] text-amber-400 block mt-1 font-mono">
+                                💡 PVP Sugerido Oficial por Admin: $4.000 / mes (Tú decides tu ganancia).
+                            </span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+                                Precio de Venta: Panel PRO (Ilimitado) ($)
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                                <input type="number" step="0.01" min="0" name="panel_pro_sale_price" 
+                                    value="{{ old('panel_pro_sale_price', $user->panel_pro_sale_price ?? 6000.00) }}"
+                                    class="w-full pl-8 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-white font-mono text-sm focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <span class="text-[10px] text-purple-400 block mt-1 font-mono">
+                                💡 PVP Sugerido Oficial por Admin: $6.000 / mes (Tú decides tu ganancia).
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- Botón de Guardar Todo -->
             <div class="pt-4 border-t border-gray-800 flex justify-end">
                 <button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer">

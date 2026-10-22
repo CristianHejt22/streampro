@@ -6,6 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Panel') | {{ Auth::user()->brand_name ?: config('app.name', 'CStreame') }}</title>
     
+    <!-- PWA Primary Meta Tags -->
+    <meta name="theme-color" content="{{ Auth::user()->brand_primary_color ?: '#e50914' }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ Auth::user()->brand_name ?: 'CStreame' }}">
+    <link rel="manifest" href="{{ route('pwa.manifest', ['ref' => Auth::user()->referral_code ?? '']) }}">
+
     <!-- Tailwind CSS CDN & Alpine.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -327,8 +335,13 @@
         </footer>
     </div>
 
-    <!-- Initialize Lucide Icons -->
+    <!-- Initialize Lucide Icons & PWA Service Worker -->
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
         lucide.createIcons();
     </script>
     @stack('scripts')

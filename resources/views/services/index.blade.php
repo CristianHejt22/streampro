@@ -332,7 +332,15 @@
 
                     <!-- Botones de Edición / Eliminación (si es dueño o admin) -->
                     @if(Auth::user()->isAdmin() || $serv->user_id === Auth::id())
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1.5">
+                        <form method="POST" action="{{ route('services.toggle_status', $serv) }}" class="inline">
+                            @csrf
+                            <button type="submit" class="p-0.5 cursor-pointer transition-colors" title="{{ $serv->status === 'active' ? 'Pausar/Ocultar del Catálogo de Clientes' : 'Activar y Ofrecer en Catálogo' }}">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold {{ $serv->status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700' }}">
+                                    {{ $serv->status === 'active' ? '✓ Ofrecido' : '✕ Oculto' }}
+                                </span>
+                            </button>
+                        </form>
                         <button type="button" @click="openEdit({{ json_encode($serv) }})" class="text-gray-400 hover:text-sky-400 p-1 cursor-pointer" title="Editar Servicio">
                             <i data-lucide="edit-3" class="w-4 h-4"></i>
                         </button>
