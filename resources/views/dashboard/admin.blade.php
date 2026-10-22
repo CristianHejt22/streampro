@@ -192,16 +192,31 @@
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             @foreach($servicesStock as $s)
-            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all text-center">
-                <div class="w-8 h-8 mx-auto rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-md mb-2" style="background-color: {{ $s->color_hex }}">
-                    {{ substr($s->name, 0, 2) }}
+            <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all text-center flex flex-col justify-between" x-data="{ openStock: false }">
+                <div>
+                    <div class="w-8 h-8 mx-auto rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-md mb-2" style="background-color: {{ $s->color_hex }}">
+                        {{ substr($s->name, 0, 2) }}
+                    </div>
+                    <div class="text-xs font-bold text-white truncate">{{ $s->name }}</div>
+                    <div class="my-1.5">
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono {{ $s->available_profiles > 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30' }}">
+                            {{ $s->available_profiles > 0 ? '🟢 Con Stock' : '🔴 Agotado' }}
+                        </span>
+                    </div>
                 </div>
-                <div class="text-xs font-bold text-white truncate">{{ $s->name }}</div>
-                <div class="mt-1">
-                    <span class="text-base font-black {{ $s->available_profiles > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
-                        {{ $s->available_profiles }}
-                    </span>
-                    <span class="text-[10px] text-gray-400 block">pantallas libres</span>
+
+                <div class="pt-1">
+                    <button type="button" @click="openStock = !openStock" class="w-full py-1 px-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-[10px] text-sky-400 hover:text-sky-300 font-bold border border-gray-800 flex items-center justify-center gap-1 transition cursor-pointer">
+                        <span x-text="openStock ? 'Cerrar' : 'Ver Libres'"></span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 transition-transform" :class="openStock ? 'rotate-180 text-sky-400' : ''"></i>
+                    </button>
+
+                    <div x-show="openStock" x-cloak x-collapse class="mt-2 pt-1 border-t border-gray-800">
+                        <span class="text-base font-black font-mono {{ $s->available_profiles > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
+                            {{ $s->available_profiles }}
+                        </span>
+                        <span class="text-[10px] text-gray-400 block">pantallas libres</span>
+                    </div>
                 </div>
             </div>
             @endforeach

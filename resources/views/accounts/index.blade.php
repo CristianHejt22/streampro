@@ -83,10 +83,11 @@
                     <span>📊</span>
                     <span>Disponibilidad de Stock por Plataforma (Tiempo Real)</span>
                 </h3>
-                <p class="text-xs text-slate-400">Capacidad total y perfiles libres listos para entrega inmediata a clientes y revendedores.</p>
+                <p class="text-xs text-slate-400">Capacidad y disponibilidad por servicio. Abre la sección de cada plataforma para consultar perfiles libres.</p>
             </div>
-            <div class="text-xs font-mono text-slate-400">
-                Total Perfiles Libres en Stock: <strong class="text-emerald-400 font-black text-sm">{{ $totalAvailableProfiles }}</strong>
+            <div class="text-xs font-mono text-slate-400 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Inventario Protegido (Apertura por Sección)</span>
             </div>
         </div>
 
@@ -95,25 +96,48 @@
             @php
                 $s = $stk['service'];
             @endphp
-            <div class="bg-[#0f172a] p-4 rounded-2xl border border-slate-800 shadow-lg flex flex-col justify-between space-y-3 hover:border-slate-700 transition-all">
+            <div class="bg-[#0f172a] p-4 rounded-2xl border border-slate-800 shadow-lg flex flex-col justify-between space-y-3 hover:border-slate-700 transition-all" x-data="{ openPlatform: false }">
                 <div class="flex justify-between items-start">
                     <div>
                         <div class="flex items-center gap-1.5 mb-1">
                             <span class="w-3 h-3 rounded-full shrink-0" style="background-color: {{ $s->color_hex ?? '#E50914' }}"></span>
                             <span class="text-xs font-mono font-bold text-slate-300 block truncate">{{ $s->name }}</span>
                         </div>
-                        <span class="text-2xl font-black text-white">
-                            {{ $stk['free'] }}
-                            <span class="text-xs text-slate-500 font-normal">/ {{ $stk['total'] }} perfiles</span>
+                        <span class="text-xs text-slate-500 font-mono">
+                            {{ $stk['total'] }} perfiles capacidad total
                         </span>
                     </div>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono {{ $stk['statusBadge'] === 'in_stock' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : ($stk['statusBadge'] === 'low_stock' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30') }}">
-                        {{ $stk['statusBadge'] === 'in_stock' ? '🟢 Stock Óptimo' : ($stk['statusBadge'] === 'low_stock' ? '🟡 Stock Bajo' : '🔴 Agotado') }}
+                        {{ $stk['statusBadge'] === 'in_stock' ? '🟢 Con Stock' : ($stk['statusBadge'] === 'low_stock' ? '🟡 Stock Bajo' : '🔴 Agotado') }}
                     </span>
                 </div>
 
-                <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
-                    <span class="text-[11px] text-slate-400 font-mono">{{ $stk['accountsWithCupo'] }} cuenta(s) con cupo</span>
+                <!-- Botón para Abrir / Cerrar Sección -->
+                <div>
+                    <button type="button" @click="openPlatform = !openPlatform" class="w-full py-1.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-sky-300 text-xs font-bold border border-slate-800 flex items-center justify-between transition-all cursor-pointer">
+                        <span class="text-[11px]" x-text="openPlatform ? 'Cerrar Sección' : 'Abrir Sección & Ver Libres'"></span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" :class="openPlatform ? 'rotate-180 text-sky-400' : 'text-slate-400'"></i>
+                    </button>
+                </div>
+
+                <!-- Cantidad Libres y Detalles: Solo visible al abrir la sección -->
+                <div x-show="openPlatform" x-cloak x-collapse class="pt-2 border-t border-slate-800/80 space-y-1.5">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-xs text-slate-400">Cantidad Libres:</span>
+                        <span class="text-lg font-black text-emerald-400 font-mono">
+                            {{ $stk['free'] }}
+                            <span class="text-xs text-slate-500 font-normal">/ {{ $stk['total'] }}</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1 border-t border-slate-800/60">
+                        <span>{{ $stk['accountsWithCupo'] }} cuenta(s) con cupo</span>
+                        <a href="{{ route('accounts.index', ['service_id' => $s->id]) }}" class="text-sky-400 hover:underline flex items-center gap-0.5">
+                            <span>Ver Lotes</span> &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end text-xs pt-2 border-t border-slate-800/80">
                     <form method="POST" action="{{ route('accounts.quick_replenish') }}" class="inline">
                         @csrf
                         <input type="hidden" name="service_id" value="{{ $s->id }}">
@@ -229,7 +253,7 @@
             $availCount = $availProfiles->count();
             $occCount = $occupiedProfiles->count();
         @endphp
-        <div class="p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 hover:border-slate-700 transition-all">
+        <div class="p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 hover:border-slate-700 transition-all" x-data="{ openSection: false }">
             <!-- Header de la Cuenta Maestra -->
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
                 <div class="flex items-center gap-3">
@@ -297,15 +321,32 @@
                 </div>
             </div>
 
-            <!-- DESGLOSE DE PANTALLAS: PERFILES DISPONIBLES & PERFILES VENDIDOS -->
-            <div class="space-y-2.5">
+            <!-- Botón para Abrir / Cerrar Sección de Pantallas -->
+            <div class="pt-1">
+                <button type="button" @click="openSection = !openSection" class="w-full px-4 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 text-xs font-bold transition-all flex items-center justify-between cursor-pointer group">
+                    <div class="flex items-center gap-2 text-slate-300 group-hover:text-white">
+                        <i data-lucide="layers" class="w-4 h-4 text-sky-400"></i>
+                        <span>Sección de Pantallas (Lote #{{ $acc->id }})</span>
+                        <span class="text-[11px] font-mono text-slate-500 font-normal">({{ $totalCount }} pantallas en total)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-lg border transition-all" :class="openSection ? 'bg-sky-500/20 text-sky-300 border-sky-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'">
+                            <span x-text="openSection ? 'Cerrar Sección' : 'Abrir Sección & Ver Libres'"></span>
+                        </span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="openSection ? 'rotate-180 text-sky-400' : ''"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- DESGLOSE DE PANTALLAS: PERFILES DISPONIBLES & PERFILES VENDIDOS (SOLO VISIBLE AL ABRIR LA SECCIÓN) -->
+            <div x-show="openSection" x-cloak x-collapse class="space-y-3 pt-3 border-t border-slate-800/80">
                 <div class="flex items-center justify-between text-xs text-slate-400">
                     <div class="flex items-center gap-3">
-                        <span class="font-bold uppercase tracking-wider text-[10px]">Estado de Pantallas:</span>
-                        <span class="text-emerald-400 font-bold font-mono">🟢 {{ $availCount }} Disponibles</span>
-                        <span class="text-sky-400 font-bold font-mono">🔵 {{ $occCount }} Vendidos</span>
+                        <span class="font-bold uppercase tracking-wider text-[10px]">Disponibilidad de Pantallas:</span>
+                        <span class="text-emerald-400 font-bold font-mono px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">🟢 {{ $availCount }} Libres</span>
+                        <span class="text-sky-400 font-bold font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">🔵 {{ $occCount }} Vendidos</span>
                         @if($reviewProfiles->count() > 0)
-                        <span class="text-amber-400 font-bold font-mono">🟡 {{ $reviewProfiles->count() }} En Revisión</span>
+                        <span class="text-amber-400 font-bold font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">🟡 {{ $reviewProfiles->count() }} En Revisión</span>
                         @endif
                     </div>
                     <span class="font-mono text-slate-500">{{ $totalCount }} pantallas totales</span>

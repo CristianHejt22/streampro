@@ -382,20 +382,36 @@
                 $tot = $serv->total_profiles ?? 0;
                 $badge = $serv->status_badge ?? ($free > 2 ? 'in_stock' : ($free > 0 ? 'low_stock' : 'out_of_stock'));
             @endphp
-            <div class="p-4 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all flex flex-col justify-between space-y-3">
+            <div class="p-4 rounded-xl bg-[#0b0f19] border border-gray-800 hover:border-gray-700 transition-all flex flex-col justify-between space-y-3" x-data="{ openServ: false }">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-1.5 mb-1">
                             <span class="w-3 h-3 rounded-full shrink-0" style="background-color: {{ $serv->color_hex ?? '#E50914' }}"></span>
                             <span class="text-xs font-mono font-bold text-slate-300 block truncate">{{ $serv->name }}</span>
                         </div>
-                        <span class="text-2xl font-black {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
-                            {{ $free }}
-                            <span class="text-xs text-slate-500 font-normal">/ {{ $tot }} total</span>
+                        <span class="text-xs text-gray-500 font-mono">
+                            {{ $tot }} perfiles capacidad total
                         </span>
                     </div>
                     <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono {{ $badge === 'in_stock' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : ($badge === 'low_stock' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30') }}">
                         {{ $badge === 'in_stock' ? '🟢 Listo' : ($badge === 'low_stock' ? '🟡 Bajo' : '🔴 Agotado') }}
+                    </span>
+                </div>
+
+                <!-- Botón para Abrir Sección -->
+                <div>
+                    <button type="button" @click="openServ = !openServ" class="w-full py-1 px-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-[11px] text-sky-400 hover:text-sky-300 font-bold border border-gray-800 flex items-center justify-between transition cursor-pointer">
+                        <span x-text="openServ ? 'Cerrar Sección' : 'Abrir Sección & Ver Libres'"></span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 transition-transform duration-200" :class="openServ ? 'rotate-180 text-sky-400' : 'text-slate-400'"></i>
+                    </button>
+                </div>
+
+                <!-- Cantidad Libres: Solo visible al abrir la sección -->
+                <div x-show="openServ" x-cloak x-collapse class="pt-2 border-t border-gray-800/80 flex items-baseline justify-between">
+                    <span class="text-xs text-gray-400">Cantidad Libres:</span>
+                    <span class="text-base font-black font-mono {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
+                        {{ $free }}
+                        <span class="text-xs text-slate-500 font-normal">/ {{ $tot }}</span>
                     </span>
                 </div>
 
