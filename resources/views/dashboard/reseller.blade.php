@@ -349,13 +349,56 @@
             </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <button onclick="navigator.clipboard.writeText('{{ route('catalog.referral', ['code' => $user->referral_code]) }}'); alert('¡Enlace de tu tienda copiado al portapapeles!');" class="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-gray-700">
+            <button onclick="navigator.clipboard.writeText('{{ route('catalog.referral', ['code' => $user->referral_code]) }}'); alert('¡Enlace de tu tienda copiado al portapapeles!');" class="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-gray-700 cursor-pointer">
                 <i data-lucide="copy" class="w-4 h-4"></i>
                 <span>Copiar Enlace</span>
             </button>
-            <a href="{{ route('catalog.referral', ['code' => $user->referral_code]) }}" target="_blank" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-red-600/30">
+            <a href="{{ route('catalog.referral', ['code' => $user->referral_code]) }}" target="_blank" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-red-600/30 cursor-pointer">
                 <i data-lucide="external-link" class="w-4 h-4"></i>
                 <span>Abrir Mi Tienda</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Banner App PWA Instalable para Compartir por WhatsApp -->
+    @php
+        $pwaAppName = ($user->isReseller() && $user->isPanelBasic()) ? 'SPRO PLAY' : ($user->brand_name ?: 'CStreame');
+        $pwaShortUrl = url('/app/' . $user->referral_code);
+        $pwaWhatsappText = "📲 ¡Instala la App oficial de *{$pwaAppName}* en tu celular o computadora!\n\n"
+            . "✨ Catálogo de cuentas y pantallas de streaming con entrega rápida.\n"
+            . "🔐 Acceso seguro a tu Bóveda privada de cliente con PIN.\n\n"
+            . "👉 Toca aquí para instalar en 1 clic:\n" . $pwaShortUrl;
+    @endphp
+    <div class="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-cyan-950/20 to-gray-900 border border-emerald-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-xl shrink-0">
+                <i data-lucide="smartphone" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-bold text-white">App PWA Instalable (URL Corta para WhatsApp)</h3>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">PWA 100% Nativa</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-0.5">Comparte este enlace corto para que tus clientes instalen la App con tu logo, nombre y marca en su pantalla de inicio en Android, iOS o Windows.</p>
+                <div class="mt-2 flex items-center gap-2">
+                    <code class="px-2.5 py-1 rounded bg-black/60 border border-gray-800 text-xs text-emerald-400 font-mono select-all">
+                        {{ $pwaShortUrl }}
+                    </code>
+                </div>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button onclick="navigator.clipboard.writeText('{{ $pwaShortUrl }}'); alert('¡Enlace de instalación de tu App copiado al portapapeles!');" class="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-gray-700 cursor-pointer">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                <span>Copiar App</span>
+            </button>
+            <a href="https://wa.me/?text={{ urlencode($pwaWhatsappText) }}" target="_blank" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer">
+                <i data-lucide="message-circle" class="w-4 h-4"></i>
+                <span>Compartir por WhatsApp</span>
+            </a>
+            <a href="{{ $pwaShortUrl }}" target="_blank" class="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-600/30 cursor-pointer">
+                <i data-lucide="external-link" class="w-4 h-4"></i>
+                <span>Probar Instalador</span>
             </a>
         </div>
     </div>

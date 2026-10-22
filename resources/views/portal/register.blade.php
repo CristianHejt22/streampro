@@ -25,7 +25,7 @@
         </p>
     </div>
 
-    @if($errors->any())
+    @if(isset($errors) && $errors->any())
     <div class="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs space-y-1">
         <div class="font-bold flex items-center gap-2">
             <i data-lucide="alert-circle" class="w-4 h-4"></i>

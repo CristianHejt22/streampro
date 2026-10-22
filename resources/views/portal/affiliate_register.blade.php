@@ -26,7 +26,7 @@
         <!-- Glow background -->
         <div class="absolute -top-16 -right-16 w-36 h-36 bg-purple-500/15 rounded-full blur-2xl pointer-events-none"></div>
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
         <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs space-y-1">
             <span class="font-bold block">Por favor corrige los siguientes errores:</span>
             <ul class="list-disc list-inside">

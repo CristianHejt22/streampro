@@ -302,7 +302,7 @@
             </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
             <div class="mb-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm shadow-lg">
                 <div class="flex items-center gap-2 font-bold mb-1">
                     <i data-lucide="alert-circle" class="w-4 h-4"></i>

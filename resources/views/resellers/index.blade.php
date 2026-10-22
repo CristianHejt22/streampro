@@ -25,15 +25,28 @@
     transferMethod: '',
     transferRef: '',
     transferNotes: '',
+    getResellerFromScript(id) {
+        const el = document.getElementById('reseller-data-' + id);
+        return el ? JSON.parse(el.textContent) : null;
+    },
+    getTransferFromScript(id) {
+        const el = document.getElementById('transfer-data-' + id);
+        return el ? JSON.parse(el.textContent) : null;
+    },
     openTransferAudit(tr) {
+        if (!tr) return;
         this.activeTransfer = tr;
-        this.transferReceiptUrl = tr.receipt_path ? ('/storage/' + tr.receipt_path) : '';
+        this.transferReceiptUrl = tr.receipt_path ? ('/resellers/balance-transfers/' + tr.id + '/receipt') : '';
         this.transferResellerName = tr.reseller ? tr.reseller.name : 'Revendedor';
         this.transferAmount = parseFloat(tr.amount).toLocaleString('es-AR', {minimumFractionDigits: 2});
         this.transferMethod = tr.payment_method || 'transfer';
         this.transferRef = tr.reference_code || '';
         this.transferNotes = tr.reseller_notes || '';
         this.transferAuditModal = true;
+    },
+    openTransferAuditFromScript(id) {
+        const tr = this.getTransferFromScript(id);
+        if (tr) this.openTransferAudit(tr);
     },
     selectedCreditPack: 'basic_10',
     selectedTier: 'basic',
@@ -45,8 +58,49 @@
     serviceReseller: null,
     selectedReseller: null,
     openServiceCommissions(res) {
+        if (!res) return;
         this.serviceReseller = res;
         this.serviceCommissionsModal = true;
+    },
+    openServiceCommissionsFromScript(id) {
+        const res = this.getResellerFromScript(id);
+        if (res) this.openServiceCommissions(res);
+    },
+    openPlanPricesFromScript(id) {
+        const res = this.getResellerFromScript(id);
+        if (res) this.openPlanPrices(res);
+    },
+    openWhatsAppPrefFromScript(id) {
+        const res = this.getResellerFromScript(id);
+        if (res) this.openWhatsAppPref(res);
+    },
+    openRechargeFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.rechargeModal = true;
+    },
+    openMasterActivationFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.masterActivationModal = true;
+    },
+    openSellCreditsFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.sellCreditsModal = true;
+    },
+    openCreditActivationFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.creditActivationModal = true;
+    },
+    openClonePanelFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.clonePanelModal = true;
+    },
+    revealPasswordFromScript(id) {
+        const res = this.getResellerFromScript(id);
+        if (res) this.revealPassword(res);
+    },
+    openChangePassFromScript(id) {
+        this.selectedReseller = this.getResellerFromScript(id);
+        this.changePassModal = true;
     },
     planPricesModal: false,
     selectedPlanPricesReseller: null,
@@ -106,7 +160,7 @@
         <div class="bg-[#111827] p-5 rounded-2xl border border-gray-800 flex items-center justify-between">
             <div>
                 <span class="text-[11px] font-bold text-gray-400 uppercase">Paneles Registrados</span>
-                <h4 class="text-2xl font-black text-white mt-1">{{ $stats['total_resellers'] ?? $resellers->total() }}</h4>
+                <h4 class="text-2xl font-black text-white mt-1">{{ $stats['total_resellers'] ?? (method_exists($resellers, 'total') ? $resellers->total() : $resellers->count()) }}</h4>
                 <span class="text-[10px] text-amber-400 font-mono">{{ $stats['basic_panels'] ?? 0 }} Básicos · {{ $stats['pro_panels'] ?? 0 }} PRO</span>
             </div>
             <div class="w-12 h-12 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center text-xl">
@@ -175,7 +229,7 @@
                         <span class="text-[11px] text-gray-400">Habilitar asistencia directa en cuentas</span>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="whatsapp_support_enabled" value="1" {{ $whatsappSupportEnabled ? 'checked' : '' }} class="sr-only peer">
+                        <input type="checkbox" name="whatsapp_support_enabled" value="1" {{ (!empty($whatsappSupportEnabled)) ? 'checked' : '' }} class="sr-only peer">
                         <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                     </label>
                 </div>
@@ -184,8 +238,8 @@
                 <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800">
                     <label class="text-xs font-bold text-white block mb-1">Destino de las Consultas</label>
                     <select name="whatsapp_support_dest" class="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-emerald-500">
-                        <option value="reseller" {{ $whatsappSupportDest === 'reseller' ? 'selected' : '' }}>WhatsApp de cada Revendedor (Recomendado)</option>
-                        <option value="admin" {{ $whatsappSupportDest === 'admin' ? 'selected' : '' }}>Centralizar en WhatsApp del Administrador</option>
+                        <option value="reseller" {{ ($whatsappSupportDest ?? 'reseller') === 'reseller' ? 'selected' : '' }}>WhatsApp de cada Revendedor (Recomendado)</option>
+                        <option value="admin" {{ ($whatsappSupportDest ?? 'reseller') === 'admin' ? 'selected' : '' }}>Centralizar en WhatsApp del Administrador</option>
                     </select>
                 </div>
 
@@ -193,7 +247,7 @@
                 <div class="p-3.5 rounded-xl bg-[#0b0f19] border border-gray-800 flex items-center gap-2">
                     <div class="flex-1">
                         <label class="text-xs font-bold text-white block mb-1">WhatsApp Admin Central</label>
-                        <input type="text" name="whatsapp_support_admin_phone" value="{{ $whatsappAdminPhone }}" placeholder="5491199887766" class="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-emerald-500 font-mono">
+                        <input type="text" name="whatsapp_support_admin_phone" value="{{ $whatsappAdminPhone ?? '' }}" placeholder="5491199887766" class="w-full p-2 rounded-lg bg-gray-900 border border-gray-700 text-xs text-white outline-none focus:border-emerald-500 font-mono">
                     </div>
                     <button type="submit" class="self-end px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer">
                         Guardar
@@ -430,6 +484,7 @@
                 </thead>
                 <tbody class="divide-y divide-amber-500/10 font-mono">
                     @foreach($pendingTransfers as $tr)
+                    <script id="transfer-data-{{ $tr->id }}" type="application/json">@json($tr)</script>
                     <tr class="hover:bg-amber-500/5">
                         <td class="py-2.5 px-3">
                             <span class="font-bold text-white block">{{ $tr->reseller ? $tr->reseller->name : 'Revendedor' }}</span>
@@ -446,7 +501,7 @@
                         </td>
                         <td class="py-2.5 px-3">
                             @if($tr->receipt_path)
-                            <button type="button" @click="openTransferAudit({{ json_encode($tr) }})" class="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer font-sans">
+                            <button type="button" @click="openTransferAuditFromScript({{ $tr->id }})" class="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer font-sans">
                                 <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                                 <span>Ver Comprobante (Mini Nube)</span>
                             </button>
@@ -459,20 +514,20 @@
                         </td>
                         <td class="py-2.5 px-3 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <button type="button" @click="openTransferAudit({{ json_encode($tr) }})" class="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 font-bold text-xs flex items-center gap-1 cursor-pointer font-sans transition-all">
+                                <button type="button" @click="openTransferAuditFromScript({{ $tr->id }})" class="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 font-bold text-xs flex items-center gap-1 cursor-pointer font-sans transition-all">
                                     <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
                                     Auditar
                                 </button>
                                 <form method="POST" action="{{ route('resellers.balance_transfers.approve', $tr) }}" class="inline">
                                     @csrf
-                                    <button type="submit" onclick="return confirm('¿Aprobar y acreditar ${{ number_format($tr->amount, 2) }} a la billetera de {{ $tr->reseller ? $tr->reseller->name : 'este revendedor' }}?')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md cursor-pointer font-sans">
+                                    <button type="submit" onclick="return confirm('¿Aprobar y acreditar ${{ number_format($tr->amount, 2) }} a la billetera de {{ $tr->reseller ? $tr->reseller->name : 'este revendedor' }}? El comprobante se purgará de la mini nube de forma permanente.')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md cursor-pointer font-sans">
                                         <i data-lucide="check" class="w-3.5 h-3.5"></i>
                                         Aprobar
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ route('resellers.balance_transfers.reject', $tr) }}" class="inline">
                                     @csrf
-                                    <button type="submit" onclick="return confirm('¿Rechazar esta solicitud de saldo?')" class="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs cursor-pointer font-sans">
+                                    <button type="submit" onclick="return confirm('¿Rechazar esta solicitud de saldo? El comprobante se purgará de la mini nube.')" class="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs cursor-pointer font-sans">
                                         ✕
                                     </button>
                                 </form>
@@ -585,10 +640,14 @@
                 </thead>
                 <tbody class="divide-y divide-gray-800/60 text-xs text-gray-200">
                     @forelse($resellers as $res)
+                    <script id="reseller-data-{{ $res->id }}" type="application/json">@json($res)</script>
                     @php
                         $isCloned = $res->panel_type === 'cloned';
                         $daysLeft = $res->days_remaining_panel;
                         $isExpired = $res->isPanelExpired();
+                        $resPwaShortUrl = url('/app/' . $res->referral_code);
+                        $resPwaBrand = $res->isPanelBasic() ? 'SPRO PLAY' : ($res->brand_name ?: $res->name);
+                        $resPwaText = "📲 ¡Instala la App oficial de *{$resPwaBrand}*!\n👉 " . $resPwaShortUrl;
                     @endphp
                     <tr class="hover:bg-gray-800/30 transition-colors">
                         <td class="py-3 px-4">
@@ -599,7 +658,16 @@
                                 @endif
                             </div>
                             <span class="text-[11px] text-gray-400 block">{{ $res->email }}</span>
-                            <span class="text-[10px] text-sky-400 font-mono">{{ $res->brand_name }} (Ref: {{ $res->referral_code }})</span>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] text-sky-400 font-mono">{{ $res->brand_name }} (Ref: {{ $res->referral_code }})</span>
+                                <a href="{{ $resPwaShortUrl }}" target="_blank" class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono flex items-center gap-0.5" title="Abrir instalador PWA">
+                                    <i data-lucide="smartphone" class="w-2.5 h-2.5"></i>
+                                    <span>PWA</span>
+                                </a>
+                                <a href="https://wa.me/?text={{ urlencode($resPwaText) }}" target="_blank" class="text-[9px] text-emerald-400 hover:text-emerald-300 font-mono flex items-center gap-0.5" title="Compartir App por WhatsApp">
+                                    <i data-lucide="share-2" class="w-2.5 h-2.5"></i>
+                                </a>
+                            </div>
                             @if($res->support_whatsapp || $res->phone)
                             <div class="mt-1 flex items-center gap-1.5">
                                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $res->support_whatsapp ?: $res->phone) }}" target="_blank" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono">
@@ -670,7 +738,7 @@
                                 <div class="pt-1.5 border-t border-gray-800/80">
                                     @if($res->canResellPanels())
                                         <div class="flex items-center gap-1.5">
-                                            <span class="text-[10px] text-gray-400 font-mono">Reventa:</span>
+                                             <span class="text-[10px] text-gray-400 font-mono">Reventa:</span>
                                             <form method="POST" action="{{ route('resellers.toggle_panel_offer', $res) }}" class="inline">
                                                 @csrf
                                                 <button type="submit" class="px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all cursor-pointer {{ $res->isPanelSalesOffered() ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700' }}" title="Habilitar o pausar que este revendedor ofrezca paneles en su catálogo">
@@ -687,7 +755,7 @@
                         </td>
                         <td class="py-3 px-4">
                             <span class="text-sm font-black text-emerald-400 block">${{ number_format($res->balance, 2) }}</span>
-                            <button @click="selectedReseller = {{ json_encode($res) }}; rechargeModal = true;" class="text-[10px] text-cyan-400 hover:underline font-semibold cursor-pointer">
+                            <button type="button" @click="openRechargeFromScript({{ $res->id }})" class="text-[10px] text-cyan-400 hover:underline font-semibold cursor-pointer">
                                 + Recargar Saldo
                             </button>
                         </td>
@@ -703,17 +771,17 @@
                                 @endforeach
                             </div>
                             @endif
-                            <button type="button" @click="openServiceCommissions({{ json_encode($res) }})" class="mt-1.5 px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer">
+                            <button type="button" @click="openServiceCommissionsFromScript({{ $res->id }})" class="mt-1.5 px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer">
                                 <i data-lucide="sliders" class="w-3 h-3"></i>
                                 <span>Comisiones por Servicio</span>
                             </button>
 
                             <div class="mt-1 flex flex-col gap-1">
-                                <button type="button" @click="openPlanPrices({{ json_encode($res) }})" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Ajustar Costos Mayoristas de Proveedor">
+                                <button type="button" @click="openPlanPricesFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Ajustar Costos Mayoristas de Proveedor">
                                     <i data-lucide="tag" class="w-3 h-3"></i>
                                     <span>⚙️ Precios Proveedor</span>
                                 </button>
-                                <button type="button" @click="openWhatsAppPref({{ json_encode($res) }})" class="px-2 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Configurar WhatsApp en Bóveda Clientes">
+                                <button type="button" @click="openWhatsAppPrefFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer" title="Configurar WhatsApp en Bóveda Clientes">
                                     <i data-lucide="message-circle" class="w-3 h-3"></i>
                                     <span>📱 WhatsApp ({{ $res->whatsapp_support_preference ?? 'auto' }})</span>
                                 </button>
@@ -753,7 +821,7 @@
                                 <div class="mt-1.5 text-[10px] font-mono space-y-0.5">
                                     <span class="text-emerald-400 block font-bold">✓ Tienda $15k ($8k Admin | $7k Prov)</span>
                                     <div class="flex items-center gap-1">
-                                        @if($res->cloned_store_paid_by_reseller)
+                                         @if($res->cloned_store_paid_by_reseller)
                                         <span class="text-emerald-400 font-bold">✓ Revendedor: Cobrado</span>
                                         @else
                                         <span class="text-amber-400 font-bold">⏳ Revendedor: Pendiente</span>
@@ -784,22 +852,22 @@
                             <!-- Botones de Activación Maestra & Créditos -->
                             <div class="mt-2 flex flex-wrap gap-1.5">
                                 @if(Auth::user()->isAdmin())
-                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; masterActivationModal = true;" class="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activación Maestra Super Admin">
+                                <button type="button" @click="openMasterActivationFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activación Maestra Super Admin">
                                     <i data-lucide="zap" class="w-3 h-3"></i>
                                     <span>⚡ Activar Maestro</span>
                                 </button>
-                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; sellCreditsModal = true;" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Vender Créditos de Paneles">
+                                <button type="button" @click="openSellCreditsFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Vender Créditos de Paneles">
                                     <i data-lucide="coins" class="w-3 h-3"></i>
                                     <span>💰 Vender Créditos</span>
                                 </button>
                                 @endif
 
-                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; creditActivationModal = true;" class="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activar con 1 crédito">
+                                <button type="button" @click="openCreditActivationFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Activar con 1 crédito">
                                     <i data-lucide="gem" class="w-3 h-3"></i>
                                     <span>💎 1 Crédito</span>
                                 </button>
 
-                                <button type="button" @click="selectedReseller = {{ json_encode($res) }}; clonePanelModal = true;" class="px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Clonar Catálogo $15.000">
+                                <button type="button" @click="openClonePanelFromScript({{ $res->id }})" class="px-2 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer" title="Clonar Catálogo $15.000">
                                     <i data-lucide="copy" class="w-3 h-3"></i>
                                     <span>$15k Clon</span>
                                 </button>
@@ -814,13 +882,13 @@
                             <div class="flex items-center justify-end gap-1.5">
                                 @if(Auth::user()->isAdmin())
                                 <!-- Botón VER CLAVE (Exclusivo Super Admin) -->
-                                <button @click="revealPassword({{ json_encode($res) }})" title="Ver Contraseña Actual del Panel" class="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
+                                <button type="button" @click="revealPasswordFromScript({{ $res->id }})" title="Ver Contraseña Actual del Panel" class="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
                                     <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                                     <span>Ver Clave</span>
                                 </button>
 
                                 <!-- Botón CAMBIAR CLAVE (Exclusivo Super Admin) -->
-                                <button @click="selectedReseller = {{ json_encode($res) }}; changePassModal = true;" title="Cambiar Contraseña del Panel" class="px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
+                                <button type="button" @click="openChangePassFromScript({{ $res->id }})" title="Cambiar Contraseña del Panel" class="px-2.5 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer">
                                     <i data-lucide="key" class="w-3.5 h-3.5"></i>
                                     <span>Cambiar</span>
                                 </button>
@@ -855,7 +923,7 @@
             </table>
         </div>
 
-        @if($resellers->hasPages())
+        @if(method_exists($resellers, 'hasPages') && $resellers->hasPages())
         <div class="p-4 border-t border-gray-800 bg-[#0d1322]">
             {{ $resellers->links() }}
         </div>
@@ -961,7 +1029,7 @@
                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Proveedor o Revendedor Patrocinador de Cuentas</label>
                         <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                             <option value="">-- Sin Patrocinador (Super Panel Directo) --</option>
-                            @foreach($superResellersList as $sres)
+                            @foreach($superResellersList ?? [] as $sres)
                             <option value="{{ $sres->id }}">{{ $sres->name }} ({{ $sres->brand_name }})</option>
                             @endforeach
                         </select>
@@ -1066,7 +1134,7 @@
                 @csrf
 
                 <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
-                    @foreach($servicesList as $srv)
+                    @foreach($servicesList ?? [] as $srv)
                     <div class="p-3.5 rounded-2xl bg-[#0b0f19] border border-gray-800/80 flex items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
                             <span class="w-3.5 h-3.5 rounded-full shrink-0 shadow" style="background-color: {{ $srv->color_hex ?? '#E50914' }}"></span>
@@ -1211,7 +1279,7 @@
                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Patrocinador Padre</label>
                         <select name="parent_id" class="w-full px-3.5 py-2.5 rounded-xl bg-[#0b0f19] border border-gray-800 text-xs text-white">
                             <option value="">-- Ninguno (Directo Super Panel) --</option>
-                            @foreach($superResellersList as $sres)
+                            @foreach($superResellersList ?? [] as $sres)
                             <option value="{{ $sres->id }}">{{ $sres->name }}</option>
                             @endforeach
                         </select>
@@ -1638,7 +1706,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-800/60 font-mono">
-                            @foreach($servicePlansList as $sp)
+                            @foreach($servicePlansList ?? [] as $sp)
                             <tr class="hover:bg-gray-800/30">
                                 <td class="py-2.5 px-3 font-sans">
                                     <span class="font-bold text-white block">{{ $sp->service ? $sp->service->name : 'Streaming' }}</span>
@@ -1761,13 +1829,19 @@
 
             <!-- Modal Content: Preview Comprobante -->
             <div class="p-5 overflow-y-auto flex-1 space-y-4">
-                <div class="rounded-2xl border border-gray-800 bg-black/40 overflow-hidden flex items-center justify-center min-h-[300px] p-2">
+                <div class="rounded-2xl border border-gray-800 bg-black/40 overflow-hidden flex flex-col items-center justify-center min-h-[300px] p-3">
                     <template x-if="transferReceiptUrl">
-                        <img :src="transferReceiptUrl" alt="Comprobante en Mini Nube" class="max-h-[380px] w-auto object-contain rounded-xl shadow-lg">
+                        <div class="w-full flex flex-col items-center gap-3">
+                            <img :src="transferReceiptUrl" alt="Comprobante en Mini Nube" class="max-h-[380px] w-auto object-contain rounded-xl shadow-lg border border-gray-800">
+                            <a :href="transferReceiptUrl" target="_blank" class="px-3.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-cyan-300 border border-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all">
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                <span>Ver Comprobante Completo (Nueva Pestaña)</span>
+                            </a>
+                        </div>
                     </template>
                     <template x-if="!transferReceiptUrl">
                         <div class="text-center text-gray-500 py-12 text-xs">
-                            Sin archivo de comprobante adjunto o ya fue purgado.
+                            Sin archivo de comprobante adjunto o ya fue purgado de la Mini Nube tras su auditoría.
                         </div>
                     </template>
                 </div>
@@ -1782,10 +1856,10 @@
                 <div class="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 text-amber-300 text-xs space-y-1">
                     <div class="flex items-center gap-2 font-bold">
                         <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
-                        <span>Inspección Segura Mini Nube:</span>
+                        <span>Inspección Segura & Purga Automática Mini Nube:</span>
                     </div>
                     <p class="text-[11px] text-amber-200/90 leading-relaxed">
-                        Verifica que el monto y titular del comprobante coincidan con tu cuenta receptora. Al presionar <strong>"Aprobar y Acreditar Saldo"</strong>, el saldo se acreditará automáticamente en la billetera de <span x-text="transferResellerName" class="font-bold"></span> para la entrega de cuentas.
+                        Verifica que el monto y titular del comprobante coincidan. Al presionar <strong>"Aprobar y Acreditar Saldo"</strong> (o Rechazar), el archivo del comprobante <strong>se purgará inmediatamente del servidor</strong> para optimizar el espacio de disco en hosting compartido cPanel.
                     </p>
                 </div>
             </div>

@@ -969,6 +969,31 @@ class ResellerController extends Controller
     }
 
     /**
+     * Muestra el comprobante alojado en la Mini Nube temporal
+     */
+    public function showBalanceTransferReceipt(BalanceTransfer $transfer)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $transfer->provider_id !== $user->id && $transfer->reseller_id !== $user->id) {
+            abort(403);
+        }
+
+        if (!$transfer->receipt_path) {
+            abort(404, 'El archivo del comprobante no existe o ya fue purgado de la Mini Nube tras su auditoría.');
+        }
+
+        $disk = Storage::disk('public')->exists($transfer->receipt_path) ? 'public' : 'local';
+        if (!Storage::disk($disk)->exists($transfer->receipt_path)) {
+            abort(404, 'El comprobante ya no se encuentra en el servidor.');
+        }
+
+        $fileContent = Storage::disk($disk)->get($transfer->receipt_path);
+        $mimeType = Storage::disk($disk)->mimeType($transfer->receipt_path);
+
+        return response($fileContent)->header('Content-Type', $mimeType);
+    }
+
+    /**
      * El Proveedor aprueba la transferencia recibida y acredita el saldo a su revendedor
      */
     public function approveBalanceTransfer(BalanceTransfer $transfer)
@@ -984,6 +1009,17 @@ class ResellerController extends Controller
 
         $transfer->status = 'approved';
         $transfer->processed_at = Carbon::now();
+
+        // PURGA MINI NUBE: Eliminar comprobante del disco para optimizar shared hosting / cPanel
+        if ($transfer->receipt_path) {
+            if (Storage::disk('public')->exists($transfer->receipt_path)) {
+                Storage::disk('public')->delete($transfer->receipt_path);
+            } elseif (Storage::disk('local')->exists($transfer->receipt_path)) {
+                Storage::disk('local')->delete($transfer->receipt_path);
+            }
+            $transfer->receipt_path = null;
+        }
+
         $transfer->save();
 
         // Acreditar saldo a la billetera del revendedor
@@ -992,11 +1028,11 @@ class ResellerController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'action' => 'approve_balance_transfer',
-            'description' => "Proveedor {$user->name} aprobó transferencia #{$transfer->id} de \${$transfer->amount} para {$transfer->reseller->name}. Saldo acreditado.",
+            'description' => "Proveedor {$user->name} aprobó transferencia #{$transfer->id} de \${$transfer->amount} para {$transfer->reseller->name}. Saldo acreditado y comprobante purgado de la Mini Nube.",
             'ip_address' => request()->ip(),
         ]);
 
-        return back()->with('success', "¡Transferencia aprobada! Se acreditaron \${$transfer->amount} en la billetera de {$transfer->reseller->name} para entregas rápidas.");
+        return back()->with('success', "¡Transferencia aprobada! Se acreditaron \${$transfer->amount} en la billetera de {$transfer->reseller->name} para entregas rápidas y se purgó el comprobante para liberar espacio.");
     }
 
     /**
@@ -1012,9 +1048,20 @@ class ResellerController extends Controller
         $transfer->status = 'rejected';
         $transfer->provider_notes = $request->input('reason', 'Comprobante no válido o pago no acreditado.');
         $transfer->processed_at = Carbon::now();
+
+        // PURGA MINI NUBE: Eliminar comprobante al rechazar
+        if ($transfer->receipt_path) {
+            if (Storage::disk('public')->exists($transfer->receipt_path)) {
+                Storage::disk('public')->delete($transfer->receipt_path);
+            } elseif (Storage::disk('local')->exists($transfer->receipt_path)) {
+                Storage::disk('local')->delete($transfer->receipt_path);
+            }
+            $transfer->receipt_path = null;
+        }
+
         $transfer->save();
 
-        return back()->with('info', "Transferencia rechazada para {$transfer->reseller->name}.");
+        return back()->with('info', "Transferencia rechazada para {$transfer->reseller->name} y comprobante purgado de la Mini Nube.");
     }
 
     /**

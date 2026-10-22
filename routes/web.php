@@ -180,6 +180,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/update-plan-prices', [ResellerController::class, 'updatePlanPrices'])->name('resellers.update_plan_prices');
     Route::post('/services/plans/update-my-pvp', [ResellerController::class, 'updateMyPvp'])->name('services.plans.update_my_pvp');
     Route::post('/resellers/balance-transfers', [ResellerController::class, 'storeBalanceTransfer'])->name('resellers.balance_transfers.store');
+    Route::get('/resellers/balance-transfers/{transfer}/receipt', [ResellerController::class, 'showBalanceTransferReceipt'])->name('resellers.balance_transfers.receipt');
     Route::post('/resellers/balance-transfers/{transfer}/approve', [ResellerController::class, 'approveBalanceTransfer'])->name('resellers.balance_transfers.approve');
     Route::post('/resellers/balance-transfers/{transfer}/reject', [ResellerController::class, 'rejectBalanceTransfer'])->name('resellers.balance_transfers.reject');
     Route::post('/resellers/upgrade-admin-panel', [ResellerController::class, 'upgradeToSuperReseller'])->name('resellers.upgrade_admin_panel');

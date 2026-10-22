@@ -24,7 +24,7 @@
         </div>
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
         <div class="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
             <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
             <span>{{ $errors->first() }}</span>

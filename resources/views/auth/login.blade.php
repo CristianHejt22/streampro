@@ -48,7 +48,7 @@
                 </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
                     {{ $errors->first() }}
                 </div>
