@@ -38,9 +38,15 @@
                     Bienvenido a <span class="bg-gradient-to-r from-red-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">{{ $brandName ?? ($seller->brand_name ?? 'CStreame Streaming') }}</span>
                 </h1>
 
+                @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+                    Distribuidor oficial de streaming y franquicias de paneles independientes. Adquiere tus cuentas garantizadas o <strong>inicia tu propio negocio de reventa</strong> con Panel Básico o PRO, catálogo sincronizado y Bóveda privada para tus clientes.
+                </p>
+                @else
                 <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
                     Tu distribuidor de confianza para cuentas y perfiles de Netflix 4K, Disney+, Max, Prime Video y MagisTV. Entrega segura y protegida en tu <strong>Bóveda Privada de Cliente</strong> con biometría y PIN personal.
                 </p>
+                @endif
 
                 <!-- Botones de Acción -->
                 <div class="flex flex-wrap items-center gap-3 pt-2">
@@ -569,8 +575,13 @@
     <section id="catalogo" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
         <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-slate-800">
             <div>
+                @if($seller && $seller->isReseller() && $seller->canResellPanels() && $seller->isPanelSalesOffered())
+                <span class="text-xs font-bold uppercase tracking-wider text-purple-400 block font-mono">Servicios Disponibles para Clientes y Revendedores</span>
+                <h2 class="text-2xl sm:text-3xl font-black text-white">Catálogo de Cuentas & Pantallas Oficiales</h2>
+                @else
                 <span class="text-xs font-bold uppercase tracking-wider text-red-400 block font-mono">Disfruta Tu Contenido Favorito</span>
                 <h2 class="text-2xl sm:text-3xl font-black text-white">Catálogo de Cuentas & Pantallas</h2>
+                @endif
             </div>
 
             <!-- Categories Pills -->
