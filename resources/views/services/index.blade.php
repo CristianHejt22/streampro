@@ -2,7 +2,7 @@
 
 @section('title', 'Servicios Disponibles & Stock en Tiempo Real')
 @section('page_title', 'Servicios Disponibles')
-@section('page_subtitle', 'Disponibilidad de stock por plataforma en tiempo real: capacidad total y perfiles libres listos para entrega inmediata')
+@section('page_subtitle', 'Catálogo oficial de servicios de streaming, configuración de planes y gestión de inventario')
 
 @section('content')
 <div class="space-y-6" x-data="{
@@ -358,39 +358,52 @@
                     </span>
                 </div>
 
-                <!-- Métricas Visuales de Capacidad y Perfiles Libres -->
-                <div class="p-4 rounded-2xl bg-[#0b0f19] border border-gray-800 space-y-3">
-                    <div class="flex items-end justify-between">
+                <!-- Métricas Visuales de Capacidad y Perfiles Libres (Desplegable) -->
+                <div class="p-4 rounded-2xl bg-[#0b0f19] border border-gray-800 space-y-3" x-data="{ openStock: false }">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Perfiles Libres en Stock</span>
-                            <div class="text-3xl font-black {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
-                                {{ $free }}
-                                <span class="text-xs text-gray-500 font-normal">/ {{ $total }} capacidad total</span>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Capacidad del Servicio</span>
+                            <span class="text-xs text-gray-500 font-mono">{{ $total }} perfiles totales</span>
+                        </div>
+                        <button type="button" @click="openStock = !openStock" class="py-1 px-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-[11px] text-sky-400 hover:text-sky-300 font-bold border border-gray-800 flex items-center gap-1.5 transition cursor-pointer">
+                            <span x-text="openStock ? 'Cerrar Sección' : 'Abrir Sección & Ver Libres'"></span>
+                            <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" :class="openStock ? 'rotate-180 text-sky-400' : 'text-slate-400'"></i>
+                        </button>
+                    </div>
+
+                    <div x-show="openStock" x-cloak x-collapse class="space-y-3 pt-3 border-t border-gray-800">
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Perfiles Libres en Stock</span>
+                                <div class="text-3xl font-black {{ $free > 0 ? 'text-emerald-400' : 'text-rose-400' }}">
+                                    {{ $free }}
+                                    <span class="text-xs text-gray-500 font-normal">/ {{ $total }} capacidad total</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-mono font-bold {{ $free > 0 ? 'text-emerald-400' : 'text-gray-500' }}">{{ $pctFree }}% libre</span>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <span class="text-xs font-mono font-bold {{ $free > 0 ? 'text-emerald-400' : 'text-gray-500' }}">{{ $pctFree }}% libre</span>
-                        </div>
-                    </div>
 
-                    <!-- Barra de Progreso de Disponibilidad -->
-                    <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-gray-800">
-                        <div class="h-2 rounded-full {{ $free > 2 ? 'bg-emerald-500' : ($free > 0 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $pctFree }}%"></div>
-                    </div>
+                        <!-- Barra de Progreso de Disponibilidad -->
+                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-gray-800">
+                            <div class="h-2 rounded-full {{ $free > 2 ? 'bg-emerald-500' : ($free > 0 ? 'bg-amber-500' : 'bg-rose-500') }}" style="width: {{ $pctFree }}%"></div>
+                        </div>
 
-                    <!-- Desglose de perfiles -->
-                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800/80 text-center">
-                        <div class="p-1.5 rounded-lg bg-gray-900/60">
-                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Libres</span>
-                            <span class="text-xs font-mono font-bold text-emerald-400">{{ $free }}</span>
-                        </div>
-                        <div class="p-1.5 rounded-lg bg-gray-900/60">
-                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Ocupados</span>
-                            <span class="text-xs font-mono font-bold text-amber-400">{{ $occupied }}</span>
-                        </div>
-                        <div class="p-1.5 rounded-lg bg-gray-900/60">
-                            <span class="text-[9px] text-gray-400 block font-semibold uppercase">Total Cupo</span>
-                            <span class="text-xs font-mono font-bold text-white">{{ $total }}</span>
+                        <!-- Desglose de perfiles -->
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800/80 text-center">
+                            <div class="p-1.5 rounded-lg bg-gray-900/60">
+                                <span class="text-[9px] text-gray-400 block font-semibold uppercase">Libres</span>
+                                <span class="text-xs font-mono font-bold text-emerald-400">{{ $free }}</span>
+                            </div>
+                            <div class="p-1.5 rounded-lg bg-gray-900/60">
+                                <span class="text-[9px] text-gray-400 block font-semibold uppercase">Ocupados</span>
+                                <span class="text-xs font-mono font-bold text-amber-400">{{ $occupied }}</span>
+                            </div>
+                            <div class="p-1.5 rounded-lg bg-gray-900/60">
+                                <span class="text-[9px] text-gray-400 block font-semibold uppercase">Total Cupo</span>
+                                <span class="text-xs font-mono font-bold text-white">{{ $total }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -58,19 +58,26 @@
         </div>
 
         <!-- Stock Disponible (Pantallas Libres) -->
-        <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg relative overflow-hidden">
+        <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg relative overflow-hidden flex flex-col justify-between" x-data="{ showCount: false }">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Stock Disponible</span>
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Stock Inventario</span>
                 <div class="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
                     <i data-lucide="tv" class="w-5 h-5"></i>
                 </div>
             </div>
-            <div class="mt-4 flex items-baseline gap-2">
-                <span class="text-2xl font-black text-emerald-400">{{ $availableProfilesCount }}</span>
-                <span class="text-xs text-gray-400">pantallas libres</span>
+            <div class="mt-3">
+                <button type="button" @click="showCount = !showCount" class="py-1 px-2.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-sky-400 hover:text-sky-300 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer">
+                    <i data-lucide="eye" class="w-3.5 h-3.5" x-show="!showCount"></i>
+                    <i data-lucide="eye-off" class="w-3.5 h-3.5" x-show="showCount"></i>
+                    <span x-text="showCount ? 'Ocultar' : 'Abrir Sección'"></span>
+                </button>
+                <div x-show="showCount" x-cloak x-collapse class="mt-2 flex items-baseline gap-2">
+                    <span class="text-2xl font-black text-emerald-400">{{ $availableProfilesCount }}</span>
+                    <span class="text-xs text-gray-400">pantallas libres</span>
+                </div>
             </div>
-            <div class="mt-1 text-xs text-gray-400">
-                +{{ $availableFullAccountsCount }} cuentas completas listas
+            <div class="mt-2 text-xs text-gray-400">
+                <a href="{{ route('accounts.index') }}" class="text-sky-400 hover:underline">Ver inventario de cuentas &rarr;</a>
             </div>
         </div>
 

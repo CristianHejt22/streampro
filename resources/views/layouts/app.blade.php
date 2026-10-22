@@ -124,17 +124,9 @@
             </a>
 
             <!-- Inventario de Cuentas y Pantallas -->
-            <a href="{{ route('accounts.index') }}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('accounts.*') ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-gray-400 hover:text-white hover:bg-gray-800/60' }}">
-                <div class="flex items-center gap-3">
-                    <i data-lucide="server" class="w-5 h-5"></i>
-                    <span>Inventario / Stock</span>
-                </div>
-                @php
-                    $availProfiles = \App\Models\AccountProfile::where('status', 'available')->whereHas('streamingAccount', function($q) { $q->where('status', 'active'); })->count();
-                @endphp
-                <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                    {{ $availProfiles }} libres
-                </span>
+            <a href="{{ route('accounts.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all {{ request()->routeIs('accounts.*') ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-gray-400 hover:text-white hover:bg-gray-800/60' }}">
+                <i data-lucide="server" class="w-5 h-5"></i>
+                <span>Inventario / Stock</span>
             </a>
 
             <!-- Plataformas de Streaming -->
