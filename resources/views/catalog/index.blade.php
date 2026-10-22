@@ -4,40 +4,9 @@
 
 @section('content')
 <div class="space-y-16 pb-16" x-data="{
-    calcPack: 'combo_5_5',
     openFaq: null,
     toggleFaq(id) {
         this.openFaq = this.openFaq === id ? null : id;
-    },
-    get packDetails() {
-        if (this.calcPack === 'basic_10') {
-            return {
-                title: 'Pack 10 Créditos Básicos',
-                tierBadge: '📦 BÁSICO (10 SERVICIOS)',
-                desc: '10 créditos para activar paneles básicos (hasta 10 servicios)',
-                unitPriceText: '$2.500 c/u (mínimo 10 créditos)',
-                totalPrice: 25000,
-                qtyText: '10 Créditos Básicos'
-            };
-        } else if (this.calcPack === 'pro_10') {
-            return {
-                title: 'Pack 10 Créditos PRO',
-                tierBadge: '💎 PRO ILIMITADO',
-                desc: '10 créditos para activar paneles PRO (servicios ilimitados)',
-                unitPriceText: '$4.000 c/u (mínimo 10 créditos)',
-                totalPrice: 40000,
-                qtyText: '10 Créditos PRO'
-            };
-        } else {
-            return {
-                title: 'Pack Combo Dúo (5 de Cada Uno)',
-                tierBadge: '🌟 5 BÁSICOS + 5 PRO JUNTOS',
-                desc: '5 créditos Básico a $3.000 ($15.000) + 5 créditos PRO a $5.000 ($25.000)',
-                unitPriceText: '5 Básicos ($3.000 c/u) + 5 PRO ($5.000 c/u)',
-                totalPrice: 40000,
-                qtyText: '10 Créditos Mixtos (5 Básicos + 5 PRO)'
-            };
-        }
     }
 }">
 
@@ -75,6 +44,13 @@
 
                 <!-- Botones de Acción -->
                 <div class="flex flex-wrap items-center gap-3 pt-2">
+                    @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                    <a href="#planes-paneles" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-purple-600/30 transition-all cursor-pointer">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                        <span>Franquicia de Paneles</span>
+                    </a>
+                    @endif
+
                     <a href="#catalogo" class="px-5 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-red-600/30 transition-all cursor-pointer">
                         <i data-lucide="tv" class="w-4 h-4"></i>
                         <span>Ver Cuentas Disponibles</span>
@@ -98,7 +74,7 @@
 
     @if($seller && $seller->isReseller() && $seller->canResellPanels() && $seller->isPanelSalesOffered())
     <!-- OFERTA DE PANELES CON PRECIOS PERSONALIZADOS DEL PROVEEDOR/REVENDEDOR -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+    <section id="planes-paneles" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 scroll-mt-24">
         <div class="text-center max-w-2xl mx-auto space-y-2">
             <span class="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">Emprende con Tu Propio Panel</span>
             <h2 class="text-2xl sm:text-3xl font-black text-white">Lanza Tu Propia Franquicia Streaming con {{ $brandName }}</h2>
@@ -473,7 +449,39 @@
     <!-- ======================================================== -->
     <!-- COTIZADOR & CALCULADORA EN VIVO DE CRÉDITOS -->
     <!-- ======================================================== -->
-    <section id="cotizador-creditos" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
+    <section id="cotizador-creditos" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24" x-data="{
+        calcPack: 'combo_5_5',
+        get packDetails() {
+            if (this.calcPack === 'basic_10') {
+                return {
+                    title: 'Pack 10 Créditos Básicos',
+                    tierBadge: '📦 BÁSICO (10 SERVICIOS)',
+                    desc: '10 créditos para activar paneles básicos (hasta 10 servicios)',
+                    unitPriceText: '$2.500 c/u (mínimo 10 créditos)',
+                    totalPrice: 25000,
+                    qtyText: '10 Créditos Básicos'
+                };
+            } else if (this.calcPack === 'pro_10') {
+                return {
+                    title: 'Pack 10 Créditos PRO',
+                    tierBadge: '💎 PRO ILIMITADO',
+                    desc: '10 créditos para activar paneles PRO (servicios ilimitados)',
+                    unitPriceText: '$4.000 c/u (mínimo 10 créditos)',
+                    totalPrice: 40000,
+                    qtyText: '10 Créditos PRO'
+                };
+            } else {
+                return {
+                    title: 'Pack Combo Dúo (5 de Cada Uno)',
+                    tierBadge: '🌟 5 BÁSICOS + 5 PRO JUNTOS',
+                    desc: '5 créditos Básico a $3.000 ($15.000) + 5 créditos PRO a $5.000 ($25.000)',
+                    unitPriceText: '5 Básicos ($3.000 c/u) + 5 PRO ($5.000 c/u)',
+                    totalPrice: 40000,
+                    qtyText: '10 Créditos Mixtos (5 Básicos + 5 PRO)'
+                };
+            }
+        }
+    }">
         <div class="rounded-3xl bg-gradient-to-r from-slate-900 via-[#10182b] to-slate-900 border border-slate-800 p-6 sm:p-9 space-y-6 shadow-2xl relative overflow-hidden">
             <div class="flex items-center gap-3 pb-4 border-b border-slate-800">
                 <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold">
@@ -700,131 +708,390 @@
     <!-- SECCIÓN: CÓMO FUNCIONA EL ECOSISTEMA CSTREAME -->
     <!-- ======================================================== -->
     <section id="como-funciona" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
-        <div class="text-center max-w-3xl mx-auto space-y-3">
-            <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">Flujo de Negocio Paso a Paso</span>
-            <h2 class="text-3xl sm:text-4xl font-black text-white">¿Cómo Funciona el Ecosistema?</h2>
-            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Un sistema automatizado y seguro diseñado para que mayoristas, proveedores y revendedores comiencen a operar y generar ingresos hoy mismo sin fricciones.
-            </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Paso 1 -->
-            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-red-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 font-mono font-black text-sm flex items-center justify-center border border-red-500/30">
-                            01
-                        </span>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                            Activación
-                        </span>
-                    </div>
-                    <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center">
-                        <i data-lucide="layers" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-black text-white group-hover:text-red-400 transition-colors">
-                        1. Adquiere Tu Panel
-                    </h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Elige tu <strong>Panel Básico (SPRO PLAY)</strong> de 10 servicios o el <strong>Panel PRO Ilimitado</strong> con Marca Blanca. Si eres revendedor, puedes actualizar a <strong>Panel Administrador (${{ number_format($seller->panel_monthly_fee ?: 15000, 0, ',', '.') }} / 30 días)</strong> para crear tu propia red de sub-revendedores.
+        @if(isset($seller) && $seller->isReseller())
+            @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                {{-- CÓMO FUNCIONA PARA TIENDA DE PROVEEDOR CON FRANQUICIA DE PANELES --}}
+                <div class="text-center max-w-3xl mx-auto space-y-3">
+                    <span class="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">Tu Negocio Streaming con {{ $brandName }}</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white">¿Cómo Funciona Tu Franquicia y Compras?</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        Plataforma integral y segura para adquirir cuentas de streaming o lanzar tu propio panel de ventas con catálogo sincronizado y entrega inmediata.
                     </p>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800/80">
-                    <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                        Entrega Inmediata
-                    </span>
-                </div>
-            </div>
 
-            <!-- Paso 2 -->
-            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-amber-500/30">
-                            02
-                        </span>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                            Saldo & PVP
-                        </span>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Paso 1 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-purple-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 font-mono font-black text-sm flex items-center justify-center border border-purple-500/30">
+                                    01
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Panel o Servicio
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                <i data-lucide="layers" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-purple-400 transition-colors">
+                                1. Elige Servicio o Franquicia
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Adquiere tu suscripción de streaming o inicia tu propio negocio con tu <strong>Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }})</strong> o <strong>Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }})</strong>. Activación y entrega directa con tu proveedor <strong>{{ $brandName }}</strong>.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-purple-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Activación Inmediata
+                            </span>
+                        </div>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                        <i data-lucide="wallet" class="w-6 h-6"></i>
+
+                    <!-- Paso 2 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-amber-500/30">
+                                    02
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Saldo & Abono
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                                <i data-lucide="wallet" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
+                                2. Abona Seguro por Transferencia
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Para garantizar máxima seguridad y entrega al instante, abona mediante transferencia bancaria o saldo en billetera. Toda cuenta y panel se entrega respaldado al 100%, sin riesgos ni consignaciones de gracia.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Pago 100% Protegido
+                            </span>
+                        </div>
                     </div>
-                    <h3 class="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
-                        2. Carga Saldo y Fija Margen
-                    </h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Carga saldo en tu billetera con tu proveedor o administrador patrocinador. Define tus propios <strong>Precios de Venta al Público (PVP)</strong>. Cada venta deduce el costo mayorista y tu ganancia neta queda en tu bolsillo.
+
+                    <!-- Paso 3 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-sky-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-sky-500/30">
+                                    03
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Bóveda
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                                <i data-lucide="fingerprint" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
+                                3. Entrega Cifrada en tu Bóveda
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Tus clientes y tú reciben acceso inmediato a la <strong>Bóveda Cifrada</strong> con desbloqueo por PIN de 4 dígitos o biometría. Tus datos y perfiles quedan protegidos con tecnología anti-phishing.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-sky-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Cero Fugas & Anti-Phishing
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Paso 4 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 font-mono font-black text-sm flex items-center justify-center border border-emerald-500/30">
+                                    04
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Soporte & PVP
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                                <i data-lucide="sparkles" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-emerald-400 transition-colors">
+                                4. Vende o Disfruta con Soporte
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Si adquieres tu franquicia de panel, define tus propios precios de venta (PVP) y retén tus ganancias directas. Todas tus compras y renovaciones cuentan con soporte directo por WhatsApp con <strong>{{ $brandName }}</strong>.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Soporte Directo WhatsApp
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            @else
+                {{-- CÓMO FUNCIONA PARA TIENDA DE REVENDEDOR BÁSICO (SOLO CUENTAS RETAIL) --}}
+                <div class="text-center max-w-3xl mx-auto space-y-3">
+                    <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">Proceso Simple y Seguro</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white">¿Cómo Funciona tu Compra?</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        Sistema automatizado para que disfrutes de tus plataformas favoritas con entrega al instante y máxima seguridad.
                     </p>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800/80">
-                    <span class="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 font-bold">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                        Margen 100% Libre
-                    </span>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Paso 1 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-red-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 font-mono font-black text-sm flex items-center justify-center border border-red-500/30">
+                                    01
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Catálogo
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center">
+                                <i data-lucide="tv" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-red-400 transition-colors">
+                                1. Elige tu Plataforma Streaming
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Selecciona entre las mejores plataformas: Netflix 4K, Disney+ Premium, Max, Prime Video y más perfiles oficiales con entrega rápida y disponibilidad asegurada.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Disponibilidad Inmediata
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Paso 2 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-amber-500/30">
+                                    02
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Pago Seguro
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                                <i data-lucide="wallet" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
+                                2. Abona con Transferencia o Saldo
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Realiza tu pago mediante transferencia bancaria o saldo disponible. Tu comprobante es verificado de inmediato para liberar tus accesos al segundo.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Pago 100% Verificado
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Paso 3 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-sky-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-sky-500/30">
+                                    03
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Bóveda
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                                <i data-lucide="fingerprint" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
+                                3. Accede a tu Bóveda Privada
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Ingresa a tu Bóveda personal con tu número de WhatsApp y PIN de 4 dígitos o biometría para consultar tus credenciales y perfiles en cualquier momento.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-sky-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Cero Fugas & Anti-Phishing
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Paso 4 -->
+                    <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 font-mono font-black text-sm flex items-center justify-center border border-emerald-500/30">
+                                    04
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    Garantía
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                                <i data-lucide="shield-check" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-white group-hover:text-emerald-400 transition-colors">
+                                4. Disfruta con Garantía Total
+                            </h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Tu servicio queda cubierto durante todo el tiempo contratado con atención de soporte y renovaciones transparentes vía WhatsApp con <strong>{{ $brandName }}</strong>.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80">
+                            <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                Garantía de Servicio
+                            </span>
+                        </div>
+                    </div>
                 </div>
+            @endif
+        @else
+            {{-- CÓMO FUNCIONA PARA LANDING CENTRAL SUPER ADMIN --}}
+            <div class="text-center max-w-3xl mx-auto space-y-3">
+                <span class="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">Flujo de Negocio Paso a Paso</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-white">¿Cómo Funciona el Ecosistema?</h2>
+                <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    Un sistema automatizado y seguro diseñado para que mayoristas, proveedores y revendedores comiencen a operar y generar ingresos hoy mismo sin fricciones.
+                </p>
             </div>
 
-            <!-- Paso 3 -->
-            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-sky-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-sky-500/30">
-                            03
-                        </span>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                            Bóveda
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Paso 1 -->
+                <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-red-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 font-mono font-black text-sm flex items-center justify-center border border-red-500/30">
+                                01
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                Activación
+                            </span>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center">
+                            <i data-lucide="layers" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-white group-hover:text-red-400 transition-colors">
+                            1. Adquiere Tu Panel
+                        </h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Elige tu <strong>Panel Básico (SPRO PLAY)</strong> de 10 servicios o el <strong>Panel PRO Ilimitado</strong> con Marca Blanca. Si eres revendedor, puedes actualizar a <strong>Panel Administrador (${{ number_format($seller->panel_monthly_fee ?? 15000, 0, ',', '.') }} / 30 días)</strong> para crear tu propia red de sub-revendedores.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80">
+                        <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-bold">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            Entrega Inmediata
                         </span>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
-                        <i data-lucide="fingerprint" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
-                        3. Entrega en Bóveda Cliente
-                    </h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        Tus clientes reciben su acceso privado a la <strong>Bóveda Cifrada</strong> con desbloqueo por <strong>Biometría o PIN de 4 dígitos</strong> (Ajusta en la primera compra su pin de Bóveda: este PIN sirve para consultar y revelar sus contraseñas en cualquier dispositivo o cuando no use biometría, debiendo recordarlo siempre). Sin saldo en tu billetera, el sistema protege las cuentas y no revela credenciales.
-                    </p>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800/80">
-                    <span class="text-[11px] font-mono text-sky-400 flex items-center gap-1.5 font-bold">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                        Cero Fugas & Anti-Phishing
-                    </span>
-                </div>
-            </div>
 
-            <!-- Paso 4 -->
-            <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-purple-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 font-mono font-black text-sm flex items-center justify-center border border-purple-500/30">
-                            04
-                        </span>
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                            Red & Comisión
+                <!-- Paso 2 -->
+                <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-amber-500/30">
+                                02
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                Saldo & PVP
+                            </span>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                            <i data-lucide="wallet" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
+                            2. Carga Saldo y Fija Margen
+                        </h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Carga saldo en tu billetera con tu proveedor o administrador patrocinador. Define tus propios <strong>Precios de Venta al Público (PVP)</strong>. Cada venta deduce el costo mayorista y tu ganancia neta queda en tu bolsillo.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80">
+                        <span class="text-[11px] font-mono text-amber-400 flex items-center gap-1.5 font-bold">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            Margen 100% Libre
                         </span>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                        <i data-lucide="copy" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-black text-white group-hover:text-purple-400 transition-colors">
-                        4. Clona y Gana 25% Pasivo
-                    </h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        El proveedor o panel administrador clona su catálogo a sus revendedores en segundos. Cada vez que ellos vendan de tus servicios, <strong>se te acredita automáticamente el 25% de comisión neta</strong> en tu saldo.
-                    </p>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800/80">
-                    <span class="text-[11px] font-mono text-purple-400 flex items-center gap-1.5 font-bold">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                        Comisión Automática 25%
-                    </span>
+
+                <!-- Paso 3 -->
+                <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-sky-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-sky-500/30">
+                                03
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                Bóveda
+                            </span>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                            <i data-lucide="fingerprint" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-white group-hover:text-sky-400 transition-colors">
+                            3. Entrega en Bóveda Cliente
+                        </h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Tus clientes reciben su acceso privado a la <strong>Bóveda Cifrada</strong> con desbloqueo por <strong>Biometría o PIN de 4 dígitos</strong> (Ajusta en la primera compra su pin de Bóveda: este PIN sirve para consultar y revelar sus contraseñas en cualquier dispositivo o cuando no use biometría, debiendo recordarlo siempre). Sin saldo en tu billetera, el sistema protege las cuentas y no revela credenciales.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80">
+                        <span class="text-[11px] font-mono text-sky-400 flex items-center gap-1.5 font-bold">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            Cero Fugas & Anti-Phishing
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Paso 4 -->
+                <div class="bg-gradient-to-b from-[#111827] to-[#0d1424] border border-slate-800 hover:border-purple-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden shadow-xl">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 font-mono font-black text-sm flex items-center justify-center border border-purple-500/30">
+                                04
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                Red & Comisión
+                            </span>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                            <i data-lucide="copy" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-white group-hover:text-purple-400 transition-colors">
+                            4. Clona y Gana 25% Pasivo
+                        </h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            El proveedor o panel administrador clona su catálogo a sus revendedores en segundos. Cada vez que ellos vendan de tus servicios, <strong>se te acredita automáticamente el 25% de comisión neta</strong> en tu saldo.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80">
+                        <span class="text-[11px] font-mono text-purple-400 flex items-center gap-1.5 font-bold">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            Comisión Automática 25%
+                        </span>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
     </section>
 
     <!-- ======================================================== -->
@@ -846,75 +1113,166 @@
                 <button type="button" @click="toggleFaq(1)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
                     <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
                         <i data-lucide="help-circle" class="w-5 h-5 text-red-400 shrink-0"></i>
-                        ¿Puedo empezar a vender y trabajar hoy mismo?
+                        @if(isset($seller) && $seller->isReseller() && $seller->canResellPanels() && $seller->isPanelSalesOffered())
+                            ¿Puedo empezar a comprar cuentas o activar mi franquicia hoy mismo?
+                        @elseif(isset($seller) && $seller->isReseller())
+                            ¿Puedo comprar y recibir mi cuenta de streaming hoy mismo?
+                        @else
+                            ¿Puedo empezar a vender y trabajar hoy mismo?
+                        @endif
                     </span>
                     <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
                        :class="openFaq === 1 ? 'rotate-180 text-red-400' : ''"></i>
                 </button>
                 <div x-show="openFaq === 1" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
                     <p>
-                        <strong>¡Sí, totalmente!</strong> El sistema cuenta con inventario real y perfiles precargados con PINs individuales (Netflix 4K UHD, Disney+ Estándar, Disney+ Premium VIP y Max Platino).
+                        <strong>¡Sí, totalmente!</strong> El catálogo cuenta con disponibilidad inmediata y perfiles precargados con PINs individuales (Netflix 4K UHD, Disney+ Estándar, Disney+ Premium VIP y Max Platino).
                     </p>
                     <p>
-                        Al registrarte o activar tu panel, sólo necesitas disponer de saldo en tu billetera para emitir licencias de inmediato a tus clientes. La entrega se realiza al segundo a través de la Bóveda Privada de Clientes.
+                        Al realizar tu abono por transferencia bancaria o con saldo disponible en billetera, la entrega de tus cuentas o la activación de tu panel se realiza al instante mediante la Bóveda Privada de Clientes con soporte directo.
                     </p>
                 </div>
             </div>
 
-            <!-- FAQ 2 -->
-            <div class="rounded-2xl border transition-all overflow-hidden"
-                 :class="openFaq === 2 ? 'border-amber-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
-                <button type="button" @click="toggleFaq(2)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
-                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
-                        <i data-lucide="crown" class="w-5 h-5 text-amber-400 shrink-0"></i>
-                        ¿Cómo funciona la compra del Panel Administrador ($15.000 / 30 días)?
-                    </span>
-                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
-                       :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
-                </button>
-                <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
-                    <p>
-                        Cualquier revendedor puede evolucionar a <strong>Panel Administrador / Super Revendedor</strong> pagando $15.000 por 30 días. La compra se realiza con 1 solo clic utilizando el saldo de su billetera o reportando el comprobante de pago por WhatsApp a su patrocinador.
-                    </p>
-                    <p>
-                        <strong>Tiendas Clonadas ($15.000/mes):</strong> El abono mensual se distribuye en <strong>$8.000 para el administrador</strong> de la plataforma y <strong>$7.000 para el proveedor</strong> patrocinador.
-                    </p>
-                    <p>
-                        Al ser Administrador Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red.
-                    </p>
+            @if(isset($seller) && $seller->isReseller())
+                @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                <!-- FAQ 2 PARA PROVEEDORES CON VENTA DE PANELES -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 2 ? 'border-amber-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(2)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="crown" class="w-5 h-5 text-amber-400 shrink-0"></i>
+                            ¿Cómo funciona la adquisición de un Panel de Ventas con {{ $brandName }}?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            Al adquirir tu franquicia de <strong>Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }}/mes)</strong> o <strong>Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }}/mes)</strong>, obtienes tu propia tienda y panel de control para comercializar cuentas de streaming con catálogo sincronizado y Bóveda Privada para tus clientes.
+                        </p>
+                        <p>
+                            La activación es gestionada y habilitada directamente por <strong>{{ $brandName }}</strong> tras verificar tu suscripción. Cuentas con herramientas para fijar tus propios márgenes de ganancia y brindar soporte directo a tus clientes por WhatsApp.
+                        </p>
+                    </div>
                 </div>
-            </div>
 
-            <!-- FAQ 3 -->
-            <div class="rounded-2xl border transition-all overflow-hidden"
-                 :class="openFaq === 3 ? 'border-purple-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
-                <button type="button" @click="toggleFaq(3)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
-                    <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
-                        <i data-lucide="package" class="w-5 h-5 text-purple-400 shrink-0"></i>
-                        ¿Qué diferencia hay entre el Panel Básico y el Panel PRO Ilimitado?
-                    </span>
-                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
-                       :class="openFaq === 3 ? 'rotate-180 text-purple-400' : ''"></i>
-                </button>
-                <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
-                    <p>
-                        <strong>📦 Panel Básico (10 Servicios - SPRO PLAY):</strong> Diseñado para revendedores iniciales. Incluye hasta 10 servicios oficiales bajo la marca y logo <strong>SPRO PLAY</strong> para venta directa a clientes finales. 
-                        <strong class="text-amber-300 block mt-1">⚠️ El básico no revende ningún plan de panel ni afilia revendedores.</strong>
-                        Su costo de activación es de <strong>1 Crédito Básico</strong> ($2.500 c/u en pack mínimo de 10 = $25.000).
-                    </p>
-                    <p>
-                        <strong>💎 Panel PRO (Ilimitado - Marca Blanca):</strong> Para proveedores o revendedores consolidados. Ofrece servicios ilimitados, posibilidad de agregar plataformas propias y personalización <strong>100% Marca Blanca</strong> (logo, nombre comercial y colores propios).
-                        <strong class="text-purple-300 block mt-1">✓ El PRO tiene acceso a la posibilidad de revender acceso a funciones de panel a sus propios revendedores.</strong>
-                        Su costo de activación es de <strong>1 Crédito PRO</strong> ($4.000 c/u en pack mínimo de 10 = $40.000).
-                    </p>
-                    <p class="text-emerald-400 font-semibold pt-1">
-                        🌟 <strong>Pack Combo Dúo (5 de cada uno juntos):</strong> 5 Créditos Básicos ($3.000 c/u = $15.000) + 5 Créditos PRO ($5.000 c/u = $25.000) por un total de <strong>$40.000 juntos</strong> en tu billetera.
-                    </p>
-                    <p class="text-sky-300 text-xs pt-1 border-t border-slate-800">
-                        ⚡ <strong>Regla de Activación:</strong> Las solicitudes de panel quedan registradas en estado <em>Pendiente</em> y <strong>son activadas desde el panel de administrador exclusivamente consumiendo 1 crédito según el plan adquirido</strong> (Básico o PRO).
-                    </p>
+                <!-- FAQ 3 PARA PROVEEDORES CON VENTA DE PANELES -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 3 ? 'border-purple-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(3)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="package" class="w-5 h-5 text-purple-400 shrink-0"></i>
+                            ¿Qué diferencia hay entre el Panel Básico y el Panel PRO?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 3 ? 'rotate-180 text-purple-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            <strong>📦 Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }} / mes):</strong> Diseñado para iniciar en la reventa de streaming. Permite comercializar los 10 servicios oficiales más demandados con entrega automatizada en Bóveda para tus clientes y soporte directo de {{ $brandName }}.
+                        </p>
+                        <p>
+                            <strong>💎 Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }} / mes):</strong> Para negocios que buscan máxima expansión. Incluye servicios ilimitados, personalización de Marca Blanca (tu propio logo, colores y nombre comercial) y la facultad de afiliar sub-revendedores con comisiones sugeridas.
+                        </p>
+                        <p class="text-sky-300 text-xs pt-1 border-t border-slate-800">
+                            ⚡ La activación de tu panel es habilitada directamente por tu proveedor <strong>{{ $brandName }}</strong>.
+                        </p>
+                    </div>
                 </div>
-            </div>
+                @else
+                <!-- FAQ 2 PARA REVENDEDOR BÁSICO (SOLO CUENTAS RETAIL) -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 2 ? 'border-amber-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(2)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="shield-check" class="w-5 h-5 text-amber-400 shrink-0"></i>
+                            ¿Cómo recibo mi cuenta o pantalla luego de abonar?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            La entrega se realiza de forma inmediata y automática en tu <strong>Bóveda Privada de Cliente</strong>. Al registrarte o realizar tu compra, se generan tus credenciales y perfiles cifrados a los que solo tú puedes acceder mediante tu número de WhatsApp y PIN personal.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ 3 PARA REVENDEDOR BÁSICO (SOLO CUENTAS RETAIL) -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 3 ? 'border-purple-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(3)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="shield" class="w-5 h-5 text-purple-400 shrink-0"></i>
+                            ¿Qué garantía tienen las cuentas de streaming?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 3 ? 'rotate-180 text-purple-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            Todas las suscripciones y pantallas cuentan con <strong>garantía total</strong> durante todo el tiempo contratado. En caso de requerir asistencia técnica o renovación de tu servicio, te comunicas directamente con <strong>{{ $brandName }}</strong> por WhatsApp.
+                        </p>
+                    </div>
+                </div>
+                @endif
+            @else
+                <!-- FAQ 2 PARA SUPER ADMIN (VENTA MAYORISTA DE CRÉDITOS & TIENDAS CLONADAS) -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 2 ? 'border-amber-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(2)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="crown" class="w-5 h-5 text-amber-400 shrink-0"></i>
+                            ¿Cómo funciona la compra del Panel Administrador ($15.000 / 30 días)?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            Cualquier revendedor puede evolucionar a <strong>Panel Administrador / Super Revendedor</strong> pagando $15.000 por 30 días. La compra se realiza con 1 solo clic utilizando el saldo de su billetera o reportando el comprobante de pago por WhatsApp a su patrocinador.
+                        </p>
+                        <p>
+                            <strong>Tiendas Clonadas ($15.000/mes):</strong> El abono mensual se distribuye en <strong>$8.000 para el administrador</strong> de la plataforma y <strong>$7.000 para el proveedor</strong> patrocinador.
+                        </p>
+                        <p>
+                            Al ser Administrador Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ 3 PARA SUPER ADMIN (VENTA MAYORISTA DE CRÉDITOS) -->
+                <div class="rounded-2xl border transition-all overflow-hidden"
+                     :class="openFaq === 3 ? 'border-purple-500/50 bg-[#131b2e]' : 'border-slate-800 bg-[#0f172a] hover:border-slate-700'">
+                    <button type="button" @click="toggleFaq(3)" class="w-full p-5 text-left flex items-center justify-between gap-4 cursor-pointer">
+                        <span class="font-bold text-sm sm:text-base text-white flex items-center gap-3">
+                            <i data-lucide="package" class="w-5 h-5 text-purple-400 shrink-0"></i>
+                            ¿Qué diferencia hay entre el Panel Básico y el Panel PRO Ilimitado?
+                        </span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
+                           :class="openFaq === 3 ? 'rotate-180 text-purple-400' : ''"></i>
+                    </button>
+                    <div x-show="openFaq === 3" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                        <p>
+                            <strong>📦 Panel Básico (10 Servicios - SPRO PLAY):</strong> Diseñado para revendedores iniciales. Incluye hasta 10 servicios oficiales bajo la marca y logo <strong>SPRO PLAY</strong> para venta directa a clientes finales. 
+                            <strong class="text-amber-300 block mt-1">⚠️ El básico no revende ningún plan de panel ni afilia revendedores.</strong>
+                            Su costo de activación es de <strong>1 Crédito Básico</strong> ($2.500 c/u en pack mínimo de 10 = $25.000).
+                        </p>
+                        <p>
+                            <strong>💎 Panel PRO (Ilimitado - Marca Blanca):</strong> Para proveedores o revendedores consolidados. Ofrece servicios ilimitados, posibilidad de agregar plataformas propias y personalización <strong>100% Marca Blanca</strong> (logo, nombre comercial y colores propios).
+                            <strong class="text-purple-300 block mt-1">✓ El PRO tiene acceso a la posibilidad de revender acceso a funciones de panel a sus propios revendedores.</strong>
+                            Su costo de activación es de <strong>1 Crédito PRO</strong> ($4.000 c/u en pack mínimo de 10 = $40.000).
+                        </p>
+                        <p class="text-emerald-400 font-semibold pt-1">
+                            🌟 <strong>Pack Combo Dúo (5 de cada uno juntos):</strong> 5 Créditos Básicos ($3.000 c/u = $15.000) + 5 Créditos PRO ($5.000 c/u = $25.000) por un total de <strong>$40.000 juntos</strong> en tu billetera.
+                        </p>
+                        <p class="text-sky-300 text-xs pt-1 border-t border-slate-800">
+                            ⚡ <strong>Regla de Activación:</strong> Las solicitudes de panel quedan registradas en estado <em>Pendiente</em> y <strong>son activadas desde el panel de administrador exclusivamente consumiendo 1 crédito según el plan adquirido</strong> (Básico o PRO).
+                        </p>
+                    </div>
+                </div>
+            @endif
 
             <!-- FAQ 4 -->
             <div class="rounded-2xl border transition-all overflow-hidden"
@@ -1000,12 +1358,21 @@
                        :class="openFaq === 7 ? 'rotate-180 text-teal-400' : ''"></i>
                 </button>
                 <div x-show="openFaq === 7" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    @if(isset($seller) && $seller->isReseller())
+                    <p>
+                        Las consultas, solicitudes de soporte y renovaciones van directamente al WhatsApp de tu vendedor <strong>{{ $brandName }}</strong> (@if($supportWhatsapp)<a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}" target="_blank" class="text-teal-400 underline font-mono">{{ $supportWhatsapp }}</a>@endif).
+                    </p>
+                    <p class="text-teal-300 font-semibold pt-1 border-t border-slate-800/80">
+                        📱 Todo el proceso también se gestiona de forma interactiva desde la Bóveda del Cliente, recibiendo recordatorios antes de tu fecha de expiración para renovar en un solo clic.
+                    </p>
+                    @else
                     <p>
                         Cada panelista (proveedor o revendedor) configura su número de WhatsApp en la sección de Preferencias de su panel. En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
                     </p>
                     <p class="text-teal-300 font-semibold pt-1 border-t border-slate-800/80">
                         📱 Todo el proceso también se gestiona por la Bóveda del Cliente y le llega directamente a su panel. El mismo revendedor deberá solicitar revisión al proveedor desde su panel si requiere soporte o autorización directa, quedando registros y mensajes de auditoría entre ambos.
                     </p>
+                    @endif
                 </div>
             </div>
         </div>

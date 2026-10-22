@@ -44,7 +44,7 @@
             <div class="space-y-2.5">
                 <div class="flex items-center justify-between">
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">1. Selecciona Tu Nivel de Panel *</label>
-                    <span class="text-[10px] text-amber-400 font-mono font-bold">Activación exclusiva mediante créditos</span>
+                    <span class="text-[10px] text-amber-400 font-mono font-bold">Activación por tu Proveedor</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <!-- Opción BÁSICO -->
@@ -177,19 +177,19 @@
                 </div>
             </div>
 
-            <!-- Aviso de Activación por Créditos -->
+            <!-- Aviso de Activación por Proveedor -->
             <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300 flex items-start gap-2.5">
                 <i data-lucide="info" class="w-4 h-4 text-sky-400 shrink-0 mt-0.5"></i>
                 <div class="text-[11px] leading-relaxed">
-                    <strong class="text-white block font-sans">Activación exclusivamente por créditos:</strong>
-                    Tu solicitud quedará registrada en estado <strong>PENDIENTE</strong>. Tu Administrador o Proveedor activará tu panel desde su plataforma consumiendo 1 crédito según el plan seleccionado (<span x-text="selectedTier === 'pro' ? '1 Crédito PRO' : '1 Crédito BÁSICO'"></span>).
+                    <strong class="text-white block font-sans">Activación Inmediata con Tu Proveedor:</strong>
+                    Tu solicitud quedará registrada en estado <strong>PENDIENTE</strong>. Tu proveedor <strong>{{ $provider->name }}</strong> habilitará y activará tu acceso de panel tras confirmar tu suscripción.
                 </div>
             </div>
 
             <div class="pt-2">
                 <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer">
                     <i data-lucide="send" class="w-4 h-4"></i>
-                    <span>Enviar Solicitud de Panel (Activación con Crédito)</span>
+                    <span>Enviar Solicitud de Activación de Panel</span>
                 </button>
             </div>
         </form>

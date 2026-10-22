@@ -30,7 +30,7 @@
     <header class="border-b border-gray-800/80 bg-[#0e1424]/80 backdrop-blur-xl sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <!-- Brand / Logo -->
-            <a href="{{ route('catalog.index') }}" class="flex items-center gap-3">
+            <a href="{{ route('catalog.index', array_filter(['ref' => request('ref') ?? (isset($seller) && $seller && $seller->isReseller() ? $seller->referral_code : null)])) }}" class="flex items-center gap-3">
                 @if(isset($brandLogo) && $brandLogo)
                     <img src="{{ $brandLogo }}" alt="{{ $brandName ?? 'CStreame Streaming' }}" class="h-10 w-auto object-contain">
                 @else
@@ -48,11 +48,25 @@
 
             <!-- Center Nav Links -->
             <nav class="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-400">
-                <a href="{{ route('catalog.index') }}#planes-paneles" class="hover:text-white transition-colors">Planes</a>
-                <a href="{{ route('catalog.index') }}#cotizador-creditos" class="hover:text-white transition-colors">Cotizador</a>
-                <a href="{{ route('catalog.index') }}#catalogo" class="hover:text-white transition-colors">Catálogo</a>
-                <a href="{{ route('catalog.index') }}#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
-                <a href="{{ route('catalog.index') }}#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+                @if(isset($seller) && $seller->isReseller())
+                    {{-- LANDING DE PROVEEDOR / REVENDEDOR ASOCIADO --}}
+                    @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                    <a href="#planes-paneles" class="text-white hover:text-amber-400 transition-colors flex items-center gap-1.5 font-bold">
+                        <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                        <span>Planes de Panel</span>
+                    </a>
+                    @endif
+                    <a href="#catalogo" class="hover:text-white transition-colors">Catálogo</a>
+                    <a href="#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                    <a href="#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+                @else
+                    {{-- LANDING CENTRAL SUPER ADMIN --}}
+                    <a href="#planes-paneles" class="hover:text-white transition-colors">Planes</a>
+                    <a href="#cotizador-creditos" class="hover:text-white transition-colors">Cotizador</a>
+                    <a href="#catalogo" class="hover:text-white transition-colors">Catálogo</a>
+                    <a href="#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                    <a href="#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+                @endif
             </nav>
 
             <!-- Right Actions -->
@@ -86,6 +100,27 @@
                     <span>Panel Staff</span>
                 </a>
             </div>
+        </div>
+
+        <!-- Mobile Quick Subnav Bar -->
+        <div class="lg:hidden flex items-center justify-center gap-4 px-4 py-2.5 bg-[#0b1020]/95 border-t border-gray-800/60 overflow-x-auto scrollbar-none text-xs font-bold text-slate-400">
+            @if(isset($seller) && $seller->isReseller())
+                @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
+                <a href="#planes-paneles" class="text-white hover:text-amber-400 shrink-0 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    <span>Planes</span>
+                </a>
+                @endif
+                <a href="#catalogo" class="hover:text-white shrink-0">Catálogo</a>
+                <a href="#como-funciona" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
+                <a href="#faq" class="hover:text-amber-400 shrink-0">FAQ</a>
+            @else
+                <a href="#planes-paneles" class="hover:text-white shrink-0">Planes</a>
+                <a href="#cotizador-creditos" class="hover:text-white shrink-0">Cotizador</a>
+                <a href="#catalogo" class="hover:text-white shrink-0">Catálogo</a>
+                <a href="#como-funciona" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
+                <a href="#faq" class="hover:text-amber-400 shrink-0">FAQ</a>
+            @endif
         </div>
     </header>
 
