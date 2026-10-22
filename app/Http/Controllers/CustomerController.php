@@ -79,12 +79,24 @@ class CustomerController extends Controller
             'email' => 'required|email|max:255|unique:customers,email,' . $customer->id,
             'country' => 'nullable|string|max:100',
             'status' => 'required|in:active,suspended',
+            'security_pin' => 'nullable|digits:4',
+            'password' => 'nullable|string|min:4',
             'notes' => 'nullable|string',
         ]);
 
+        if ($request->filled('password')) {
+            $validated['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
+        } else {
+            unset($validated['password']);
+        }
+
+        if ($request->filled('security_pin')) {
+            $validated['security_pin'] = $request->security_pin;
+        }
+
         $customer->update($validated);
 
-        return back()->with('success', 'Datos del cliente actualizados.');
+        return back()->with('success', "Datos del cliente {$customer->name} actualizados exitosamente.");
     }
 
     /**
