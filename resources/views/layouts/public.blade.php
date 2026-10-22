@@ -46,26 +46,45 @@
                 </div>
             </a>
 
+            @php
+                $isCatalog = request()->routeIs('catalog.index');
+                $refParam = request('ref') ?? (isset($seller) && $seller && $seller->isReseller() ? $seller->referral_code : (isset($provider) ? $provider->referral_code : null));
+                $baseCatalog = route('catalog.index', array_filter(['ref' => $refParam]));
+                $urlPlanes = $isCatalog ? '#planes-paneles' : $baseCatalog . '#planes-paneles';
+                $urlCatalogo = $isCatalog ? '#catalogo' : $baseCatalog . '#catalogo';
+                $urlComoFunciona = $isCatalog ? '#como-funciona' : $baseCatalog . '#como-funciona';
+                $urlFaq = $isCatalog ? '#faq' : $baseCatalog . '#faq';
+                $urlCotizador = $isCatalog ? '#cotizador-creditos' : $baseCatalog . '#cotizador-creditos';
+            @endphp
+
             <!-- Center Nav Links -->
             <nav class="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-400">
-                @if(isset($seller) && $seller->isReseller())
+                @if(request()->routeIs('affiliate.register') || request()->routeIs('resellers.affiliate_register'))
+                    {{-- PÁGINA DE REGISTRO / AFILIACIÓN: NAVEGACIÓN LIMPIA --}}
+                    <a href="{{ $urlCatalogo }}" class="hover:text-white transition-colors flex items-center gap-1.5">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                        <span>Ver Catálogo de {{ $brandName ?? 'Streaming' }}</span>
+                    </a>
+                    <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                    <a href="{{ $urlFaq }}" class="hover:text-amber-400 transition-colors">FAQ</a>
+                @elseif(isset($seller) && $seller->isReseller())
                     {{-- LANDING DE PROVEEDOR / REVENDEDOR ASOCIADO --}}
                     @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
-                    <a href="#planes-paneles" class="text-white hover:text-amber-400 transition-colors flex items-center gap-1.5 font-bold">
+                    <a href="{{ $urlPlanes }}" class="text-white hover:text-amber-400 transition-colors flex items-center gap-1.5 font-bold">
                         <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
                         <span>Planes de Panel</span>
                     </a>
                     @endif
-                    <a href="#catalogo" class="hover:text-white transition-colors">Catálogo</a>
-                    <a href="#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
-                    <a href="#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+                    <a href="{{ $urlCatalogo }}" class="hover:text-white transition-colors">Catálogo</a>
+                    <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                    <a href="{{ $urlFaq }}" class="hover:text-amber-400 transition-colors">FAQ</a>
                 @else
                     {{-- LANDING CENTRAL SUPER ADMIN --}}
-                    <a href="#planes-paneles" class="hover:text-white transition-colors">Planes</a>
-                    <a href="#cotizador-creditos" class="hover:text-white transition-colors">Cotizador</a>
-                    <a href="#catalogo" class="hover:text-white transition-colors">Catálogo</a>
-                    <a href="#como-funciona" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
-                    <a href="#faq" class="hover:text-amber-400 transition-colors">FAQ</a>
+                    <a href="{{ $urlPlanes }}" class="hover:text-white transition-colors">Planes</a>
+                    <a href="{{ $urlCotizador }}" class="hover:text-white transition-colors">Cotizador</a>
+                    <a href="{{ $urlCatalogo }}" class="hover:text-white transition-colors">Catálogo</a>
+                    <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
+                    <a href="{{ $urlFaq }}" class="hover:text-amber-400 transition-colors">FAQ</a>
                 @endif
             </nav>
 
@@ -104,22 +123,29 @@
 
         <!-- Mobile Quick Subnav Bar -->
         <div class="lg:hidden flex items-center justify-center gap-4 px-4 py-2.5 bg-[#0b1020]/95 border-t border-gray-800/60 overflow-x-auto scrollbar-none text-xs font-bold text-slate-400">
-            @if(isset($seller) && $seller->isReseller())
+            @if(request()->routeIs('affiliate.register') || request()->routeIs('resellers.affiliate_register'))
+                <a href="{{ $urlCatalogo }}" class="hover:text-white shrink-0 flex items-center gap-1">
+                    <i data-lucide="arrow-left" class="w-3 h-3"></i>
+                    <span>Catálogo</span>
+                </a>
+                <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
+                <a href="{{ $urlFaq }}" class="hover:text-amber-400 shrink-0">FAQ</a>
+            @elseif(isset($seller) && $seller->isReseller())
                 @if($seller->canResellPanels() && $seller->isPanelSalesOffered())
-                <a href="#planes-paneles" class="text-white hover:text-amber-400 shrink-0 flex items-center gap-1">
+                <a href="{{ $urlPlanes }}" class="text-white hover:text-amber-400 shrink-0 flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                     <span>Planes</span>
                 </a>
                 @endif
-                <a href="#catalogo" class="hover:text-white shrink-0">Catálogo</a>
-                <a href="#como-funciona" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
-                <a href="#faq" class="hover:text-amber-400 shrink-0">FAQ</a>
+                <a href="{{ $urlCatalogo }}" class="hover:text-white shrink-0">Catálogo</a>
+                <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
+                <a href="{{ $urlFaq }}" class="hover:text-amber-400 shrink-0">FAQ</a>
             @else
-                <a href="#planes-paneles" class="hover:text-white shrink-0">Planes</a>
-                <a href="#cotizador-creditos" class="hover:text-white shrink-0">Cotizador</a>
-                <a href="#catalogo" class="hover:text-white shrink-0">Catálogo</a>
-                <a href="#como-funciona" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
-                <a href="#faq" class="hover:text-amber-400 shrink-0">FAQ</a>
+                <a href="{{ $urlPlanes }}" class="hover:text-white shrink-0">Planes</a>
+                <a href="{{ $urlCotizador }}" class="hover:text-white shrink-0">Cotizador</a>
+                <a href="{{ $urlCatalogo }}" class="hover:text-white shrink-0">Catálogo</a>
+                <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
+                <a href="{{ $urlFaq }}" class="hover:text-amber-400 shrink-0">FAQ</a>
             @endif
         </div>
     </header>

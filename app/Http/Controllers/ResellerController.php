@@ -794,7 +794,13 @@ class ResellerController extends Controller
             abort(403, 'Este panel no tiene habilitada la reventa de funciones de panel a revendedores (exclusivo para Paneles PRO).');
         }
 
-        return view('portal.affiliate_register', compact('provider'));
+        $seller = $provider;
+        $brandName = $provider->effective_brand_name;
+        $brandLogo = $provider->brand_logo ? asset($provider->brand_logo) : null;
+        $supportWhatsapp = $provider->effective_support_whatsapp;
+        $primaryColor = $provider->primary_color ?? '#8B5CF6';
+
+        return view('portal.affiliate_register', compact('provider', 'seller', 'brandName', 'brandLogo', 'supportWhatsapp', 'primaryColor'));
     }
 
     /**
