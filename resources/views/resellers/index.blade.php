@@ -666,6 +666,23 @@
                                     Créditos: <span class="text-amber-400 font-bold">{{ $res->credits_basic ?? 0 }} B</span> · <span class="text-purple-400 font-bold">{{ $res->credits_pro ?? 0 }} PRO</span>
                                 </div>
                                 @endif
+
+                                <div class="pt-1.5 border-t border-gray-800/80">
+                                    @if($res->canResellPanels())
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-[10px] text-gray-400 font-mono">Reventa:</span>
+                                            <form method="POST" action="{{ route('resellers.toggle_panel_offer', $res) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" class="px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all cursor-pointer {{ $res->isPanelSalesOffered() ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700' }}" title="Habilitar o pausar que este revendedor ofrezca paneles en su catálogo">
+                                                    {{ $res->isPanelSalesOffered() ? '✓ Paneles Habilitados' : '✕ Paneles Pausados' }}
+                                                </button>
+                                            </form>
+                                        </div>
+                                        <span class="text-[9px] text-slate-400 font-mono block mt-0.5">PVP Sugerido: ${{ number_format($res->basic_panel_price, 0, ',', '.') }} / ${{ number_format($res->pro_panel_price, 0, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-[9px] text-gray-500 font-mono block">🔒 Básico (Venta directa cuentas)</span>
+                                    @endif
+                                </div>
                             </div>
                         </td>
                         <td class="py-3 px-4">

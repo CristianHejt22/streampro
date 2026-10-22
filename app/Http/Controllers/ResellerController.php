@@ -746,6 +746,37 @@ class ResellerController extends Controller
     }
 
     /**
+     * Alternar si un sub-revendedor tiene habilitado ofrecer la reventa de paneles en su catálogo
+     */
+    public function togglePanelOffer(User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id) {
+            abort(403, 'Solo el patrocinador o el Super Admin pueden modificar este permiso.');
+        }
+
+        if (!$reseller->canResellPanels()) {
+            return back()->with('error', 'Este panel es de nivel BÁSICO. Solo los paneles de nivel PRO tienen la capacidad técnica de revender acceso a paneles.');
+        }
+
+        $reseller->offer_panels_on_catalog = !$reseller->isPanelSalesOffered();
+        $reseller->save();
+
+        $stateMsg = $reseller->offer_panels_on_catalog 
+            ? "HABILITADA: {$reseller->name} ahora puede ofrecer suscripciones a paneles en su landing page con comisión por venta." 
+            : "DESHABILITADA: Se ha pausado la oferta de paneles en la landing page de {$reseller->name}.";
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'toggle_reseller_panel_offer',
+            'description' => $stateMsg,
+            'ip_address' => request()->ip(),
+        ]);
+
+        return back()->with('success', $stateMsg);
+    }
+
+    /**
      * Muestra el formulario público de afiliación de revendedor enviado por el Proveedor
      */
     public function showAffiliateRegister($code)

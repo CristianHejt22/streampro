@@ -150,6 +150,14 @@
                         <span>Solicitar Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }})</span>
                     </a>
                     @endif
+                    @if($seller->referral_code)
+                    <div class="mt-2 text-center">
+                        <a href="{{ route('affiliate.register', $seller->referral_code) }}" class="text-[11px] text-amber-300/80 hover:text-amber-200 hover:underline font-mono inline-flex items-center gap-1">
+                            <span>O registrarme en línea directamente</span>
+                            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </a>
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -194,6 +202,14 @@
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
                         <span>Solicitar Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }})</span>
                     </a>
+                    @endif
+                    @if($seller->referral_code)
+                    <div class="mt-2 text-center">
+                        <a href="{{ route('affiliate.register', $seller->referral_code) }}" class="text-[11px] text-purple-300/80 hover:text-purple-200 hover:underline font-mono inline-flex items-center gap-1">
+                            <span>O registrarme en línea directamente</span>
+                            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </a>
+                    </div>
                     @endif
                 </div>
             </div>

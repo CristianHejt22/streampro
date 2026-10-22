@@ -167,6 +167,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/resellers/{reseller}/update-password', [ResellerController::class, 'updatePassword'])->name('resellers.update_password');
     Route::post('/resellers/{reseller}/clone-panel', [ResellerController::class, 'clonePanel'])->name('resellers.clone_panel');
     Route::post('/resellers/{reseller}/toggle-store-paid', [ResellerController::class, 'toggleStorePaidByReseller'])->name('resellers.toggle_store_paid');
+    Route::post('/resellers/{reseller}/toggle-panel-offer', [ResellerController::class, 'togglePanelOffer'])->name('resellers.toggle_panel_offer');
     Route::post('/resellers/{reseller}/update-service-commissions', [ResellerController::class, 'updateServiceCommissions'])->name('resellers.update_service_commissions');
     Route::post('/resellers/{reseller}/update-commissions', [ResellerController::class, 'updateCommissions'])->name('resellers.update_commissions');
     Route::post('/resellers/{reseller}/reset-password', [ResellerController::class, 'resetPassword'])->name('resellers.reset_password');
