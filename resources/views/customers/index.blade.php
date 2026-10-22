@@ -11,6 +11,18 @@
     activateModal: false,
     resetPasswordModal: false,
     selectedCustomer: null,
+    editForm: {
+        id: '',
+        name: '',
+        email: '',
+        phone: '',
+        country: '',
+        status: 'active',
+        security_pin: '',
+        password: '',
+        notes: '',
+        customer_code: ''
+    },
     registrationLink: '{{ Auth::user()->referral_code ? url('/ref/' . Auth::user()->referral_code . '/registro') : url('/registro') }}',
     copyRegistrationLink() {
         navigator.clipboard.writeText(this.registrationLink);
@@ -20,13 +32,49 @@
         this.selectedCustomer = c;
         this.activateModal = true;
     },
+    openActivateModalFromScript(id) {
+        let el = document.getElementById('customer-data-' + id);
+        if (!el) return;
+        try {
+            let c = JSON.parse(el.textContent);
+            this.openActivateModal(c);
+        } catch(e) { console.error(e); }
+    },
     openResetModal(c) {
         this.selectedCustomer = c;
         this.resetPasswordModal = true;
     },
+    openResetModalFromScript(id) {
+        let el = document.getElementById('customer-data-' + id);
+        if (!el) return;
+        try {
+            let c = JSON.parse(el.textContent);
+            this.openResetModal(c);
+        } catch(e) { console.error(e); }
+    },
     openEditModal(c) {
         this.selectedCustomer = c;
+        this.editForm = {
+            id: c.id,
+            name: c.name || '',
+            email: c.email || '',
+            phone: c.phone || '',
+            country: c.country || '',
+            status: c.status || 'active',
+            security_pin: c.security_pin || '',
+            password: '',
+            notes: c.notes || '',
+            customer_code: c.customer_code || ''
+        };
         this.editCustomerModal = true;
+    },
+    openEditModalFromScript(id) {
+        let el = document.getElementById('customer-data-' + id);
+        if (!el) return;
+        try {
+            let c = JSON.parse(el.textContent);
+            this.openEditModal(c);
+        } catch(e) { console.error(e); }
     }
 }">
 
@@ -141,19 +189,22 @@
 
                         <td class="py-3.5 px-4 text-right">
                             <div class="flex items-center justify-end gap-1.5">
+                                <!-- Datos JSON Seguros -->
+                                <script id="customer-data-{{ $c->id }}" type="application/json">@json($c)</script>
+
                                 <!-- Botón Activar Servicio -->
-                                <button @click="openActivateModal({{ json_encode($c) }})" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow transition-all cursor-pointer" title="Activarle una cuenta o pantalla de streaming">
+                                <button type="button" @click="openActivateModalFromScript({{ $c->id }})" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow transition-all cursor-pointer" title="Activarle una cuenta o pantalla de streaming">
                                     <i data-lucide="zap" class="w-3.5 h-3.5"></i>
                                     <span>Activar</span>
                                 </button>
 
                                 <!-- Botón Reset Clave Bóveda -->
-                                <button @click="openResetModal({{ json_encode($c) }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 transition-colors" title="Cambiar contraseña de su Bóveda">
+                                <button type="button" @click="openResetModalFromScript({{ $c->id }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 transition-colors cursor-pointer" title="Cambiar contraseña de su Bóveda">
                                     <i data-lucide="key" class="w-3.5 h-3.5"></i>
                                 </button>
 
                                 <!-- Editar Cliente -->
-                                <button @click="openEditModal({{ json_encode($c) }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Editar cliente">
+                                <button type="button" @click="openEditModalFromScript({{ $c->id }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Editar cliente">
                                     <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                                 </button>
 
@@ -366,34 +417,34 @@
                 Modifica los datos personales y de acceso de <strong class="text-white" x-text="selectedCustomer?.name"></strong> (<span class="text-sky-400 font-mono" x-text="selectedCustomer?.customer_code"></span>).
             </p>
 
-            <form x-bind:action="'/customers/' + (selectedCustomer ? selectedCustomer.id : '')" method="POST" class="space-y-4">
+            <form :action="'/customers/' + (editForm.id || (selectedCustomer ? selectedCustomer.id : ''))" method="POST" class="space-y-4">
                 @csrf
                 @method('PUT')
 
                 <div>
                     <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nombre Completo *</label>
-                    <input type="text" name="name" required x-bind:value="selectedCustomer?.name" placeholder="Nombre y Apellido" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
+                    <input type="text" name="name" required x-model="editForm.name" placeholder="Nombre y Apellido" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Correo Electrónico *</label>
-                        <input type="email" name="email" required x-bind:value="selectedCustomer?.email" placeholder="cliente@correo.com" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
+                        <input type="email" name="email" required x-model="editForm.email" placeholder="cliente@correo.com" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">WhatsApp / Teléfono *</label>
-                        <input type="text" name="phone" required x-bind:value="selectedCustomer?.phone" placeholder="+54 9 11 0000-0000" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
+                        <input type="text" name="phone" required x-model="editForm.phone" placeholder="+54 9 11 0000-0000" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">País / Región</label>
-                        <input type="text" name="country" x-bind:value="selectedCustomer?.country" placeholder="Ej: Argentina, México..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
+                        <input type="text" name="country" x-model="editForm.country" placeholder="Ej: Argentina, México..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Estado del Cliente *</label>
-                        <select name="status" x-bind:value="selectedCustomer?.status" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
+                        <select name="status" x-model="editForm.status" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500">
                             <option value="active">🟢 ACTIVO</option>
                             <option value="suspended">🔴 SUSPENDIDO</option>
                         </select>
@@ -403,19 +454,19 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">PIN de Bóveda (4 dígitos)</label>
-                        <input type="text" maxlength="4" pattern="[0-9]{4}" name="security_pin" x-bind:value="selectedCustomer?.security_pin" placeholder="Ej: 1234" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-sky-500">
+                        <input type="text" maxlength="4" pattern="[0-9]{4}" name="security_pin" x-model="editForm.security_pin" placeholder="Ej: 1234" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-sky-500">
                         <span class="text-[10px] text-slate-400 mt-1 block">PIN numérico para desbloquear su bóveda</span>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nueva Clave Bóveda (Opcional)</label>
-                        <input type="text" name="password" placeholder="Dejar vacío para mantener actual" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-sky-500">
+                        <input type="text" name="password" x-model="editForm.password" placeholder="Dejar vacío para mantener actual" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white outline-none focus:border-sky-500">
                         <span class="text-[10px] text-slate-400 mt-1 block">Solo si deseas cambiar la contraseña</span>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Notas Internas</label>
-                    <textarea name="notes" rows="2" :value="selectedCustomer?.notes" x-text="selectedCustomer?.notes" placeholder="Observaciones o historial del cliente..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500"></textarea>
+                    <textarea name="notes" rows="2" x-model="editForm.notes" placeholder="Observaciones o historial del cliente..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none focus:border-sky-500"></textarea>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">

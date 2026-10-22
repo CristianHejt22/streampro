@@ -39,6 +39,26 @@
         this.selectedAccount = acc;
         this.privatePasswordModal = true;
     },
+    openPasswordModalFromScript(id) {
+        let el = document.getElementById('account-data-' + id);
+        if (!el) return;
+        try {
+            let acc = JSON.parse(el.textContent);
+            this.openPasswordModal(acc);
+        } catch (e) {
+            console.error('Error parsing account data', e);
+        }
+    },
+    openEditModalFromScript(id) {
+        let el = document.getElementById('account-data-' + id);
+        if (!el) return;
+        try {
+            let acc = JSON.parse(el.textContent);
+            this.openEditModal(acc);
+        } catch (e) {
+            console.error('Error parsing account data', e);
+        }
+    },
     openEditModal(acc) {
         this.selectedAccount = acc;
         this.editForm = {
@@ -299,14 +319,17 @@
                         </button>
                     </div>
 
+                    <!-- Datos JSON Seguros -->
+                    <script id="account-data-{{ $acc->id }}" type="application/json">@json($acc->load(['profiles', 'service', 'supplier']))</script>
+
                     <!-- Botón Modificar Clave Privada (estilo StreamPro) -->
-                    <button @click="openPasswordModal({{ json_encode($acc) }})" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer" title="Modificar la contraseña maestra">
+                    <button type="button" @click="openPasswordModalFromScript({{ $acc->id }})" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer" title="Modificar la contraseña maestra">
                         <i data-lucide="key" class="w-3.5 h-3.5 text-amber-400"></i>
                         <span>🔒 Clave Privada</span>
                     </button>
 
                     <!-- Editar Cuenta Completa / Lote de Streaming -->
-                    <button type="button" @click="openEditModal({{ json_encode($acc->load(['profiles', 'service', 'supplier'])) }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Editar Lote Completo">
+                    <button type="button" @click="openEditModalFromScript({{ $acc->id }})" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer" title="Editar Lote Completo">
                         <i data-lucide="edit-3" class="w-4 h-4"></i>
                     </button>
 

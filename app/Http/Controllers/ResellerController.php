@@ -751,8 +751,8 @@ class ResellerController extends Controller
     public function togglePanelOffer(User $reseller)
     {
         $user = auth()->user();
-        if (!$user->isAdmin() && $reseller->parent_id !== $user->id) {
-            abort(403, 'Solo el patrocinador o el Super Admin pueden modificar este permiso.');
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id && $user->id !== $reseller->id) {
+            abort(403, 'Solo el patrocinador, el propietario o el Super Admin pueden modificar este permiso.');
         }
 
         if (!$reseller->canResellPanels()) {
