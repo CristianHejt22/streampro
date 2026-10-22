@@ -17,6 +17,7 @@
         service_id: '',
         service_name: '',
         supplier_id: '',
+        account_name: '',
         account_email: '',
         account_password: '',
         recovery_email: '',
@@ -66,6 +67,7 @@
             service_id: acc.service_id || '',
             service_name: acc.service ? acc.service.name : 'Streaming',
             supplier_id: acc.supplier_id || '',
+            account_name: acc.account_name || '',
             account_email: acc.account_email || '',
             account_password: acc.account_password || '',
             recovery_email: acc.recovery_email || '',
@@ -174,7 +176,9 @@
     <!-- ======================================================== -->
     <!-- FORMULARIO DE CARGA RÁPIDA DE LOTE AL INVENTARIO -->
     <!-- ======================================================== -->
-    <form method="POST" action="{{ route('accounts.store') }}" class="bg-[#0f172a] p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+    <form method="POST" action="{{ route('accounts.store') }}" 
+          x-data="{ showNewService: false, selectedServiceId: '{{ $services->first()?->id ?? '' }}' }" 
+          class="bg-[#0f172a] p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
         @csrf
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 class="text-sm font-black text-white flex items-center gap-2">
@@ -184,26 +188,42 @@
             <span class="text-xs text-slate-400">Genera perfiles individuales con PINs automáticos</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
+            <!-- 1. Servicio: Plataforma * -->
             <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Plataforma *</label>
-                <select name="service_id" required class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-semibold outline-none text-xs">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase">Servicio: Plataforma *</label>
+                    <button type="button" @click="showNewService = !showNewService" class="text-[10px] text-sky-400 hover:text-sky-300 font-bold flex items-center gap-0.5 cursor-pointer" title="Agregar nueva plataforma o servicio al catálogo">
+                        <span x-text="showNewService ? '✕ Volver' : '+ Nueva'"></span>
+                    </button>
+                </div>
+                <select name="service_id" x-model="selectedServiceId" :required="!showNewService" class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-semibold outline-none text-xs">
                     @foreach($services as $srv)
                     <option value="{{ $srv->id }}">{{ $srv->name }}</option>
                     @endforeach
+                    <option value="new">+ Agregar Nuevo Servicio / Plataforma...</option>
                 </select>
             </div>
 
+            <!-- 2. Nombre de Cuenta -->
             <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Correo Máster *</label>
-                <input type="text" name="account_email" placeholder="aaaa@gmail.com" required class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-mono outline-none text-xs">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nombre de Cuenta</label>
+                <input type="text" name="account_name" placeholder="Ej: Familiar #1, Lote 4K..." class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-semibold outline-none text-xs">
             </div>
 
+            <!-- 3. Correo / Usuario Máster * -->
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Correo / Usuario *</label>
+                <input type="text" name="account_email" placeholder="aaaa@gmail.com o user" required class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-mono outline-none text-xs">
+            </div>
+
+            <!-- 4. Contraseña Máster * -->
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Contraseña Máster *</label>
                 <input type="text" name="account_password" placeholder="123456789" required class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-mono outline-none text-xs">
             </div>
 
+            <!-- 5. Capacidad Pantallas -->
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Capacidad Pantallas</label>
                 <select name="total_profiles" class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-semibold outline-none text-xs">
@@ -216,10 +236,43 @@
                 <input type="hidden" name="modality" value="profile">
             </div>
 
+            <!-- 6. Costo Lote (ARS) -->
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Costo Lote (ARS)</label>
                 <input type="number" step="0.01" name="supplier_cost" placeholder="10000" class="w-full bg-slate-900 border border-slate-800 focus:border-red-500 rounded-xl p-3 text-white font-mono outline-none text-xs">
             </div>
+        </div>
+
+        <!-- Panel desplegable: Agregar Nuevo Servicio / Plataforma en el acto -->
+        <div x-show="showNewService || selectedServiceId === 'new'" x-cloak class="p-4 rounded-2xl bg-[#0b0f19] border border-sky-500/40 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sky-400 font-bold text-xs uppercase tracking-wider">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Agregar Nuevo Servicio: Plataforma</span>
+                </div>
+                <button type="button" @click="showNewService = false; selectedServiceId = '{{ $services->first()?->id ?? '' }}'" class="text-[11px] text-slate-400 hover:text-white cursor-pointer">
+                    ✕ Volver a la lista existente
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-2">
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase mb-1">Nombre de la Nueva Plataforma *</label>
+                    <input type="text" name="new_service_name" placeholder="Ej: Paramount+, Spotify, Crunchyroll, Star+, Vix..." class="w-full bg-slate-900 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-white text-xs outline-none font-semibold">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase mb-1">Categoría</label>
+                    <select name="new_service_category" class="w-full bg-slate-900 border border-slate-700 focus:border-sky-500 rounded-xl p-2.5 text-white text-xs outline-none">
+                        <option value="video">Películas & Series (Video)</option>
+                        <option value="music">Música y Audio</option>
+                        <option value="anime">Anime</option>
+                        <option value="iptv">Televisión / IPTV</option>
+                        <option value="other">Herramientas / Otro</option>
+                    </select>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-400">
+                Al guardar, la plataforma se registrará automáticamente en tu catálogo y se crearán sus planes de venta estándar.
+            </p>
         </div>
 
         <div class="flex justify-between items-center pt-2">
@@ -281,6 +334,12 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-black text-white">{{ $acc->service->name }}</span>
+                            @if($acc->account_name)
+                            <span class="text-xs font-bold text-amber-300 font-sans px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-1">
+                                <i data-lucide="tag" class="w-3 h-3 text-amber-400"></i>
+                                <span>{{ $acc->account_name }}</span>
+                            </span>
+                            @endif
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-bold {{ $acc->status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30' }}">
                                 {{ strtoupper($acc->status) }}
                             </span>
@@ -295,8 +354,19 @@
                     </div>
                 </div>
 
-                <!-- Credenciales Máster (Correo & Contraseña Privada) -->
+                <!-- Credenciales Máster (Nombre, Correo & Contraseña Privada) -->
                 <div class="flex flex-wrap items-center gap-2.5">
+                    @if($acc->account_name)
+                    <!-- Nombre de Cuenta / Alias -->
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                        <i data-lucide="tag" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span class="font-semibold text-amber-300 font-sans">{{ $acc->account_name }}</span>
+                        <button @click="copyText('{{ $acc->account_name }}', 'Nombre de Cuenta')" class="text-amber-400/70 hover:text-amber-300" title="Copiar nombre de cuenta">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    @endif
+
                     <!-- Correo Máster -->
                     <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
                         <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i>
@@ -521,15 +591,20 @@
                 @csrf
                 @method('PUT')
 
-                <!-- Fila 1: Plataforma y Proveedor -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Fila 1: Servicio, Nombre de Cuenta y Proveedor -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Plataforma / Servicio *</label>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Servicio: Plataforma *</label>
                         <select name="service_id" x-model="editForm.service_id" required class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none focus:border-red-500">
                             @foreach($services as $srv)
                             <option value="{{ $srv->id }}">{{ $srv->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Nombre de Cuenta</label>
+                        <input type="text" name="account_name" x-model="editForm.account_name" placeholder="Ej: Familiar #1, Lote 4K..." class="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none focus:border-red-500">
                     </div>
 
                     <div>

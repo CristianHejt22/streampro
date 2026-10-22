@@ -304,7 +304,12 @@
                                 <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $s->service->color_hex ?? '#E50914' }}"></span>
                                 <span class="font-bold text-white">{{ $s->service->name }}</span>
                             </div>
-                            <div class="mt-1 flex items-center gap-1.5">
+                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                @if($s->streamingAccount && $s->streamingAccount->account_name)
+                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-sans font-semibold" title="Nombre de Cuenta / Lote">
+                                    {{ $s->streamingAccount->account_name }}
+                                </span>
+                                @endif
                                 <span class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-300 font-medium">
                                     {{ $s->profile_name_snapshot ?: 'Cuenta Completa' }}
                                 </span>

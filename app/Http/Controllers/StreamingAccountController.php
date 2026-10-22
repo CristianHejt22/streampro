@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use App\Models\StreamingAccount;
 use App\Models\AccountProfile;
 use App\Models\Service;
+use App\Models\ServicePlan;
 use App\Models\Supplier;
 use App\Models\AuditLog;
 use Carbon\Carbon;
@@ -42,6 +44,7 @@ class StreamingAccountController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('account_email', 'like', "%{$search}%")
+                  ->orWhere('account_name', 'like', "%{$search}%")
                   ->orWhere('recovery_email', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%");
             });
@@ -118,9 +121,67 @@ class StreamingAccountController extends Controller
 
     public function store(Request $request)
     {
+        // 1. Permitir agregar un nuevo servicio / plataforma en el acto al cargar la cuenta
+        if ($request->filled('new_service_name') || $request->input('service_id') === 'new') {
+            $newServiceName = trim($request->input('new_service_name', ''));
+            if (!empty($newServiceName)) {
+                $category = $request->input('new_service_category', 'video');
+                $colors = [
+                    'video' => '#E50914',
+                    'music' => '#1DB954',
+                    'anime' => '#F47521',
+                    'iptv' => '#06B6D4',
+                    'other' => '#8B5CF6'
+                ];
+                $colorHex = $colors[$category] ?? '#E50914';
+                $slug = Str::slug($newServiceName);
+                if (empty($slug)) {
+                    $slug = 'service-' . time();
+                }
+
+                $service = Service::where('slug', $slug)->first();
+                if (!$service) {
+                    $service = Service::create([
+                        'name' => $newServiceName,
+                        'slug' => $slug,
+                        'category' => $category,
+                        'color_hex' => $colorHex,
+                        'max_profiles_default' => (int)$request->input('total_profiles', 5),
+                        'status' => 'active',
+                        'user_id' => Auth::user()->isAdmin() ? null : Auth::id(),
+                    ]);
+
+                    // Planes base sugeridos para venta en catálogo
+                    ServicePlan::create([
+                        'service_id' => $service->id,
+                        'name' => '1 Pantalla (30 Días)',
+                        'modality' => 'profile',
+                        'duration_days' => 30,
+                        'price' => 4500.00,
+                        'reseller_price' => 2700.00,
+                        'screens_count' => 1,
+                        'is_active' => true,
+                    ]);
+
+                    ServicePlan::create([
+                        'service_id' => $service->id,
+                        'name' => 'Cuenta Completa (30 Días)',
+                        'modality' => 'full_account',
+                        'duration_days' => 30,
+                        'price' => 18000.00,
+                        'reseller_price' => 10800.00,
+                        'screens_count' => (int)$request->input('total_profiles', 5),
+                        'is_active' => true,
+                    ]);
+                }
+                $request->merge(['service_id' => $service->id]);
+            }
+        }
+
         $validated = $request->validate([
             'service_id' => 'required|exists:services,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'account_name' => 'nullable|string|max:255',
             'account_email' => 'required|string|max:255',
             'account_password' => 'required|string|max:255',
             'recovery_email' => 'nullable|string|max:255',
@@ -157,7 +218,7 @@ class StreamingAccountController extends Controller
         AuditLog::create([
             'user_id' => Auth::id(),
             'action' => 'create_streaming_account',
-            'description' => "Cuenta maestra {$account->account_email} para servicio ID {$account->service_id} agregada con {$total} perfiles.",
+            'description' => "Cuenta maestra {$account->account_email} (" . ($account->account_name ?: 'Sin alias') . ") para servicio ID {$account->service_id} agregada con {$total} perfiles.",
             'ip_address' => $request->ip(),
         ]);
 
@@ -174,6 +235,7 @@ class StreamingAccountController extends Controller
         $validated = $request->validate([
             'service_id' => 'nullable|exists:services,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'account_name' => 'nullable|string|max:255',
             'account_email' => 'required|string|max:255',
             'account_password' => 'required|string|max:255',
             'recovery_email' => 'nullable|string|max:255',
@@ -188,6 +250,7 @@ class StreamingAccountController extends Controller
         $account->update([
             'service_id' => $validated['service_id'] ?? $account->service_id,
             'supplier_id' => $request->filled('supplier_id') ? $validated['supplier_id'] : $account->supplier_id,
+            'account_name' => $request->has('account_name') ? $validated['account_name'] : $account->account_name,
             'account_email' => $validated['account_email'],
             'account_password' => $validated['account_password'],
             'recovery_email' => $validated['recovery_email'] ?? $account->recovery_email,

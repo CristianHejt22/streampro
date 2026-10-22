@@ -13,6 +13,7 @@ class StreamingAccount extends Model
     protected $fillable = [
         'service_id',
         'supplier_id',
+        'account_name',
         'account_email',
         'account_password',
         'recovery_email',
