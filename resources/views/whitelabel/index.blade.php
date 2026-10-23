@@ -117,108 +117,97 @@
                 </div>
             </div>
 
-            <!-- SELECTOR: DESTINO DE LAS CONSULTAS Y RENOVACIONES DE BÓVEDA -->
-            <div class="pt-4 border-t border-gray-800 space-y-3">
+            <!-- EXPLICACIÓN Y DESTINO DIRECTO DE WHATSAPP: REVENDEDOR PARA CLIENTE -->
+            <div class="pt-4 border-t border-gray-800 space-y-4">
                 <div class="space-y-1">
-                    <label class="block text-xs font-bold text-white uppercase tracking-wider">
-                        ¿A qué número de WhatsApp van las consultas y renovaciones? *
+                    <label class="block text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <span>Regla de Canales de WhatsApp Oficiales</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">Soporte Directo</span>
                     </label>
                     <p class="text-xs text-gray-400 leading-relaxed">
-                        Cada panelista (proveedor o revendedor) configura su número de WhatsApp. En caso de ser una tienda clonada, las solicitudes de soporte y renovaciones de los clientes de la Bóveda llegan directamente al revendedor, o si éste lo prefiere, al WhatsApp de su proveedor patrocinador para que le brinde soporte directo.
-                    </p>
-                    <p class="text-[11px] text-teal-300 font-semibold">
-                        Las renovaciones también se envían por su Bóveda y le llegan a su panel de ventas; desde allí, el mismo revendedor podrá solicitar revisión a su proveedor con un solo clic.
+                        En la plataforma, <strong class="text-white">el WhatsApp de cada revendedor es exclusivo para sus clientes finales</strong>. Tus clientes te escribirán a ti directamente en su Bóveda Privada y Catálogo.
                     </p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2" x-data="{ currentPref: '{{ old('whatsapp_support_preference', $user->whatsapp_support_preference ?? 'reseller') }}' }">
-                    <!-- Opción 1: Mi WhatsApp Propio -->
-                    <label class="p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between"
-                           :class="currentPref === 'reseller' ? 'bg-emerald-950/20 border-emerald-500 ring-2 ring-emerald-500/30' : 'bg-[#0b0f19] border-gray-800 hover:border-gray-700'">
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2.5">
-                                    <input type="radio" name="whatsapp_support_preference" value="reseller" x-model="currentPref" class="text-emerald-500 focus:ring-0">
-                                    <span class="text-sm font-bold text-white flex items-center gap-1.5">
-                                        <i data-lucide="phone-call" class="w-4 h-4 text-emerald-400"></i>
-                                        <span>Mi WhatsApp Propio</span>
-                                    </span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                    Atención Directa
-                                </span>
-                            </div>
-                            <p class="text-xs text-gray-400 leading-relaxed">
-                                Las consultas y solicitudes de renovación de tus clientes en la Bóveda llegarán directamente a tu número de WhatsApp:
-                                <strong class="text-white font-mono block mt-0.5">{{ $user->support_whatsapp ?: '(Configura tu número arriba)' }}</strong>
-                            </p>
+                <!-- Tarjetas Informativas de los 3 Niveles de Soporte -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Nivel 1: Revendedor para Cliente -->
+                    <div class="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/40 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                <i data-lucide="users" class="w-4 h-4"></i>
+                                <span>Tú ➔ Tus Clientes</span>
+                            </span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/30 text-emerald-300">ACTIVO</span>
                         </div>
-                        <div class="mt-3 pt-2 border-t border-gray-800 text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                            <span>Tú gestionas y cobras a tus clientes</span>
+                        <p class="text-[11px] text-gray-300">
+                            Tus clientes ven tu WhatsApp configurado arriba en su Bóveda y Catálogo para atención y renovaciones.
+                        </p>
+                        <div class="text-[11px] font-mono font-bold text-white pt-1">
+                            {{ $user->support_whatsapp ?: '⚠️ Falta configurar arriba' }}
                         </div>
-                    </label>
+                    </div>
 
-                    <!-- Opción 2: WhatsApp de Mi Proveedor Patrocinador -->
-                    <label class="p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between"
-                           :class="currentPref === 'provider' ? 'bg-teal-950/30 border-teal-500 ring-2 ring-teal-500/30' : 'bg-[#0b0f19] border-gray-800 hover:border-gray-700'">
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2.5">
-                                    <input type="radio" name="whatsapp_support_preference" value="provider" x-model="currentPref" class="text-teal-500 focus:ring-0">
-                                    <span class="text-sm font-bold text-white flex items-center gap-1.5">
-                                        <i data-lucide="shield-check" class="w-4 h-4 text-teal-400"></i>
-                                        <span>WhatsApp de Mi Proveedor</span>
-                                    </span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                                    Soporte Patrocinador
-                                </span>
-                            </div>
-                            <p class="text-xs text-gray-400 leading-relaxed">
-                                @if($user->parent)
-                                Solicitas que las consultas y renovaciones de los clientes de tu Bóveda se deriven al WhatsApp de tu proveedor patrocinador:
-                                <strong class="text-teal-300 font-mono block mt-0.5">{{ $user->parent->name }} · {{ $user->parent->support_whatsapp ?: 'Sin número cargado' }}</strong>
-                                @else
-                                No tienes proveedor patrocinador asignado (panel independiente). Si seleccionas esta opción, el soporte se derivará a la administración central de la plataforma.
-                                @endif
-                            </p>
+                    <!-- Nivel 2: Proveedor para Revendedor -->
+                    <div class="p-3.5 rounded-2xl bg-teal-950/20 border border-teal-500/30 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                <span>Tu Proveedor ➔ Tú</span>
+                            </span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-teal-500/20 text-teal-300">MAYORISTA</span>
                         </div>
-                        <div class="mt-3 pt-2 border-t border-gray-800 text-[11px] text-amber-300 font-semibold flex items-center gap-1">
-                            <i data-lucide="info" class="w-3.5 h-3.5"></i>
-                            <span>Queda registrado con mensaje en auditoría</span>
+                        <p class="text-[11px] text-gray-400">
+                            Canal exclusivo para que tú recargues saldo, compres paneles y pidas soporte a tu patrocinador.
+                        </p>
+                        <div class="text-[11px] font-mono font-bold text-teal-300 pt-1">
+                            @if($user->parent)
+                                {{ $user->parent->name }} · {{ $user->parent->support_whatsapp ?: 'Sin número' }}
+                            @else
+                                Panel Central (Directo)
+                            @endif
                         </div>
-                    </label>
+                    </div>
+
+                    <!-- Nivel 3: Administrador para Panel Propio -->
+                    <div class="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                                <i data-lucide="cpu" class="w-4 h-4"></i>
+                                <span>Admin ➔ Panel Propio</span>
+                            </span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300">SISTEMA</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400">
+                            El WhatsApp del Administrador es solo para soporte técnico del sistema y convenios administrativos.
+                        </p>
+                        <div class="text-[11px] font-mono text-purple-300 pt-1">
+                            Soporte Central de Software
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Input oculto para compatibilidad con backend -->
+                <input type="hidden" name="whatsapp_support_preference" value="reseller">
             </div>
 
             <!-- Indicador en Vivo del Destino Resuelto en Bóveda -->
             <div class="p-4 rounded-2xl bg-[#0b0f19] border border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <div class="flex items-center gap-3">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="inline-block w-2.5 h-2.5 rounded-full {{ $user->support_whatsapp ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400' }}"></span>
                     <div>
-                        <span class="text-gray-400 block text-[11px]">Destino Efectivo Actual para tus Clientes en Bóveda:</span>
-                        <strong class="text-white font-mono text-sm">{{ $user->resolved_vault_whatsapp }}</strong>
+                        <span class="text-gray-400 block text-[11px]">Número Efectivo en la Bóveda y Catálogo de tus Clientes:</span>
+                        <strong class="text-white font-mono text-sm">
+                            {{ $user->support_whatsapp ?: '⚠️ Sin número (Ingresa tu WhatsApp arriba para activar la atención directa)' }}
+                        </strong>
                     </div>
                 </div>
 
                 <div>
-                    @if($user->whatsapp_support_preference === 'provider')
-                    <span class="px-3 py-1 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-300 font-bold text-[11px] inline-flex items-center gap-1.5">
-                        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-                        <span>Enrutado a Proveedor Patrocinador</span>
-                    </span>
-                    @elseif($user->whatsapp_support_preference === 'reseller')
                     <span class="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[11px] inline-flex items-center gap-1.5">
                         <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
-                        <span>Enrutado a tu WhatsApp Propio</span>
+                        <span>Atención Directa: Revendedor ➔ Cliente</span>
                     </span>
-                    @else
-                    <span class="px-3 py-1 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 font-bold text-[11px] inline-flex items-center gap-1.5">
-                        <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
-                        <span>Enrutamiento Automático</span>
-                    </span>
-                    @endif
                 </div>
             </div>
         </div>

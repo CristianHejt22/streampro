@@ -8,7 +8,7 @@
 <div class="space-y-6">
 
     <!-- KPI Metric Cards Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <!-- Total Recaudado -->
         <div class="p-5 rounded-2xl bg-[#111827] border border-gray-800 shadow-lg relative overflow-hidden">
             <div class="flex items-center justify-between">
@@ -98,6 +98,25 @@
             </div>
             <div class="mt-1 text-xs text-gray-400">
                 <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline">Ver paneles de revendedores &rarr;</a>
+            </div>
+        </div>
+
+        <!-- Soporte Central de Plataforma (Admin) -->
+        <div class="p-5 rounded-2xl bg-[#111827] border border-emerald-500/30 shadow-lg relative overflow-hidden flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Soporte Admin</span>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <i data-lucide="message-circle" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <span class="text-xs font-mono font-bold text-white block truncate">{{ \App\Models\User::getAdminPlatformSupportWhatsApp() }}</span>
+                <span class="text-[10px] text-gray-400 block mt-0.5">Exclusivo panel propio & convenios</span>
+            </div>
+            <div class="mt-2 text-xs text-emerald-400">
+                <a href="{{ route('resellers.index') }}" class="hover:underline flex items-center gap-1 font-semibold">
+                    Canales & Métricas &rarr;
+                </a>
             </div>
         </div>
     </div>

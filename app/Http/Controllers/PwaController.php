@@ -110,7 +110,7 @@ class PwaController extends Controller
 
         $primaryColor = $seller ? ($seller->brand_primary_color ?: '#E50914') : '#E50914';
         $accentColor = $seller ? ($seller->brand_accent_color ?: '#06b6d4') : '#06b6d4';
-        $supportWhatsapp = $seller ? ($seller->resolved_vault_whatsapp ?: $seller->support_whatsapp) : null;
+        $supportWhatsapp = $seller ? $seller->resolved_vault_whatsapp : null;
 
         // URL corta de instalación para compartir por WhatsApp
         $shareUrl = $seller && $seller->referral_code 

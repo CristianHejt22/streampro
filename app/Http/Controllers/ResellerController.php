@@ -93,6 +93,21 @@ class ResellerController extends Controller
             'total_wallets_balance' => (float)(clone $baseCountQuery)->sum('balance'),
             'total_credits_basic' => (int)(clone $baseCountQuery)->sum('credits_basic'),
             'total_credits_pro' => (int)(clone $baseCountQuery)->sum('credits_pro'),
+            // Métricas de Canales de WhatsApp (Admin -> Panel Propio, Proveedor -> Revendedor, Revendedor -> Cliente)
+            'resellers_with_whatsapp' => (clone $baseCountQuery)->where(function($q) {
+                $q->whereNotNull('support_whatsapp')->where('support_whatsapp', '!=', '')
+                  ->orWhere(function($sub) {
+                      $sub->whereNotNull('phone')->where('phone', '!=', '');
+                  });
+            })->count(),
+            'resellers_without_whatsapp' => (clone $baseCountQuery)->where(function($q) {
+                $q->where(function($sub) {
+                    $sub->whereNull('support_whatsapp')->orWhere('support_whatsapp', '');
+                })->where(function($sub) {
+                    $sub->whereNull('phone')->orWhere('phone', '');
+                });
+            })->count(),
+            'providers_count' => User::where('role', 'super_reseller')->count(),
         ];
 
         // Solicitudes de panel pendientes de activación con crédito
@@ -483,21 +498,25 @@ class ResellerController extends Controller
     }
 
     /**
-     * Configuración de la preferencia de Soporte por WhatsApp en Bóveda (Solo Admin)
+     * Configuración del WhatsApp de Soporte Central de la Plataforma (Solo Admin)
+     * Regla: "El WhatsApp de ADMINISTRADOR SOLO SERÁ PARA SOPORTE DE PANEL PRINCIPAL PROPIO.
+     * El WhatsApp soporte de proveedor es solo para revendedor, y revendedor para cliente."
      */
     public function updateWhatsAppSupportSettings(Request $request)
     {
         if (!auth()->user()->isAdmin()) {
-            abort(403, 'Solo el Administrador General puede configurar las preferencias de soporte.');
+            abort(403, 'Solo el Administrador General puede configurar las preferencias de soporte central.');
         }
 
         $request->validate([
-            'whatsapp_support_dest' => 'required|in:reseller,admin',
             'whatsapp_support_admin_phone' => 'nullable|string|max:50',
+            'whatsapp_support_dest' => 'nullable|string|in:reseller,admin',
         ]);
 
         SystemSetting::set('whatsapp_support_enabled', $request->boolean('whatsapp_support_enabled') ? 'true' : 'false');
-        SystemSetting::set('whatsapp_support_dest', $request->whatsapp_support_dest);
+        // El destino de consultas de clientes siempre es el revendedor asignado
+        SystemSetting::set('whatsapp_support_dest', 'reseller');
+
         if ($request->filled('whatsapp_support_admin_phone')) {
             SystemSetting::set('whatsapp_support_admin_phone', $request->whatsapp_support_admin_phone);
         }
@@ -505,11 +524,11 @@ class ResellerController extends Controller
         AuditLog::create([
             'user_id' => auth()->id(),
             'action' => 'update_whatsapp_support_settings',
-            'description' => "Preferencia de soporte WhatsApp actualizada en la Bóveda de Clientes. Habilitado: " . ($request->boolean('whatsapp_support_enabled') ? 'SÍ' : 'NO') . ", Destino: {$request->whatsapp_support_dest}.",
+            'description' => "WhatsApp de Soporte Central del Panel Principal actualizado a: " . ($request->whatsapp_support_admin_phone ?? 'Sin cambiar') . ". Habilitado: " . ($request->boolean('whatsapp_support_enabled') ? 'SÍ' : 'NO') . ".",
             'ip_address' => $request->ip(),
         ]);
 
-        return back()->with('success', '¡Preferencias de Soporte de Cuenta por WhatsApp guardadas para todas las Bóvedas de Clientes!');
+        return back()->with('success', '¡WhatsApp de Soporte Central para el Panel Principal guardado correctamente!');
     }
 
     /**

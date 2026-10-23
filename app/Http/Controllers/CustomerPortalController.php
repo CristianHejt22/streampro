@@ -198,12 +198,12 @@ class CustomerPortalController extends Controller
         // Datos del revendedor asignado (Marca blanca, WhatsApp, Logo, CBU/CVU)
         $reseller = $customer->user ?: User::where('role', 'admin')->first();
 
-        // Preferencia de Soporte de Cuenta por WhatsApp:
-        // "El número de whatsapp que aparecerá en bóveda de cliente es de cada proveedor si lo desea, y del revendedor en caso de ser copia."
+        // Soporte por WhatsApp para el Cliente de la Bóveda:
+        // Regla: "El whatsapp soporte de proveedor es solo para revendedor, y revendedor para cliente."
+        // El cliente es atendido exclusivamente por su revendedor asignado.
+        // El WhatsApp del Administrador sólo se usa si el cliente pertenece directamente al panel principal propio (Admin).
         $whatsappSupportEnabled = SystemSetting::get('whatsapp_support_enabled', 'true') === 'true';
-        $whatsappAdminPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
-
-        $supportWhatsAppPhone = $reseller ? $reseller->resolved_vault_whatsapp : $whatsappAdminPhone;
+        $supportWhatsAppPhone = $reseller ? $reseller->resolved_vault_whatsapp : '';
 
         // Catálogo de plataformas principales para activar nuevas cuentas
         $catalogServices = Service::where('status', 'active')

@@ -449,32 +449,48 @@ class User extends Authenticatable
 
     public function getResolvedVaultWhatsAppAttribute(): string
     {
-        $adminPhone = SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
-        $pref = $this->whatsapp_support_preference ?? 'auto';
+        // REGLA DEL SISTEMA:
+        // 1. El WhatsApp de Administrador es SOLO para soporte del panel principal propio.
+        // 2. El WhatsApp de soporte de Proveedor es SOLO para el revendedor.
+        // 3. El WhatsApp de Revendedor es para el cliente final (Bóveda y Catálogo).
 
-        if ($pref === 'reseller') {
-            return $this->support_whatsapp ?: $adminPhone;
-        }
-        if ($pref === 'provider') {
-            return ($this->parent && $this->parent->support_whatsapp) ? $this->parent->support_whatsapp : ($this->support_whatsapp ?: $adminPhone);
-        }
-        if ($pref === 'admin') {
-            return $adminPhone;
+        if ($this->isAdmin()) {
+            return $this->support_whatsapp ?: SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
         }
 
-        // Modo 'auto': sigue la preferencia global y la configuración del proveedor
-        $globalDest = SystemSetting::get('whatsapp_support_dest', 'reseller');
-        if ($globalDest === 'admin') {
-            return $adminPhone;
-        }
+        // Para revendedores y proveedores vendiendo a sus clientes:
+        // La atención al cliente final corresponde estrictamente al WhatsApp propio del revendedor.
+        // Nunca se filtra el WhatsApp del Administrador ni del Proveedor al cliente final.
+        return $this->support_whatsapp ?: ($this->phone ?: '');
+    }
 
-        if ($this->parent_id && $this->parent) {
-            if ($this->parent->provider_override_support_whatsapp && !empty($this->parent->support_whatsapp)) {
-                return $this->parent->support_whatsapp;
-            }
+    public function getEffectiveSupportWhatsappAttribute(): string
+    {
+        if ($this->isAdmin()) {
+            return $this->support_whatsapp ?: SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
         }
+        return $this->support_whatsapp ?: ($this->phone ?: '');
+    }
 
-        return $this->support_whatsapp ?: ($this->parent ? $this->parent->support_whatsapp : $adminPhone);
+    /**
+     * WhatsApp del Proveedor Mayorista para soporte exclusivo del Revendedor
+     */
+    public function getProviderResellerSupportWhatsAppAttribute(): ?string
+    {
+        if ($this->parent) {
+            return $this->parent->support_whatsapp ?: ($this->parent->phone ?: null);
+        }
+        // Si no tiene proveedor asignado (revendedor directo del panel central), su soporte de panel es el Administrador
+        return self::getAdminPlatformSupportWhatsApp();
+    }
+
+    /**
+     * WhatsApp Oficial del Administrador de la Plataforma (Soporte Técnico de Panel Propio y Convenios)
+     */
+    public static function getAdminPlatformSupportWhatsApp(): string
+    {
+        $admin = self::where('role', 'admin')->first();
+        return $admin?->support_whatsapp ?: SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
     }
 
     public function getCommissionForService($serviceId): float

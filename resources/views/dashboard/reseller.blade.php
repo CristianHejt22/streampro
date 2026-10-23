@@ -80,6 +80,105 @@
         </div>
     </div>
 
+    <!-- ======================================================== -->
+    <!-- PANEL DE CANALES DE COMUNICACIÓN Y SOPORTE OFICIAL -->
+    <!-- ======================================================== -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Tarjeta 1: Mi WhatsApp para Clientes (Comercial) -->
+        <div class="p-5 rounded-2xl bg-[#111827] border {{ $user->support_whatsapp ? 'border-emerald-500/30' : 'border-amber-500/40 bg-amber-950/10' }} shadow-xl flex flex-col justify-between">
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                        <span>1. Tu Atención a Clientes</span>
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black {{ $user->support_whatsapp ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300' }}">
+                        {{ $user->support_whatsapp ? 'ACTIVO' : 'PENDIENTE' }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Número que ven tus clientes en su Bóveda y Catálogo para comprarte y pedir renovaciones.
+                </p>
+                <div class="font-mono text-sm font-bold {{ $user->support_whatsapp ? 'text-white' : 'text-amber-400' }}">
+                    {{ $user->support_whatsapp ?: '⚠️ Sin configurar' }}
+                </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800 mt-3">
+                <a href="{{ route('whitelabel.index') }}" class="text-xs text-emerald-400 hover:underline font-bold flex items-center gap-1">
+                    {{ $user->support_whatsapp ? 'Editar WhatsApp de Clientes' : 'Configurar mi WhatsApp Ahora' }} <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tarjeta 2: Mi Proveedor Mayorista (Soporte Revendedor) -->
+        <div class="p-5 rounded-2xl bg-[#111827] border border-teal-500/30 shadow-xl flex flex-col justify-between">
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        <span>2. Mi Proveedor Mayorista</span>
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-500/20 text-teal-300">
+                        {{ $user->parent ? 'ASIGNADO' : 'PANEL CENTRAL' }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    @if($user->parent)
+                        Atención directa con tu patrocinador <strong class="text-white">{{ $user->parent->name }}</strong> para recargas de saldo y compras de paneles.
+                    @else
+                        Tu panel opera directo bajo la plataforma central.
+                    @endif
+                </p>
+                <div class="font-mono text-xs text-teal-300 font-bold">
+                    @if($user->parent && ($user->parent->support_whatsapp || $user->parent->phone))
+                        {{ $user->parent->support_whatsapp ?: $user->parent->phone }}
+                    @else
+                        Soporte Directo de Plataforma
+                    @endif
+                </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800 mt-3 flex items-center justify-between">
+                @if($user->parent && ($user->parent->support_whatsapp || $user->parent->phone))
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->parent->support_whatsapp ?: $user->parent->phone) }}?text=Hola%20{{ urlencode($user->parent->name) }},%20te%20contacto%20desde%20mi%20panel%20de%20revendedor%20({{ urlencode($user->name) }})." target="_blank" class="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                    <span>Contactar a mi Proveedor</span>
+                </a>
+                @else
+                <button type="button" @click="rechargeModal = true" class="text-xs text-teal-400 hover:underline font-bold flex items-center gap-1">
+                    Cargar Saldo <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                </button>
+                @endif
+            </div>
+        </div>
+
+        <!-- Tarjeta 3: Soporte de Panel Propio (Administración Central) -->
+        <div class="p-5 rounded-2xl bg-[#111827] border border-purple-500/30 shadow-xl flex flex-col justify-between">
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                        <i data-lucide="cpu" class="w-4 h-4"></i>
+                        <span>3. Soporte de Panel Propio</span>
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300">ADMIN</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Asistencia técnica de la plataforma, dudas del sistema y convenios administrativos oficiales.
+                </p>
+                <div class="font-mono text-xs text-purple-300">
+                    Exclusivo para dueños de panel
+                </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800 mt-3">
+                @php
+                    $adminSupportPhone = \App\Models\User::getAdminPlatformSupportWhatsApp();
+                @endphp
+                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $adminSupportPhone) }}?text=Hola,%20solicito%20asistencia%20t%C3%A9cnica%20sobre%20mi%20panel%20de%20usuario%20({{ urlencode($user->email) }})." target="_blank" class="text-xs text-purple-400 hover:underline font-bold flex items-center gap-1">
+                    <span>Soporte Central Administrador</span> <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
     @if(!$user->isSuperReseller())
     <!-- Venta y Ascenso a Panel Administrador / Proveedor para Revendedores -->
     <div class="p-6 rounded-3xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/40 border-2 border-purple-500/40 shadow-2xl space-y-4 relative overflow-hidden">

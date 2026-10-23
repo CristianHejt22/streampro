@@ -6,7 +6,8 @@
 @php
     $effectiveBrand = $reseller ? $reseller->getEffectiveBrandName() : config('app.name', 'CStreame Master');
     $brandLogo = $reseller ? $reseller->brand_logo_url : asset('images/spro-play-logo.svg');
-    $whatsapp = $supportWhatsAppPhone ?: ($reseller ? $reseller->resolved_vault_whatsapp : '5491199887766');
+    // Soporte exclusivo: Revendedor para Cliente. Si el vendedor es Admin, usa el del panel principal.
+    $whatsapp = $supportWhatsAppPhone ?: ($reseller ? $reseller->resolved_vault_whatsapp : null);
     $referralCode = ($reseller && $reseller->referral_code) ? $reseller->referral_code : '';
     $antiPhishingCode = $customer->anti_phishing_phrase ?: 'CST-SAFE-' . ($customer->customer_code ?: $customer->id);
 @endphp
@@ -183,7 +184,7 @@
                     <span>{{ $customer->security_pin ? 'Mi PIN (4 Dígitos)' : 'Ajustar PIN de Bóveda' }}</span>
                 </button>
 
-                @if($whatsappSupportEnabled)
+                @if($whatsappSupportEnabled && !empty($supportWhatsAppPhone))
                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20soy%20{{ urlencode($customer->name) }}%20(N°%20Cliente:%20{{ $customer->customer_code }})%20y%20tengo%20una%20consulta%20sobre%20mi%20boveda%20de%20streaming." target="_blank" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition-all">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
                     <span>Soporte WhatsApp</span>
@@ -309,7 +310,7 @@
                     <p class="text-slate-300 leading-relaxed">{{ $blockReason }}</p>
                     <div class="pt-2 border-t border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-amber-400 font-sans font-semibold">
                         <span>🔒 Las credenciales se liberarán automáticamente al confirmarse la acreditación.</span>
-                        @if($whatsappSupportEnabled)
+                        @if($whatsappSupportEnabled && !empty($supportWhatsAppPhone))
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20cuenta%20{{ urlencode($srvName) }}%20(Venta:%20{{ $sale->sale_code }}).%20Figura%20retenida%20por%20pago." target="_blank" class="underline hover:text-white flex items-center gap-1 w-max">
                             <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
                             <span>Consultar a Soporte</span>
@@ -471,7 +472,7 @@
                     </button>
 
                     <div class="flex items-center gap-2">
-                        @if($whatsappSupportEnabled)
+                        @if($whatsappSupportEnabled && !empty($supportWhatsAppPhone))
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsAppPhone) }}?text=Hola,%20necesito%20soporte%20con%20mi%20cuenta%20de%20*{{ urlencode($srvName) }}*%20(Código:%20{{ $sale->sale_code }},%20Perfil:%20{{ urlencode($sale->profile_name_snapshot) }}).%20Cliente:%20{{ urlencode($customer->name) }}." target="_blank" class="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5" title="Soporte oficial por WhatsApp">
                             <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
                             <span>Soporte</span>

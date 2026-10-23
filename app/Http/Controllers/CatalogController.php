@@ -92,8 +92,10 @@ class CatalogController extends Controller
 
         $primaryColor = $seller->brand_primary_color ?: '#E50914';
 
-        // Resolución de WhatsApp de Bóveda / Catálogo según preferencias
-        $supportWhatsapp = $seller->resolved_vault_whatsapp ?: SystemSetting::get('whatsapp_support_admin_phone', '5491199887766');
+        // Resolución de WhatsApp de Soporte para Clientes:
+        // El cliente de un revendedor se comunica exclusivamente con el revendedor.
+        // El WhatsApp del Admin es solo para el panel principal propio.
+        $supportWhatsapp = $seller->resolved_vault_whatsapp;
         $supportTelegram = $seller->support_telegram;
 
         return view('catalog.index', compact(
