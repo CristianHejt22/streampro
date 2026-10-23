@@ -31,10 +31,11 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-red-500 selection:text-white" x-data="{
-    deferredPrompt: null,
+    deferredPrompt: window.deferredPwaPrompt || null,
     isInstalled: false,
     isIos: false,
     showIosGuide: false,
+    isPreparing: false,
     copied: false,
     init() {
         // Detect iOS
@@ -50,11 +51,13 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
+            window.deferredPwaPrompt = e;
         });
 
         window.addEventListener('appinstalled', () => {
             this.isInstalled = true;
             this.deferredPrompt = null;
+            window.deferredPwaPrompt = null;
         });
     },
     async triggerInstall() {
@@ -62,15 +65,45 @@
             this.showIosGuide = true;
             return;
         }
-        if (this.deferredPrompt) {
-            this.deferredPrompt.prompt();
-            const { outcome } = await this.deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
+        
+        let prompt = this.deferredPrompt || window.deferredPwaPrompt;
+
+        // Si todavía está registrando el service worker, esperar hasta 1.5s para disparar con 1 solo clic
+        if (!prompt) {
+            this.isPreparing = true;
+            prompt = await new Promise((resolve) => {
+                const handler = (e) => {
+                    e.preventDefault();
+                    this.deferredPrompt = e;
+                    window.deferredPwaPrompt = e;
+                    window.removeEventListener('beforeinstallprompt', handler);
+                    resolve(e);
+                };
+                window.addEventListener('beforeinstallprompt', handler);
+                setTimeout(() => {
+                    window.removeEventListener('beforeinstallprompt', handler);
+                    resolve(null);
+                }, 1500);
+            });
+            this.isPreparing = false;
+        }
+
+        if (prompt) {
+            try {
+                prompt.prompt();
+                const { outcome } = await prompt.userChoice;
+                if (outcome === 'accepted') {
+                    this.isInstalled = true;
+                    this.deferredPrompt = null;
+                    window.deferredPwaPrompt = null;
+                }
+            } catch (err) {
+                console.warn('Install prompt error:', err);
                 this.isInstalled = true;
             }
-            this.deferredPrompt = null;
         } else {
-            alert('Para instalar la App:\n• En Android/Chrome: Abre el menú de 3 puntos (⋮) y selecciona \'Instalar aplicación\' o \'Agregar a la pantalla principal\'.\n• En PC: Haz clic en el ícono de instalación en la barra de direcciones.');
+            // El navegador ya completó la instalación o corre en modo standalone
+            this.isInstalled = true;
         }
     },
     copyShareLink() {
@@ -137,7 +170,7 @@
             <template x-if="!isInstalled">
                 <button type="button" @click="triggerInstall()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:opacity-95 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 shadow-2xl shadow-red-600/40 transition-all cursor-pointer transform active:scale-[0.98]">
                     <i data-lucide="download" class="w-5 h-5"></i>
-                    <span>📲 Instalar Aplicación</span>
+                    <span x-text="isPreparing ? 'Preparando Instalación...' : '📲 Instalar Aplicación Ahora'"></span>
                 </button>
             </template>
 

@@ -30,29 +30,34 @@ class PwaController extends Controller
             // PANEL BÁSICO: Marca oficial por defecto SPRO PLAY
             $name = 'SPRO PLAY Streaming';
             $shortName = 'SPRO PLAY';
-            $icon = asset('images/spro-play-icon.svg');
-            $iconType = 'image/svg+xml';
+            $icon192 = asset('images/spro-play-icon-192.png');
+            $icon512 = asset('images/spro-play-icon-512.png');
+            $iconSvg = asset('images/spro-play-icon.svg');
             $themeColor = '#E50914';
             $startUrl = route('catalog.index', ['ref' => $seller->referral_code]);
         } elseif ($seller) {
             // PANEL PRO / PROVEEDOR / REVENDEDOR CON MARCA BLANCA
             $name = $seller->brand_name ?: 'CStreame Streaming';
             $shortName = $seller->brand_name ?: 'CStreame';
-            $icon = $seller->brand_logo ? asset('storage/' . $seller->brand_logo) : asset('images/cstreame-icon.svg');
-            $iconType = $seller->brand_logo ? (str_ends_with(strtolower($seller->brand_logo), '.png') ? 'image/png' : 'image/jpeg') : 'image/svg+xml';
+            $customLogo = $seller->brand_logo ? asset('storage/' . $seller->brand_logo) : null;
+            $icon192 = $customLogo ?: asset('images/cstreame-icon-192.png');
+            $icon512 = $customLogo ?: asset('images/cstreame-icon-512.png');
+            $iconSvg = asset('images/cstreame-icon.svg');
             $themeColor = $seller->brand_primary_color ?: '#E50914';
             $startUrl = route('catalog.index', ['ref' => $seller->referral_code]);
         } else {
             // SUPER ADMIN / MASTER PLATFORM
             $name = 'CStreame Master Platform';
             $shortName = 'CStreame';
-            $icon = asset('images/cstreame-icon.svg');
-            $iconType = 'image/svg+xml';
+            $icon192 = asset('images/cstreame-icon-192.png');
+            $icon512 = asset('images/cstreame-icon-512.png');
+            $iconSvg = asset('images/cstreame-icon.svg');
             $themeColor = '#E50914';
             $startUrl = '/';
         }
 
         $manifest = [
+            'id' => $startUrl,
             'name' => $name,
             'short_name' => $shortName,
             'description' => "Acceso directo e instalación de {$name}. Catálogo de streaming y Bóveda privada con PIN y biometría.",
@@ -62,13 +67,26 @@ class PwaController extends Controller
             'orientation' => 'portrait',
             'background_color' => '#0b0f19',
             'theme_color' => $themeColor,
+            'prefer_related_applications' => false,
             'categories' => ['entertainment', 'utilities'],
             'icons' => [
                 [
-                    'src' => $icon,
-                    'sizes' => '192x192 512x512',
-                    'type' => $iconType,
+                    'src' => $icon192,
+                    'sizes' => '192x192',
+                    'type' => 'image/png',
                     'purpose' => 'any maskable'
+                ],
+                [
+                    'src' => $icon512,
+                    'sizes' => '512x512',
+                    'type' => 'image/png',
+                    'purpose' => 'any maskable'
+                ],
+                [
+                    'src' => $iconSvg,
+                    'sizes' => 'any',
+                    'type' => 'image/svg+xml',
+                    'purpose' => 'any'
                 ]
             ]
         ];
