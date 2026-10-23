@@ -95,6 +95,7 @@
             </div>
             <div class="mt-1 text-[11px] text-gray-400">
                 $8.000 Administrador / $7.000 Proveedor por tienda
+                <span class="text-[10px] text-emerald-400 block font-mono font-bold">0% comisión en servicios de proveedores</span>
             </div>
             <div class="mt-1 text-xs text-gray-400">
                 <a href="{{ route('resellers.index') }}" class="text-purple-400 hover:underline">Ver paneles de revendedores &rarr;</a>

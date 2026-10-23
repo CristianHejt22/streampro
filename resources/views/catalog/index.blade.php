@@ -1240,15 +1240,18 @@
                         <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200"
                            :class="openFaq === 2 ? 'rotate-180 text-amber-400' : ''"></i>
                     </button>
-                    <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2">
+                    <div x-show="openFaq === 2" x-collapse class="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-300 border-t border-slate-800/80 leading-relaxed space-y-2.5">
                         <p>
                             Cualquier revendedor puede evolucionar a <strong>Panel Administrador / Super Revendedor</strong> pagando $15.000 por 30 días. La compra se realiza con 1 solo clic utilizando el saldo de su billetera o reportando el comprobante de pago por WhatsApp a su patrocinador.
                         </p>
                         <p>
-                            <strong>Tiendas Clonadas ($15.000/mes):</strong> El abono mensual se distribuye en <strong>$8.000 para el administrador</strong> de la plataforma y <strong>$7.000 para el proveedor</strong> patrocinador.
+                            <strong>Tiendas Clonadas ($15.000/mes):</strong> El abono mensual se distribuye en <strong>$8.000 para el administrador</strong> de la plataforma (licencia de software y soporte de servidor) y <strong>$7.000 para el proveedor</strong> patrocinador.
                         </p>
+                        <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-200">
+                            <strong>⚡ Rol del Super Admin Central:</strong> Opera exclusivamente para la provisión de paneles y cobro de abonos mensuales de clonación. <strong>El Super Admin NO cobra comisiones ni ganancias sobre las cuentas o servicios de streaming de ningún proveedor</strong>. Asimismo, el panel central es 100% independiente para elegir a qué proveedores comprar o vender en sus servicios directos.
+                        </div>
                         <p>
-                            Al ser Administrador Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red.
+                            Al ser Proveedor Mayorista obtienes la facultad de afiliar a tus propios revendedores, clonarles tu catálogo fijando tus propios costos mayoristas, y <strong>percibir automáticamente el 25% de comisión neta</strong> por cada venta que concrete tu red afiliada.
                         </p>
                     </div>
                 </div>

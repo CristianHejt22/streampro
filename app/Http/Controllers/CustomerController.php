@@ -137,9 +137,10 @@ class CustomerController extends Controller
         $cost = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
         $profit = $price - $cost;
 
-        // Comisión del 25% para el panel que ofreció/clonó el servicio
+        // Comisión del 25% para el Proveedor Mayorista patrocinador (Super Reseller)
+        // REGLA: El Super Admin Central NO cobra ninguna comisión por servicios ofrecidos por proveedores o revendedores.
         $parentCommission = 0.00;
-        if ($user->parent_id && $user->parent) {
+        if ($user->parent_id && $user->parent && $user->parent->isSuperReseller()) {
             $pct = (float) ($user->parent_commission_pct ?: 25.00);
             $parentCommission = round($profit * ($pct / 100), 2);
         }

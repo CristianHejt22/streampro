@@ -185,9 +185,12 @@ class SaleController extends Controller
         $costPrice = ($user->isReseller() ? $baseResellerPrice : (float)($plan->cost_estimate ?: 0)) * $months;
         $profit = $salePrice - $costPrice;
 
-        // Comisión del 25% para el panel padre patrocinador (copia de catálogo)
+        // Comisión del 25% para el panel padre patrocinador (Proveedor Mayorista)
+        // REGLA DEL SISTEMA: El Super Admin Central es SOLO para paneles y clonaciones de tiendas por mes ($8.000/mes).
+        // NO cobra NINGUNA comisión ni ganancia por los servicios ofrecidos por cada proveedor o revendedor.
+        // La comisión del 25% es exclusiva entre el Proveedor Mayorista (Super Reseller) y sus revendedores afiliados.
         $parentCommission = 0.00;
-        if ($user->parent_id && $user->parent) {
+        if ($user->parent_id && $user->parent && $user->parent->isSuperReseller()) {
             $pct = (float) ($user->parent_commission_pct ?: 25.00);
             $parentCommission = round($profit * ($pct / 100), 2);
         }
@@ -349,7 +352,7 @@ class SaleController extends Controller
             }
             $user->deductBalance($sale->cost_price);
 
-            if ($sale->parent_commission_amount > 0 && $user->parent) {
+            if ($sale->parent_commission_amount > 0 && $user->parent && $user->parent->isSuperReseller()) {
                 $user->parent->addBalance($sale->parent_commission_amount);
             }
         } elseif ($isParentProvider || $isAdmin) {

@@ -162,8 +162,9 @@ class Order extends Model
             }
             $seller->deductBalance($cost);
 
-            // Acreditar comisión automática del 25% al patrocinador si corresponde
-            if ($seller->parent) {
+            // Acreditar comisión automática del 25% al Proveedor Mayorista patrocinador (Super Reseller)
+            // REGLA: El Super Admin Central NO cobra ninguna comisión por servicios ofrecidos por proveedores o revendedores.
+            if ($seller->parent && $seller->parent->isSuperReseller()) {
                 $pct = (float) ($seller->parent_commission_pct ?: 25.00);
                 $parentCommission = round($this->amount * ($pct / 100), 2);
                 $seller->parent->addBalance($parentCommission);

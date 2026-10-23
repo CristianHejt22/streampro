@@ -209,6 +209,33 @@
     </div>
 
     @if(Auth::user()->isAdmin())
+    <!-- CLARIFICACIÓN DEL MODELO DE NEGOCIO: ROL SUPER ADMIN CENTRAL -->
+    <div class="p-4 rounded-3xl bg-gradient-to-r from-blue-950/40 via-slate-900 to-indigo-950/30 border border-blue-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs space-y-1">
+                <h4 class="font-black text-white text-sm flex items-center gap-2">
+                    <span>Super Admin Central: Solo Paneles & Clonaciones Mensuales</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-bold">0% Comisión en Servicios</span>
+                </h4>
+                <p class="text-slate-300 leading-relaxed">
+                    El Super Admin Central monetiza exclusivamente mediante la provisión de <strong>paneles (créditos)</strong> y el cobro de <strong>tiendas clonadas ($8.000/mes por tienda)</strong>. 
+                    <strong class="text-white">NO cobra ninguna comisión ni ganancia sobre las cuentas o servicios ofrecidos por cada proveedor.</strong>
+                </p>
+                <p class="text-slate-400 text-[11px]">
+                    El Super Admin es totalmente independiente para elegir libremente los proveedores y servicios que considere convenientes ofrecer en su panel de venta propio.
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <span class="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 font-mono text-xs font-bold">
+                $8.000 / Tienda Clonada
+            </span>
+        </div>
+    </div>
+
     <!-- PREFERENCIAS DEL SUPER PANEL: ARQUITECTURA DE CANALES DE WHATSAPP -->
     <div class="p-5 rounded-3xl bg-gradient-to-r from-gray-900 via-[#10182b] to-gray-900 border border-emerald-500/30 shadow-2xl space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-800">
@@ -716,12 +743,17 @@
                                     $resAgreement = "📋 *CONVENIO ADMINISTRATIVO - PLATAFORMA CSTREAME*\n\n"
                                         . "Hola *" . $res->name . "* (" . ($res->brand_name ?: 'Panel') . "):\n"
                                         . "Te notificamos los términos y condiciones del acuerdo administrativo vigente para tu panel:\n\n"
-                                        . "1️⃣ *CUENTAS Y PANELES:*\n"
+                                        . "1️⃣ *ROL DEL SUPER ADMIN CENTRAL:*\n"
+                                        . "• El Super Admin Central opera exclusivamente para paneles y clonaciones de tiendas por mes (aceptaciones de clonación).\n"
+                                        . "• NO cobra ninguna comisión o ganancia por los servicios ofrecidos por cada proveedor (0% comisión en servicios).\n\n"
+                                        . "2️⃣ *TIENDAS CLONADAS ($15.000/mes):*\n"
+                                        . "• Distribución: $8.000 Administrador General (licencia de software y clonación) | $7.000 Proveedor Patrocinador.\n\n"
+                                        . "3️⃣ *INDEPENDENCIA DE SERVICIOS:*\n"
+                                        . "• El Super Admin Central es totalmente independiente en los servicios que elija ofrecer de proveedores que le parezca conveniente a la hora de vender en su panel propio.\n\n"
+                                        . "4️⃣ *CUENTAS Y PANELES:*\n"
                                         . "• Cuentas y pantallas con entrega automática por saldo en billetera o transferencia bancaria aceptada.\n"
                                         . "• Sin excepción: NO hay consignación de gracia de 48hs sin abono confirmado.\n\n"
-                                        . "2️⃣ *TIENDAS CLONADAS ($15.000/mes):*\n"
-                                        . "• Distribución: $8.000 Administrador General | $7.000 Proveedor Patrocinador.\n\n"
-                                        . "3️⃣ *CRÉDITOS Y PRECIOS AL PÚBLICO:*\n"
+                                        . "5️⃣ *CRÉDITOS Y PRECIOS AL PÚBLICO:*\n"
                                         . "• Como proveedor o revendedor puedes configurar tu propio precio de venta de paneles en tu landing page. El Super Admin brinda el PVP sugerido ($4.000 Básico / $6.000 PRO).\n\n"
                                         . "Por favor confirma la recepción para mantener la operatividad activa.\n\n"
                                         . "Administración Central CStreame";
@@ -799,7 +831,11 @@
                         </td>
                         <td class="py-3 px-4 text-xs font-mono">
                             <span class="text-emerald-400 font-bold block">General: {{ $res->reseller_commission_pct ?? 40 }}%</span>
-                            <span class="text-purple-400 block text-[11px]">Patrocinador: {{ $res->parent_commission_pct ?? 25 }}%</span>
+                            @if($res->parent && $res->parent->isSuperReseller())
+                            <span class="text-purple-400 block text-[11px]">Proveedor: {{ $res->parent_commission_pct ?? 25 }}%</span>
+                            @else
+                            <span class="text-slate-400 block text-[11px]">Comisión Admin en Servicios: <strong class="text-emerald-400 font-mono">0%</strong></span>
+                            @endif
                             @if($res->customServiceCommissions && $res->customServiceCommissions->isNotEmpty())
                             <div class="mt-1 flex flex-wrap gap-1">
                                 @foreach($res->customServiceCommissions as $csc)
