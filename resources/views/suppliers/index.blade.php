@@ -103,18 +103,19 @@
 
                 @if($sup->whatsapp)
                 @php
-                    $supAgreement = "📋 *CONVENIO ADMINISTRATIVO - PLATAFORMA CSTREAME*\n\n"
+                    $supAgreement = "📋 *CONVENIO ADMINISTRATIVO - CSTREAME*\n\n"
                         . "Estimado proveedor *" . $sup->name . "*:\n"
-                        . "Te notificamos los términos y acuerdos administrativos para el suministro de cuentas en CStreame:\n\n"
-                        . "1️⃣ *CUENTAS Y PANELES:*\n"
-                        . "• Cuentas y pantallas con entrega automática por saldo en billetera o transferencia bancaria aceptada.\n"
-                        . "• Sin excepción: NO hay consignación de gracia de 48hs sin abono confirmado.\n\n"
-                        . "2️⃣ *TIENDAS CLONADAS Y FRANQUICIAS ($15.000/mes):*\n"
-                        . "• Distribución: $8.000 Administrador General | $7.000 Proveedor Patrocinador.\n\n"
-                        . "3️⃣ *PANELES Y PRECIOS AL PÚBLICO:*\n"
-                        . "• El Administrador fija el PVP sugerido ($4.000 Básico / $6.000 PRO). Cada proveedor ajusta su propio precio en su landing page.\n\n"
-                        . "Por favor confirma la conformidad de este convenio para mantener la vinculación activa.\n\n"
-                        . "Administración Central CStreame";
+                        . "Puntos puntuales del acuerdo administrativo vigente:\n\n"
+                        . "1️⃣ *PANELES & TIENDAS:*\n"
+                        . "• Activación y gestión de paneles y tiendas mediante créditos.\n\n"
+                        . "2️⃣ *CERO COMISIÓN EN SERVICIOS:*\n"
+                        . "• La administración NO cobra comisión ni porcentaje sobre tus cuentas o servicios (0%).\n\n"
+                        . "3️⃣ *ENTREGAS & SALDO:*\n"
+                        . "• Emisión contra saldo disponible o transferencia acreditada (sin cuentas fiadas).\n\n"
+                        . "4️⃣ *INDEPENDENCIA COMERCIAL:*\n"
+                        . "• Cada parte opera con total libertad en sus precios, servicios y catálogo.\n\n"
+                        . "Confirmar recepción para mantener la operatividad activa.\n\n"
+                        . "— Administración Central CStreame";
                 @endphp
                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $sup->whatsapp) }}?text={{ urlencode($supAgreement) }}" target="_blank" class="w-full py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm">
                     <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>

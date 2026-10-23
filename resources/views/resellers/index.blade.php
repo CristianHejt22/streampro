@@ -740,23 +740,19 @@
                                     {{ $res->support_whatsapp ?: $res->phone }}
                                 </a>
                                 @php
-                                    $resAgreement = "📋 *CONVENIO ADMINISTRATIVO - PLATAFORMA CSTREAME*\n\n"
+                                    $resAgreement = "📋 *CONVENIO ADMINISTRATIVO - CSTREAME*\n\n"
                                         . "Hola *" . $res->name . "* (" . ($res->brand_name ?: 'Panel') . "):\n"
-                                        . "Te notificamos los términos y condiciones del acuerdo administrativo vigente para tu panel:\n\n"
-                                        . "1️⃣ *ROL DEL SUPER ADMIN CENTRAL:*\n"
-                                        . "• El Super Admin Central opera exclusivamente para paneles y clonaciones de tiendas por mes (aceptaciones de clonación).\n"
-                                        . "• NO cobra ninguna comisión o ganancia por los servicios ofrecidos por cada proveedor (0% comisión en servicios).\n\n"
-                                        . "2️⃣ *TIENDAS CLONADAS ($15.000/mes):*\n"
-                                        . "• Distribución: $8.000 Administrador General (licencia de software y clonación) | $7.000 Proveedor Patrocinador.\n\n"
-                                        . "3️⃣ *INDEPENDENCIA DE SERVICIOS:*\n"
-                                        . "• El Super Admin Central es totalmente independiente en los servicios que elija ofrecer de proveedores que le parezca conveniente a la hora de vender en su panel propio.\n\n"
-                                        . "4️⃣ *CUENTAS Y PANELES:*\n"
-                                        . "• Cuentas y pantallas con entrega automática por saldo en billetera o transferencia bancaria aceptada.\n"
-                                        . "• Sin excepción: NO hay consignación de gracia de 48hs sin abono confirmado.\n\n"
-                                        . "5️⃣ *CRÉDITOS Y PRECIOS AL PÚBLICO:*\n"
-                                        . "• Como proveedor o revendedor puedes configurar tu propio precio de venta de paneles en tu landing page. El Super Admin brinda el PVP sugerido ($4.000 Básico / $6.000 PRO).\n\n"
-                                        . "Por favor confirma la recepción para mantener la operatividad activa.\n\n"
-                                        . "Administración Central CStreame";
+                                        . "Puntos puntuales del acuerdo administrativo vigente:\n\n"
+                                        . "1️⃣ *PANELES & TIENDAS:*\n"
+                                        . "• Activación y gestión de paneles y tiendas mediante créditos.\n\n"
+                                        . "2️⃣ *CERO COMISIÓN EN SERVICIOS:*\n"
+                                        . "• La administración NO cobra comisión ni porcentaje sobre tus cuentas o servicios (0%).\n\n"
+                                        . "3️⃣ *ENTREGAS & SALDO:*\n"
+                                        . "• Emisión contra saldo disponible o transferencia acreditada (sin cuentas fiadas).\n\n"
+                                        . "4️⃣ *INDEPENDENCIA COMERCIAL:*\n"
+                                        . "• Cada parte opera con total libertad en sus precios, servicios y catálogo.\n\n"
+                                        . "Confirmar recepción para mantener la operatividad activa.\n\n"
+                                        . "— Administración Central CStreame";
                                 @endphp
                                 <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $res->support_whatsapp ?: $res->phone) }}?text={{ urlencode($resAgreement) }}" target="_blank" class="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold flex items-center gap-1" title="Enviar Convenio Administrativo por WhatsApp">
                                     <i data-lucide="file-check" class="w-3 h-3"></i>
