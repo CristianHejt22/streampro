@@ -25,21 +25,6 @@
             <p class="text-sm text-gray-400 mt-1">Control y Venta de Cuentas Streaming</p>
         </div>
 
-        <!-- Quick 1-Click Demo Logins -->
-        <div class="mb-6 bg-[#111827] border border-gray-800 rounded-2xl p-4 backdrop-blur-md">
-            <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2 text-center">
-                Acceso Rápido de Prueba (1 Clic)
-            </span>
-            <div class="grid grid-cols-2 gap-2">
-                <button type="button" onclick="fillLogin('admin@cstreame.com', 'admin123')" class="px-3 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 text-xs font-bold text-center transition-all hover:scale-[1.02]">
-                    👑 Administrador
-                </button>
-                <button type="button" onclick="fillLogin('marcos@revendedor.com', 'reseller123')" class="px-3 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold text-center transition-all hover:scale-[1.02]">
-                    💼 Revendedor Marcos
-                </button>
-            </div>
-        </div>
-
         <!-- Login Form Card -->
         <div class="bg-[#111827] border border-gray-800 rounded-3xl p-8 shadow-2xl">
             @if(session('success'))
@@ -63,7 +48,7 @@
                     </label>
                     <div class="relative">
                         <i data-lucide="mail" class="w-5 h-5 text-gray-500 absolute left-3.5 top-3.5"></i>
-                        <input type="email" id="email" name="email" value="{{ old('email', 'admin@cstreame.com') }}" required autofocus
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="admin@tudominio.com" required autofocus
                             class="w-full pl-11 pr-4 py-3 bg-[#0b0f19] border border-gray-800 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-red-500 transition-all font-mono">
                     </div>
                 </div>
@@ -74,7 +59,7 @@
                     </label>
                     <div class="relative">
                         <i data-lucide="lock" class="w-5 h-5 text-gray-500 absolute left-3.5 top-3.5"></i>
-                        <input type="password" id="password" name="password" value="admin123" required
+                        <input type="password" id="password" name="password" placeholder="••••••••" required
                             class="w-full pl-11 pr-4 py-3 bg-[#0b0f19] border border-gray-800 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-red-500 transition-all font-mono">
                     </div>
                 </div>
@@ -89,7 +74,7 @@
                     </a>
                 </div>
 
-                <button type="submit" class="w-full py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all">
+                <button type="submit" class="w-full py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer">
                     <span>Ingresar al Panel</span>
                     <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </button>
@@ -98,10 +83,6 @@
     </div>
 
     <script>
-        function fillLogin(email, pass) {
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = pass;
-        }
         lucide.createIcons();
     </script>
 </body>
