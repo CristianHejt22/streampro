@@ -332,12 +332,12 @@ class User extends Authenticatable
 
     public function getBasicPanelPriceAttribute(): float
     {
-        return (float) ($this->panel_basic_sale_price ?? 4000.00);
+        return (float) ($this->panel_basic_sale_price ?? SystemSetting::get('suggested_basic_panel_price', 4000.00));
     }
 
     public function getProPanelPriceAttribute(): float
     {
-        return (float) ($this->panel_pro_sale_price ?? 6000.00);
+        return (float) ($this->panel_pro_sale_price ?? SystemSetting::get('suggested_pro_panel_price', 6000.00));
     }
 
     public function isPanelSalesOffered(): bool

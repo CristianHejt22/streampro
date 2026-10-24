@@ -268,14 +268,16 @@
         </div>
     </section>
 
+    @if($seller && $seller->isPanelSalesOffered())
     <!-- ======================================================== -->
     <!-- COMPARATIVA DE PANELES: BÁSICO (10 SERVICIOS) vs PRO ILIMITADO -->
     <!-- ======================================================== -->
     <section id="planes-paneles" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
         <div class="text-center max-w-2xl mx-auto space-y-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">Emprende con Tu Propio Panel</span>
             <h2 class="text-3xl font-black text-white tracking-tight">Elige Tu Tipo de Panel de Streaming</h2>
             <p class="text-xs sm:text-sm text-slate-400">
-                El Super Admin vende paquetes de créditos para activación y renovación de paneles por 30 días.
+                Inicia tu propio negocio de reventa de streaming con entrega automática, Bóveda privada de clientes y soporte garantizado.
             </p>
         </div>
 
@@ -295,15 +297,15 @@
                         <p class="text-xs text-slate-400 mt-1">Ideal para revendedores que comercializan hasta 10 plataformas principales.</p>
                     </div>
 
-                    <!-- Precios de Créditos -->
-                    <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Tarifa Oficial de Créditos:</span>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Pack 10 Créditos Básicos:</span>
-                            <span class="text-white font-mono font-bold">$2.500 <span class="text-[10px] text-slate-400 font-sans">c/u ($25.000 total)</span></span>
+                    <!-- Precio Sugerido Usuario Final -->
+                    <div class="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/30 space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Suscripción Mensual / Precio Sugerido:</span>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span class="text-3xl font-black text-white font-mono">${{ number_format($seller->basic_panel_price, 0, ',', '.') }}</span>
+                            <span class="text-xs text-slate-400 font-mono">/ mes</span>
                         </div>
                         <span class="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
-                            * Mínimo 10 créditos. Cada crédito activa o renueva 1 panel básico por 30 días.
+                            💡 PVP Sugerido Oficial al Público para emprender con tu propio panel de 10 servicios.
                         </span>
                     </div>
 
@@ -327,17 +329,25 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
-                            <span>Soporte por WhatsApp integrado</span>
+                            <span>Soporte por WhatsApp de {{ $brandName }}</span>
                         </li>
                     </ul>
                 </div>
 
-                <div class="pt-6 mt-6 border-t border-slate-800">
+                <div class="pt-6 mt-6 border-t border-slate-800 space-y-2">
                     @if($supportWhatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20B%C3%81SICO%20(10%20Servicios)%20y%20el%20Pack%20de%2010%20cr%C3%A9ditos%20por%20$25.000." target="_blank" class="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName) }},%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20B%C3%81SICO%20por%20${{ number_format($seller->basic_panel_price, 0) }}." target="_blank" class="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer">
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
-                        <span>Solicitar Panel Básico (10 Créditos)</span>
+                        <span>Adquirir Panel Básico (${{ number_format($seller->basic_panel_price, 0, ',', '.') }}/mes)</span>
                     </a>
+                    @endif
+                    @if($seller->referral_code)
+                    <div class="text-center">
+                        <a href="{{ route('affiliate.register', $seller->referral_code) }}" class="text-[11px] text-amber-300/80 hover:text-amber-200 hover:underline font-mono inline-flex items-center gap-1">
+                            <span>O registrarme en línea directamente</span>
+                            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </a>
+                    </div>
                     @endif
                 </div>
             </div>
@@ -362,15 +372,15 @@
                         <p class="text-xs text-slate-400 mt-1">Para proveedor o revendedor que quiere libertad total de servicios y stock.</p>
                     </div>
 
-                    <!-- Precios de Créditos -->
-                    <div class="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 space-y-2">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block">Tarifa Oficial de Créditos:</span>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-slate-300">Pack 10 Créditos PRO:</span>
-                            <span class="text-white font-mono font-bold">$4.000 <span class="text-[10px] text-slate-400 font-sans">c/u ($40.000 total)</span></span>
+                    <!-- Precio Sugerido Usuario Final -->
+                    <div class="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 block">Suscripción Mensual / Precio Sugerido:</span>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span class="text-3xl font-black text-purple-400 font-mono">${{ number_format($seller->pro_panel_price, 0, ',', '.') }}</span>
+                            <span class="text-xs text-slate-400 font-mono">/ mes</span>
                         </div>
-                        <span class="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
-                            * Mínimo 10 créditos. Cada crédito activa o renueva 1 panel PRO ilimitado por 30 días.
+                        <span class="text-[10px] text-purple-300/80 block pt-1 border-t border-slate-800">
+                            💡 PVP Sugerido Oficial al Público con servicios ilimitados, marca propia y reventa de paneles.
                         </span>
                     </div>
 
@@ -382,37 +392,47 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span><strong>Agrega tus servicios individuales propios</strong></span>
+                            <span><strong>Marca Blanca Propia</strong>: tu propio nombre, logo y colores</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Copia completa del inventario y cuentas de tu proveedor o revendedor patrocinador</span>
+                            <span><strong>Reventa de paneles</strong> a tu propia red de revendedores</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Marca Blanca total: tu propio nombre, logo y colores</span>
+                            <span>Bóveda privada de clientes con <strong>PIN y Biometría</strong></span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Comisiones personalizadas por plataforma (Netflix, Disney, etc.)</span>
+                            <span>Entrega automática con saldo o transferencia bancaria aceptada</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400 shrink-0"></i>
-                            <span>Soporte WhatsApp propio o derivado a tu proveedor o revendedor patrocinador</span>
+                            <span>Soporte por WhatsApp de {{ $brandName }}</span>
                         </li>
                     </ul>
                 </div>
 
-                <div class="pt-6 mt-6 border-t border-slate-800">
+                <div class="pt-6 mt-6 border-t border-slate-800 space-y-2">
                     @if($supportWhatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola,%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20PRO%20(Ilimitado)%20y%20el%20Pack%20de%2010%20cr%C3%A9ditos%20por%20$40.000." target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30 cursor-pointer">
+                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $supportWhatsapp) }}?text=Hola%20{{ urlencode($brandName) }},%20quisiera%20solicitar%20la%20activaci%C3%B3n%20de%20un%20PANEL%20PRO%20por%20${{ number_format($seller->pro_panel_price, 0) }}." target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30 cursor-pointer">
                         <i data-lucide="message-circle" class="w-4 h-4"></i>
-                        <span>Solicitar Panel PRO (10 Créditos)</span>
+                        <span>Adquirir Panel PRO (${{ number_format($seller->pro_panel_price, 0, ',', '.') }}/mes)</span>
                     </a>
+                    @endif
+                    @if($seller->referral_code)
+                    <div class="text-center">
+                        <a href="{{ route('affiliate.register', $seller->referral_code) }}" class="text-[11px] text-purple-300/80 hover:text-purple-200 hover:underline font-mono inline-flex items-center gap-1">
+                            <span>O registrarme en línea directamente</span>
+                            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </a>
+                    </div>
                     @endif
                 </div>
             </div>
         </div>
+    </section>
+    @endif
 
         <!-- ======================================================== -->
         <!-- PACK COMBO DÚO: 5 DE CADA UNO JUNTOS -->

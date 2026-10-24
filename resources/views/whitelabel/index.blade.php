@@ -346,8 +346,12 @@
                         <i data-lucide="layers" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-white">Reventa de Paneles en Tu Landing Page / Catálogo</h3>
-                        <p class="text-xs text-gray-400">Configura tus propios precios de venta para ofrecer franquicias de paneles streaming a tus clientes y revendedores.</p>
+                        <h3 class="text-base font-black text-white">
+                            {{ $user->isAdmin() ? 'Opciones de Panel & Precio Sugerido al Público (Usuarios Finales)' : 'Reventa de Paneles en Tu Landing Page / Catálogo' }}
+                        </h3>
+                        <p class="text-xs text-gray-400">
+                            {{ $user->isAdmin() ? 'Configura el precio sugerido oficial para Panel Básico y PRO en el catálogo público y como base para la red de revendedores.' : 'Configura tus propios precios de venta para ofrecer franquicias de paneles streaming a tus clientes y revendedores.' }}
+                        </p>
                     </div>
                 </div>
 
@@ -356,8 +360,12 @@
                         <input type="checkbox" name="offer_panels_on_catalog" value="1" {{ old('offer_panels_on_catalog', $user->offer_panels_on_catalog ?? true) ? 'checked' : '' }}
                             class="w-4 h-4 rounded text-red-600 focus:ring-0 bg-slate-900 border-gray-700">
                         <div>
-                            <span class="text-xs font-bold text-white block">Ofrecer venta de Paneles en mi Catálogo Público / Landing</span>
-                            <span class="text-[11px] text-gray-400">Permite que quienes visiten tu link de referido puedan adquirir un Panel Básico o PRO a tu precio definido.</span>
+                            <span class="text-xs font-bold text-white block">
+                                {{ $user->isAdmin() ? 'Activar y mostrar opciones de Panel en el Catálogo Público / Landing' : 'Ofrecer venta de Paneles en mi Catálogo Público / Landing' }}
+                            </span>
+                            <span class="text-[11px] text-gray-400">
+                                {{ $user->isAdmin() ? 'Permite que los usuarios finales y visitantes puedan adquirir Panel Básico o PRO al precio sugerido.' : 'Permite que quienes visiten tu link de referido puedan adquirir un Panel Básico o PRO a tu precio definido.' }}
+                            </span>
                         </div>
                     </label>
 

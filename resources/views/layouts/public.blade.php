@@ -102,7 +102,9 @@
                     <a href="{{ $urlFaq }}" class="hover:text-amber-400 transition-colors">FAQ</a>
                 @else
                     {{-- LANDING CENTRAL SUPER ADMIN --}}
+                    @if(!isset($seller) || $seller->isPanelSalesOffered())
                     <a href="{{ $urlPlanes }}" class="hover:text-white transition-colors">Planes</a>
+                    @endif
                     <a href="{{ $urlCotizador }}" class="hover:text-white transition-colors">Cotizador</a>
                     <a href="{{ $urlCatalogo }}" class="hover:text-white transition-colors">Catálogo</a>
                     <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 transition-colors">¿Cómo Funciona?</a>
@@ -167,7 +169,9 @@
                 <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>
                 <a href="{{ $urlFaq }}" class="hover:text-amber-400 shrink-0">FAQ</a>
             @else
+                @if(!isset($seller) || $seller->isPanelSalesOffered())
                 <a href="{{ $urlPlanes }}" class="hover:text-white shrink-0">Planes</a>
+                @endif
                 <a href="{{ $urlCotizador }}" class="hover:text-white shrink-0">Cotizador</a>
                 <a href="{{ $urlCatalogo }}" class="hover:text-white shrink-0">Catálogo</a>
                 <a href="{{ $urlComoFunciona }}" class="hover:text-red-400 shrink-0">¿Cómo Funciona?</a>

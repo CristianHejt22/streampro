@@ -86,6 +86,12 @@ class WhiteLabelController extends Controller
             if ($request->filled('panel_pro_sale_price')) {
                 $user->panel_pro_sale_price = max(0, (float) $request->input('panel_pro_sale_price'));
             }
+
+            // Si es el Super Admin, actualizar también el Precio Sugerido Oficial global de la plataforma
+            if ($user->isAdmin()) {
+                SystemSetting::set('suggested_basic_panel_price', $user->panel_basic_sale_price);
+                SystemSetting::set('suggested_pro_panel_price', $user->panel_pro_sale_price);
+            }
         }
 
         $user->save();

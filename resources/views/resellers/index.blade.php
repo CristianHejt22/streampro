@@ -18,6 +18,20 @@
     masterActivationModal: false,
     creditActivationModal: false,
     transferAuditModal: false,
+    panelPricingModal: false,
+    pricingResellerId: null,
+    pricingResellerName: '',
+    pricingBasicPrice: 4000,
+    pricingProPrice: 6000,
+    pricingOfferCatalog: true,
+    openPanelPricingModal(id, name, basic, pro, offer) {
+        this.pricingResellerId = id;
+        this.pricingResellerName = name;
+        this.pricingBasicPrice = basic;
+        this.pricingProPrice = pro;
+        this.pricingOfferCatalog = !!offer;
+        this.panelPricingModal = true;
+    },
     activeTransfer: null,
     transferReceiptUrl: '',
     transferResellerName: '',
@@ -812,7 +826,12 @@
                                                 </button>
                                             </form>
                                         </div>
-                                        <span class="text-[9px] text-slate-400 font-mono block mt-0.5">PVP Sugerido: ${{ number_format($res->basic_panel_price, 0, ',', '.') }} / ${{ number_format($res->pro_panel_price, 0, ',', '.') }}</span>
+                                        <div class="flex items-center justify-between gap-1 mt-0.5">
+                                            <span class="text-[9px] text-slate-400 font-mono">PVP Sugerido: ${{ number_format($res->basic_panel_price, 0, ',', '.') }} / ${{ number_format($res->pro_panel_price, 0, ',', '.') }}</span>
+                                            <button type="button" @click="openPanelPricingModal({{ $res->id }}, '{{ addslashes($res->name) }}', {{ $res->basic_panel_price }}, {{ $res->pro_panel_price }}, {{ $res->isPanelSalesOffered() ? 'true' : 'false' }})" class="text-[9px] text-amber-400 hover:text-amber-300 font-bold hover:underline cursor-pointer" title="Ajustar precio sugerido o reventa de paneles">
+                                                Editar
+                                            </button>
+                                        </div>
                                     @else
                                         <span class="text-[9px] text-gray-500 font-mono block">🔒 Básico (Venta directa cuentas)</span>
                                     @endif
@@ -1953,6 +1972,72 @@
                     </button>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: AJUSTAR PRECIOS SUGERIDOS Y REVENTA DE PANEL -->
+    <!-- ========================================== -->
+    <div x-show="panelPricingModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div @click.away="panelPricingModal = false" class="w-full max-w-md bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Precios de Panel y Reventa</h3>
+                        <p class="text-xs text-gray-400" x-text="pricingResellerName"></p>
+                    </div>
+                </div>
+                <button @click="panelPricingModal = false" class="text-gray-400 hover:text-white cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form :action="'/resellers/' + pricingResellerId + '/update-panel-pricing'" method="POST" class="space-y-4">
+                @csrf
+                <label class="flex items-center gap-2.5 p-3 rounded-xl bg-[#0b0f19] border border-gray-800 cursor-pointer">
+                    <input type="checkbox" name="offer_panels_on_catalog" value="1" :checked="pricingOfferCatalog" class="w-4 h-4 rounded text-red-600 bg-gray-900 border-gray-700">
+                    <div>
+                        <span class="text-xs font-bold text-white block">Ofrecer venta de paneles en su catálogo</span>
+                        <span class="text-[10px] text-gray-400">Permite que el revendedor exhiba las opciones de panel a sus usuarios finales.</span>
+                    </div>
+                </label>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                            Precio de Venta: Panel BÁSICO (10 Servicios) ($)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">$</span>
+                            <input type="number" step="0.01" min="0" name="panel_basic_sale_price" :value="pricingBasicPrice" required class="w-full pl-7 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white font-mono text-xs focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <span class="text-[10px] text-amber-400 block mt-0.5 font-mono">💡 PVP Sugerido Oficial por Admin: $4.000 / mes</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                            Precio de Venta: Panel PRO (Ilimitado) ($)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">$</span>
+                            <input type="number" step="0.01" min="0" name="panel_pro_sale_price" :value="pricingProPrice" required class="w-full pl-7 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white font-mono text-xs focus:ring-1 focus:ring-purple-500">
+                        </div>
+                        <span class="text-[10px] text-purple-400 block mt-0.5 font-mono">💡 PVP Sugerido Oficial por Admin: $6.000 / mes</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-800">
+                    <button type="button" @click="panelPricingModal = false" class="px-4 py-2 text-xs text-gray-400 hover:text-white">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer">
+                        Guardar Precios
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

@@ -796,6 +796,36 @@ class ResellerController extends Controller
     }
 
     /**
+     * Ajusta los precios sugeridos o personalizados de reventa de paneles para un revendedor
+     */
+    public function updatePanelPricing(Request $request, User $reseller)
+    {
+        $user = auth()->user();
+        if (!$user->isAdmin() && $reseller->parent_id !== $user->id && $user->id !== $reseller->id) {
+            abort(403, 'No tienes permisos para modificar los precios de este panel.');
+        }
+
+        $request->validate([
+            'panel_basic_sale_price' => 'required|numeric|min:0',
+            'panel_pro_sale_price' => 'required|numeric|min:0',
+        ]);
+
+        $reseller->panel_basic_sale_price = (float) $request->input('panel_basic_sale_price');
+        $reseller->panel_pro_sale_price = (float) $request->input('panel_pro_sale_price');
+        $reseller->offer_panels_on_catalog = $request->boolean('offer_panels_on_catalog');
+        $reseller->save();
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'update_reseller_panel_pricing',
+            'description' => "Se actualizaron los precios de paneles para {$reseller->name}: Básico \${$reseller->panel_basic_sale_price}, PRO \${$reseller->panel_pro_sale_price}, Oferta: " . ($reseller->offer_panels_on_catalog ? 'Activa' : 'Pausada'),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "Precios de reventa de paneles actualizados para {$reseller->name}.");
+    }
+
+    /**
      * Muestra el formulario público de afiliación de revendedor enviado por el Proveedor
      */
     public function showAffiliateRegister($code)
