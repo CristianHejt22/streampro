@@ -133,6 +133,7 @@ const storeSection = ref('digital') // 'digital' | 'physical'
 // Modal de Detalle de Producto Físico
 const selectedPhysicalProduct = ref(null)
 const showPhysicalModal = ref(false)
+const showImageZoomModal = ref(false)
 const physicalQuantity = ref(1)
 
 // Modal del Carrito previo al envío
@@ -349,11 +350,8 @@ const addPhysicalToCart = (product, qty = 1) => {
 const getProductDirectUrl = (product) => {
   if (!product) return ''
   const origin = getBaseOrigin()
-  if (isDirectSale.value) {
-    return `${origin}/?prod=${product.id}`
-  }
-  const resId = clientForm.value.selectedResellerId
-  return `${origin}/?ref=${resId}&prod=${product.id}`
+  const refCode = isDirectSale.value ? '' : clientForm.value.selectedResellerId
+  return refCode ? `${origin}/p/${product.id}?ref=${refCode}` : `${origin}/p/${product.id}`
 }
 
 const getProductShortUrl = (product) => {
@@ -1032,14 +1030,7 @@ const submitOrder = async () => {
               <span>🤝</span>
               <span>AYUDAR COMPARTIENDO</span>
             </button>
-            <button 
-              @click="openFlyerForPackage(pkg)"
-              class="w-full bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-amber-200 text-xs font-bold py-2 px-3 rounded-xl transition-all border border-amber-500/30 flex items-center justify-center gap-1.5"
-              title="Crear Flyer promocional de este combo para WhatsApp o redes"
-            >
-              <span>🎨</span>
-              <span>Crear Flyer de este Combo</span>
-            </button>
+            
           </div>
         </div>
       </div>
@@ -1177,6 +1168,13 @@ const submitOrder = async () => {
                     title="Compartir por WhatsApp"
                   >
                     💬
+                  </button>
+                  <button 
+                    @click="openFlyerForPhysical(item)" 
+                    class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-amber-500/30 transition-colors shrink-0 flex items-center justify-center"
+                    title="Crear Flyer de este producto"
+                  >
+                    🎨
                   </button>
                 </div>
               </div>
@@ -1862,7 +1860,29 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- MODAL GENERADOR DE FLYERS -->
+    <!-- MODAL LIGHTBOX: IMAGEN DE PRODUCTO FÍSICO EN FOCO HD -->
+    <div v-if="showImageZoomModal && selectedPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200" @click="showImageZoomModal = false">
+      <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-4" @click.stop>
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h4 class="font-black text-white text-sm sm:text-base">{{ selectedPhysicalProduct.name }}</h4>
+            <span class="text-amber-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
+          </div>
+          <button @click="showImageZoomModal = false" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center transition cursor-pointer">✕</button>
+        </div>
+        <div class="w-full h-80 sm:h-96 bg-white rounded-2xl p-4 flex items-center justify-center shadow-inner overflow-hidden">
+          <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain" @error="(e) => e.target.src = 'https://tua.ar/images/banner22.webp'">
+        </div>
+        <div class="flex justify-between items-center text-xs text-slate-400">
+          <span class="font-mono text-[11px] text-emerald-400 flex items-center gap-1">
+            <span>✓</span> Imagen Oficial en Foco Ultra HD
+          </span>
+          <button @click="showImageZoomModal = false" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-1.5 rounded-xl font-bold transition">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL GENERADOR DE FLYERS (SOLO PRODUCTOS FÍSICOS PARA CLIENTES) -->
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"

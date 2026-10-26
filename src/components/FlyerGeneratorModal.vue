@@ -9,7 +9,8 @@ const props = defineProps({
   defaultStoreName: { type: String, default: 'StreamePro Oficial' },
   initialProduct: { type: Object, default: null },
   resellerRef: { type: String, default: 'DIRECT' },
-  websiteDomain: { type: String, default: 'streamepro.me' }
+  websiteDomain: { type: String, default: 'streamepro.me' },
+  clientOnlyPhysical: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close'])
@@ -99,6 +100,12 @@ const displayDomain = computed(() => {
 // Watchers de props iniciales
 watch(() => props.defaultStoreName, (val) => {
   if (val) storeName.value = val
+}, { immediate: true })
+
+watch(() => props.clientOnlyPhysical, (val) => {
+  if (val) {
+    flyerProductType.value = 'physical'
+  }
 }, { immediate: true })
 
 watch(() => props.websiteDomain, (val) => {
@@ -907,7 +914,8 @@ const shareToWhatsAppStatus = () => {
         <div class="lg:col-span-7 space-y-4">
           
           <!-- SELECTOR DE TIPO DE FLYER: 3 MODOS OFICIALES -->
-          <div class="space-y-1.5">
+          <!-- SELECTOR DE TIPO DE FLYER (Solo para revendedores/admins, simplificado para clientes en productos físicos) -->
+          <div v-if="!clientOnlyPhysical" class="space-y-1.5">
             <label class="block font-bold uppercase text-slate-400 text-[11px]">
               🎯 Modo de Flyer a Promocionar
             </label>
@@ -942,6 +950,22 @@ const shareToWhatsAppStatus = () => {
                 <span class="leading-tight">Productos Físicos</span>
               </button>
             </div>
+          </div>
+
+          <!-- ENCABEZADO SIMPLIFICADO PARA CLIENTES (SOLO PRODUCTOS FÍSICOS) -->
+          <div v-else class="flex items-center justify-between p-3 bg-[#020617] rounded-2xl border border-amber-500/30">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg border border-amber-500/30">
+                📦
+              </span>
+              <div>
+                <span class="font-black text-amber-300 text-xs block">Flyer Oficial de Producto Físico</span>
+                <span class="text-[10px] text-slate-400">Personaliza y descarga el flyer oficial para compartir en tus historias o estados</span>
+              </div>
+            </div>
+            <span class="text-[9px] bg-amber-400 text-slate-950 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              Catálogo Oficial
+            </span>
           </div>
 
           <!-- SELECTOR DE FORMATO / TAMAÑOS ADAPTABLES -->

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /p/
+Allow: /producto/
+Allow: /api/product-preview
+
+# Sitemap oficial StreamePro
+Sitemap: https://streamepro.me/sitemap.xml
+Host: https://streamepro.me

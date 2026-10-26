@@ -32,6 +32,14 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/p/:id",
+      "destination": "/api/product-preview?prod=:id"
+    },
+    {
+      "source": "/producto/:id",
+      "destination": "/api/product-preview?prod=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

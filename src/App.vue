@@ -295,6 +295,10 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               &copy; 2026 StreamePro Cloud Enterprise. Todos los derechos reservados.
             </p>
             <span class="hidden sm:inline text-slate-700">•</span>
+            <span class="text-[11px] text-slate-400 font-mono">
+              Dirección Ejecutiva & CEO: <strong class="text-slate-300">Cristian Hejt</strong>
+            </span>
+            <span class="hidden sm:inline text-slate-700">•</span>
             <a 
               href="https://spro.li" 
               target="_blank" 
