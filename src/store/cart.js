@@ -39,7 +39,7 @@ export const useCartStore = defineStore('cart', {
     hasDigitalItems: (state) => state.items.some(i => i.itemType !== 'physical')
   },
   actions: {
-    addItem(product, planKey, planData, profiles = []) {
+    addItem(product, planKey, planData, profiles = [], activationEmail = '') {
       const defaultProfiles = profiles.length > 0 ? profiles : Array.from({ length: planData.units }, (_, idx) => ({
         name: planData.type === 'perfil' 
           ? `PERFIL ${idx + 1} - ${product.platform.toUpperCase()}`
@@ -55,6 +55,7 @@ export const useCartStore = defineStore('cart', {
 
       if (existingItem) {
         existingItem.quantity++
+        if (activationEmail) existingItem.activationEmail = activationEmail
       } else {
         this.items.push({ 
           id: product.id,
@@ -69,6 +70,7 @@ export const useCartStore = defineStore('cart', {
           providerCost: planData.providerCost,
           resellerProfit: planData.resellerProfit,
           profiles: defaultProfiles,
+          activationEmail: activationEmail || '',
           quantity: 1,
           itemType: 'digital'
         })

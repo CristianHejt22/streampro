@@ -1867,6 +1867,10 @@ const deletePackageItem = (pkgId) => {
               </div>
               <div class="text-xs text-slate-400 space-y-0.5">
                 <p>Cliente: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerPhone }})</p>
+                <p v-if="order.activationEmail" class="text-indigo-300 font-bold flex items-center gap-1.5 mt-0.5 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/30">
+                  <span>✉️</span>
+                  <span>Correo Activación: <strong class="text-white font-mono">{{ order.activationEmail }}</strong></span>
+                </p>
                 <p v-if="order.resellerId === 'DIRECT' || !order.resellerId" class="pt-0.5">
                   <span class="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                     <span>🛒</span> VENTA DIRECTA OFICIAL (PROVEEDOR)

@@ -115,7 +115,17 @@ const products = ref([
     category: 'Streaming', 
     platform: 'YouTube Premium',
     description: 'Videos sin publicidad, descargas y YouTube Music en segundo plano.',
-    plans: PLATFORM_PLANS['YouTube Premium']?.plans || {}
+    plans: PLATFORM_PLANS['YouTube Premium']?.plans || {},
+    requiresActivationEmail: true
+  },
+  { 
+    id: 8, 
+    name: 'Canva Pro', 
+    category: 'Diseño & Productividad', 
+    platform: 'Canva Pro',
+    description: 'Acceso ilimitado a plantillas premium, eliminador de fondos con 1 clic y kit de marcas oficial a tu propio correo.',
+    plans: PLATFORM_PLANS['Canva Pro']?.plans || {},
+    requiresActivationEmail: true
   }
 ])
 
@@ -126,6 +136,24 @@ const customProfiles = ref([])
 const showConfigModal = ref(false)
 const pinPreference = ref('same')
 const isProfilesExpanded = ref(true)
+const activationEmail = ref('')
+
+// Modal de Ficha Técnica / +info para Streaming
+const showStreamingInfoModal = ref(false)
+const selectedStreamingInfo = ref(null)
+
+const openStreamingInfo = (product) => {
+  selectedStreamingInfo.value = product
+  showStreamingInfoModal.value = true
+}
+
+const openConfigFromInfo = () => {
+  if (selectedStreamingInfo.value) {
+    const prod = selectedStreamingInfo.value
+    showStreamingInfoModal.value = false
+    openConfig(prod)
+  }
+}
 
 // Sección Activa en Tienda: 'digital' (Streaming & Música) vs 'physical' (Productos Físicos del Catálogo)
 const storeSection = ref('digital') // 'digital' | 'physical'
@@ -293,6 +321,7 @@ const openConfig = (product) => {
   const firstKey = Object.keys(product.plans)[0]
   selectedPlanKey.value = firstKey
   pinPreference.value = 'same'
+  activationEmail.value = ''
   updateProfilesList(product.plans[firstKey])
   isProfilesExpanded.value = true
   showConfigModal.value = true
@@ -318,16 +347,23 @@ const updateProfilesList = (planData) => {
 const confirmAddToCart = () => {
   const planData = selectedProduct.value.plans[selectedPlanKey.value]
   
+  if ((selectedProduct.value.requiresActivationEmail || selectedProduct.value.platform === 'Canva Pro' || selectedProduct.value.platform === 'YouTube Premium') && !activationEmail.value.trim()) {
+    toast.add('Por favor, ingresa el correo asociado a tu cuenta para recibir la activación', 'warning')
+    return
+  }
+
   cartStore.addItem(
     selectedProduct.value,
     selectedPlanKey.value,
     planData,
-    customProfiles.value.map(p => ({ name: p.name.trim() || 'PERFIL CLIENTE' }))
+    customProfiles.value.map((p, idx) => ({ name: p.name.trim() || `PERFIL ${idx + 1} - ${selectedProduct.value.platform.toUpperCase()}` })),
+    activationEmail.value.trim()
   )
 
   const lastItem = cartStore.items[cartStore.items.length - 1]
   if (lastItem) {
     lastItem.pinPreference = pinPreference.value
+    lastItem.activationEmail = activationEmail.value.trim()
   }
 
   toast.add(`${selectedProduct.value.name} (${planData.label}) añadido al carrito`, 'success')
@@ -499,7 +535,11 @@ const sendOrderToWhatsApp = () => {
     const name = i.name || i.platform || 'Item'
     const qty = i.quantity || i.units || 1
     const price = i.clientPrice || (i.priceNumeric || (parseInt(String(i.price || '0').replace(/[$. ]/g, '')) || 0))
-    return `• ${name} (x${qty}): $${(price * qty).toLocaleString()} ARS`
+    let str = `• ${name} (x${qty}): ${(price * qty).toLocaleString()} ARS`
+    if (i.activationEmail) {
+      str += `\n  ✉️ Correo activación: ${i.activationEmail}`
+    }
+    return str
   }).join('\n')
 
   let message = `¡Hola! Acabo de registrar mi pedido en la web de *StreamePro* 🚀\n\n` +
@@ -602,6 +642,7 @@ const submitOrder = async () => {
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
       platform: item.platform,
+      activationEmail: item.activationEmail || null,
       devices: item.units,
       pinPreference: item.pinPreference || 'same',
       planKey: item.planKey,
@@ -875,7 +916,17 @@ const submitOrder = async () => {
               </span>
             </div>
             <h3 class="text-xl font-bold text-white mb-2">{{ product.name }}</h3>
-            <p class="text-xs text-slate-400 mb-4 line-clamp-2 leading-relaxed">{{ product.description }}</p>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="text-xs text-slate-400 font-medium">Plan oficial garantizado</span>
+              <button 
+                type="button"
+                @click="openStreamingInfo(product)"
+                class="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                <span>ℹ️</span>
+                <span>Ver +info</span>
+              </button>
+            </div>
             
             <div class="space-y-1.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800 mb-4 text-xs">
               <div class="flex justify-between items-center text-slate-300">
@@ -893,10 +944,21 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <button @click="openConfig(product)" class="w-full bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            Elegir Plan & Nombres
-          </button>
+          <div class="flex gap-2">
+            <button 
+              type="button" 
+              @click="openStreamingInfo(product)"
+              class="px-3 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              title="Ver detalles y especificaciones del servicio"
+            >
+              <span>ℹ️</span>
+              <span>+info</span>
+            </button>
+            <button @click="openConfig(product)" class="flex-1 bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm text-xs sm:text-sm cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+              <span>Elegir Plan & Nombres</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1125,9 +1187,14 @@ const submitOrder = async () => {
               <h4 class="font-bold text-white text-[11px] sm:text-sm line-clamp-2 leading-snug cursor-pointer hover:text-amber-300 transition-colors" @click="openPhysicalModal(item)">
                 {{ item.name }}
               </h4>
-              <p class="text-[10px] sm:text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1 leading-relaxed hidden sm:block">
-                {{ item.description || 'Producto físico oficial con garantía.' }}
-              </p>
+              <button 
+                type="button"
+                @click.stop="openPhysicalModal(item)"
+                class="text-[10px] sm:text-[11px] font-semibold text-amber-400/90 hover:text-amber-300 mt-1 flex items-center gap-1 cursor-pointer hover:underline"
+              >
+                <span>📋</span>
+                <span>Ver Ficha Técnica</span>
+              </button>
             </div>
 
             <div class="pt-1.5 sm:pt-2 border-t border-slate-800">
@@ -1245,6 +1312,29 @@ const submitOrder = async () => {
           </div>
         </div>
 
+        <!-- Campo de Correo Personal para Activaciones (CANVA, YouTube Premium, etc.) -->
+        <div v-if="selectedProduct?.requiresActivationEmail || selectedProduct?.platform === 'Canva Pro' || selectedProduct?.platform === 'YouTube Premium'" class="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-3.5 space-y-2">
+          <div class="flex items-center gap-2 text-indigo-300 font-bold text-xs uppercase tracking-wider">
+            <span>✉️</span>
+            <span>Correo para Recibir tu Cuenta</span>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Ingresa el correo electrónico asociado a tu cuenta de {{ selectedProduct.name }} donde recibirás la invitación o activación oficial:
+          </p>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+              Tu Correo Personal (Gmail/Canva) <span class="text-rose-400">*</span>
+            </label>
+            <input 
+              v-model="activationEmail" 
+              type="email" 
+              placeholder="ejemplo@gmail.com"
+              class="w-full bg-slate-900 border border-indigo-500/50 focus:border-brand-accent rounded-xl p-3 text-white text-xs font-mono outline-none"
+              required
+            >
+          </div>
+        </div>
+
         <!-- Nombres de Perfiles -->
         <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/60">
           <button 
@@ -1256,7 +1346,7 @@ const submitOrder = async () => {
               <span class="text-brand-accent font-bold text-xs uppercase tracking-wider">
                 Personalizar Nombres ({{ customProfiles.length }} {{ customProfiles.length === 1 ? 'perfil' : 'dispositivos' }})
               </span>
-              <span class="text-[10px] text-slate-500 font-medium">(Opcional)</span>
+              <span class="text-[10px] text-slate-400 font-medium bg-slate-900 px-2 py-0.5 rounded border border-slate-800">(Opcional)</span>
             </div>
             <svg 
               :class="['w-4 h-4 text-slate-400 transition-transform duration-200', isProfilesExpanded ? 'rotate-180' : '']" 
@@ -1269,15 +1359,15 @@ const submitOrder = async () => {
           </button>
 
           <div v-show="isProfilesExpanded" class="p-3.5 pt-0 space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar border-t border-slate-800/60 mt-1">
-            <p class="text-[11px] text-slate-400 mb-2 italic">
-              Escribe el nombre deseado para cada acceso. El PIN te llegará con las credenciales finales:
+            <p class="text-[11px] text-slate-300 mb-2 leading-relaxed">
+              Escribe el nombre deseado para cada acceso. El PIN te llegará con las credenciales finales: u otros se brindara los datos generados.
             </p>
             <div v-for="(prof, idx) in customProfiles" :key="idx" class="flex gap-2 items-center bg-slate-900/90 p-2 rounded-lg border border-slate-800">
               <span class="text-xs font-bold text-slate-500 w-6 text-center">#{{ idx + 1 }}</span>
               <input 
                 v-model="prof.name" 
                 type="text" 
-                :placeholder="`Nombre ${idx + 1}`" 
+                :placeholder="`Nombre de perfil ${idx + 1} (opcional)`" 
                 class="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-white font-mono focus:border-brand-accent outline-none"
               >
             </div>
@@ -1609,6 +1699,117 @@ const submitOrder = async () => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- MODAL: FICHA TÉCNICA E INFORMACIÓN DEL SERVICIO (+INFO) -->
+    <div v-if="showStreamingInfoModal && selectedStreamingInfo" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20 text-lg">
+              ℹ️
+            </div>
+            <div>
+              <h3 class="text-xl font-black text-white">{{ selectedStreamingInfo.name }}</h3>
+              <p class="text-xs text-sky-400 font-semibold">{{ selectedStreamingInfo.category }} • Garantía Oficial StreamePro</p>
+            </div>
+          </div>
+          <button @click="showStreamingInfoModal = false" class="text-slate-400 hover:text-white p-1 text-lg cursor-pointer">✕</button>
+        </div>
+
+        <!-- Descripción General -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Descripción del Servicio</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">{{ selectedStreamingInfo.description }}</p>
+        </div>
+
+        <!-- Modalidades y Precios -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Modalidades Disponibles</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div 
+              v-for="(plan, pKey) in selectedStreamingInfo.plans" 
+              :key="pKey"
+              class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center"
+            >
+              <div>
+                <span class="font-bold text-white block">{{ plan.label }}</span>
+                <span class="text-[10px] text-slate-400">{{ plan.type === 'perfil' ? '1 Pantalla exclusiva' : plan.units + ' Pantallas simultáneas' }}</span>
+              </div>
+              <span class="text-sm font-black text-amber-300 font-mono">${{ plan.clientPrice }} ARS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Características y Especificaciones Técnicas -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Calidad</span>
+            <span class="font-bold text-white text-xs">4K Ultra HD + HDR</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Audio</span>
+            <span class="font-bold text-white text-xs">Dolby Atmos / 5.1</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Descargas</span>
+            <span class="font-bold text-white text-xs">Modo Offline</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Compatibilidad</span>
+            <span class="font-bold text-white text-xs">TV, PC, Móviles</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Seguridad</span>
+            <span class="font-bold text-white text-xs">PIN Exclusivo</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Garantía</span>
+            <span class="font-bold text-emerald-400 text-xs">30 Días Total</span>
+          </div>
+        </div>
+
+        <!-- Sección Específica si es Netflix: Hogar con Netflix -->
+        <div v-if="selectedStreamingInfo.platform === 'Netflix'" class="bg-red-950/30 border border-red-500/30 p-4 rounded-2xl text-xs space-y-1.5">
+          <div class="flex items-center gap-2 text-red-400 font-bold">
+            <span>🏠</span>
+            <span>Soporte de Actualización de Hogar con Netflix y Viajes</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            Nuestras cuentas Netflix cuentan con asistencia técnica y actualización de hogar. Si en tu Smart TV aparece el aviso de "Hogar con Netflix", podrás solicitar tu código o enlace de confirmación con 1 solo clic desde tu panel de cliente.
+          </p>
+        </div>
+
+        <!-- Sección Específica si es Canva Pro o YouTube: Activación personal -->
+        <div v-if="selectedStreamingInfo.requiresActivationEmail || selectedStreamingInfo.platform === 'Canva Pro' || selectedStreamingInfo.platform === 'YouTube Premium'" class="bg-indigo-950/30 border border-indigo-500/30 p-4 rounded-2xl text-xs space-y-1.5">
+          <div class="flex items-center gap-2 text-indigo-300 font-bold">
+            <span>✉️</span>
+            <span>Activación a tu Propio Correo Electrónico</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            Este servicio se vincula a tu correo personal (Gmail o Canva). No pierdes tus proyectos, listas de reproducción ni historial: se activa directamente sobre tu cuenta.
+          </p>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <button 
+            type="button" 
+            @click="showStreamingInfoModal = false"
+            class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            Cerrar
+          </button>
+          <button 
+            type="button" 
+            @click="openConfigFromInfo"
+            class="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-brand-accent hover:bg-sky-400 transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] cursor-pointer flex items-center gap-2"
+          >
+            <span>Elegir Plan & Configurar</span>
+            <span>→</span>
+          </button>
+        </div>
       </div>
     </div>
 

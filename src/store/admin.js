@@ -203,6 +203,19 @@ export const DEFAULT_PLATFORM_PLANS = {
         clientPrice: 4400
       }
     }
+  },
+  'Canva Pro': {
+    name: 'Canva Pro Diseño & Productividad',
+    plans: {
+      '1_perfil': {
+        label: 'Activación a tu Correo Personal (1 Año)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 2800,
+        resellerProfit: 1700,
+        clientPrice: 4500
+      }
+    }
   }
 }
 
@@ -1384,6 +1397,25 @@ export const useAdminStore = defineStore('admin', {
       return updatedCount
     },
 
+    // Solicitud de Actualización de Hogar Netflix
+    requestHogarUpdate({ account, profileName, clientName, clientNumber, tvModel = '', phone = '', resellerId = 'DIRECT' }) {
+      const alertId = `HOG-${Date.now().toString().slice(-4)}`
+      this.resellerAlerts.unshift({
+        id: alertId,
+        resellerId: resellerId || 'DIRECT',
+        clientNumber: clientNumber || 'CLI',
+        clientName: clientName || 'Cliente',
+        type: 'hogar_netflix',
+        title: '🏠 Solicitud de Hogar Netflix',
+        message: `El cliente solicitó actualización de Hogar con Netflix para la cuenta ${account} (Perfil: ${profileName || 'Principal'}${tvModel ? `, TV: ${tvModel}` : ''}). Contacto: ${phone || 'No especificado'}.`,
+        date: new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        read: false,
+        urgent: true
+      })
+      this.persist(DB_KEYS.RESELLER_ALERTS)
+      return { success: true, id: alertId }
+    },
+
     // CREAR PEDIDO STREAMING DIGITAL (DIRECTO O POR REVENDEDOR)
     createStreamingOrder(orderData) {
       const isDirect = !orderData.resellerId || orderData.resellerId === 'DIRECT'
@@ -1395,6 +1427,7 @@ export const useAdminStore = defineStore('admin', {
         customerName: orderData.customerName || 'Cliente',
         customerPhone: orderData.customerPhone || '',
         platform: orderData.platform,
+        activationEmail: orderData.activationEmail || null,
         devices: orderData.devices || 1,
         pinPreference: orderData.pinPreference || 'same',
         planKey: orderData.planKey,

@@ -145,6 +145,55 @@ const customerPhysicalOrders = computed(() => {
   })
 })
 
+// Gestión de Actualización de Hogar con Netflix
+const showHogarModal = ref(false)
+const selectedHogarAccount = ref(null)
+const hogarForm = ref({
+  profileName: '',
+  tvModel: ''
+})
+
+const openHogarModal = (acc) => {
+  selectedHogarAccount.value = acc
+  hogarForm.value = {
+    profileName: acc.profiles?.[0]?.name || 'Perfil 1',
+    tvModel: ''
+  }
+  showHogarModal.value = true
+}
+
+const confirmHogarRequest = () => {
+  if (!selectedHogarAccount.value) return
+  const acc = selectedHogarAccount.value
+  adminStore.requestHogarUpdate({
+    account: acc.account,
+    profileName: hogarForm.value.profileName,
+    clientName: acc.name,
+    clientNumber: acc.clientNumber,
+    tvModel: hogarForm.value.tvModel,
+    phone: acc.phone,
+    resellerId: acc.resellerId || 'DIRECT'
+  })
+  toast.add('¡Solicitud de actualización de Hogar enviada! Tu código/enlace se procesará de inmediato.', 'success')
+  showHogarModal.value = false
+}
+
+const sendHogarViaWhatsApp = () => {
+  if (!selectedHogarAccount.value) return
+  const acc = selectedHogarAccount.value
+  confirmHogarRequest()
+  const msg = `¡Hola! Necesito actualizar el Hogar con Netflix para mi servicio 📺\n\n` +
+    `• *Cuenta:* ${acc.account}\n` +
+    `• *Perfil:* ${hogarForm.value.profileName}\n` +
+    `• *Cliente:* ${acc.name} (${acc.clientNumber})\n` +
+    (hogarForm.value.tvModel ? `• *Dispositivo:* ${hogarForm.value.tvModel}\n` : '') +
+    `\nAcabo de presionar 'Actualizar Hogar / Estoy de viaje' en mi TV. Por favor confírmenme el enlace o código para continuar viendo.`
+
+  const providerPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+  const cleanPhone = providerPhone.replace(/[^0-9]/g, '')
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 const handleCustomerRenewal = (acc) => {
   const result = adminStore.requestRenewal({
     clientId: acc.id,
@@ -376,15 +425,23 @@ const handleCustomerRenewal = (acc) => {
                 </div>
               </div>
               
-              <!-- Acciones de Garantía y Renovación -->
-              <div class="flex gap-3 pt-2 border-t border-slate-800/80">
-                <button @click="toast.add('Falla reportada con éxito. Nuestro equipo técnico revisará el servicio en garantía.', 'success')" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 text-slate-300">
-                  <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                  Reportar Falla
+              <!-- Acciones de Garantía, Renovación y Hogar Netflix -->
+              <div class="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800/80">
+                <button 
+                  v-if="acc.platform.toLowerCase().includes('netflix')"
+                  @click="openHogarModal(acc)" 
+                  class="w-full sm:w-auto flex-1 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 hover:text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex justify-center items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <span>🏠</span>
+                  <span>Actualizar Hogar</span>
                 </button>
-                <button @click="handleCustomerRenewal(acc)" class="flex-1 bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/30 text-brand-accent text-xs font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2">
+                <button @click="toast.add('Falla reportada con éxito. Nuestro equipo técnico revisará el servicio en garantía.', 'success')" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors flex justify-center items-center gap-1.5 text-slate-300 cursor-pointer">
+                  <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  <span>Reportar Falla</span>
+                </button>
+                <button @click="handleCustomerRenewal(acc)" class="flex-1 bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/30 text-brand-accent text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex justify-center items-center gap-1.5 cursor-pointer">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                  Solicitar Renovación
+                  <span>Solicitar Renovación</span>
                 </button>
               </div>
             </div>
@@ -501,6 +558,76 @@ const handleCustomerRenewal = (acc) => {
         </div>
       </div>
     </Transition>
+
+    <!-- MODAL: ACTUALIZAR HOGAR CON NETFLIX -->
+    <div v-if="showHogarModal && selectedHogarAccount" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-4">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center text-xl">
+              🏠
+            </div>
+            <div>
+              <h3 class="text-xl font-black text-white">Actualizar Hogar con Netflix</h3>
+              <p class="text-xs text-slate-400 font-mono">{{ selectedHogarAccount.account }}</p>
+            </div>
+          </div>
+          <button @click="showHogarModal = false" class="text-slate-400 hover:text-white p-1 text-lg cursor-pointer">✕</button>
+        </div>
+
+        <div class="p-4 bg-red-950/40 border border-red-500/30 rounded-2xl text-xs text-red-200 space-y-2">
+          <p class="font-bold text-red-300">¿Te apareció el mensaje en tu televisor?</p>
+          <p class="text-[11px] leading-relaxed text-slate-300">
+            "Este televisor no forma parte de tu Hogar con Netflix" o "Enviar código para confirmar".
+          </p>
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-red-500/20 space-y-1.5 text-[11px]">
+            <p>1️⃣ En tu Smart TV, pulsa en <strong>"Actualizar Hogar con Netflix"</strong> o <strong>"Estoy de viaje"</strong>.</p>
+            <p>2️⃣ Haz clic abajo para solicitar la autorización de tu dispositivo.</p>
+            <p>3️⃣ El enlace o código de confirmación se validará inmediatamente para que continúes viendo.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Perfil Utilizado</label>
+            <select v-model="hogarForm.profileName" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs font-bold outline-none cursor-pointer">
+              <option v-for="(p, idx) in selectedHogarAccount.profiles" :key="idx" :value="p.name">
+                {{ p.name }} (PIN: {{ p.pin }})
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Modelo de TV / Dispositivo (Opcional)</label>
+            <input 
+              v-model="hogarForm.tvModel" 
+              type="text" 
+              placeholder="Ej: Smart TV Samsung 55', LG WebOS, Android TV"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs outline-none"
+            >
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-3 border-t border-slate-800">
+          <button 
+            type="button" 
+            @click="sendHogarViaWhatsApp"
+            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow cursor-pointer"
+          >
+            <span>📱</span>
+            <span>Solicitar por WhatsApp</span>
+          </button>
+          <button 
+            type="button" 
+            @click="confirmHogarRequest" 
+            class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow cursor-pointer"
+          >
+            <span>⚡</span>
+            <span>Notificar al Sistema</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
