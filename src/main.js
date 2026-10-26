@@ -24,14 +24,6 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   })
 }
 
-// Medidas de seguridad y protección en producción
-if (!import.meta.env.DEV) {
-  document.addEventListener('contextmenu', event => event.preventDefault())
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
-      e.preventDefault()
-    }
-  })
-}
+// Modo producción listo
 
 app.mount('#app')

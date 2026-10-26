@@ -292,6 +292,8 @@ const applyRouteParams = () => {
       clientForm.value.isSharedUrl = true
       toast.add('¡Mostrando paquete promocional seleccionado!', 'info')
     }
+  } else {
+    storeSection.value = 'digital'
   }
 
   // Previsualización y apertura automática de producto físico compartido
@@ -308,8 +310,22 @@ const applyRouteParams = () => {
   }
 }
 
+const handleGlobalClick = (e) => {
+  if (!e.target.closest('.category-dropdown-container')) {
+    showCategoryDropdown.value = false
+  }
+  if (!e.target.closest('.physical-category-dropdown-container')) {
+    showPhysicalCategoryDropdown.value = false
+  }
+}
+
 onMounted(() => {
   applyRouteParams()
+  window.addEventListener('click', handleGlobalClick)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleGlobalClick)
 })
 
 watch(() => route.query, () => {
@@ -870,14 +886,8 @@ const submitOrder = async () => {
             <input v-model="searchQuery" type="text" placeholder="Buscar por Netflix, Max, Spotify, Disney, IPTV..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
           </div>
           <div class="w-px bg-white/10 my-2"></div>
-          <!-- MENÚ DESPLEGABLE DE CATEGORÍAS DIGITALES (PRO) -->
-          <div class="relative">
-            <!-- Backdrop para cerrar al hacer clic afuera -->
-            <div 
-              v-if="showCategoryDropdown" 
-              class="fixed inset-0 z-20 cursor-default" 
-              @click="showCategoryDropdown = false"
-            ></div>
+<!-- MENÚ DESPLEGABLE DE CATEGORÍAS DIGITALES (PRO) -->
+          <div class="relative category-dropdown-container">
 
             <!-- Botón del Menú Desplegable -->
             <button 
@@ -899,7 +909,7 @@ const submitOrder = async () => {
             <!-- Menú Desplegable Flotante Elegante y Ordenado -->
             <div 
               v-if="showCategoryDropdown" 
-              class="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#030712]/95 backdrop-blur-2xl border border-sky-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(56,189,248,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-[#030712]/98 backdrop-blur-2xl border border-sky-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(56,189,248,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="flex items-center justify-between px-2 py-1 border-b border-white/[0.06] mb-1">
                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
@@ -1224,13 +1234,7 @@ const submitOrder = async () => {
           </div>
           <div class="w-px bg-white/10 my-2"></div>
           <!-- MENÚ DESPLEGABLE DE CATEGORÍAS FÍSICAS (PRO) -->
-          <div class="relative">
-            <!-- Backdrop para cerrar al hacer clic afuera -->
-            <div 
-              v-if="showPhysicalCategoryDropdown" 
-              class="fixed inset-0 z-20 cursor-default" 
-              @click="showPhysicalCategoryDropdown = false"
-            ></div>
+          <div class="relative physical-category-dropdown-container">
 
             <!-- Botón del Menú Desplegable -->
             <button 
@@ -1252,7 +1256,7 @@ const submitOrder = async () => {
             <!-- Menú Desplegable Flotante de Categorías Físicas -->
             <div 
               v-if="showPhysicalCategoryDropdown" 
-              class="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#030712]/95 backdrop-blur-2xl border border-amber-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(251,191,36,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-80 overflow-y-auto custom-scrollbar"
+              class="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-[#030712]/98 backdrop-blur-2xl border border-amber-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(251,191,36,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-80 overflow-y-auto custom-scrollbar"
             >
               <div class="flex items-center justify-between px-2 py-1 border-b border-white/[0.06] mb-1">
                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">

@@ -181,11 +181,12 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
       <!-- ======================================================== -->
       <!-- MENÚ DESPLEGABLE PRO (COMPLETO, ATRACTIVO Y ORDENADO)   -->
       <!-- ======================================================== -->
-      <div 
-        v-if="showNavDropdown" 
-        class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex justify-end p-3 sm:p-5 animate-in fade-in duration-200"
-        @click="showNavDropdown = false"
-      >
+      <Teleport to="body">
+        <div 
+          v-if="showNavDropdown" 
+          class="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex justify-end p-3 sm:p-5 animate-in fade-in duration-200"
+          @click="showNavDropdown = false"
+        >
         <div 
           @click.stop 
           class="w-full max-w-sm sm:max-w-md bg-[#030712]/98 border border-sky-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_40px_rgba(56,189,248,0.25)] flex flex-col justify-between overflow-y-auto max-h-[94vh] space-y-4 text-xs relative animate-in slide-in-from-top-4 duration-200 custom-scrollbar"
@@ -425,7 +426,8 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
           </div>
         </div>
       </div>
-    </header>
+    </Teleport>
+  </header>
 
     <main class="flex-grow container mx-auto px-4 py-8 relative z-10 max-w-7xl">
       <RouterView />
