@@ -9,7 +9,7 @@ const props = defineProps({
   defaultStoreName: { type: String, default: 'StreamePro Oficial' },
   initialProduct: { type: Object, default: null },
   resellerRef: { type: String, default: 'DIRECT' },
-  websiteDomain: { type: String, default: 'https://spro.li' }
+  websiteDomain: { type: String, default: 'streamepro.me' }
 })
 
 const emit = defineEmits(['close'])
@@ -32,9 +32,9 @@ const selectedPhysicalId = ref('')
 const physicalSearch = ref('')
 const selectedPhysicalCat = ref('All')
 
-// Personalización del flyer
+// Personalización del flyer (Solo dominio principal)
 const storeName = ref(props.defaultStoreName)
-const websiteUrl = ref('https://spro.li')
+const websiteUrl = ref('streamepro.me')
 const headlineBadge = ref('🔥 25% OFF - RECOMENDADO')
 const customPrice = ref(null)
 const customOriginalPrice = ref(null)
@@ -88,6 +88,14 @@ const getPlatformIcon = (platform) => {
 
 const currentPlatformIcon = computed(() => getPlatformIcon(selectedPlatform.value))
 
+// Solo dominio principal (limpio, sin https:// ni rutas)
+const displayDomain = computed(() => {
+  let val = (websiteUrl.value || props.websiteDomain || 'streamepro.me').trim()
+  val = val.replace(/^https?:\/\//i, '')
+  val = val.split('/')[0].split('?')[0].split('#')[0]
+  return val || 'streamepro.me'
+})
+
 // Watchers de props iniciales
 watch(() => props.defaultStoreName, (val) => {
   if (val) storeName.value = val
@@ -95,11 +103,7 @@ watch(() => props.defaultStoreName, (val) => {
 
 watch(() => props.websiteDomain, (val) => {
   if (val) {
-    if (val.startsWith('http')) {
-      websiteUrl.value = val
-    } else {
-      websiteUrl.value = `https://${val}`
-    }
+    websiteUrl.value = val.replace(/^https?:\/\//i, '').split('/')[0]
   }
 }, { immediate: true })
 
@@ -351,14 +355,10 @@ const displaySubtitle = computed(() => {
   return 'Tecnología & Accesorios de Alta Calidad'
 })
 
-// URL de referencia oficial
+// URL de referencia oficial (usando solo el dominio principal)
 const fullProductReferralUrl = computed(() => {
-  let base = (websiteUrl.value || 'https://spro.li').trim()
-  if (!base.startsWith('http://') && !base.startsWith('https://')) {
-    base = `https://${base}`
-  }
-  base = base.replace(/\/+$/, '')
-
+  const domain = displayDomain.value || 'streamepro.me'
+  const base = `https://${domain}`
   const refCode = props.resellerRef && props.resellerRef !== 'DIRECT' ? props.resellerRef : null
 
   if (flyerProductType.value === 'combo' && selectedPackage.value?.id) {
@@ -788,52 +788,52 @@ const shareToWhatsAppStatus = () => {
             </div>
           </div>
 
-          <!-- ENLACE WEB OFICIAL & OPCIÓN https://spro.li -->
+          <!-- PÁGINA WEB / DOMINIO EN EL FLYER: SOLO DOMINIO PRINCIPAL -->
           <div class="bg-[#020617] p-3 rounded-2xl border border-sky-500/30 space-y-2">
             <div class="flex items-center justify-between">
               <label class="block font-bold uppercase text-sky-400 text-[11px] flex items-center gap-1.5">
                 <span>🌐</span> Página Web / Dominio en el Flyer
               </label>
               <span class="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                Redirección Automática
+                Solo Dominio Principal
               </span>
             </div>
 
-            <!-- Botones Prominentes para Seleccionar https://spro.li -->
+            <!-- Opciones Rápidas de Dominio Principal Oficial -->
             <div class="grid grid-cols-2 gap-2">
               <button 
                 type="button" 
-                @click="websiteUrl = 'https://spro.li'" 
-                :class="['p-2 rounded-xl border text-left font-bold transition-all flex items-center gap-2', websiteUrl === 'https://spro.li' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
+                @click="websiteUrl = 'streamepro.me'" 
+                :class="['p-2.5 rounded-xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer', displayDomain === 'streamepro.me' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
               >
-                <span class="text-base">⭐</span>
-                <div>
-                  <div class="font-mono font-black text-xs">https://spro.li</div>
-                  <div class="text-[9px] opacity-80">Enlace Corto Oficial (Recomendado)</div>
+                <span class="text-base">🌐</span>
+                <div class="min-w-0">
+                  <div class="font-mono font-black text-xs truncate">streamepro.me</div>
+                  <div class="text-[9px] opacity-85">Dominio Principal Oficial</div>
                 </div>
               </button>
 
               <button 
                 type="button" 
-                @click="websiteUrl = 'https://streamepro.me'" 
-                :class="['p-2 rounded-xl border text-left font-bold transition-all flex items-center gap-2', websiteUrl === 'https://streamepro.me' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
+                @click="websiteUrl = 'spro.li'" 
+                :class="['p-2.5 rounded-xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer', displayDomain === 'spro.li' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
               >
-                <span class="text-base">🌐</span>
-                <div>
-                  <div class="font-mono font-black text-xs">https://streamepro.me</div>
-                  <div class="text-[9px] opacity-80">Dominio Web Principal</div>
+                <span class="text-base">⭐</span>
+                <div class="min-w-0">
+                  <div class="font-mono font-black text-xs truncate">spro.li</div>
+                  <div class="text-[9px] opacity-85">Dominio Corto Oficial</div>
                 </div>
               </button>
             </div>
 
-            <!-- Entrada personalizada si desean otro dominio -->
+            <!-- Entrada de solo dominio limpio -->
             <div class="flex items-center gap-2 pt-1">
-              <span class="text-slate-400 text-[11px] font-mono">Editar URL:</span>
+              <span class="text-slate-400 text-[11px] font-mono">Dominio:</span>
               <input 
                 v-model="websiteUrl" 
                 type="text" 
                 class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-sky-400 outline-none font-mono font-bold text-xs"
-                placeholder="https://spro.li"
+                placeholder="streamepro.me"
               >
             </div>
           </div>
@@ -1161,14 +1161,14 @@ const shareToWhatsAppStatus = () => {
               </div>
             </div>
 
-            <!-- PARTE INFERIOR: LLAMADA A LA ACCIÓN CON https://spro.li -->
+            <!-- PARTE INFERIOR: LLAMADA A LA ACCIÓN CON SOLO EL DOMINIO PRINCIPAL -->
             <div class="relative z-10 text-center space-y-1 pt-1.5 border-t border-white/10 shrink-0">
               <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">
                 ⚡ ¡Haz tu pedido online con garantía oficial!
               </span>
-              <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black py-1.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md">
+              <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black py-1.5 px-3.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md">
                 <span class="text-xs">🌐</span>
-                <span class="font-mono text-[11px] font-black tracking-wide">{{ websiteUrl }}</span>
+                <span class="font-mono text-xs font-black tracking-wide">{{ displayDomain }}</span>
               </div>
             </div>
           </div>

@@ -1868,7 +1868,7 @@ const submitOrder = async () => {
       :initial-product="flyerInitialProduct"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
       :default-store-name="resellerStoreName"
-      website-domain="https://spro.li"
+      website-domain="streamepro.me"
       @close="showFlyerModal = false" 
     />
   </div>

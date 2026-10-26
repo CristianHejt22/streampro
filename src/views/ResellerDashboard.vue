@@ -3152,7 +3152,7 @@ const openProductInNewTab = (product) => {
       :reseller-ref="currentResellerId"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'" 
-      website-domain="https://spro.li"
+      website-domain="streamepro.me"
     />
 
     <!-- MODAL DE VISUALIZACIÓN Y CONFIRMACIÓN DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF) -->
