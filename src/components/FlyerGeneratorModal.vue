@@ -64,6 +64,39 @@ if (typeof window !== 'undefined') {
 }
 
 // Helper para obtener la URL de la plantilla Cyber según formato
+// Helper de estilo de marca para plataformas de streaming en modo Cyber
+const getPlatformCyberStyle = (platform) => {
+  const p = (platform || '').toLowerCase()
+  if (p.includes('netflix')) {
+    return { color: '#e50914', glow: 'rgba(229, 9, 20, 0.45)', label: 'NETFLIX', sub: 'ORIGINAL & SERIES 4K', symbol: '🍿' }
+  }
+  if (p.includes('disney')) {
+    return { color: '#38bdf8', glow: 'rgba(14, 165, 233, 0.5)', label: 'DISNEY+', sub: 'DISNEY · PIXAR · MARVEL', symbol: '✨' }
+  }
+  if (p.includes('max') || p.includes('hbo')) {
+    return { color: '#818cf8', glow: 'rgba(99, 102, 241, 0.45)', label: 'HBO MAX', sub: 'WARNER BROS & DC', symbol: '🎬' }
+  }
+  if (p.includes('spotify') || p.includes('music')) {
+    return { color: '#22c55e', glow: 'rgba(34, 197, 94, 0.45)', label: 'SPOTIFY PREMIUM', sub: 'MÚSICA EN ALTA FIDELIDAD', symbol: '🎵' }
+  }
+  if (p.includes('prime') || p.includes('amazon')) {
+    return { color: '#00a8e1', glow: 'rgba(0, 168, 225, 0.45)', label: 'PRIME VIDEO', sub: 'SERIES & AMAZON ORIGINALS', symbol: '📦' }
+  }
+  if (p.includes('youtube')) {
+    return { color: '#ef4444', glow: 'rgba(239, 68, 68, 0.45)', label: 'YOUTUBE PREMIUM', sub: 'SIN ANUNCIOS + MUSIC', symbol: '▶️' }
+  }
+  if (p.includes('iptv') || p.includes('magis') || p.includes('tele')) {
+    return { color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.45)', label: 'IPTV PRO', sub: '+1.500 CANALES EN VIVO', symbol: '📺' }
+  }
+  if (p.includes('paramount')) {
+    return { color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)', label: 'PARAMOUNT+', sub: 'PELÍCULAS & DEPORTES', symbol: '⛰️' }
+  }
+  if (p.includes('crunchy')) {
+    return { color: '#f97316', glow: 'rgba(249, 115, 22, 0.45)', label: 'CRUNCHYROLL', sub: 'ANIME EN SIMULCAST', symbol: '🍥' }
+  }
+  return { color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)', label: (platform || 'STREAMING').toUpperCase(), sub: 'SUSCRIPCIÓN OFICIAL', symbol: '⚡' }
+}
+
 const getCyberTemplateUrl = (format) => {
   if (format === 'story') return '/flyer-template-cyber-story.png'
   if (format === 'feed') return '/flyer-template-cyber-feed.jpg'
@@ -583,7 +616,7 @@ function renderCanvasFlyerBlob() {
       const domainText = displayDomain.value || 'streamepro.me'
 
       // ========================================================
-      // HELPERS DEL SISTEMA DE DISEÑO CYBER OFICIAL
+      // HELPERS DEL SISTEMA DE DISEÑO CYBER OFICIAL ELEVADO
       // ========================================================
       function drawCyberBackground(ctx, w, h) {
         const bgGrad = ctx.createLinearGradient(0, 0, 0, h)
@@ -598,23 +631,46 @@ function renderCanvasFlyerBlob() {
         const centerX = visorX + visorW / 2
         const centerY = visorY + visorH / 2
 
+        ctx.save()
+
+        // 1. Resplandor holográfico en la base del visor
+        const pedGlow = ctx.createRadialGradient(centerX, centerY + visorH * 0.32, 10, centerX, centerY + visorH * 0.32, visorW * 0.45)
+        pedGlow.addColorStop(0, 'rgba(0, 240, 255, 0.22)')
+        pedGlow.addColorStop(1, 'transparent')
+        ctx.fillStyle = pedGlow
+        ctx.fillRect(visorX, centerY, visorW, visorH * 0.5)
+
         if (flyerProductType.value === 'physical') {
+          // Vitrina de producto físico de alta gama
           const imgEl = await loadFlyerImageElement(productImageCORS.value)
           if (imgEl) {
-            const cardW = Math.min(visorW - 36, 540)
-            const cardH = Math.min(visorH - 36, 430)
+            const cardW = Math.min(visorW - 48, 520)
+            const cardH = Math.min(visorH - 48, 400)
+            
+            // Sombra y tarjeta brillante
+            ctx.shadowColor = 'rgba(0, 240, 255, 0.35)'
+            ctx.shadowBlur = 20
             ctx.fillStyle = '#ffffff'
-            roundRect(ctx, centerX - cardW / 2, centerY - cardH / 2, cardW, cardH, 20, true, true, 'rgba(56, 189, 248, 0.4)', 2)
+            roundRect(ctx, centerX - cardW / 2, centerY - cardH / 2, cardW, cardH, 22, true, true, 'rgba(56, 189, 248, 0.6)', 2)
+            ctx.shadowBlur = 0
 
             const imgAspect = imgEl.width / (imgEl.height || 1)
-            let dw = cardW - 36
-            let dh = cardH - 36
+            let dw = cardW - 40
+            let dh = cardH - 40
             if (imgAspect > 1) {
               dh = dw / imgAspect
             } else {
               dw = dh * imgAspect
             }
             ctx.drawImage(imgEl, centerX - dw / 2, centerY - dh / 2, dw, dh)
+
+            // Etiqueta de autenticidad en la vitrina
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
+            roundRect(ctx, centerX + cardW / 2 - 130, centerY - cardH / 2 + 12, 118, 26, 8, true, false)
+            ctx.font = '900 11px sans-serif'
+            ctx.fillStyle = '#38bdf8'
+            ctx.textAlign = 'center'
+            ctx.fillText('📦 ORIGINAL', centerX + cardW / 2 - 71, centerY - cardH / 2 + 29)
           } else {
             const iconSize = Math.min(130, visorH * 0.38)
             ctx.font = `${iconSize}px sans-serif`
@@ -625,10 +681,11 @@ function renderCanvasFlyerBlob() {
             ctx.fillText('PRODUCTO OFICIAL', centerX, centerY + iconSize * 0.6)
           }
         } else if (flyerProductType.value === 'combo') {
+          // Combos streaming: Tarjetas translúcidas futuristas
           const services = (selectedPackage.value?.services || []).slice(0, 3)
           if (services.length > 0) {
             const cardW = Math.min((visorW - (services.length + 1) * 16) / services.length, 240)
-            const cardH = Math.min(visorH - 32, 260)
+            const cardH = Math.min(visorH - 36, 260)
             const gap = 16
             const totalW = services.length * cardW + (services.length - 1) * gap
             const startX = centerX - totalW / 2
@@ -636,8 +693,14 @@ function renderCanvasFlyerBlob() {
 
             services.forEach((srv, idx) => {
               const cx = startX + idx * (cardW + gap)
-              ctx.fillStyle = 'rgba(2, 6, 23, 0.92)'
-              roundRect(ctx, cx, startY, cardW, cardH, 18, true, true, 'rgba(56, 189, 248, 0.5)', 2)
+              const pStyle = getPlatformCyberStyle(srv.platform)
+
+              // Tarjeta de cristal
+              ctx.shadowColor = pStyle.glow
+              ctx.shadowBlur = 16
+              ctx.fillStyle = 'rgba(10, 20, 42, 0.9)'
+              roundRect(ctx, cx, startY, cardW, cardH, 20, true, true, pStyle.color, 2)
+              ctx.shadowBlur = 0
 
               const emojiSize = Math.min(cardH * 0.28, 64)
               ctx.font = `${emojiSize}px sans-serif`
@@ -652,12 +715,12 @@ function renderCanvasFlyerBlob() {
               ctx.fillStyle = '#38bdf8'
               ctx.fillText(srv.planLabel || '1 Perfil', cx + cardW / 2, startY + cardH * 0.72)
 
-              const badgeW = Math.min(cardW - 16, 90)
+              const badgeW = Math.min(cardW - 16, 92)
               ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
               roundRect(ctx, cx + cardW / 2 - badgeW / 2, startY + cardH * 0.82, badgeW, 24, 8, true, true, '#10b981', 1)
               ctx.fillStyle = '#34d399'
               ctx.font = 'bold 12px sans-serif'
-              ctx.fillText('INCLUIDO', cx + cardW / 2, startY + cardH * 0.82 + 16)
+              ctx.fillText('✓ INCLUIDO', cx + cardW / 2, startY + cardH * 0.82 + 16)
             })
           } else {
             ctx.font = '90px sans-serif'
@@ -665,47 +728,82 @@ function renderCanvasFlyerBlob() {
             ctx.fillText('🍿 🎬 ✨', centerX, centerY + 20)
           }
         } else {
-          // Individual Streaming
-          const iconSize = Math.min(130, visorH * 0.42)
-          ctx.font = `${iconSize}px sans-serif`
+          // Streaming Individual: Emblema Holográfico de Marca
+          const platStyle = getPlatformCyberStyle(selectedPlatform.value)
+
+          // Escudo de Marca Neón
+          const shieldSize = Math.min(visorH * 0.42, 140)
+          const shieldY = centerY - visorH * 0.12
+
+          ctx.shadowColor = platStyle.glow
+          ctx.shadowBlur = 28
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'
+          roundRect(ctx, centerX - shieldSize / 2, shieldY - shieldSize / 2, shieldSize, shieldSize, 28, true, true, platStyle.color, 2.5)
+          ctx.shadowBlur = 0
+
+          ctx.font = `${shieldSize * 0.55}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText(currentPlatformIcon.value, centerX, centerY - visorH * 0.05)
+          ctx.fillText(platStyle.symbol, centerX, shieldY + shieldSize * 0.2)
 
-          const titleSize = Math.min(46, Math.max(22, visorH * 0.15))
+          // Nombre de Marca en Alta Tipografía
+          const titleSize = Math.min(48, Math.max(24, visorH * 0.16))
           ctx.font = `900 ${titleSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-          ctx.fillStyle = '#38bdf8'
-          ctx.fillText(selectedPlatform.value.toUpperCase(), centerX, centerY + visorH * 0.2)
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = 'rgba(0, 240, 255, 0.5)'
+          ctx.shadowBlur = 14
+          ctx.fillText(platStyle.label, centerX, centerY + visorH * 0.2)
+          ctx.shadowBlur = 0
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)'
+          // Pastilla Holográfica de Plan
           const subtagText = (currentPlanData.value.label || '1 PERFIL PRIVADO').toUpperCase() + ' · 4K ULTRA HD'
-          const tagFontSize = Math.min(18, Math.max(12, visorH * 0.07))
+          const tagFontSize = Math.min(18, Math.max(12, visorH * 0.075))
           ctx.font = `bold ${tagFontSize}px monospace`
-          const tagW = ctx.measureText(subtagText).width + 30
-          const tagH = tagFontSize + 14
-          roundRect(ctx, centerX - tagW / 2, centerY + visorH * 0.27, tagW, tagH, tagH / 2, true, true, 'rgba(56, 189, 248, 0.5)', 1.5)
-          ctx.fillStyle = '#e0f2fe'
-          ctx.fillText(subtagText, centerX, centerY + visorH * 0.27 + tagH * 0.68)
+          const tagW = ctx.measureText(subtagText).width + 36
+          const tagH = tagFontSize + 16
+          ctx.fillStyle = 'rgba(10, 20, 45, 0.85)'
+          roundRect(ctx, centerX - tagW / 2, centerY + visorH * 0.28, tagW, tagH, tagH / 2, true, true, 'rgba(56, 189, 248, 0.65)', 1.5)
+          ctx.fillStyle = '#a5f3fc'
+          ctx.fillText(subtagText, centerX, centerY + visorH * 0.28 + tagH * 0.68)
         }
+
+        ctx.restore()
       }
 
       function drawCyberBadge(ctx, centerX, y, h, maxW = 860, isSmall = false) {
+        ctx.save()
         const badgeText = headlineBadge.value.toUpperCase()
-        ctx.font = `900 ${isSmall ? 20 : 25}px sans-serif`
-        const bW = Math.min(ctx.measureText(badgeText).width + (isSmall ? 40 : 54), maxW)
+        ctx.font = `900 ${isSmall ? 19 : 25}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        const bW = Math.min(ctx.measureText(badgeText).width + (isSmall ? 40 : 56), maxW)
         const bX = centerX - bW / 2
+
+        ctx.shadowColor = 'rgba(245, 158, 11, 0.45)'
+        ctx.shadowBlur = 20
+
         const bGrad = ctx.createLinearGradient(bX, y, bX + bW, y)
         bGrad.addColorStop(0, '#f59e0b')
         bGrad.addColorStop(1, '#ea580c')
         ctx.fillStyle = bGrad
         roundRect(ctx, bX, y, bW, h, h / 2, true, false)
+
+        ctx.shadowBlur = 0
         ctx.textAlign = 'center'
         ctx.fillStyle = '#020617'
-        ctx.fillText(badgeText, centerX, y + h / 2 + (isSmall ? 7 : 8))
+        ctx.fillText(badgeText, centerX, y + h / 2 + (isSmall ? 6 : 8))
+        ctx.restore()
       }
 
       function drawCyberPriceCard(ctx, x, y, w, h, isSquare = false) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)'
-        roundRect(ctx, x, y, w, h, 24, true, true, 'rgba(56, 189, 248, 0.45)', 2)
+        ctx.save()
+        // Tarjeta de Cristal Tecnológico
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.25)'
+        ctx.shadowBlur = 18
+
+        const cGrad = ctx.createLinearGradient(x, y, x, y + h)
+        cGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)')
+        cGrad.addColorStop(1, 'rgba(8, 16, 38, 0.96)')
+        ctx.fillStyle = cGrad
+        roundRect(ctx, x, y, w, h, isSquare ? 20 : 26, true, true, 'rgba(56, 189, 248, 0.5)', 2)
+        ctx.shadowBlur = 0
 
         const centerX = x + w / 2
         const hasOrig = displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)
@@ -718,100 +816,98 @@ function renderCanvasFlyerBlob() {
           const discountShift = calculatedDiscountPct.value ? (isSquare ? 42 : 55) : 0
           const textX = centerX - discountShift
           ctx.textAlign = 'center'
-          ctx.fillText(origText, textX, y + (isSquare ? 28 : 40))
+          ctx.fillText(origText, textX, y + (isSquare ? 26 : 40))
 
           ctx.strokeStyle = '#ef4444'
           ctx.lineWidth = 2.5
           ctx.beginPath()
-          ctx.moveTo(textX - origW / 2, y + (isSquare ? 23 : 33))
-          ctx.lineTo(textX + origW / 2, y + (isSquare ? 23 : 33))
+          ctx.moveTo(textX - origW / 2, y + (isSquare ? 21 : 33))
+          ctx.lineTo(textX + origW / 2, y + (isSquare ? 21 : 33))
           ctx.stroke()
 
           if (calculatedDiscountPct.value) {
             const badgeX = textX + origW / 2 + 12
-            const badgeW = isSquare ? 72 : 90
-            const badgeH = isSquare ? 24 : 30
+            const badgeW = isSquare ? 72 : 95
+            const badgeH = isSquare ? 24 : 32
             ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-            roundRect(ctx, badgeX, y + (isSquare ? 14 : 20), badgeW, badgeH, 8, true, true, '#10b981', 1)
+            roundRect(ctx, badgeX, y + (isSquare ? 12 : 18), badgeW, badgeH, 8, true, true, '#10b981', 1.5)
             ctx.fillStyle = '#34d399'
-            ctx.font = `900 ${isSquare ? 13 : 16}px monospace`
+            ctx.font = `900 ${isSquare ? 13 : 17}px monospace`
             ctx.textAlign = 'center'
-            ctx.fillText(`-${calculatedDiscountPct.value}%`, badgeX + badgeW / 2, y + (isSquare ? 29 : 41))
+            ctx.fillText(`-${calculatedDiscountPct.value}%`, badgeX + badgeW / 2, y + (isSquare ? 28 : 40))
           }
 
-          ctx.font = `900 ${isSquare ? 50 : 74}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          // Precio Principal
+          ctx.textAlign = 'center'
+          ctx.font = `900 ${isSquare ? 52 : 78}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 115))
+          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
+          ctx.shadowBlur = 16
+          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 120))
+          ctx.shadowBlur = 0
 
           if (!isSquare) {
             ctx.font = 'bold 18px sans-serif'
             ctx.fillStyle = '#38bdf8'
-            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', centerX, y + 152)
+            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', centerX, y + 162)
           }
         } else {
           ctx.font = `bold ${isSquare ? 16 : 22}px sans-serif`
           ctx.fillStyle = '#94a3b8'
           ctx.textAlign = 'center'
-          ctx.fillText('PRECIO EXCLUSIVO', centerX, y + (isSquare ? 28 : 40))
+          ctx.fillText('PRECIO EXCLUSIVO', centerX, y + (isSquare ? 26 : 40))
 
-          ctx.font = `900 ${isSquare ? 52 : 76}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.font = `900 ${isSquare ? 54 : 80}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 116))
+          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
+          ctx.shadowBlur = 16
+          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 122))
+          ctx.shadowBlur = 0
 
           if (!isSquare) {
             ctx.font = 'bold 18px sans-serif'
             ctx.fillStyle = '#38bdf8'
-            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', centerX, y + 152)
+            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', centerX, y + 162)
           }
         }
+        ctx.restore()
       }
 
       function drawCyberBullets(ctx, startX, startY, lineSpacing, maxBullets = 3, isSmall = false) {
+        ctx.save()
         const bullets = [bullet1.value, bullet2.value, bullet3.value].slice(0, maxBullets)
         ctx.textAlign = 'left'
         bullets.forEach((b, idx) => {
           const by = startY + idx * lineSpacing
-          const radius = isSmall ? 9 : 13
+          const radius = isSmall ? 10 : 14
 
+          ctx.shadowColor = '#00f0ff'
+          ctx.shadowBlur = 12
           ctx.fillStyle = '#00f0ff'
           ctx.beginPath()
           ctx.arc(startX, by - (isSmall ? 5 : 7), radius, 0, Math.PI * 2)
           ctx.fill()
+          ctx.shadowBlur = 0
+
           ctx.fillStyle = '#020617'
-          ctx.font = `bold ${isSmall ? 13 : 17}px sans-serif`
+          ctx.font = `bold ${isSmall ? 14 : 18}px sans-serif`
           ctx.textAlign = 'center'
           ctx.fillText('✓', startX, by - (isSmall ? 1 : 2))
           ctx.textAlign = 'left'
 
-          ctx.font = `600 ${isSmall ? 20 : 26}px sans-serif`
+          ctx.font = `600 ${isSmall ? 21 : 28}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#f8fafc'
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
+          ctx.shadowBlur = 6
           const maxLen = isSmall ? 38 : 46
-          ctx.fillText(b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b, startX + radius + 12, by)
+          ctx.fillText(b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b, startX + radius + 14, by)
+          ctx.shadowBlur = 0
         })
-      }
-
-      function drawCyberCTAButton(ctx, x, y, w, h, domainText, showMicroText = true, isSmall = false) {
-        if (showMicroText) {
-          ctx.textAlign = 'center'
-          ctx.font = `bold ${isSmall ? 15 : 19}px sans-serif`
-          ctx.fillStyle = '#94a3b8'
-          ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE CON GARANTÍA OFICIAL!', x + w / 2, y - 10)
-        }
-
-        const webGrad = ctx.createLinearGradient(x, y, x + w, y)
-        webGrad.addColorStop(0, '#0284c7')
-        webGrad.addColorStop(1, '#00f0ff')
-        ctx.fillStyle = webGrad
-        roundRect(ctx, x, y, w, h, isSmall ? 18 : 26, true, false)
-
-        ctx.textAlign = 'center'
-        ctx.font = `900 ${isSmall ? 25 : 34}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        ctx.fillStyle = '#020617'
-        ctx.fillText(`🌐 ${domainText}   ·   ¡PIDE ONLINE AHORA!`, x + w / 2, y + h / 2 + (isSmall ? 8 : 11))
+        ctx.restore()
       }
 
       // ========================================================
-      // 1. TEMA CYBER OFICIAL (CON PLANTILLAS ORIGINALES DE CANVA)
+      // 1. TEMA CYBER OFICIAL (CANVA ENGINE PRO)
       // ========================================================
       if (flyerTheme.value === 'cyber') {
         const tplUrl = getCyberTemplateUrl(format)
@@ -824,110 +920,106 @@ function renderCanvasFlyerBlob() {
 
         if (format === 'banner') {
           // ================= BANNER HORIZONTAL (1920 x 1080) =================
-          // Visor: X: 137, Y: 261, W: 544, H: 579
           await drawVisorHeroContent(ctx, 137, 261, 544, 579)
 
-          // Columna Derecha (X: 740, W: 1040)
           const rightX = 740
           const rightW = 1040
 
-          drawCyberBadge(ctx, rightX + rightW / 2, 140, 56, rightW, false)
+          drawCyberBadge(ctx, rightX + rightW / 2, 160, 58, rightW, false)
 
           ctx.textAlign = 'left'
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+          ctx.shadowBlur = 10
           const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 235 + i * 52))
-          const subY = 235 + titleLines.length * 52 + 8
+          titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 250 + i * 54))
+          ctx.shadowBlur = 0
+          const subY = 250 + titleLines.length * 54 + 8
 
           ctx.font = 'bold 24px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
 
-          const pCardY = subY + 20
-          drawCyberPriceCard(ctx, rightX, pCardY, rightW, 165, false)
+          const pCardY = subY + 24
+          drawCyberPriceCard(ctx, rightX, pCardY, rightW, 190, false)
 
-          drawCyberBullets(ctx, rightX + 20, pCardY + 165 + 50, 68, 3, false)
-
-          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
+          drawCyberBullets(ctx, rightX + 20, pCardY + 190 + 50, 75, 3, false)
 
         } else if (format === 'story') {
           // ================= STORY (1080 x 1920, 9:16) =================
-          // Visor: X: 188, Y: 262, W: 704, H: 546
           await drawVisorHeroContent(ctx, 188, 262, 704, 546)
 
-          // Contenido Inferior
-          drawCyberBadge(ctx, width / 2, 855, 58, 860, false)
+          drawCyberBadge(ctx, width / 2, 870, 64, 860, false)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+          ctx.shadowBlur = 12
           const titleLines = wrapText(displayTitle.value, 28).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 955 + i * 52))
-          const subY = 955 + titleLines.length * 52 + 10
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 980 + i * 54))
+          ctx.shadowBlur = 0
+          const subY = 980 + titleLines.length * 54 + 10
 
-          ctx.font = 'bold 24px sans-serif'
+          ctx.font = 'bold 26px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          const pCardY = subY + 30
-          drawCyberPriceCard(ctx, 110, pCardY, 860, 190, false)
+          const pCardY = subY + 35
+          drawCyberPriceCard(ctx, 110, pCardY, 860, 210, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 190 + 55, 75, 3, false)
-
-          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
+          drawCyberBullets(ctx, 145, pCardY + 210 + 55, 75, 3, false)
 
         } else if (format === 'feed') {
           // ================= FEED PORTRAIT (1080 x 1350, 4:5) =================
-          // Visor: X: 218, Y: 204, W: 645, H: 370
           await drawVisorHeroContent(ctx, 218, 204, 645, 370)
 
-          // Contenido Inferior
-          drawCyberBadge(ctx, width / 2, 605, 52, 840, false)
+          drawCyberBadge(ctx, width / 2, 610, 52, 840, false)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+          ctx.shadowBlur = 10
           const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 685 + i * 44))
-          const subY = 685 + titleLines.length * 44 + 8
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 695 + i * 46))
+          ctx.shadowBlur = 0
+          const subY = 695 + titleLines.length * 46 + 8
 
-          ctx.font = 'bold 22px sans-serif'
+          ctx.font = 'bold 23px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          const pCardY = subY + 22
-          drawCyberPriceCard(ctx, 110, pCardY, 860, 160, false)
+          const pCardY = subY + 24
+          drawCyberPriceCard(ctx, 110, pCardY, 860, 180, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 160 + 45, 60, 3, false)
-
-          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
+          drawCyberBullets(ctx, 145, pCardY + 180 + 45, 65, 3, false)
 
         } else {
           // ================= SQUARE (1080 x 1080, 1:1) =================
-          // Visor: X: 273, Y: 180, W: 533, H: 464
           await drawVisorHeroContent(ctx, 273, 180, 533, 464)
 
-          // Contenido Inferior
-          drawCyberBadge(ctx, width / 2, 665, 40, 840, true)
+          drawCyberBadge(ctx, width / 2, 665, 38, 840, true)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
-          const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 720 + i * 36))
-          const subY = 720 + titleLines.length * 36 + 4
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+          ctx.shadowBlur = 8
+          const titleLines = wrapText(displayTitle.value, 34).slice(0, 2)
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 720 + i * 34))
+          ctx.shadowBlur = 0
+          const subY = 720 + titleLines.length * 34 + 4
 
-          ctx.font = 'bold 17px sans-serif'
+          ctx.font = 'bold 16px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 46 ? displaySubtitle.value.slice(0, 44) + '...' : displaySubtitle.value, width / 2, subY)
 
           const pCardY = subY + 14
-          drawCyberPriceCard(ctx, 120, pCardY, 840, 115, true)
+          drawCyberPriceCard(ctx, 120, pCardY, 840, 125, true)
 
-          drawCyberBullets(ctx, 150, pCardY + 115 + 20, 36, 2, true)
-
-          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
+          drawCyberBullets(ctx, 150, pCardY + 125 + 24, 38, 2, true)
         }
 
         canvas.toBlob((blob) => {
@@ -2028,7 +2120,7 @@ const shareToWhatsAppStatus = () => {
             } : {}"
           >
             <!-- ======================================================== -->
-            <!-- 1. VISTA PREVIA CYBER OFICIAL (CON PLANTILLAS DE CANVA)  -->
+            <!-- 1. VISTA PREVIA CYBER OFICIAL ELEVADA (4 FORMATOS)       -->
             <!-- ======================================================== -->
             <div v-if="flyerTheme === 'cyber'" class="relative w-full h-full text-white pointer-events-none select-none">
               
@@ -2036,34 +2128,37 @@ const shareToWhatsAppStatus = () => {
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.67%] left-[17.48%] w-[65.03%] h-[28.32%] flex items-center justify-center p-2 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-cyan-400/30 overflow-hidden">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain filter drop-shadow-sm">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/30 overflow-hidden relative">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain filter drop-shadow-md">
+                    <span class="absolute top-1.5 right-1.5 bg-slate-950/90 text-cyan-400 text-[6px] font-black px-1.5 py-0.2 rounded">ORIGINAL</span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-1 shadow-md">
                       <span class="text-xl sm:text-2xl">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[7px] font-black text-white truncate max-w-full mt-0.5">{{ srv.platform }}</span>
                       <span class="text-[6px] text-cyan-300 truncate font-mono">{{ srv.planLabel }}</span>
-                      <span class="text-[5px] bg-emerald-500/20 text-emerald-300 font-bold px-1 rounded mt-0.5">INCLUIDO</span>
+                      <span class="text-[5px] bg-emerald-500/20 text-emerald-300 font-bold px-1 rounded mt-0.5">✓ INCLUIDO</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <span class="text-4xl sm:text-5xl drop-shadow">{{ currentPlatformIcon }}</span>
-                    <span class="font-black text-cyan-400 text-xs sm:text-sm uppercase tracking-wider mt-1 drop-shadow">{{ selectedPlatform }}</span>
-                    <span class="text-[7px] font-mono font-bold text-sky-200 bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded-full mt-1">{{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD</span>
+                    <div class="w-12 h-12 rounded-2xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow-lg shadow-cyan-950/40">
+                      <span class="text-2xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    </div>
+                    <span class="font-black text-white text-xs sm:text-sm uppercase tracking-wider mt-1 drop-shadow">{{ selectedPlatform }}</span>
+                    <span class="text-[7px] font-mono font-bold text-cyan-200 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded-full mt-1">{{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD</span>
                   </div>
                 </div>
 
                 <!-- Contenido Inferior -->
-                <div class="absolute top-[44%] bottom-[8.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
+                <div class="absolute top-[44%] bottom-[8.5%] left-[9%] right-[9%] flex flex-col justify-between items-center text-center z-10 py-1">
                   <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-3 py-0.5 rounded-full shadow-lg text-[9px] uppercase tracking-wider">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.5 w-full">
                     <h2 class="font-black text-xs sm:text-sm tracking-tight leading-tight line-clamp-2 text-white drop-shadow">{{ displayTitle }}</h2>
-                    <p class="font-semibold text-cyan-300 text-[9px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p class="font-bold text-cyan-300 text-[9px] font-mono truncate">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-2xl py-1.5 px-3 shadow-xl">
+                  <div class="w-full bg-slate-950/90 border border-cyan-400/40 rounded-2xl py-1.5 px-3 shadow-xl">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
                       <span class="text-slate-400 line-through text-[9px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-${calculatedDiscountPct}%</span>
@@ -2076,21 +2171,21 @@ const shareToWhatsAppStatus = () => {
                     </div>
                     <div class="text-[7px] text-cyan-300 font-bold truncate">⚡ Entrega Inmediata · Garantía Oficial 100%</div>
                   </div>
-                  <div class="w-full text-left space-y-0.5 text-[8px] sm:text-[9px] font-medium text-slate-200 px-1">
+                  <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
                     <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet1 }}</span></div>
                     <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                     <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
-
                 </div>
               </div>
 
               <!-- 1.2 FEED (4:5) -->
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
-                <!-- Visor Window: top: 15.14%, left: 20.15%, width: 59.71%, height: 27.44% -->
+                <!-- Visor Window -->
                 <div class="absolute top-[15.14%] left-[20.15%] w-[59.71%] h-[27.44%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden relative">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain filter drop-shadow">
+                    <span class="absolute top-1 right-1 bg-slate-950/90 text-cyan-400 text-[5px] font-black px-1 py-0.2 rounded">ORIGINAL</span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-0.5">
@@ -2100,22 +2195,24 @@ const shareToWhatsAppStatus = () => {
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
-                    <span class="font-black text-cyan-400 text-xs uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] font-mono text-sky-200 mt-0.5">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
+                    <div class="w-10 h-10 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                      <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    </div>
+                    <span class="font-black text-white text-xs uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] font-mono text-cyan-200 mt-0.5">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
                   </div>
                 </div>
 
-                <!-- Contenido Inferior: top: 44.5%, bottom: 8.5%, left: 10%, right: 10% -->
+                <!-- Contenido Inferior -->
                 <div class="absolute top-[44.5%] bottom-[8.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
                   <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.5 w-full">
                     <h2 class="font-black text-xs tracking-tight leading-tight line-clamp-2 text-white">{{ displayTitle }}</h2>
-                    <p class="font-semibold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p class="font-bold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
+                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
                       <span class="text-slate-400 line-through text-[8px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-${calculatedDiscountPct}%</span>
@@ -2126,22 +2223,23 @@ const shareToWhatsAppStatus = () => {
                       <span class="font-black tracking-tight text-white font-mono text-base sm:text-lg">{{ displayPrice }}</span>
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
+                    <div class="text-[6px] text-cyan-300 font-bold truncate">⚡ Entrega Inmediata · Garantía Oficial 100%</div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
-
                 </div>
               </div>
 
               <!-- 1.3 SQUARE (1:1) -->
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
-                <!-- Visor Window: top: 16.6%, left: 25.29%, width: 49.32%, height: 42.97% -->
+                <!-- Visor Window -->
                 <div class="absolute top-[16.6%] left-[25.29%] w-[49.32%] h-[42.97%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                    <span class="absolute top-1 right-1 bg-slate-950/90 text-cyan-400 text-[5px] font-black px-1 py-0.2 rounded">ORIGINAL</span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
@@ -2150,29 +2248,31 @@ const shareToWhatsAppStatus = () => {
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
-                    <span class="font-black text-cyan-400 text-[10px] uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] font-mono text-sky-200 mt-0.5">4K ULTRA HD</span>
+                    <div class="w-9 h-9 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                      <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    </div>
+                    <span class="font-black text-white text-[10px] uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] font-mono text-cyan-200 mt-0.5">4K ULTRA HD</span>
                   </div>
                 </div>
 
-                <!-- Contenido Inferior: top: 61.5%, bottom: 7%, left: 11%, right: 11% -->
+                <!-- Contenido Inferior -->
                 <div class="absolute top-[61.5%] bottom-[7%] left-[11%] right-[11%] flex flex-col justify-between items-center text-center z-10 py-0.5">
                   <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black px-2 py-0.2 rounded-full shadow text-[7px] uppercase">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.2 w-full">
                     <h2 class="font-black text-[10px] text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
-                    <p class="font-semibold text-cyan-300 text-[7px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p class="font-bold text-cyan-300 text-[7px] font-mono truncate">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-lg py-0.5 px-2 shadow">
+                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-lg py-0.5 px-2 shadow">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1">
                       <span class="text-slate-400 line-through text-[6px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-${calculatedDiscountPct}%</span>
                     </div>
                     <div class="flex items-baseline justify-center gap-0.5">
                       <span class="text-[8px] font-black text-amber-400">$</span>
-                      <span class="font-black text-xs text-white font-mono">{{ displayPrice }}</span>
+                      <span class="font-black tracking-tight text-white font-mono text-xs">{{ displayPrice }}</span>
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                   </div>
@@ -2180,16 +2280,16 @@ const shareToWhatsAppStatus = () => {
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                   </div>
-
                 </div>
               </div>
 
               <!-- 1.4 BANNER (16:9) -->
               <div v-else class="relative w-full h-full">
-                <!-- Visor Window: top: 24.17%, left: 7.13%, width: 28.32%, height: 53.59% -->
+                <!-- Visor Window -->
                 <div class="absolute top-[24.17%] left-[7.13%] w-[28.32%] h-[53.59%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1.5 shadow border border-cyan-400/30 overflow-hidden relative">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain filter drop-shadow">
+                    <span class="absolute top-1 right-1 bg-slate-950/90 text-cyan-400 text-[6px] font-black px-1.5 py-0.2 rounded">ORIGINAL</span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" class="rounded bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
@@ -2198,22 +2298,24 @@ const shareToWhatsAppStatus = () => {
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
-                    <span class="font-black text-cyan-400 text-[10px] uppercase mt-0.5">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] text-sky-200 font-mono mt-0.5">4K ULTRA HD</span>
+                    <div class="w-12 h-12 rounded-2xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                      <span class="text-2xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    </div>
+                    <span class="font-black text-white text-[10px] uppercase mt-1">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] text-cyan-200 font-mono mt-0.5">4K ULTRA HD</span>
                   </div>
                 </div>
 
-                <!-- Contenido Derecha: top: 14%, bottom: 10%, left: 38.5%, right: 6% -->
+                <!-- Contenido Derecha -->
                 <div class="absolute top-[14%] bottom-[10%] left-[38.5%] right-[6%] flex flex-col justify-between z-10 py-1 text-left">
                   <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase self-start">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.2">
                     <h2 class="text-xs font-black text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
-                    <div class="text-[7px] text-cyan-300 font-mono truncate">{{ displaySubtitle }}</div>
+                    <div class="text-[7px] text-cyan-300 font-bold font-mono truncate">{{ displaySubtitle }}</div>
                   </div>
-                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-xl py-1 px-3">
+                  <div class="w-full bg-slate-950/90 border border-cyan-400/40 rounded-xl py-1 px-3">
                     <div class="flex items-baseline gap-1.5">
                       <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">$${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-${calculatedDiscountPct}%</span>
@@ -2223,11 +2325,13 @@ const shareToWhatsAppStatus = () => {
                         <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                       </div>
                     </div>
+                    <div class="text-[6px] text-cyan-300 font-bold truncate">⚡ Entrega Inmediata · Garantía Oficial 100%</div>
                   </div>
-                  <div class="text-[7px] text-slate-300 truncate">
-                    <span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}
+                  <div class="space-y-0.5 text-[8px] text-slate-200">
+                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}</div>
+                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet2 }}</div>
+                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet3 }}</div>
                   </div>
-
                 </div>
               </div>
 
