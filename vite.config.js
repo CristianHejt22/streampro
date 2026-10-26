@@ -13,6 +13,10 @@ export default defineConfig({
       devOptions: {
         enabled: false
       },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5000000,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']
+      },
       manifest: {
         name: 'StreamPro | Streaming & Tecnología Oficial',
         short_name: 'StreamPro',

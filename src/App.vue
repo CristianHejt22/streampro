@@ -1,13 +1,39 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useResellerStore } from './store/admin'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
+import UserProfileModal from './components/UserProfileModal.vue'
 
 const route = useRoute()
 const toastStore = useToastStore()
 const resellerStore = useResellerStore()
+
+const showProfileModal = ref(false)
+const savedUserName = ref('')
+
+const checkSavedUser = () => {
+  try {
+    const raw = localStorage.getItem('streampro_user_profile')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      savedUserName.value = parsed.name ? parsed.name.split(' ')[0] : ''
+    } else {
+      savedUserName.value = ''
+    }
+  } catch (e) {
+    savedUserName.value = ''
+  }
+}
+
+onMounted(() => {
+  checkSavedUser()
+})
+
+const handleProfileSaved = (prof) => {
+  savedUserName.value = prof.name ? prof.name.split(' ')[0] : ''
+}
 
 const isClientArea = computed(() => route.name === 'home' || route.name === 'portal' || route.name === 'recruitment' || ['/', '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente', '/p', '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'].includes(route.path))
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
@@ -42,48 +68,76 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 
         <!-- System Status & Separated Navigation -->
         <div class="flex items-center gap-3">
-          <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
           </div>
 
-          <!-- NAVEGACIÓN PARA CLIENTES (Al cliente NO le sale la opción de revendedor ni admin) -->
-          <nav v-if="isClientArea" class="flex items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
+          <!-- NAVEGACIÓN PARA CLIENTES -->
+          <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
             <RouterLink 
               to="/" 
-              class="px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
               active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
             >
               <span>🛒</span>
-              <span>Tienda</span>
+              <span class="hidden sm:inline">Tienda</span>
             </RouterLink>
             
             <RouterLink 
+              to="/p" 
+              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              active-class="!bg-amber-500/15 !text-amber-300 !border !border-amber-500/30 shadow-sm"
+            >
+              <span>📦</span>
+              <span class="hidden sm:inline">Catálogo Físico</span>
+            </RouterLink>
+
+            <RouterLink 
               to="/portal" 
-              class="px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
               active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
             >
               <span>🔐</span>
-              <span>Bóveda Clientes</span>
+              <span class="hidden sm:inline">Mi Bóveda</span>
             </RouterLink>
 
             <RouterLink 
               to="/revendedores" 
-              class="px-3.5 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
+              class="px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
               active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
             >
               <span>🚀</span>
-              <span class="hidden sm:inline">Ser Revendedor</span>
+              <span class="hidden md:inline">Ser Revendedor</span>
             </RouterLink>
+
+            <!-- Acceso Rápido / Registro de Usuario -->
+            <button 
+              @click="showProfileModal = true" 
+              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm"
+              title="Mi Perfil, compras y registro"
+            >
+              <span>👤</span>
+              <span>{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
+            </button>
           </nav>
 
           <!-- NAVEGACIÓN CUANDO SE ENCUENTRA EN EL PANEL DE REVENDEDOR -->
           <div v-else-if="isResellerArea" class="flex items-center gap-2">
-            <div v-if="resellerStore.isAuthenticated" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <div v-if="resellerStore.isAuthenticated" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
               <span class="text-slate-400">Distribuidor:</span>
               <strong class="text-amber-400 font-mono">[{{ resellerStore.activeResellerId }}]</strong>
               <span class="text-emerald-400 font-mono font-bold">${{ resellerStore.wallet }} ARS</span>
             </div>
+
+            <button 
+              @click="showProfileModal = true" 
+              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <span>👤</span>
+              <span class="hidden sm:inline">Mi Perfil</span>
+            </button>
+
             <RouterLink 
               to="/" 
               class="text-xs font-bold px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1.5"
@@ -158,21 +212,27 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
                 </RouterLink>
               </li>
               <li>
+                <RouterLink to="/p" class="hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                  <span>📦</span>
+                  <span>Catálogo Físico (tua.ar)</span>
+                </RouterLink>
+              </li>
+              <li>
                 <RouterLink to="/portal" class="hover:text-brand-accent transition-colors flex items-center gap-1.5">
                   <span>🔐</span>
                   <span>Bóveda de Accesos & Perfiles</span>
                 </RouterLink>
               </li>
               <li>
-                <span class="text-slate-500 flex items-center gap-1.5">
-                  <span>💳</span>
-                  <span>Transferencia Bancaria & CBU</span>
-                </span>
+                <button @click="showProfileModal = true" class="hover:text-sky-300 transition-colors flex items-center gap-1.5 text-left">
+                  <span>👤</span>
+                  <span>Mi Cuenta & Registro</span>
+                </button>
               </li>
               <li>
                 <span class="text-slate-500 flex items-center gap-1.5">
-                  <span>🛡️</span>
-                  <span>Garantía de Servicio 30 días</span>
+                  <span>💳</span>
+                  <span>Transferencia Bancaria & CBU</span>
                 </span>
               </li>
             </ul>
@@ -230,11 +290,23 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 
         <!-- Barra Inferior de Copyright & Separación Estricta de Accesos -->
         <div class="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <p class="text-[11px] text-slate-500">
-            &copy; 2026 StreamPro Cloud Enterprise. Todos los derechos reservados.
-          </p>
+          <div class="flex flex-wrap items-center gap-2 text-center sm:text-left">
+            <p class="text-[11px] text-slate-400 font-medium">
+              &copy; 2026 StreamPro Cloud Enterprise. Todos los derechos reservados.
+            </p>
+            <span class="hidden sm:inline text-slate-700">•</span>
+            <a 
+              href="https://spro.li" 
+              target="_blank" 
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-mono text-[10px] font-bold border border-sky-500/30 transition-all shadow-sm"
+              title="Acortador y redirección oficial: https://spro.li"
+            >
+              <span>🔗</span>
+              <span>Redirección: https://spro.li</span>
+            </a>
+          </div>
 
-          <!-- SI ESTÁ EN EL PANEL DE REVENDEDORES: NO TIENE NINGÚN ACCESO A ADMINISTRADOR O REDIRECCIÓN -->
+          <!-- SI ESTÁ EN EL PANEL DE REVENDEDORES -->
           <div v-if="isResellerArea" class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
             <span class="w-2 h-2 rounded-full bg-blue-400"></span>
             <span>Entorno Privado de Distribuidor</span>
@@ -246,7 +318,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             <span>Centro Mayorista Proveedor Activo</span>
           </div>
 
-          <!-- EN VISTA GENERAL DE CLIENTES: Privacidad total, cero menciones o redirecciones de distribuidor o proveedor -->
+          <!-- EN VISTA GENERAL DE CLIENTES -->
           <div v-else class="flex items-center gap-3 text-xs text-slate-500 font-mono text-[11px]">
             <span class="flex items-center gap-1 text-slate-400">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -258,6 +330,9 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
         </div>
       </div>
     </footer>
+
+    <!-- Modal de Mi Cuenta & Registro Rápido -->
+    <UserProfileModal v-model="showProfileModal" @profileSaved="handleProfileSaved" />
 
     <!-- Banner & Acceso PWA / Notificaciones Push Multi-dispositivo -->
     <PwaInstallPrompt />

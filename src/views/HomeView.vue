@@ -348,6 +348,25 @@ const getProductDirectUrl = (product) => {
   return `${origin}/?ref=${resId}&prod=${product.id}`
 }
 
+const getProductShortUrl = (product) => {
+  if (!product) return ''
+  const resId = isDirectSale.value ? '' : clientForm.value.selectedResellerId
+  return resId ? `https://spro.li/producto/${product.id}/${resId}` : `https://spro.li/p/${product.id}`
+}
+
+const copyProductShortUrl = (product) => {
+  const shortUrl = getProductShortUrl(product)
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(shortUrl).then(() => {
+      toast.add('¡Enlace corto https://spro.li copiado con éxito!', 'success')
+    }).catch(() => {
+      toast.add('Error al copiar enlace corto', 'error')
+    })
+  } else {
+    toast.add('Portapapeles no disponible en este dispositivo', 'error')
+  }
+}
+
 const copyShareProductUrl = (product) => {
   const shareUrl = getProductDirectUrl(product)
   if (navigator?.clipboard?.writeText) {
@@ -1594,7 +1613,7 @@ const submitOrder = async () => {
 
         <div class="flex flex-col sm:flex-row gap-6 items-center">
           <div class="w-full sm:w-64 sm:h-64 h-56 bg-white rounded-3xl p-4 flex items-center justify-center shrink-0 shadow-2xl border-2 border-white/20 overflow-hidden group">
-            <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300">
+            <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" @error="(e) => e.target.src = 'https://tua.ar/images/banner22.webp'">
           </div>
           <div class="space-y-2 flex-1">
             <h3 class="text-lg font-black text-white leading-snug">{{ selectedPhysicalProduct.name }}</h3>

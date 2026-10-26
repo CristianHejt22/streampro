@@ -40,7 +40,8 @@ export const DB_KEYS = {
   BANK_TRANSFERS: 'bank_transfers',
   PHYSICAL_PRODUCTS: 'physical_products',
   PHYSICAL_CATEGORIES: 'physical_categories',
-  RESELLER_APPLICATIONS: 'reseller_applications'
+  RESELLER_APPLICATIONS: 'reseller_applications',
+  REGISTERED_USERS: 'registered_users'
 }
 
 export function loadDb(key, defaultValue) {

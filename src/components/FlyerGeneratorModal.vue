@@ -997,7 +997,11 @@ const shareToWhatsAppStatus = () => {
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Página Web en el Flyer</label>
-              <input v-model="websiteUrl" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-sky-400 outline-none font-mono font-bold" placeholder="streamepro.me">
+              <div class="flex gap-2">
+                <input v-model="websiteUrl" type="text" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-sky-400 outline-none font-mono font-bold text-xs" placeholder="streamepro.me">
+                <button type="button" @click="websiteUrl = 'spro.li'" :class="['px-2.5 py-1 rounded-xl text-xs font-mono font-bold border transition-colors', websiteUrl === 'spro.li' ? 'bg-sky-500 text-slate-950 border-sky-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white']">spro.li</button>
+                <button type="button" @click="websiteUrl = 'streamepro.me'" :class="['px-2.5 py-1 rounded-xl text-xs font-mono font-bold border transition-colors', websiteUrl === 'streamepro.me' ? 'bg-sky-500 text-slate-950 border-sky-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white']">streamepro.me</button>
+              </div>
             </div>
           </div>
 

@@ -2,7 +2,35 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "spro.li"
+        }
+      ],
+      "destination": "https://streamepro.me/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.spro.li"
+        }
+      ],
+      "destination": "https://streamepro.me/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

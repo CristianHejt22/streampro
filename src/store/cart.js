@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { parseArgentinePrice } from '../utils/pricing'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
@@ -76,7 +77,7 @@ export const useCartStore = defineStore('cart', {
     // AGREGAR PRODUCTO FÍSICO DEL CATÁLOGO (C:\Users\yo\catalogo)
     addPhysicalItem(product, quantity = 1) {
       const existingItem = this.items.find(i => i.id === product.id && i.itemType === 'physical')
-      const priceNumeric = product.priceNumeric || (product.price ? (parseInt(String(product.price).replace(/[$. ]/g, '').replace(',', '')) / 100 || 0) : 0)
+      const priceNumeric = product.priceNumeric || parseArgentinePrice(product.price)
 
       if (existingItem) {
         existingItem.quantity += quantity

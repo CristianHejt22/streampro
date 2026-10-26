@@ -1,62 +1,52 @@
 [
-    {
-        "cantidad":  "12",
-        "id":  "809",
-        "name":  "Accesorios Vehículos"
-    },
-    {
-        "cantidad":  "64",
-        "id":  "786",
-        "name":  "BAZAR"
-    },
-    {
-        "cantidad":  "27",
-        "id":  "801",
-        "name":  "Belleza"
-    },
-    {
-        "cantidad":  "8",
-        "id":  "811",
-        "name":  "Combo"
-    },
-    {
-        "cantidad":  "20",
-        "id":  "806",
-        "name":  "Computación"
-    },
-    {
-        "cantidad":  "30",
-        "id":  "802",
-        "name":  "Electrodomésticos"
-    },
-    {
-        "cantidad":  "52",
-        "id":  "803",
-        "name":  "Electrónica y Audio"
-    },
-    {
-        "cantidad":  "1",
-        "id":  "776",
-        "name":  "GRIFERIA"
-    },
-    {
-        "cantidad":  "32",
-        "id":  "805",
-        "name":  "Herramientas"
-    },
-    {
-        "cantidad":  "42",
-        "id":  "800",
-        "name":  "Hogar y Jardín"
-    },
-    {
-        "cantidad":  "65",
-        "id":  "804",
-        "name":  "Juguetes"
-    },
-    {
-        "cantidad":  "11",
-        "id":  "807",
-        "name":  "Librería"
-    }
+  {
+    "cantidad": "2",
+    "id": "809",
+    "name": "Accesorios Vehículos"
+  },
+  {
+    "cantidad": "7",
+    "id": "786",
+    "name": "BAZAR"
+  },
+  {
+    "cantidad": "8",
+    "id": "801",
+    "name": "Belleza"
+  },
+  {
+    "cantidad": "4",
+    "id": "806",
+    "name": "Computación"
+  },
+  {
+    "cantidad": "2",
+    "id": "802",
+    "name": "Electrodomésticos"
+  },
+  {
+    "cantidad": "9",
+    "id": "803",
+    "name": "Electrónica y Audio"
+  },
+  {
+    "cantidad": "5",
+    "id": "805",
+    "name": "Herramientas"
+  },
+  {
+    "cantidad": "7",
+    "id": "800",
+    "name": "Hogar y Jardín"
+  },
+  {
+    "cantidad": "14",
+    "id": "804",
+    "name": "Juguetes"
+  },
+  {
+    "cantidad": "1",
+    "id": "807",
+    "name": "Librería"
+  }
 ]

@@ -287,6 +287,107 @@ const handleImportPhysicalCatalog = (event) => {
 }
 
 // GENERADOR DE FLYERS PARA REDES Y ESTADOS DE WHATSAPP
+// SINCRONIZACIÓN EN 1 CLIC DESDE LA API DE TUA.AR
+const isSyncingTua = ref(false)
+const handleSyncFromTuaApi = async () => {
+  isSyncingTua.value = true
+  try {
+    const res = await adminStore.syncPhysicalFromApi()
+    if (res.success) {
+      toast.add(`¡Catálogo físico actualizado! ${res.count} productos sincronizados en vivo desde tua.ar`, 'success')
+    } else {
+      toast.add(res.error || 'Error al conectar con tua.ar', 'error')
+    }
+  } catch (err) {
+    toast.add('Error al sincronizar con tua.ar', 'error')
+  } finally {
+    isSyncingTua.value = false
+  }
+}
+
+// DIRECTORIO INTEGRAL DE USUARIOS REGISTRADOS
+const userSearch = ref('')
+const userRoleFilter = ref('all')
+const showAddUserModal = ref(false)
+const newUser = ref({
+  name: '',
+  phone: '',
+  email: '',
+  role: 'client',
+  address: '',
+  pin: ''
+})
+
+const filteredRegisteredUsers = computed(() => {
+  return adminStore.registeredUsers.filter(u => {
+    const matchesRole = userRoleFilter.value === 'all' || u.role === userRoleFilter.value
+    const q = userSearch.value.trim().toLowerCase()
+    if (!q) return matchesRole
+    const matchesSearch = 
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.phone && u.phone.includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.clientNumber && u.clientNumber.toLowerCase().includes(q)) ||
+      (u.id && u.id.toLowerCase().includes(q))
+    return matchesRole && matchesSearch
+  })
+})
+
+const handleAddUser = () => {
+  if (!newUser.value.name.trim()) {
+    toast.add('Ingresa el nombre del usuario', 'error')
+    return
+  }
+  if (!newUser.value.phone.trim()) {
+    toast.add('Ingresa el WhatsApp o teléfono', 'error')
+    return
+  }
+  adminStore.registerOrUpdateUser({
+    name: newUser.value.name.trim(),
+    phone: newUser.value.phone.trim(),
+    email: newUser.value.email.trim(),
+    address: newUser.value.address.trim(),
+    role: newUser.value.role,
+    pin: newUser.value.pin.trim() || '1234'
+  })
+  toast.add('¡Usuario registrado con éxito en el directorio!', 'success')
+  showAddUserModal.value = false
+  newUser.value = { name: '', phone: '', email: '', role: 'client', address: '', pin: '' }
+}
+
+const handleChangeUserRole = (user, newRole) => {
+  adminStore.updateUser(user.id, { role: newRole })
+  toast.add(`Rol actualizado a: ${newRole === 'reseller' ? 'Revendedor' : newRole === 'client' ? 'Cliente' : 'Proveedor'}`, 'success')
+}
+
+const handleDeleteUser = (user) => {
+  if (confirm(`¿Estás seguro de eliminar al usuario ${user.name} del directorio?`)) {
+    adminStore.deleteUser(user.id)
+    toast.add('Usuario eliminado del directorio', 'info')
+  }
+}
+
+const exportRegisteredUsers = () => {
+  const json = JSON.stringify(adminStore.registeredUsers, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `streampro_usuarios_${new Date().toISOString().split('T')[0]}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.add('Directorio de usuarios exportado en JSON', 'success')
+}
+
+const showUserVaultModal = ref(false)
+const selectedUserForVault = ref(null)
+
+const openUserVault = (user) => {
+  selectedUserForVault.value = user
+  showUserVaultModal.value = true
+}
+
+
 const showFlyerModal = ref(false)
 
 // RECORDATORIOS PERSUASIVOS DE RENOVACIÓN POR WHATSAPP
@@ -2287,6 +2388,193 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- SECCIÓN: CATÁLOGO DE PRODUCTOS VIRTUALES Y CONFIGURACIÓN DE PRECIOS -->
+    
+    <!-- SECCIÓN: DIRECTORIO INTEGRAL DE USUARIOS REGISTRADOS (CLIENTES & DISTRIBUIDORES) -->
+    <div v-if="adminTab === 'users'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-2xl font-black text-white">Directorio de Usuarios Registrados</h2>
+            <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 px-2.5 py-0.5 rounded-full border border-sky-500/30">
+              {{ adminStore.registeredUsers.length }} Usuarios
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Gestión de perfiles de clientes y revendedores. Facilidad de acceso para compras y control de accesos.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <button 
+            @click="showAddUserModal = true" 
+            class="flex-1 sm:flex-none bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
+          >
+            <span>+</span>
+            <span>Registrar Usuario</span>
+          </button>
+          <button 
+            @click="exportRegisteredUsers" 
+            class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+            title="Exportar base de datos de usuarios en formato JSON"
+          >
+            <span>📥 Exportar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas de Usuarios -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">Total Registrados</span>
+          <div class="text-2xl font-black text-white">{{ adminStore.registeredUsers.length }}</div>
+        </div>
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">Clientes</span>
+          <div class="text-2xl font-black text-sky-400">{{ adminStore.registeredUsers.filter(u => u.role === 'client').length }}</div>
+        </div>
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">Distribuidores</span>
+          <div class="text-2xl font-black text-amber-400">{{ adminStore.registeredUsers.filter(u => u.role === 'reseller').length }}</div>
+        </div>
+        <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span class="text-xs text-slate-400 uppercase font-bold tracking-wider">Facturado Total</span>
+          <div class="text-2xl font-black text-emerald-400">
+            ${{ adminStore.registeredUsers.reduce((s, u) => s + (u.totalSpent || 0), 0).toLocaleString() }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros y Búsqueda -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+          <input 
+            v-model="userSearch" 
+            type="text" 
+            placeholder="Buscar por nombre, teléfono, email o N° cliente..." 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
+          >
+        </div>
+        <div class="flex gap-2">
+          <button 
+            @click="userRoleFilter = 'all'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors', userRoleFilter === 'all' ? 'bg-sky-500 text-slate-950 font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Todos
+          </button>
+          <button 
+            @click="userRoleFilter = 'client'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors', userRoleFilter === 'client' ? 'bg-sky-500 text-slate-950 font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Solo Clientes
+          </button>
+          <button 
+            @click="userRoleFilter = 'reseller'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors', userRoleFilter === 'reseller' ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Solo Revendedores
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Usuarios Registrados -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[11px]">
+              <th class="p-3.5">Usuario / N° Cliente</th>
+              <th class="p-3.5">Contacto (WhatsApp / Email)</th>
+              <th class="p-3.5">Rol</th>
+              <th class="p-3.5">Estado</th>
+              <th class="p-3.5">Pedidos / Total</th>
+              <th class="p-3.5">PIN Bóveda</th>
+              <th class="p-3.5 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80">
+            <tr v-if="filteredRegisteredUsers.length === 0">
+              <td colspan="7" class="p-8 text-center text-slate-500">
+                No se encontraron usuarios registrados con los filtros aplicados.
+              </td>
+            </tr>
+            <tr v-for="user in filteredRegisteredUsers" :key="user.id" class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-3.5">
+                <div class="font-bold text-white text-sm">{{ user.name }}</div>
+                <div class="text-[11px] font-mono text-slate-400">
+                  <span class="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{{ user.clientNumber || user.id }}</span>
+                  <span v-if="user.registeredAt" class="ml-1 text-slate-500">Reg: {{ user.registeredAt }}</span>
+                </div>
+              </td>
+              <td class="p-3.5 font-mono">
+                <div class="text-sky-400 font-bold flex items-center gap-1.5">
+                  <span>{{ user.phone || 'Sin WhatsApp' }}</span>
+                  <a 
+                    v-if="user.phone" 
+                    :href="`https://wa.me/${user.phone.replace(/[^0-9]/g, '')}`" 
+                    target="_blank" 
+                    class="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-1.5 py-0.5 rounded text-[10px] transition-colors"
+                  >
+                    💬 Chat
+                  </a>
+                </div>
+                <div v-if="user.email" class="text-slate-400 text-[11px]">{{ user.email }}</div>
+                <div v-if="user.address" class="text-slate-500 text-[10px] truncate max-w-xs">📍 {{ user.address }}</div>
+              </td>
+              <td class="p-3.5">
+                <span 
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  :class="user.role === 'reseller' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : user.role === 'provider' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'"
+                >
+                  {{ user.role === 'reseller' ? 'Distribuidor' : user.role === 'provider' ? 'Proveedor' : 'Cliente' }}
+                </span>
+              </td>
+              <td class="p-3.5">
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  {{ user.status || 'Activo' }}
+                </span>
+              </td>
+              <td class="p-3.5 font-mono">
+                <span class="text-white font-bold">{{ user.ordersCount || 0 }} pedidos</span>
+                <div class="text-emerald-400 font-bold text-[11px]">${{ (user.totalSpent || 0).toLocaleString() }} ARS</div>
+              </td>
+              <td class="p-3.5 font-mono">
+                <span class="bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-black tracking-wider">
+                  {{ user.pin || '1234' }}
+                </span>
+              </td>
+              <td class="p-3.5 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button 
+                    v-if="user.role === 'client'" 
+                    @click="handleChangeUserRole(user, 'reseller')" 
+                    class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors"
+                    title="Convertir a Revendedor Oficial"
+                  >
+                    ⭐ Hacer Revendedor
+                  </button>
+                  <button 
+                    v-else-if="user.role === 'reseller'" 
+                    @click="handleChangeUserRole(user, 'client')" 
+                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg text-[10px] transition-colors"
+                    title="Pasar a Cliente Directo"
+                  >
+                    Pasar a Cliente
+                  </button>
+                  <button 
+                    @click="handleDeleteUser(user)" 
+                    class="text-red-400 hover:text-red-300 hover:bg-red-950/40 p-1.5 rounded-lg transition-colors"
+                    title="Eliminar usuario del directorio"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div v-if="adminTab === 'catalog'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-6">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
         <div>

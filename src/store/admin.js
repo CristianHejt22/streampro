@@ -4,6 +4,7 @@ import physicalProductsData from '../assets/physicalProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
+import { parseArgentinePrice } from '../utils/pricing'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 
 // Catálogo Base Oficial de Planes de Productos Virtuales
@@ -307,11 +308,30 @@ export const useAdminStore = defineStore('admin', {
     // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS
     physicalProducts: loadDb(DB_KEYS.PHYSICAL_PRODUCTS, physicalProductsData.map(p => ({
       ...p,
-      image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${p.image}`,
-      priceNumeric: parseInt(p.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || 0
+      image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+      priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
     }))),
     physicalCategories: loadDb(DB_KEYS.PHYSICAL_CATEGORIES, physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)),
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
+
+    // DIRECTORIO CENTRAL DE USUARIOS REGISTRADOS (Clientes y Distribuidores)
+    registeredUsers: loadDb(DB_KEYS.REGISTERED_USERS, [
+      {
+        id: 'USR-PROV-01',
+        clientNumber: 'ADM-001',
+        name: 'Administrador StreamPro',
+        phone: '+54 9 11 0000-0000',
+        email: 'soporte@streamepro.me',
+        role: 'provider',
+        status: 'Verificado',
+        pin: '2026',
+        ordersCount: 0,
+        totalSpent: 0,
+        registeredAt: '2026-10-01',
+        lastActive: '2026-10-26',
+        resellerId: 'DIRECT'
+      }
+    ]),
 
     // SOLICITUDES DE POSTULACIÓN DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
     resellerApplications: loadDb(DB_KEYS.RESELLER_APPLICATIONS, []),
@@ -439,6 +459,9 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.BANK_TRANSFERS, this.bankTransfers)
         saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
         saveDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
+        saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
+        saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
+        saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
       }
     },
 
@@ -659,8 +682,9 @@ export const useAdminStore = defineStore('admin', {
       if (Array.isArray(productsList) && productsList.length > 0) {
         const formatted = productsList.map(p => ({
           ...p,
-          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${p.image}`,
-          priceNumeric: p.priceNumeric || (parseInt(p.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || 0)
+          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+          priceNumeric: p.priceNumeric || parseArgentinePrice(p.price),
+          stock: p.stock || 20
         }))
         this.physicalProducts = formatted
         this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
@@ -672,6 +696,102 @@ export const useAdminStore = defineStore('admin', {
         return { success: true, count: formatted.length }
       }
       return { error: 'El archivo JSON no contiene una lista válida de productos.' }
+    },
+
+    // Sincronización en 1 Clic desde la API de tua.ar
+    async syncPhysicalFromApi() {
+      try {
+        const res = await fetch('/api/sync-tua')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          this.physicalProducts = data.products
+          this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+          if (Array.isArray(data.categories)) {
+            this.physicalCategories = data.categories
+            this.persist(DB_KEYS.PHYSICAL_CATEGORIES)
+          }
+          return { success: true, count: data.products.length }
+        }
+        throw new Error(data.error || 'Respuesta inválida de la API tua.ar')
+      } catch (err) {
+        console.warn('Sync API falló, aplicando catálogo base actualizado...', err)
+        if (physicalProductsData && physicalProductsData.length > 0) {
+          return this.updatePhysicalProductsFromJson(physicalProductsData, physicalCategoriesData)
+        }
+        return { error: err.message || 'No se pudo conectar con tua.ar' }
+      }
+    },
+
+    // Gestión Centralizada de Usuarios Registrados (Clientes & Distribuidores)
+    registerOrUpdateUser(userData) {
+      if (!userData || !userData.name) return null
+      const phone = userData.phone || userData.whatsapp || userData.customerPhone || ''
+      const email = userData.email || ''
+      const clientNumber = userData.clientNumber || userData.customerNumber || ''
+
+      let existing = this.registeredUsers.find(u => 
+        (clientNumber && u.clientNumber === clientNumber) ||
+        (phone && u.phone && u.phone.replace(/[^0-9]/g, '') === phone.replace(/[^0-9]/g, '')) ||
+        (email && u.email && u.email.toLowerCase() === email.toLowerCase())
+      )
+
+      const nowStr = new Date().toISOString().split('T')[0]
+      const amount = Number(userData.amount || userData.total || 0)
+
+      if (existing) {
+        existing.name = userData.name || existing.name
+        if (phone) existing.phone = phone
+        if (email) existing.email = email
+        if (userData.address) existing.address = userData.address
+        if (userData.pin) existing.pin = userData.pin
+        if (userData.role) existing.role = userData.role
+        existing.lastActive = nowStr
+        existing.ordersCount = (existing.ordersCount || 0) + (userData.isNewOrder ? 1 : 0)
+        existing.totalSpent = (existing.totalSpent || 0) + amount
+      } else {
+        const newId = `USR-${Date.now().toString().slice(-4)}`
+        existing = {
+          id: newId,
+          clientNumber: clientNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
+          name: userData.name,
+          phone: phone,
+          email: email,
+          address: userData.address || '',
+          role: userData.role || 'client',
+          status: 'Activo',
+          pin: userData.pin || String(Math.floor(1000 + Math.random() * 9000)),
+          ordersCount: userData.isNewOrder ? 1 : 0,
+          totalSpent: amount,
+          registeredAt: nowStr,
+          lastActive: nowStr,
+          resellerId: userData.resellerId || 'DIRECT'
+        }
+        this.registeredUsers.unshift(existing)
+      }
+
+      this.persist(DB_KEYS.REGISTERED_USERS)
+      return existing
+    },
+
+    updateUser(userId, updates) {
+      const idx = this.registeredUsers.findIndex(u => u.id === userId)
+      if (idx !== -1) {
+        this.registeredUsers[idx] = { ...this.registeredUsers[idx], ...updates }
+        this.persist(DB_KEYS.REGISTERED_USERS)
+        return { success: true, user: this.registeredUsers[idx] }
+      }
+      return { error: 'Usuario no encontrado' }
+    },
+
+    deleteUser(userId) {
+      const idx = this.registeredUsers.findIndex(u => u.id === userId)
+      if (idx !== -1) {
+        this.registeredUsers.splice(idx, 1)
+        this.persist(DB_KEYS.REGISTERED_USERS)
+        return { success: true }
+      }
+      return { error: 'Usuario no encontrado' }
     },
 
     // Carga de Inventario Mayorista Real
@@ -1274,6 +1394,17 @@ export const useAdminStore = defineStore('admin', {
       this.orders.unshift(newOrder)
       this.persist(DB_KEYS.ORDERS)
 
+      // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
+      this.registerOrUpdateUser({
+        name: newOrder.customerName,
+        phone: newOrder.customerPhone,
+        clientNumber: newOrder.customerNumber,
+        resellerId: newOrder.resellerId,
+        amount: newOrder.clientPrice,
+        role: 'client',
+        isNewOrder: true
+      })
+
       // Alertar al revendedor solo si la venta provino de su enlace
       if (!isDirect && resellerObj) {
         this.sendAlertToReseller({
@@ -1334,6 +1465,18 @@ export const useAdminStore = defineStore('admin', {
       }
 
       this.physicalOrders.unshift(newOrder)
+
+      // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
+      this.registerOrUpdateUser({
+        name: newOrder.customerName,
+        phone: newOrder.customerPhone,
+        clientNumber: newOrder.customerNumber,
+        address: newOrder.shippingAddress,
+        resellerId: targetResellerId,
+        amount: totalAmount,
+        role: 'client',
+        isNewOrder: true
+      })
 
       if (!isDirect && resellerObj) {
         this.sendAlertToReseller({

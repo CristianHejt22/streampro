@@ -26,48 +26,52 @@ function log(msg) {
   console.log(`[CATÁLOGO FÍSICO] ${msg}`)
 }
 
-function copyFromExternalProject() {
-  if (fs.existsSync(SOURCE_PRODUCTS_FILE)) {
-    log(`Encontrado catálogo en: ${EXTERNAL_CATALOG_DIR}`)
-    const productsData = fs.readFileSync(SOURCE_PRODUCTS_FILE, 'utf-8')
-    fs.writeFileSync(TARGET_PRODUCTS_FILE, productsData, 'utf-8')
-
-    let count = 0
-    try {
-      const cleanData = productsData.replace(/^\uFEFF/, '')
-      const parsed = JSON.parse(cleanData)
-      count = Array.isArray(parsed) ? parsed.length : 0
-      fs.writeFileSync(TARGET_PRODUCTS_FILE, cleanData, 'utf-8')
-    } catch (e) {
-      log(`Nota al parsear productos: ${e.message}`)
+function parseArgentinePrice(val) {
+  if (typeof val === 'number') return val
+  if (!val) return 0
+  let str = String(val).replace(/\$/g, '').trim()
+  if (str.includes(',')) {
+    str = str.split('.').join('').replace(',', '.')
+  } else {
+    const dotCount = (str.match(/\./g) || []).length
+    if (dotCount > 1) {
+      str = str.split('.').join('')
+    } else if (dotCount === 1 && str.split('.')[1].length === 3) {
+      str = str.split('.').join('')
     }
-
-    log(`✓ Sincronizados ${count} productos en ${TARGET_PRODUCTS_FILE}`)
-
-    if (fs.existsSync(SOURCE_CATEGORIES_FILE)) {
-      const categoriesData = fs.readFileSync(SOURCE_CATEGORIES_FILE, 'utf-8')
-      const cleanCats = categoriesData.replace(/^\uFEFF/, '')
-      fs.writeFileSync(TARGET_CATEGORIES_FILE, cleanCats, 'utf-8')
-      log(`✓ Sincronizadas categorías en ${TARGET_CATEGORIES_FILE}`)
-    }
-
-    return true
   }
-  return false
+  str = str.replace(/[^0-9.]/g, '')
+  const num = parseFloat(str)
+  return isNaN(num) ? 0 : num
 }
 
-// Opcional: Descarga directa desde API tua.ar si se solicita con --fetch o no existe el archivo local
+function formatProduct(p, catMap = {}) {
+  const catId = (p.categoryIds && p.categoryIds[0]) || p.category || ''
+  const catName = catMap[catId] || p.category || 'General'
+  const imageClean = p.image
+    ? (p.image.startsWith('http') ? p.image : `https://tua.ar/${p.image.replace(/^\//, '')}`)
+    : 'https://tua.ar/images/banner22.webp'
+
+  return {
+    ...p,
+    category: catName,
+    image: imageClean,
+    priceNumeric: parseArgentinePrice(p.price),
+    stock: p.stock || 20
+  }
+}
+
 function postRequest(url, bodyData = '') {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url)
     const options = {
       hostname: urlObj.hostname,
       path: urlObj.pathname + urlObj.search,
-      method: 'POST',
+      method: bodyData ? 'POST' : 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': '*/*',
+        'Accept': 'application/json, text/plain, */*',
         'Content-Length': Buffer.byteLength(bodyData)
       }
     }
@@ -79,59 +83,55 @@ function postRequest(url, bodyData = '') {
     })
 
     req.on('error', e => reject(e))
-    req.write(bodyData)
+    if (bodyData) req.write(bodyData)
     req.end()
   })
 }
 
-async function fetchFromApi() {
+export async function fetchFromApi() {
   const baseUrl = "https://tua.ar/catalogo.php"
   const categoriesUrl = "https://tua.ar/catalogo.php?accion=categorias"
 
   log("Iniciando descarga directa desde https://tua.ar...")
   let categoriesResponse = []
+  const catMap = {}
   try {
     const rawCats = await postRequest(categoriesUrl)
     categoriesResponse = JSON.parse(rawCats)
-    fs.writeFileSync(TARGET_CATEGORIES_FILE, JSON.stringify(categoriesResponse, null, 2), 'utf-8')
-    log(`✓ ${categoriesResponse.length} categorías obtenidas de la API`)
+    categoriesResponse.forEach(c => { catMap[c.id] = c.name })
+    const activeCats = categoriesResponse.filter(c => parseInt(c.cantidad || '0') > 0)
+    fs.writeFileSync(TARGET_CATEGORIES_FILE, JSON.stringify(activeCats, null, 2), 'utf-8')
+    log(`✓ ${activeCats.length} categorías obtenidas de la API`)
   } catch (e) {
     log(`Error al consultar categorías de la API: ${e.message}`)
     return false
   }
 
   const productDict = {}
-  const rootCategory = { id: "", name: "Root/All", cantidad: 1 }
-  const categoriesToProcess = [rootCategory, ...categoriesResponse]
-
-  for (const cat of categoriesToProcess) {
-    if (parseInt(cat.cantidad || '0') === 0 && cat.id !== "") continue
+  for (const cat of categoriesResponse) {
+    if (parseInt(cat.cantidad || '0') <= 0) continue
     const catId = cat.id
-    log(`Descargando categoría: ${cat.name || 'General'} (${catId})...`)
-
     let page = 0
-    let lastFirstId = null
 
-    while (true) {
+    while (page < 10) {
       const formData = `page=${page}&order=&category=${catId}&buscar=`
       try {
         const responseStr = await postRequest(baseUrl, formData)
         if (!responseStr || responseStr.trim() === '') break
         const response = JSON.parse(responseStr)
         if (response && response.length > 0) {
-          if (response[0].id === lastFirstId) break
-          lastFirstId = response[0].id
-
-          for (const p of response) {
-            if (!productDict[p.id]) {
-              p.categoryIds = [catId]
-              productDict[p.id] = p
+          for (const rawItem of response) {
+            const formatted = formatProduct(rawItem, catMap)
+            if (!productDict[formatted.id]) {
+              formatted.categoryIds = [catId]
+              productDict[formatted.id] = formatted
             } else {
-              if (!productDict[p.id].categoryIds.includes(catId)) {
-                productDict[p.id].categoryIds.push(catId)
+              if (!productDict[formatted.id].categoryIds.includes(catId)) {
+                productDict[formatted.id].categoryIds.push(catId)
               }
             }
           }
+          if (response.length < 10) break
           page++
         } else {
           break
@@ -155,22 +155,56 @@ async function fetchFromApi() {
     } catch (e) {}
   }
 
-  return true
+  return allProducts
+}
+
+function copyFromExternalProject() {
+  if (fs.existsSync(SOURCE_PRODUCTS_FILE)) {
+    log(`Encontrado catálogo en: ${EXTERNAL_CATALOG_DIR}`)
+    const productsData = fs.readFileSync(SOURCE_PRODUCTS_FILE, 'utf-8')
+    let categoriesData = null
+    const catMap = {}
+    if (fs.existsSync(SOURCE_CATEGORIES_FILE)) {
+      try {
+        categoriesData = JSON.parse(fs.readFileSync(SOURCE_CATEGORIES_FILE, 'utf-8').replace(/^\uFEFF/, ''))
+        categoriesData.forEach(c => { catMap[c.id] = c.name })
+        const activeCats = categoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+        fs.writeFileSync(TARGET_CATEGORIES_FILE, JSON.stringify(activeCats, null, 2), 'utf-8')
+        log(`✓ Sincronizadas categorías en ${TARGET_CATEGORIES_FILE}`)
+      } catch (e) {}
+    }
+
+    try {
+      const cleanData = productsData.replace(/^\uFEFF/, '')
+      const parsed = JSON.parse(cleanData)
+      if (Array.isArray(parsed)) {
+        const formatted = parsed.map(p => formatProduct(p, catMap))
+        fs.writeFileSync(TARGET_PRODUCTS_FILE, JSON.stringify(formatted, null, 2), 'utf-8')
+        log(`✓ Sincronizados ${formatted.length} productos con precios normalizados en ${TARGET_PRODUCTS_FILE}`)
+        return true
+      }
+    } catch (e) {
+      log(`Nota al parsear productos: ${e.message}`)
+    }
+  }
+  return false
 }
 
 async function main() {
   const args = process.argv.slice(2)
   const forceFetch = args.includes('--fetch')
 
-  if (!forceFetch && fs.existsSync(SOURCE_PRODUCTS_FILE)) {
-    log("Copiando catálogo local actualizado desde C:\\Users\\yo\\catalogo...")
-    copyFromExternalProject()
+  if (forceFetch || !fs.existsSync(SOURCE_PRODUCTS_FILE)) {
+    log("Descargando actualización directamente desde el servidor mayorista tua.ar...")
+    await fetchFromApi()
     log("¡Sincronización completada con éxito!")
   } else {
-    log("Descargando actualización directamente desde el servidor mayorista...")
-    await fetchFromApi()
+    log("Copiando y normalizando catálogo local desde C:\\Users\\yo\\catalogo...")
+    copyFromExternalProject()
     log("¡Sincronización completada con éxito!")
   }
 }
 
-main()
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main()
+}

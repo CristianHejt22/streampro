@@ -447,6 +447,18 @@ const uniqueAffiliateLink = computed(() => {
   return `${origin}/?ref=${currentResellerId.value}`
 })
 
+const shortAffiliateLink = computed(() => {
+  return `https://spro.li/r/${currentResellerId.value}`
+})
+
+const copyShortAffiliateLink = () => {
+  navigator.clipboard.writeText(shortAffiliateLink.value).then(() => {
+    toast.add(`¡Enlace corto ${shortAffiliateLink.value} copiado con éxito!`, 'success')
+  }).catch(() => {
+    toast.add('Error al copiar link corto', 'error')
+  })
+}
+
 const copyAffiliateLink = () => {
   navigator.clipboard.writeText(uniqueAffiliateLink.value).then(() => {
     toast.add(`¡Link único de tu tienda copiado! (${uniqueAffiliateLink.value})`, 'success')
