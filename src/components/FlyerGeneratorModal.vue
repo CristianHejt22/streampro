@@ -94,7 +94,10 @@ const displayDomain = computed(() => {
   let val = (websiteUrl.value || props.websiteDomain || 'streamepro.me').trim()
   val = val.replace(/^https?:\/\//i, '')
   val = val.split('/')[0].split('?')[0].split('#')[0]
-  return val || 'streamepro.me'
+  if (val.includes('spro.li') || !val) {
+    return 'streamepro.me'
+  }
+  return val
 })
 
 // Watchers de props iniciales
@@ -109,8 +112,10 @@ watch(() => props.clientOnlyPhysical, (val) => {
 }, { immediate: true })
 
 watch(() => props.websiteDomain, (val) => {
-  if (val) {
+  if (val && !val.includes('spro.li')) {
     websiteUrl.value = val.replace(/^https?:\/\//i, '').split('/')[0]
+  } else {
+    websiteUrl.value = 'streamepro.me'
   }
 }, { immediate: true })
 
@@ -1199,42 +1204,18 @@ const shareToWhatsAppStatus = () => {
               </span>
             </div>
 
-            <!-- Opciones Rápidas de Dominio Principal Oficial -->
-            <div class="grid grid-cols-2 gap-2">
-              <button 
-                type="button" 
-                @click="websiteUrl = 'streamepro.me'" 
-                :class="['p-2.5 rounded-xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer', displayDomain === 'streamepro.me' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
-              >
+            <!-- Dominio Principal Oficial Único para Flyers -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
                 <span class="text-base">🌐</span>
                 <div class="min-w-0">
-                  <div class="font-mono font-black text-xs truncate">streamepro.me</div>
-                  <div class="text-[9px] opacity-85">Dominio Principal Oficial</div>
+                  <div class="font-mono font-black text-xs text-white">streamepro.me</div>
+                  <div class="text-[9px] text-slate-400">Dominio Principal Oficial en el Flyer</div>
                 </div>
-              </button>
-
-              <button 
-                type="button" 
-                @click="websiteUrl = 'spro.li'" 
-                :class="['p-2.5 rounded-xl border text-left font-bold transition-all flex items-center gap-2.5 cursor-pointer', displayDomain === 'spro.li' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-500/50']"
-              >
-                <span class="text-base">⭐</span>
-                <div class="min-w-0">
-                  <div class="font-mono font-black text-xs truncate">spro.li</div>
-                  <div class="text-[9px] opacity-85">Dominio Corto Oficial</div>
-                </div>
-              </button>
-            </div>
-
-            <!-- Entrada de solo dominio limpio -->
-            <div class="flex items-center gap-2 pt-1">
-              <span class="text-slate-400 text-[11px] font-mono">Dominio:</span>
-              <input 
-                v-model="websiteUrl" 
-                type="text" 
-                class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-sky-400 outline-none font-mono font-bold text-xs"
-                placeholder="streamepro.me"
-              >
+              </div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                ✓ Dominio Oficial
+              </span>
             </div>
           </div>
 

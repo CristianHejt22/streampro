@@ -296,17 +296,17 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             </p>
             <span class="hidden sm:inline text-slate-700">•</span>
             <span class="text-[11px] text-slate-400 font-mono">
-              Dirección Ejecutiva & CEO: <strong class="text-slate-300">Cristian Hejt</strong>
+              Dirección Ejecutiva & CEO: <strong class="text-slate-300">StreamePro Cloud Enterprise</strong>
             </span>
             <span class="hidden sm:inline text-slate-700">•</span>
             <a 
               href="https://spro.li" 
               target="_blank" 
               class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 font-mono text-[10px] font-bold border border-sky-500/30 transition-all shadow-sm"
-              title="Acortador y redirección oficial: https://spro.li"
+              title="Creador & Derechos: https://spro.li"
             >
-              <span>🔗</span>
-              <span>Redirección: https://spro.li</span>
+              <span>⚖️</span>
+              <span>Creador & Derechos: https://spro.li</span>
             </a>
           </div>
 
