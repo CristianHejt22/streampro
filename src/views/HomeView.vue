@@ -770,13 +770,9 @@ const submitOrder = async () => {
           </p>
         </div>
       </div>
-      <button 
-        type="button"
-        @click="clientForm.selectedResellerId = 'DIRECT'; localStorage.removeItem('streamepro_referral'); toast.add('Comprando ahora directamente en StreamePro Tienda Oficial', 'info')" 
-        class="text-[11px] font-bold text-slate-400 hover:text-white underline self-end sm:self-auto shrink-0 transition-colors"
-      >
-        Ir a Tienda Principal Directa →
-      </button>
+      <div class="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 font-bold text-[11px] shrink-0 self-end sm:self-auto">
+        <span>✓</span> Canal Oficial Verificado
+      </div>
     </div>
 
     <!-- Selector Principal de Sección: Streaming Digital vs Paquetes vs Productos Físicos -->
