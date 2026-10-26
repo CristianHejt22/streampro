@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import { useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 
@@ -401,49 +401,425 @@ const previewProductReferralUrl = () => {
   }
 }
 
+// ========================================================
+// MOTOR CANVAS 2D DE RESPALDO (100% LIBRE DE ERRORES OKLCH/DOM)
+// ========================================================
+const loadFlyerImageElement = (rawUrl) => {
+  return new Promise((resolve) => {
+    if (!rawUrl) return resolve(null)
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    let timer = setTimeout(() => resolve(null), 3500)
+    img.onload = () => {
+      clearTimeout(timer)
+      resolve(img)
+    }
+    img.onerror = () => {
+      clearTimeout(timer)
+      resolve(null)
+    }
+    img.src = rawUrl
+  })
+}
+
+function renderCanvasFlyerBlob() {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const format = flyerFormat.value
+      let width = 1080
+      let height = 1920
+
+      if (format === 'feed') {
+        width = 1080
+        height = 1350
+      } else if (format === 'square') {
+        width = 1080
+        height = 1080
+      } else if (format === 'banner') {
+        width = 1920
+        height = 1080
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+
+      function roundRect(ctx, x, y, w, h, radius, fill, stroke, strokeColor = '#fff', lineWidth = 1) {
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y)
+        ctx.lineTo(x + w - radius, y)
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+        ctx.lineTo(x + w, y + h - radius)
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+        ctx.lineTo(x + radius, y + h)
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+        ctx.lineTo(x, y + radius)
+        ctx.quadraticCurveTo(x, y, x + radius, y)
+        ctx.closePath()
+        if (fill) ctx.fill()
+        if (stroke) {
+          ctx.lineWidth = lineWidth
+          ctx.strokeStyle = strokeColor
+          ctx.stroke()
+        }
+      }
+
+      // Colores de Fondo según tema (Cinema, Cyber, Emerald, Blue)
+      let gradTop = '#020617'
+      let gradMid = '#1e0506'
+      let gradBot = '#020617'
+      let accentBorder = '#ef4444'
+
+      if (flyerTheme.value === 'cyber') {
+        gradMid = '#2e1065'
+        accentBorder = '#a855f7'
+      } else if (flyerTheme.value === 'emerald') {
+        gradMid = '#064e3b'
+        accentBorder = '#10b981'
+      } else if (flyerTheme.value === 'blue') {
+        gradMid = '#0c4a6e'
+        accentBorder = '#0ea5e9'
+      }
+
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height)
+      bgGrad.addColorStop(0, gradTop)
+      bgGrad.addColorStop(0.5, gradMid)
+      bgGrad.addColorStop(1, gradBot)
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, width, height)
+
+      // Borde exterior
+      roundRect(ctx, 20, 20, width - 40, height - 40, 48, false, true, accentBorder, 3)
+
+      const isBanner = format === 'banner'
+      const domainText = displayDomain.value || 'streamepro.me'
+
+      if (isBanner) {
+        // ================= BANNER HORIZONTAL (1920 x 1080) =================
+        // Encabezado
+        ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(storeName.value.toUpperCase(), 100, 110)
+
+        // Columna Izquierda: Hero Visual
+        const boxX = 100
+        const boxY = 180
+        const boxW = 540
+        const boxH = 540
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+        roundRect(ctx, boxX, boxY, boxW, boxH, 36, true, true, 'rgba(255,255,255,0.2)', 2)
+
+        if (flyerProductType.value === 'physical') {
+          const imgEl = await loadFlyerImageElement(productImageCORS.value)
+          if (imgEl) {
+            ctx.drawImage(imgEl, boxX + 40, boxY + 40, boxW - 80, boxH - 80)
+          } else {
+            ctx.font = '140px sans-serif'
+            ctx.textAlign = 'center'
+            ctx.fillText('📦', boxX + boxW / 2, boxY + boxH / 2 + 50)
+          }
+        } else if (flyerProductType.value === 'combo') {
+          ctx.font = '80px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText('🍿 🎬 ✨', boxX + boxW / 2, boxY + boxH / 2 + 20)
+        } else {
+          ctx.font = '160px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText(currentPlatformIcon.value, boxX + boxW / 2, boxY + boxH / 2 + 50)
+        }
+
+        // Columna Derecha: Detalles
+        const rightX = 700
+        ctx.textAlign = 'left'
+
+        // Badge
+        const badgeText = headlineBadge.value.toUpperCase()
+        ctx.font = '900 26px sans-serif'
+        const bW = Math.min(ctx.measureText(badgeText).width + 50, 700)
+        const bGrad = ctx.createLinearGradient(rightX, 160, rightX + bW, 160)
+        bGrad.addColorStop(0, '#f59e0b')
+        bGrad.addColorStop(1, '#ea580c')
+        ctx.fillStyle = bGrad
+        roundRect(ctx, rightX, 160, bW, 56, 28, true, false)
+        ctx.fillStyle = '#020617'
+        ctx.textAlign = 'center'
+        ctx.fillText(badgeText, rightX + bW / 2, 198)
+
+        // Título y Bajada
+        ctx.textAlign = 'left'
+        ctx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        const tStr = displayTitle.value
+        ctx.fillText(tStr.length > 38 ? tStr.slice(0, 36) + '...' : tStr, rightX, 290)
+
+        ctx.font = 'bold 28px sans-serif'
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(displaySubtitle.value, rightX, 350)
+
+        // Precio
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'
+        roundRect(ctx, rightX, 410, 1120, 150, 28, true, true, 'rgba(255,255,255,0.15)', 2)
+        if (displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)) {
+          ctx.font = 'bold 24px sans-serif'
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText(`Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`, rightX + 40, 460)
+          ctx.font = '900 68px sans-serif'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`$${displayPrice.value} ARS`, rightX + 40, 530)
+        } else {
+          ctx.font = 'bold 20px sans-serif'
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText('PRECIO EXCLUSIVO', rightX + 40, 455)
+          ctx.font = '900 70px sans-serif'
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`$${displayPrice.value} ARS`, rightX + 40, 530)
+        }
+
+        // Bullets
+        const bullets = [bullet1.value, bullet2.value, bullet3.value]
+        bullets.forEach((b, idx) => {
+          const by = 640 + idx * 55
+          ctx.font = 'bold 30px sans-serif'
+          ctx.fillStyle = '#10b981'
+          ctx.fillText('✓', rightX + 20, by)
+          ctx.font = '600 28px sans-serif'
+          ctx.fillStyle = '#f1f5f9'
+          ctx.fillText(b.length > 55 ? b.slice(0, 52) + '...' : b, rightX + 70, by)
+        })
+
+        // Footer Web (Solo Dominio Principal)
+        const webW = 1120
+        const webGrad = ctx.createLinearGradient(rightX, 860, rightX + webW, 860)
+        webGrad.addColorStop(0, '#0284c7')
+        webGrad.addColorStop(1, '#0ea5e9')
+        ctx.fillStyle = webGrad
+        roundRect(ctx, rightX, 860, webW, 100, 30, true, false)
+        ctx.textAlign = 'center'
+        ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#020617'
+        ctx.fillText(`🌐 ${domainText}`, rightX + webW / 2, 926)
+
+      } else {
+        // ================= FORMATOS VERTICALES (Story 9:16, Feed 4:5, Square 1:1) =================
+        const isStory = format === 'story'
+        const isFeed = format === 'feed'
+
+        // Encabezado
+        ctx.textAlign = 'left'
+        ctx.font = `bold ${isStory ? 36 : isFeed ? 30 : 26}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#fbbf24'
+        const headerY = isStory ? 100 : isFeed ? 75 : 60
+        ctx.fillText(storeName.value.toUpperCase(), 80, headerY)
+
+        ctx.textAlign = 'right'
+        ctx.font = `bold ${isStory ? 24 : isFeed ? 20 : 18}px sans-serif`
+        ctx.fillStyle = '#94a3b8'
+        ctx.fillText('OFICIAL', width - 80, headerY)
+
+        // Badge
+        const badgeY = isStory ? 160 : isFeed ? 120 : 95
+        const badgeText = headlineBadge.value.toUpperCase()
+        ctx.font = `900 ${isStory ? 28 : isFeed ? 24 : 20}px sans-serif`
+        const bW = Math.min(ctx.measureText(badgeText).width + 48, width - 160)
+        const bX = (width - bW) / 2
+        const bGrad = ctx.createLinearGradient(bX, badgeY, bX + bW, badgeY)
+        bGrad.addColorStop(0, '#f59e0b')
+        bGrad.addColorStop(1, '#ea580c')
+        ctx.fillStyle = bGrad
+        roundRect(ctx, bX, badgeY, bW, isStory ? 60 : 48, 25, true, false)
+        ctx.textAlign = 'center'
+        ctx.fillStyle = '#020617'
+        ctx.fillText(badgeText, width / 2, badgeY + (isStory ? 41 : 33))
+
+        // Hero Visual
+        const heroBoxSize = isStory ? 380 : isFeed ? 290 : 220
+        const heroX = (width - heroBoxSize) / 2
+        const heroY = isStory ? 255 : isFeed ? 195 : 160
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)'
+        roundRect(ctx, heroX, heroY, heroBoxSize, heroBoxSize, 36, true, true, 'rgba(255,255,255,0.18)', 2)
+
+        if (flyerProductType.value === 'physical') {
+          const imgEl = await loadFlyerImageElement(productImageCORS.value)
+          if (imgEl) {
+            ctx.drawImage(imgEl, heroX + 30, heroY + 30, heroBoxSize - 60, heroBoxSize - 60)
+          } else {
+            ctx.font = `${isStory ? 120 : isFeed ? 90 : 70}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.fillText('📦', width / 2, heroY + heroBoxSize / 2 + 35)
+          }
+        } else if (flyerProductType.value === 'combo') {
+          ctx.font = `${isStory ? 75 : isFeed ? 60 : 48}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText('🍿 🎬 ✨', width / 2, heroY + heroBoxSize / 2 + 15)
+        } else {
+          ctx.font = `${isStory ? 140 : isFeed ? 105 : 85}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText(currentPlatformIcon.value, width / 2, heroY + heroBoxSize / 2 + 45)
+        }
+
+        // Título y Bajada
+        const titleY = heroY + heroBoxSize + (isStory ? 75 : isFeed ? 60 : 50)
+        ctx.textAlign = 'center'
+        ctx.font = `900 ${isStory ? 48 : isFeed ? 38 : 30}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#ffffff'
+        const tStr = displayTitle.value
+        ctx.fillText(tStr.length > 36 ? tStr.slice(0, 34) + '...' : tStr, width / 2, titleY)
+
+        ctx.font = `bold ${isStory ? 26 : isFeed ? 22 : 18}px sans-serif`
+        ctx.fillStyle = '#fbbf24'
+        ctx.fillText(displaySubtitle.value, width / 2, titleY + (isStory ? 42 : isFeed ? 34 : 28))
+
+        // Tarjeta de Precio
+        const priceBoxW = isStory ? 780 : isFeed ? 720 : 660
+        const priceBoxH = isStory ? 175 : isFeed ? 140 : 115
+        const priceBoxX = (width - priceBoxW) / 2
+        const priceBoxY = titleY + (isStory ? 80 : isFeed ? 60 : 45)
+
+        ctx.fillStyle = 'rgba(0,0,0,0.7)'
+        roundRect(ctx, priceBoxX, priceBoxY, priceBoxW, priceBoxH, 28, true, true, 'rgba(255,255,255,0.15)', 2)
+
+        if (displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)) {
+          ctx.font = `bold ${isStory ? 24 : isFeed ? 20 : 17}px sans-serif`
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText(`Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`, width / 2, priceBoxY + (isStory ? 48 : isFeed ? 38 : 32))
+
+          ctx.font = `900 ${isStory ? 72 : isFeed ? 56 : 46}px sans-serif`
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, priceBoxY + (isStory ? 128 : isFeed ? 100 : 82))
+        } else {
+          ctx.font = `bold ${isStory ? 20 : isFeed ? 17 : 15}px sans-serif`
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText('PRECIO EXCLUSIVO', width / 2, priceBoxY + (isStory ? 45 : isFeed ? 36 : 30))
+
+          ctx.font = `900 ${isStory ? 76 : isFeed ? 60 : 50}px sans-serif`
+          ctx.fillStyle = '#ffffff'
+          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, priceBoxY + (isStory ? 130 : isFeed ? 102 : 84))
+        }
+
+        // Bullets
+        const bulletsStartY = priceBoxY + priceBoxH + (isStory ? 80 : isFeed ? 55 : 40)
+        const bullets = [bullet1.value, bullet2.value, bullet3.value]
+        ctx.textAlign = 'left'
+        bullets.forEach((b, idx) => {
+          if (format === 'square' && idx === 2) return // Omitir 3er bullet en formato 1:1 para evitar saturación
+          const by = bulletsStartY + idx * (isStory ? 60 : isFeed ? 48 : 38)
+          ctx.font = `bold ${isStory ? 32 : isFeed ? 26 : 22}px sans-serif`
+          ctx.fillStyle = '#10b981'
+          ctx.fillText('✓', 140, by)
+
+          ctx.font = `600 ${isStory ? 30 : isFeed ? 24 : 20}px sans-serif`
+          ctx.fillStyle = '#f1f5f9'
+          ctx.fillText(b.length > 44 ? b.slice(0, 42) + '...' : b, 190, by)
+        })
+
+        // Footer (Solo Dominio Principal)
+        const footW = isStory ? 840 : isFeed ? 780 : 720
+        const footH = isStory ? 105 : isFeed ? 85 : 75
+        const footX = (width - footW) / 2
+        const footY = height - footH - (isStory ? 90 : isFeed ? 65 : 45)
+
+        const webGrad = ctx.createLinearGradient(footX, footY, footX + footW, footY)
+        webGrad.addColorStop(0, '#0284c7')
+        webGrad.addColorStop(1, '#0ea5e9')
+        ctx.fillStyle = webGrad
+        roundRect(ctx, footX, footY, footW, footH, footH / 3, true, false)
+
+        ctx.textAlign = 'center'
+        ctx.font = `900 ${isStory ? 44 : isFeed ? 36 : 30}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.fillStyle = '#020617'
+        ctx.fillText(`🌐 ${domainText}`, width / 2, footY + footH / 2 + (isStory ? 15 : 12))
+      }
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Fallo al exportar blob de canvas'))
+          return
+        }
+        resolve(blob)
+      }, 'image/png')
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
+// Disparador universal de descarga de archivos
+const triggerFileDownload = (fileUrl, filename) => {
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = fileUrl
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// Exportador seguro con timeout para html-to-image
+const exportWithHtmlToImage = (node) => {
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Timeout de renderizado html-to-image'))
+    }, 6000)
+
+    try {
+      const dataUrl = await toPng(node, {
+        pixelRatio: 3,
+        cacheBust: true,
+        backgroundColor: null
+      })
+      clearTimeout(timer)
+      resolve(dataUrl)
+    } catch (err) {
+      clearTimeout(timer)
+      reject(err)
+    }
+  })
+}
+
 // ==========================================
-// DESCARGA DE FLYER IDÉNTICA A LA PREVISUALIZACIÓN (HTML2CANVAS)
+// DESCARGA DE FLYER INFALIBLE CON DOBLE MOTOR
 // ==========================================
 const downloadFlyerImage = async () => {
   if (!flyerPreviewRef.value) return
   isExporting.value = true
-  toast.add(`Generando flyer en formato ${flyerFormatLabels[flyerFormat.value]} con diseño idéntico...`, 'info')
+  toast.add(`Generando flyer en formato ${flyerFormatLabels[flyerFormat.value]}...`, 'info')
+
+  const safeName = displayTitle.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'flyer'
+  const filename = `flyer_${safeName}_${flyerFormat.value}.png`
 
   try {
     const previewEl = flyerPreviewRef.value
-
-    // Esperar renderizado limpio
     await nextTick()
 
-    // Factor de escala retina 3x para ultra alta definición (1080p / 2K)
-    const exportScale = 3
+    // 1. Intentar motor nativo DOM (html-to-image)
+    let dataUrl = null
+    try {
+      dataUrl = await exportWithHtmlToImage(previewEl)
+    } catch (domErr) {
+      console.warn('html-to-image no disponible o bloqueado, usando motor de respaldo Canvas 2D:', domErr)
+    }
 
-    const canvas = await html2canvas(previewEl, {
-      scale: exportScale,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
-      imageTimeout: 12000
-    })
+    if (dataUrl) {
+      triggerFileDownload(dataUrl, filename)
+      toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
+      return
+    }
 
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        toast.add('Error al generar la imagen del flyer', 'error')
-        return
-      }
+    // 2. Motor de respaldo de ultra alta fidelidad Canvas 2D
+    const blob = await renderCanvasFlyerBlob()
+    if (blob) {
       const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      const safeName = displayTitle.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'flyer'
-      link.download = `flyer_${safeName}_${flyerFormat.value}.png`
-      link.href = url
-      link.click()
+      triggerFileDownload(url, filename)
       URL.revokeObjectURL(url)
       toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
-    }, 'image/png')
+      return
+    }
+
+    throw new Error('No se pudo procesar la imagen')
   } catch (err) {
-    console.error('Error generando flyer con html2canvas:', err)
-    toast.add('Ocurrió un error al generar el flyer. Inténtalo de nuevo.', 'error')
+    console.error('Error generando flyer:', err)
+    toast.add('Ocurrió un error al descargar el flyer. Por favor, reintenta.', 'error')
   } finally {
     isExporting.value = false
   }
@@ -951,7 +1327,7 @@ const shareToWhatsAppStatus = () => {
             </span>
           </div>
 
-          <!-- CONTENEDOR DEL FLYER (ESTRUCTURA EXACTA CAPTURABLE POR HTML2CANVAS) -->
+          <!-- CONTENEDOR DEL FLYER (ESTRUCTURA EXACTA CAPTURABLE) -->
           <div 
             ref="flyerPreviewRef" 
             :class="[
