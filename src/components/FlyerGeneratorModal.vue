@@ -54,10 +54,22 @@ const flyerFormatLabels = {
 const isExporting = ref(false)
 const flyerPreviewRef = ref(null)
 
-// Precarga de la plantilla Cyber Oficial de Canva
+// Precarga de las 4 plantillas Cyber Oficiales de Canva
 if (typeof window !== 'undefined') {
-  const preImg = new Image()
-  preImg.src = '/flyer-template-cyber.png'
+  ['story', 'feed', 'square', 'banner'].forEach((fmt) => {
+    const ext = fmt === 'story' ? 'png' : 'jpg'
+    const img = new Image()
+    img.src = `/flyer-template-cyber-${fmt}.${ext}`
+  })
+}
+
+// Helper para obtener la URL de la plantilla Cyber según formato
+const getCyberTemplateUrl = (format) => {
+  if (format === 'story') return '/flyer-template-cyber-story.png'
+  if (format === 'feed') return '/flyer-template-cyber-feed.jpg'
+  if (format === 'square') return '/flyer-template-cyber-square.jpg'
+  if (format === 'banner') return '/flyer-template-cyber-banner.jpg'
+  return '/flyer-template-cyber-story.png'
 }
 
 // Badges sugeridos reactivos definidos junto al cálculo dinámico
@@ -580,210 +592,6 @@ function renderCanvasFlyerBlob() {
         bgGrad.addColorStop(1, '#020617')
         ctx.fillStyle = bgGrad
         ctx.fillRect(0, 0, w, h)
-
-        // Luces ambientales cibernéticas
-        const glow1 = ctx.createRadialGradient(w * 0.8, h * 0.15, 20, w * 0.8, h * 0.15, w * 0.6)
-        glow1.addColorStop(0, 'rgba(0, 240, 255, 0.22)')
-        glow1.addColorStop(1, 'transparent')
-        ctx.fillStyle = glow1
-        ctx.fillRect(0, 0, w, h)
-
-        const glow2 = ctx.createRadialGradient(w * 0.2, h * 0.85, 20, w * 0.2, h * 0.85, w * 0.6)
-        glow2.addColorStop(0, 'rgba(245, 158, 11, 0.15)')
-        glow2.addColorStop(1, 'transparent')
-        ctx.fillStyle = glow2
-        ctx.fillRect(0, 0, w, h)
-      }
-
-      function drawCyberBorder(ctx, x, y, w, h, chamfer = 28, strokeColor = '#00f0ff', lineWidth = 2) {
-        ctx.save()
-        // Borde exterior biselado estilo Cyber HUD
-        ctx.beginPath()
-        ctx.moveTo(x + chamfer, y)
-        ctx.lineTo(x + w - chamfer, y)
-        ctx.lineTo(x + w, y + chamfer)
-        ctx.lineTo(x + w, y + h - chamfer)
-        ctx.lineTo(x + w - chamfer, y + h)
-        ctx.lineTo(x + chamfer, y + h)
-        ctx.lineTo(x, y + h - chamfer)
-        ctx.lineTo(x, y + chamfer)
-        ctx.closePath()
-        ctx.lineWidth = lineWidth
-        ctx.strokeStyle = strokeColor
-        ctx.stroke()
-
-        // Línea interior sutil
-        const inPad = 8
-        ctx.beginPath()
-        ctx.moveTo(x + chamfer + inPad, y + inPad)
-        ctx.lineTo(x + w - chamfer - inPad, y + inPad)
-        ctx.lineTo(x + w - inPad, y + chamfer + inPad)
-        ctx.lineTo(x + w - inPad, y + h - chamfer - inPad)
-        ctx.lineTo(x + w - chamfer - inPad, y + h - inPad)
-        ctx.lineTo(x + chamfer + inPad, y + h - inPad)
-        ctx.lineTo(x + inPad, y + h - chamfer - inPad)
-        ctx.lineTo(x + inPad, y + chamfer + inPad)
-        ctx.closePath()
-        ctx.lineWidth = 1
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
-        ctx.stroke()
-
-        // Pestañas / Ticks neón en las esquinas
-        const tickLen = 22
-        ctx.lineWidth = 3
-        ctx.strokeStyle = '#38bdf8'
-        // Top-left
-        ctx.beginPath()
-        ctx.moveTo(x + chamfer, y)
-        ctx.lineTo(x + chamfer + tickLen, y)
-        ctx.moveTo(x, y + chamfer)
-        ctx.lineTo(x, y + chamfer + tickLen)
-        // Top-right
-        ctx.moveTo(x + w - chamfer, y)
-        ctx.lineTo(x + w - chamfer - tickLen, y)
-        ctx.moveTo(x + w, y + chamfer)
-        ctx.lineTo(x + w, y + chamfer + tickLen)
-        // Bottom-left
-        ctx.moveTo(x + chamfer, y + h)
-        ctx.lineTo(x + chamfer + tickLen, y + h)
-        ctx.moveTo(x, y + h - chamfer)
-        ctx.lineTo(x, y + h - chamfer - tickLen)
-        // Bottom-right
-        ctx.moveTo(x + w - chamfer, y + h)
-        ctx.lineTo(x + w - chamfer - tickLen, y + h)
-        ctx.moveTo(x + w, y + h - chamfer)
-        ctx.lineTo(x + w, y + h - chamfer - tickLen)
-        ctx.stroke()
-        ctx.restore()
-      }
-
-      function drawCyberHeader(ctx, w, topY = 40, isBanner = false) {
-        if (isBanner) {
-          ctx.textAlign = 'left'
-          ctx.font = '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText('STREAME', 90, topY + 16)
-          ctx.fillStyle = '#00f0ff'
-          ctx.fillText('PRO', 90 + ctx.measureText('STREAME').width, topY + 16)
-
-          const midX = w / 2
-          ctx.beginPath()
-          ctx.arc(midX, topY + 8, 22, 0, Math.PI * 2)
-          ctx.fillStyle = '#0f172a'
-          ctx.fill()
-          ctx.lineWidth = 2
-          ctx.strokeStyle = '#00f0ff'
-          ctx.stroke()
-          ctx.font = '900 16px -apple-system, sans-serif'
-          ctx.fillStyle = '#00f0ff'
-          ctx.textAlign = 'center'
-          ctx.fillText('SP', midX, topY + 14)
-
-          ctx.textAlign = 'right'
-          ctx.font = 'bold 22px sans-serif'
-          ctx.fillStyle = '#94a3b8'
-          const dw = ctx.measureText('streamepro.me').width
-          ctx.fillText('OFICIAL ', 1830 - dw, topY + 16)
-          ctx.fillStyle = '#38bdf8'
-          ctx.fillText('streamepro.me', 1830, topY + 16)
-        } else {
-          ctx.textAlign = 'left'
-          ctx.font = '900 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText('STREAME', 65, topY + 16)
-          ctx.fillStyle = '#00f0ff'
-          ctx.fillText('PRO', 65 + ctx.measureText('STREAME').width, topY + 16)
-
-          const midX = w / 2
-          ctx.beginPath()
-          ctx.arc(midX, topY + 8, 18, 0, Math.PI * 2)
-          ctx.fillStyle = '#0f172a'
-          ctx.fill()
-          ctx.lineWidth = 2
-          ctx.strokeStyle = '#00f0ff'
-          ctx.stroke()
-          ctx.font = '900 13px -apple-system, sans-serif'
-          ctx.fillStyle = '#00f0ff'
-          ctx.textAlign = 'center'
-          ctx.fillText('SP', midX, topY + 13)
-
-          ctx.textAlign = 'right'
-          ctx.font = 'bold 18px sans-serif'
-          ctx.fillStyle = '#94a3b8'
-          const dw = ctx.measureText('streamepro.me').width
-          ctx.fillText('OFICIAL ', w - 65 - dw, topY + 16)
-          ctx.fillStyle = '#38bdf8'
-          ctx.fillText('streamepro.me', w - 65, topY + 16)
-        }
-      }
-
-      function drawCyberFooter(ctx, w, h, footY, isBanner = false) {
-        const midX = w / 2
-        const leftX = isBanner ? 90 : 65
-        const rightX = isBanner ? w - 90 : w - 65
-
-        ctx.textAlign = 'left'
-        ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)'
-        ctx.fillText('STREAMEPRO', leftX, footY + 12)
-
-        roundRect(ctx, midX - 25, footY - 10, 50, 30, 8, true, true, 'rgba(56, 189, 248, 0.5)', 1.5)
-        ctx.textAlign = 'center'
-        ctx.font = '900 14px monospace'
-        ctx.fillStyle = '#00f0ff'
-        ctx.fillText('SP', midX, footY + 10)
-
-        ctx.textAlign = 'right'
-        ctx.font = '600 20px -apple-system, sans-serif'
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.85)'
-        ctx.fillText('streamepro.me', rightX, footY + 12)
-      }
-
-      function drawCyberVisor(ctx, x, y, w, h) {
-        // Fondo del visor de cristal oscuro
-        ctx.fillStyle = 'rgba(4, 13, 33, 0.94)'
-        roundRect(ctx, x, y, w, h, 28, true, true, 'rgba(56, 189, 248, 0.65)', 2.5)
-
-        // Resplandor interior
-        const vGlow = ctx.createLinearGradient(x, y, x + w, y + h)
-        vGlow.addColorStop(0, 'rgba(56, 189, 248, 0.14)')
-        vGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.02)')
-        vGlow.addColorStop(1, 'rgba(0, 0, 0, 0.3)')
-        ctx.fillStyle = vGlow
-        roundRect(ctx, x, y, w, h, 28, true, false)
-
-        // Reflejo diagonal de cristal (Lens Glare)
-        ctx.save()
-        ctx.beginPath()
-        ctx.moveTo(x + 28, y)
-        ctx.lineTo(x + w - 28, y)
-        ctx.quadraticCurveTo(x + w, y, x + w, y + 28)
-        ctx.lineTo(x + w, y + h - 28)
-        ctx.quadraticCurveTo(x + w, y + h, x + w - 28, y + h)
-        ctx.lineTo(x + 28, y + h)
-        ctx.quadraticCurveTo(x, y + h, x, y + h - 28)
-        ctx.lineTo(x, y + 28)
-        ctx.quadraticCurveTo(x, y, x + 28, y)
-        ctx.clip()
-
-        const glareGrad = ctx.createLinearGradient(x, y, x + w * 0.7, y + h)
-        glareGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)')
-        glareGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.03)')
-        glareGrad.addColorStop(0.7, 'transparent')
-        ctx.fillStyle = glareGrad
-        ctx.beginPath()
-        ctx.moveTo(x + w * 0.25, y)
-        ctx.lineTo(x + w * 0.75, y)
-        ctx.lineTo(x + w * 0.45, y + h)
-        ctx.lineTo(x, y + h)
-        ctx.closePath()
-        ctx.fill()
-        ctx.restore()
-
-        // Pestañas cromadas superior e inferior
-        ctx.fillStyle = '#38bdf8'
-        roundRect(ctx, x + w * 0.25, y - 2, w * 0.5, 4, 2, true, false)
-        roundRect(ctx, x + w * 0.25, y + h - 2, w * 0.5, 4, 2, true, false)
       }
 
       async function drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH) {
@@ -793,14 +601,14 @@ function renderCanvasFlyerBlob() {
         if (flyerProductType.value === 'physical') {
           const imgEl = await loadFlyerImageElement(productImageCORS.value)
           if (imgEl) {
-            const cardW = Math.min(visorW - 40, 540)
-            const cardH = Math.min(visorH - 40, 430)
+            const cardW = Math.min(visorW - 36, 540)
+            const cardH = Math.min(visorH - 36, 430)
             ctx.fillStyle = '#ffffff'
             roundRect(ctx, centerX - cardW / 2, centerY - cardH / 2, cardW, cardH, 20, true, true, 'rgba(56, 189, 248, 0.4)', 2)
 
             const imgAspect = imgEl.width / (imgEl.height || 1)
-            let dw = cardW - 40
-            let dh = cardH - 40
+            let dw = cardW - 36
+            let dh = cardH - 36
             if (imgAspect > 1) {
               dh = dw / imgAspect
             } else {
@@ -808,7 +616,7 @@ function renderCanvasFlyerBlob() {
             }
             ctx.drawImage(imgEl, centerX - dw / 2, centerY - dh / 2, dw, dh)
           } else {
-            const iconSize = Math.min(130, visorH * 0.4)
+            const iconSize = Math.min(130, visorH * 0.38)
             ctx.font = `${iconSize}px sans-serif`
             ctx.textAlign = 'center'
             ctx.fillText('📦', centerX, centerY + iconSize * 0.25)
@@ -820,7 +628,7 @@ function renderCanvasFlyerBlob() {
           const services = (selectedPackage.value?.services || []).slice(0, 3)
           if (services.length > 0) {
             const cardW = Math.min((visorW - (services.length + 1) * 16) / services.length, 240)
-            const cardH = Math.min(visorH - 36, 260)
+            const cardH = Math.min(visorH - 32, 260)
             const gap = 16
             const totalW = services.length * cardW + (services.length - 1) * gap
             const startX = centerX - totalW / 2
@@ -844,7 +652,7 @@ function renderCanvasFlyerBlob() {
               ctx.fillStyle = '#38bdf8'
               ctx.fillText(srv.planLabel || '1 Perfil', cx + cardW / 2, startY + cardH * 0.72)
 
-              const badgeW = Math.min(cardW - 20, 90)
+              const badgeW = Math.min(cardW - 16, 90)
               ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
               roundRect(ctx, cx + cardW / 2 - badgeW / 2, startY + cardH * 0.82, badgeW, 24, 8, true, true, '#10b981', 1)
               ctx.fillStyle = '#34d399'
@@ -863,7 +671,7 @@ function renderCanvasFlyerBlob() {
           ctx.textAlign = 'center'
           ctx.fillText(currentPlatformIcon.value, centerX, centerY - visorH * 0.05)
 
-          const titleSize = Math.min(46, Math.max(24, visorH * 0.16))
+          const titleSize = Math.min(46, Math.max(22, visorH * 0.15))
           ctx.font = `900 ${titleSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(selectedPlatform.value.toUpperCase(), centerX, centerY + visorH * 0.2)
@@ -897,43 +705,43 @@ function renderCanvasFlyerBlob() {
 
       function drawCyberPriceCard(ctx, x, y, w, h, isSquare = false) {
         ctx.fillStyle = 'rgba(15, 23, 42, 0.88)'
-        roundRect(ctx, x, y, w, h, 26, true, true, 'rgba(56, 189, 248, 0.45)', 2)
+        roundRect(ctx, x, y, w, h, 24, true, true, 'rgba(56, 189, 248, 0.45)', 2)
 
         const centerX = x + w / 2
         const hasOrig = displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)
 
         if (hasOrig) {
-          ctx.font = `bold ${isSquare ? 18 : 22}px sans-serif`
+          ctx.font = `bold ${isSquare ? 16 : 22}px sans-serif`
           ctx.fillStyle = '#94a3b8'
           const origText = `Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`
           const origW = ctx.measureText(origText).width
-          const discountShift = calculatedDiscountPct.value ? (isSquare ? 45 : 55) : 0
+          const discountShift = calculatedDiscountPct.value ? (isSquare ? 42 : 55) : 0
           const textX = centerX - discountShift
           ctx.textAlign = 'center'
-          ctx.fillText(origText, textX, y + (isSquare ? 32 : 40))
+          ctx.fillText(origText, textX, y + (isSquare ? 28 : 40))
 
           ctx.strokeStyle = '#ef4444'
           ctx.lineWidth = 2.5
           ctx.beginPath()
-          ctx.moveTo(textX - origW / 2, y + (isSquare ? 26 : 33))
-          ctx.lineTo(textX + origW / 2, y + (isSquare ? 26 : 33))
+          ctx.moveTo(textX - origW / 2, y + (isSquare ? 23 : 33))
+          ctx.lineTo(textX + origW / 2, y + (isSquare ? 23 : 33))
           ctx.stroke()
 
           if (calculatedDiscountPct.value) {
-            const badgeX = textX + origW / 2 + 14
-            const badgeW = isSquare ? 75 : 90
-            const badgeH = isSquare ? 26 : 30
+            const badgeX = textX + origW / 2 + 12
+            const badgeW = isSquare ? 72 : 90
+            const badgeH = isSquare ? 24 : 30
             ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-            roundRect(ctx, badgeX, y + (isSquare ? 15 : 20), badgeW, badgeH, 8, true, true, '#10b981', 1)
+            roundRect(ctx, badgeX, y + (isSquare ? 14 : 20), badgeW, badgeH, 8, true, true, '#10b981', 1)
             ctx.fillStyle = '#34d399'
-            ctx.font = `900 ${isSquare ? 14 : 16}px monospace`
+            ctx.font = `900 ${isSquare ? 13 : 16}px monospace`
             ctx.textAlign = 'center'
-            ctx.fillText(`-${calculatedDiscountPct.value}%`, badgeX + badgeW / 2, y + (isSquare ? 33 : 41))
+            ctx.fillText(`-${calculatedDiscountPct.value}%`, badgeX + badgeW / 2, y + (isSquare ? 29 : 41))
           }
 
-          ctx.font = `900 ${isSquare ? 60 : 74}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.font = `900 ${isSquare ? 50 : 74}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 95 : 115))
+          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 115))
 
           if (!isSquare) {
             ctx.font = 'bold 18px sans-serif'
@@ -941,14 +749,14 @@ function renderCanvasFlyerBlob() {
             ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', centerX, y + 152)
           }
         } else {
-          ctx.font = `bold ${isSquare ? 18 : 22}px sans-serif`
+          ctx.font = `bold ${isSquare ? 16 : 22}px sans-serif`
           ctx.fillStyle = '#94a3b8'
           ctx.textAlign = 'center'
-          ctx.fillText('PRECIO EXCLUSIVO', centerX, y + (isSquare ? 32 : 40))
+          ctx.fillText('PRECIO EXCLUSIVO', centerX, y + (isSquare ? 28 : 40))
 
-          ctx.font = `900 ${isSquare ? 62 : 76}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.font = `900 ${isSquare ? 52 : 76}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 95 : 116))
+          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 80 : 116))
 
           if (!isSquare) {
             ctx.font = 'bold 18px sans-serif'
@@ -963,110 +771,89 @@ function renderCanvasFlyerBlob() {
         ctx.textAlign = 'left'
         bullets.forEach((b, idx) => {
           const by = startY + idx * lineSpacing
-          const radius = isSmall ? 10 : 13
+          const radius = isSmall ? 9 : 13
 
           ctx.fillStyle = '#00f0ff'
           ctx.beginPath()
-          ctx.arc(startX, by - (isSmall ? 6 : 7), radius, 0, Math.PI * 2)
+          ctx.arc(startX, by - (isSmall ? 5 : 7), radius, 0, Math.PI * 2)
           ctx.fill()
           ctx.fillStyle = '#020617'
-          ctx.font = `bold ${isSmall ? 14 : 17}px sans-serif`
+          ctx.font = `bold ${isSmall ? 13 : 17}px sans-serif`
           ctx.textAlign = 'center'
           ctx.fillText('✓', startX, by - (isSmall ? 1 : 2))
           ctx.textAlign = 'left'
 
-          ctx.font = `600 ${isSmall ? 22 : 26}px sans-serif`
+          ctx.font = `600 ${isSmall ? 20 : 26}px sans-serif`
           ctx.fillStyle = '#f8fafc'
           const maxLen = isSmall ? 38 : 46
-          ctx.fillText(b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b, startX + radius + 14, by)
+          ctx.fillText(b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b, startX + radius + 12, by)
         })
       }
 
       function drawCyberCTAButton(ctx, x, y, w, h, domainText, showMicroText = true, isSmall = false) {
         if (showMicroText) {
           ctx.textAlign = 'center'
-          ctx.font = `bold ${isSmall ? 16 : 19}px sans-serif`
+          ctx.font = `bold ${isSmall ? 15 : 19}px sans-serif`
           ctx.fillStyle = '#94a3b8'
-          ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE CON GARANTÍA OFICIAL!', x + w / 2, y - 12)
+          ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE CON GARANTÍA OFICIAL!', x + w / 2, y - 10)
         }
 
         const webGrad = ctx.createLinearGradient(x, y, x + w, y)
         webGrad.addColorStop(0, '#0284c7')
         webGrad.addColorStop(1, '#00f0ff')
         ctx.fillStyle = webGrad
-        roundRect(ctx, x, y, w, h, isSmall ? 20 : 26, true, false)
+        roundRect(ctx, x, y, w, h, isSmall ? 18 : 26, true, false)
 
         ctx.textAlign = 'center'
-        ctx.font = `900 ${isSmall ? 28 : 34}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        ctx.font = `900 ${isSmall ? 25 : 34}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
         ctx.fillStyle = '#020617'
-        ctx.fillText(`🌐 ${domainText}   ·   ¡PIDE ONLINE AHORA!`, x + w / 2, y + h / 2 + (isSmall ? 9 : 11))
+        ctx.fillText(`🌐 ${domainText}   ·   ¡PIDE ONLINE AHORA!`, x + w / 2, y + h / 2 + (isSmall ? 8 : 11))
       }
 
       // ========================================================
-      // 1. TEMA CYBER OFICIAL (PARA TODAS LAS MEDIDAS)
+      // 1. TEMA CYBER OFICIAL (CON PLANTILLAS ORIGINALES DE CANVA)
       // ========================================================
       if (flyerTheme.value === 'cyber') {
+        const tplUrl = getCyberTemplateUrl(format)
+        const cyberImg = await loadFlyerImageElement(tplUrl)
+        if (cyberImg) {
+          ctx.drawImage(cyberImg, 0, 0, width, height)
+        } else {
+          drawCyberBackground(ctx, width, height)
+        }
+
         if (format === 'banner') {
           // ================= BANNER HORIZONTAL (1920 x 1080) =================
-          drawCyberBackground(ctx, width, height)
-          drawCyberBorder(ctx, 24, 24, width - 48, height - 48, 32, '#00f0ff', 2.5)
-          drawCyberHeader(ctx, width, 48, true)
+          // Visor: X: 137, Y: 261, W: 544, H: 579
+          await drawVisorHeroContent(ctx, 137, 261, 544, 579)
 
-          // Columna Izquierda: Visor Showcase
-          const visorX = 85
-          const visorY = 110
-          const visorW = 740
-          const visorH = 750
-          drawCyberVisor(ctx, visorX, visorY, visorW, visorH)
-          await drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH)
+          // Columna Derecha (X: 740, W: 1040)
+          const rightX = 740
+          const rightW = 1040
 
-          // Sello Oficial debajo del visor
-          roundRect(ctx, visorX, 880, visorW, 68, 20, true, true, 'rgba(0, 240, 255, 0.4)', 1.5)
-          ctx.font = 'bold 22px sans-serif'
-          ctx.fillStyle = '#38bdf8'
-          ctx.textAlign = 'center'
-          ctx.fillText('✓ DISTRIBUIDOR OFICIAL VERIFICADO · GARANTÍA 24/7', visorX + visorW / 2, 922)
-
-          // Columna Derecha: Contenido y Precios
-          const rightX = 875
-          const rightW = 960
-
-          drawCyberBadge(ctx, rightX + rightW / 2, 110, 58, rightW, false)
+          drawCyberBadge(ctx, rightX + rightW / 2, 140, 56, rightW, false)
 
           ctx.textAlign = 'left'
-          ctx.font = '900 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
-          const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 220 + i * 54))
-          const subY = 220 + titleLines.length * 54 + 8
+          const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
+          titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 235 + i * 52))
+          const subY = 235 + titleLines.length * 52 + 8
 
           ctx.font = 'bold 24px sans-serif'
           ctx.fillStyle = '#38bdf8'
-          ctx.fillText(displaySubtitle.value.length > 54 ? displaySubtitle.value.slice(0, 52) + '...' : displaySubtitle.value, rightX, subY)
+          ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
 
-          const pCardY = subY + 24
+          const pCardY = subY + 20
           drawCyberPriceCard(ctx, rightX, pCardY, rightW, 165, false)
 
           drawCyberBullets(ctx, rightX + 20, pCardY + 165 + 38, 52, 3, false)
 
           drawCyberCTAButton(ctx, rightX, 785, rightW, 95, domainText, true, false)
 
-          drawCyberFooter(ctx, width, height, 1015, true)
-
         } else if (format === 'story') {
           // ================= STORY (1080 x 1920, 9:16) =================
-          const cyberImg = await loadFlyerImageElement('/flyer-template-cyber.png')
-          if (cyberImg) {
-            ctx.drawImage(cyberImg, 0, 0, width, height)
-          } else {
-            drawCyberBackground(ctx, width, height)
-            drawCyberBorder(ctx, 24, 24, width - 48, height - 48, 36, '#00f0ff', 2.5)
-            drawCyberHeader(ctx, width, 48, false)
-            drawCyberVisor(ctx, 188, 262, 704, 546)
-            drawCyberFooter(ctx, width, height, 1850, false)
-          }
-
-          // Visor Content
+          // Visor: X: 188, Y: 262, W: 704, H: 546
           await drawVisorHeroContent(ctx, 188, 262, 704, 546)
 
           // Contenido Inferior
@@ -1092,73 +879,55 @@ function renderCanvasFlyerBlob() {
 
         } else if (format === 'feed') {
           // ================= FEED PORTRAIT (1080 x 1350, 4:5) =================
-          drawCyberBackground(ctx, width, height)
-          drawCyberBorder(ctx, 20, 20, width - 40, height - 40, 30, '#00f0ff', 2)
-          drawCyberHeader(ctx, width, 40, false)
+          // Visor: X: 218, Y: 204, W: 645, H: 370
+          await drawVisorHeroContent(ctx, 218, 204, 645, 370)
 
-          const visorX = 190
-          const visorY = 85
-          const visorW = 700
-          const visorH = 330
-          drawCyberVisor(ctx, visorX, visorY, visorW, visorH)
-          await drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH)
-
-          drawCyberBadge(ctx, width / 2, 445, 52, 840, false)
+          // Contenido Inferior
+          drawCyberBadge(ctx, width / 2, 605, 52, 840, false)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
           const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 535 + i * 46))
-          const subY = 535 + titleLines.length * 46 + 8
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 685 + i * 44))
+          const subY = 685 + titleLines.length * 44 + 8
 
           ctx.font = 'bold 22px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          const pCardY = subY + 24
-          drawCyberPriceCard(ctx, 110, pCardY, 860, 170, false)
+          const pCardY = subY + 22
+          drawCyberPriceCard(ctx, 110, pCardY, 860, 160, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 170 + 34, 50, 3, false)
+          drawCyberBullets(ctx, 145, pCardY + 160 + 34, 48, 3, false)
 
-          drawCyberCTAButton(ctx, 110, 1085, 860, 90, domainText, true, false)
-
-          drawCyberFooter(ctx, width, height, 1255, false)
+          drawCyberCTAButton(ctx, 110, 1140, 860, 85, domainText, true, false)
 
         } else {
           // ================= SQUARE (1080 x 1080, 1:1) =================
-          drawCyberBackground(ctx, width, height)
-          drawCyberBorder(ctx, 18, 18, width - 36, height - 36, 26, '#00f0ff', 2)
-          drawCyberHeader(ctx, width, 35, false)
+          // Visor: X: 273, Y: 180, W: 533, H: 464
+          await drawVisorHeroContent(ctx, 273, 180, 533, 464)
 
-          const visorX = 240
-          const visorY = 75
-          const visorW = 600
-          const visorH = 240
-          drawCyberVisor(ctx, visorX, visorY, visorW, visorH)
-          await drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH)
-
-          drawCyberBadge(ctx, width / 2, 338, 44, 820, true)
+          // Contenido Inferior
+          drawCyberBadge(ctx, width / 2, 665, 40, 840, true)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
           const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 415 + i * 40))
-          const subY = 415 + titleLines.length * 40 + 6
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 720 + i * 36))
+          const subY = 720 + titleLines.length * 36 + 4
 
-          ctx.font = 'bold 19px sans-serif'
+          ctx.font = 'bold 17px sans-serif'
           ctx.fillStyle = '#38bdf8'
           ctx.fillText(displaySubtitle.value.length > 46 ? displaySubtitle.value.slice(0, 44) + '...' : displaySubtitle.value, width / 2, subY)
 
-          const pCardY = subY + 18
-          drawCyberPriceCard(ctx, 120, pCardY, 840, 140, true)
+          const pCardY = subY + 14
+          drawCyberPriceCard(ctx, 120, pCardY, 840, 115, true)
 
-          drawCyberBullets(ctx, 150, pCardY + 140 + 26, 42, 3, true)
+          drawCyberBullets(ctx, 150, pCardY + 115 + 20, 36, 2, true)
 
-          drawCyberCTAButton(ctx, 120, 875, 840, 80, domainText, false, true)
-
-          drawCyberFooter(ctx, width, height, 1010, false)
+          drawCyberCTAButton(ctx, 120, 965, 840, 68, domainText, false, true)
         }
 
         canvas.toBlob((blob) => {
@@ -1214,7 +983,6 @@ function renderCanvasFlyerBlob() {
       const isBanner = format === 'banner'
 
       if (isBanner) {
-        // Banner Horizontal Clásico
         ctx.textAlign = 'left'
         ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         ctx.fillStyle = '#fbbf24'
@@ -1399,7 +1167,6 @@ function renderCanvasFlyerBlob() {
         ctx.fillText(`🌐 ${domainText}   ·   ¡HAZ TU PEDIDO ONLINE AHORA!`, rightX + rightW / 2, footY + 58)
 
       } else {
-        // Vertical Clásico (Story, Feed, Square)
         const isStory = format === 'story'
         const isFeed = format === 'feed'
         const isSquare = format === 'square'
@@ -1621,7 +1388,6 @@ function renderCanvasFlyerBlob() {
     }
   })
 }
-
 const triggerFileDownload = (fileUrl, filename) => {
   const link = document.createElement('a')
   link.download = filename
@@ -2249,41 +2015,32 @@ const shareToWhatsAppStatus = () => {
               flyerFormat === 'feed' ? 'max-w-[330px] aspect-[4/5]' :
               flyerFormat === 'square' ? 'max-w-[340px] aspect-square' :
               'max-w-[480px] aspect-[16/9]',
-              flyerTheme === 'cyber' ? (flyerFormat === 'story' ? 'p-0 border-cyan-400/40 shadow-cyan-950/50' : 'bg-gradient-to-b from-[#020617] via-[#082f49]/80 to-[#020617] border-cyan-400/40 shadow-cyan-950/60 p-3 sm:p-3.5') :
+              flyerTheme === 'cyber' ? 'p-0 border-cyan-400/40 shadow-cyan-950/60' :
               (flyerFormat === 'story' ? 'p-4 sm:p-5' : flyerFormat === 'feed' ? 'p-3.5 sm:p-4' : flyerFormat === 'square' ? 'p-3 sm:p-3.5' : 'p-3 sm:p-3.5'),
               flyerTheme === 'cinema' ? 'bg-gradient-to-b from-black via-red-950/70 to-slate-950 border-red-500/40' :
               flyerTheme === 'emerald' ? 'bg-gradient-to-b from-slate-950 via-emerald-950/70 to-slate-950 border-emerald-500/40' :
               flyerTheme === 'blue' ? 'bg-gradient-to-b from-slate-950 via-sky-950/80 to-slate-950 border-sky-500/40' : ''
             ]"
-            :style="flyerTheme === 'cyber' && flyerFormat === 'story' ? {
-              backgroundImage: 'url(/flyer-template-cyber.png)',
+            :style="flyerTheme === 'cyber' ? {
+              backgroundImage: `url(${getCyberTemplateUrl(flyerFormat)})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat'
             } : {}"
           >
             <!-- ======================================================== -->
-            <!-- 1. VISTA PREVIA CYBER OFICIAL (TODAS LAS MEDIDAS)        -->
+            <!-- 1. VISTA PREVIA CYBER OFICIAL (CON PLANTILLAS DE CANVA)  -->
             <!-- ======================================================== -->
-            <div v-if="flyerTheme === 'cyber'" class="relative w-full h-full text-white pointer-events-none flex flex-col justify-between">
+            <div v-if="flyerTheme === 'cyber'" class="relative w-full h-full text-white pointer-events-none select-none">
               
-              <!-- 1.1 CASO STORY (9:16) -->
+              <!-- 1.1 STORY (9:16) -->
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.67%] left-[17.48%] w-[65.03%] h-[28.32%] flex items-center justify-center p-2 z-10">
                   <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-cyan-400/30 overflow-hidden">
-                    <img 
-                      :src="productImageCORS || selectedPhysicalProduct?.image" 
-                      :alt="displayTitle" 
-                      crossorigin="anonymous"
-                      class="max-h-full max-w-full object-contain filter drop-shadow-sm"
-                    >
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain filter drop-shadow-sm">
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
-                    <div 
-                      v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" 
-                      :key="idx"
-                      class="flex-1 h-full rounded-xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-1 shadow-md"
-                    >
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-1 shadow-md">
                       <span class="text-xl sm:text-2xl">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[7px] font-black text-white truncate max-w-full mt-0.5">{{ srv.platform }}</span>
                       <span class="text-[6px] text-cyan-300 truncate font-mono">{{ srv.planLabel }}</span>
@@ -2292,12 +2049,8 @@ const shareToWhatsAppStatus = () => {
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
                     <span class="text-4xl sm:text-5xl drop-shadow">{{ currentPlatformIcon }}</span>
-                    <span class="font-black text-cyan-400 text-xs sm:text-sm uppercase tracking-wider mt-1 drop-shadow">
-                      {{ selectedPlatform }}
-                    </span>
-                    <span class="text-[7px] font-mono font-bold text-sky-200 bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded-full mt-1">
-                      {{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD
-                    </span>
+                    <span class="font-black text-cyan-400 text-xs sm:text-sm uppercase tracking-wider mt-1 drop-shadow">{{ selectedPlatform }}</span>
+                    <span class="text-[7px] font-mono font-bold text-sky-200 bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded-full mt-1">{{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD</span>
                   </div>
                 </div>
 
@@ -2306,59 +2059,30 @@ const shareToWhatsAppStatus = () => {
                   <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-3 py-0.5 rounded-full shadow-lg text-[9px] uppercase tracking-wider">
                     {{ headlineBadge }}
                   </div>
-
                   <div class="space-y-0.5 w-full">
-                    <h2 class="font-black text-xs sm:text-sm tracking-tight leading-tight line-clamp-2 text-white drop-shadow">
-                      {{ displayTitle }}
-                    </h2>
-                    <p class="font-semibold text-cyan-300 text-[9px] font-mono truncate">
-                      {{ displaySubtitle }}
-                    </p>
+                    <h2 class="font-black text-xs sm:text-sm tracking-tight leading-tight line-clamp-2 text-white drop-shadow">{{ displayTitle }}</h2>
+                    <p class="font-semibold text-cyan-300 text-[9px] font-mono truncate">{{ displaySubtitle }}</p>
                   </div>
-
                   <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-2xl py-1.5 px-3 shadow-xl">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
-                      <span class="text-slate-400 line-through text-[9px]">
-                        Antes: $${Number(displayOriginalPrice).toLocaleString()}
-                      </span>
-                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">
-                        -${calculatedDiscountPct}%
-                      </span>
+                      <span class="text-slate-400 line-through text-[9px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-${calculatedDiscountPct}%</span>
                     </div>
-                    <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">
-                      PRECIO EXCLUSIVO
-                    </div>
+                    <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
                       <span class="text-xs font-black text-amber-400">$</span>
-                      <span class="font-black tracking-tight text-white font-mono text-xl sm:text-2xl">
-                        {{ displayPrice }}
-                      </span>
+                      <span class="font-black tracking-tight text-white font-mono text-xl sm:text-2xl">{{ displayPrice }}</span>
                       <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
-                    <div class="text-[7px] text-cyan-300 font-bold truncate">
-                      ⚡ Entrega Inmediata · Garantía Oficial 100%
-                    </div>
+                    <div class="text-[7px] text-cyan-300 font-bold truncate">⚡ Entrega Inmediata · Garantía Oficial 100%</div>
                   </div>
-
                   <div class="w-full text-left space-y-0.5 text-[8px] sm:text-[9px] font-medium text-slate-200 px-1">
-                    <div class="flex items-center gap-1.5 truncate">
-                      <span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span>
-                      <span class="truncate">{{ bullet1 }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 truncate">
-                      <span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span>
-                      <span class="truncate">{{ bullet2 }}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 truncate">
-                      <span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span>
-                      <span class="truncate">{{ bullet3 }}</span>
-                    </div>
+                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
-
                   <div class="w-full">
-                    <div class="text-[7px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">
-                      ⚡ ¡Haz tu pedido online con garantía oficial!
-                    </div>
+                    <div class="text-[7px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">⚡ ¡Haz tu pedido online con garantía oficial!</div>
                     <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-xl py-1.5 px-3 flex items-center justify-center gap-1 shadow-md text-xs">
                       <span class="text-xs">🌐</span>
                       <span class="font-mono font-black tracking-wide">{{ displayDomain }}</span>
@@ -2367,188 +2091,161 @@ const shareToWhatsAppStatus = () => {
                 </div>
               </div>
 
-              <!-- 1.2 CASO BANNER (16:9) Cyber 2 Columnas -->
-              <div v-else-if="flyerFormat === 'banner'" class="relative w-full h-full flex flex-col justify-between">
-                <!-- Header -->
-                <div class="flex items-center justify-between border-b border-cyan-500/20 pb-1">
-                  <div class="flex items-center gap-1">
-                    <span class="font-black text-xs text-white">STREAME</span>
-                    <span class="font-black text-xs text-cyan-400">PRO</span>
+              <!-- 1.2 FEED (4:5) -->
+              <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
+                <!-- Visor Window: top: 15.14%, left: 20.15%, width: 59.71%, height: 27.44% -->
+                <div class="absolute top-[15.14%] left-[20.15%] w-[59.71%] h-[27.44%] flex items-center justify-center p-1.5 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
                   </div>
-                  <div class="w-4 h-4 rounded-full bg-slate-900 border border-cyan-400 flex items-center justify-center text-[7px] font-bold text-cyan-300">
-                    SP
+                  <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-0.5">
+                      <span class="text-base">{{ getPlatformIcon(srv.platform) }}</span>
+                      <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
+                      <span class="text-[5px] text-cyan-300 truncate font-mono">{{ srv.planLabel }}</span>
+                    </div>
                   </div>
-                  <div class="text-[8px] font-mono text-cyan-300">
-                    <span class="text-slate-400 font-sans">OFICIAL </span>streamepro.me
+                  <div v-else class="flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    <span class="font-black text-cyan-400 text-xs uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] font-mono text-sky-200 mt-0.5">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
                   </div>
                 </div>
 
-                <!-- 2 Columnas -->
-                <div class="flex items-center gap-2.5 my-auto">
-                  <!-- Columna Izquierda: Visor Showcase -->
-                  <div class="w-[38%] aspect-square rounded-2xl bg-slate-950/90 border border-cyan-400/40 p-1.5 flex flex-col items-center justify-center shadow-lg relative overflow-hidden shrink-0">
-                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-transparent pointer-events-none"></div>
-                    <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 overflow-hidden">
-                      <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                <!-- Contenido Inferior: top: 44.5%, bottom: 8.5%, left: 10%, right: 10% -->
+                <div class="absolute top-[44.5%] bottom-[8.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
+                  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider">
+                    {{ headlineBadge }}
+                  </div>
+                  <div class="space-y-0.5 w-full">
+                    <h2 class="font-black text-xs tracking-tight leading-tight line-clamp-2 text-white">{{ displayTitle }}</h2>
+                    <p class="font-semibold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
+                  </div>
+                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
+                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
+                      <span class="text-slate-400 line-through text-[8px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-${calculatedDiscountPct}%</span>
                     </div>
-                    <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
-                      <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" class="rounded bg-slate-900 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
-                        <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
-                        <span class="text-[6px] text-white font-bold truncate max-w-full">{{ srv.platform }}</span>
-                      </div>
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center text-center">
-                      <span class="text-3xl">{{ currentPlatformIcon }}</span>
-                      <span class="text-[9px] font-black text-cyan-400 uppercase mt-0.5">{{ selectedPlatform }}</span>
-                      <span class="text-[6px] text-sky-200 font-mono mt-0.5">4K ULTRA HD</span>
+                    <div v-else class="text-[7px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
+                    <div class="flex items-baseline justify-center gap-0.5">
+                      <span class="text-[10px] font-black text-amber-400">$</span>
+                      <span class="font-black tracking-tight text-white font-mono text-base sm:text-lg">{{ displayPrice }}</span>
+                      <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                   </div>
-
-                  <!-- Columna Derecha: Detalles -->
-                  <div class="flex-1 min-w-0 space-y-1">
-                    <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase">
-                      {{ headlineBadge }}
+                  <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                  </div>
+                  <div class="w-full">
+                    <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg py-1 px-2.5 flex items-center justify-center gap-1 shadow text-[9px]">
+                      <span>🌐</span>
+                      <span class="font-mono font-bold">{{ displayDomain }}</span>
                     </div>
-                    <h2 class="text-[11px] font-black text-white line-clamp-1 leading-tight">
-                      {{ displayTitle }}
-                    </h2>
-                    <div class="text-[7px] text-cyan-300 font-mono truncate">
-                      {{ displaySubtitle }}
-                    </div>
+                  </div>
+                </div>
+              </div>
 
+              <!-- 1.3 SQUARE (1:1) -->
+              <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
+                <!-- Visor Window: top: 16.6%, left: 25.29%, width: 49.32%, height: 42.97% -->
+                <div class="absolute top-[16.6%] left-[25.29%] w-[49.32%] h-[42.97%] flex items-center justify-center p-1.5 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                  </div>
+                  <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
+                      <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
+                      <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    <span class="font-black text-cyan-400 text-[10px] uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] font-mono text-sky-200 mt-0.5">4K ULTRA HD</span>
+                  </div>
+                </div>
+
+                <!-- Contenido Inferior: top: 61.5%, bottom: 7%, left: 11%, right: 11% -->
+                <div class="absolute top-[61.5%] bottom-[7%] left-[11%] right-[11%] flex flex-col justify-between items-center text-center z-10 py-0.5">
+                  <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black px-2 py-0.2 rounded-full shadow text-[7px] uppercase">
+                    {{ headlineBadge }}
+                  </div>
+                  <div class="space-y-0.2 w-full">
+                    <h2 class="font-black text-[10px] text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
+                    <p class="font-semibold text-cyan-300 text-[7px] font-mono truncate">{{ displaySubtitle }}</p>
+                  </div>
+                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-lg py-0.5 px-2 shadow">
+                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1">
+                      <span class="text-slate-400 line-through text-[6px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-${calculatedDiscountPct}%</span>
+                    </div>
+                    <div class="flex items-baseline justify-center gap-0.5">
+                      <span class="text-[8px] font-black text-amber-400">$</span>
+                      <span class="font-black text-xs text-white font-mono">{{ displayPrice }}</span>
+                      <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
+                    </div>
+                  </div>
+                  <div class="w-full text-left space-y-0 text-[7px] font-medium text-slate-200 px-1">
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                  </div>
+                  <div class="w-full">
+                    <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded py-0.5 px-2 flex items-center justify-center gap-1 shadow text-[8px]">
+                      <span>🌐</span>
+                      <span class="font-mono font-bold">{{ displayDomain }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 1.4 BANNER (16:9) -->
+              <div v-else class="relative w-full h-full">
+                <!-- Visor Window: top: 24.17%, left: 7.13%, width: 28.32%, height: 53.59% -->
+                <div class="absolute top-[24.17%] left-[7.13%] w-[28.32%] h-[53.59%] flex items-center justify-center p-1.5 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 shadow border border-cyan-400/30 overflow-hidden">
+                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
+                  </div>
+                  <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" class="rounded bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
+                      <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
+                      <span class="text-[6px] text-white font-bold truncate max-w-full">{{ srv.platform }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl drop-shadow">{{ currentPlatformIcon }}</span>
+                    <span class="font-black text-cyan-400 text-[10px] uppercase mt-0.5">{{ selectedPlatform }}</span>
+                    <span class="text-[6px] text-sky-200 font-mono mt-0.5">4K ULTRA HD</span>
+                  </div>
+                </div>
+
+                <!-- Contenido Derecha: top: 14%, bottom: 10%, left: 38.5%, right: 6% -->
+                <div class="absolute top-[14%] bottom-[10%] left-[38.5%] right-[6%] flex flex-col justify-between z-10 py-1 text-left">
+                  <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase self-start">
+                    {{ headlineBadge }}
+                  </div>
+                  <div class="space-y-0.2">
+                    <h2 class="text-xs font-black text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
+                    <div class="text-[7px] text-cyan-300 font-mono truncate">{{ displaySubtitle }}</div>
+                  </div>
+                  <div class="w-full bg-slate-950/80 border border-cyan-400/30 rounded-xl py-1 px-3">
                     <div class="flex items-baseline gap-1.5">
-                      <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">
-                        $${Number(displayOriginalPrice).toLocaleString()}
-                      </span>
-                      <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">
-                        -${calculatedDiscountPct}%
-                      </span>
+                      <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">$${Number(displayOriginalPrice).toLocaleString()}</span>
+                      <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-${calculatedDiscountPct}%</span>
                       <div class="flex items-baseline gap-0.5">
                         <span class="text-amber-400 font-bold text-[9px]">$</span>
                         <span class="font-black text-xs text-white font-mono">{{ displayPrice }}</span>
                         <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                       </div>
                     </div>
-
-                    <div class="text-[7px] text-slate-300 truncate">
-                      <span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}
-                    </div>
-
-                    <div class="bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg py-1 px-2 flex items-center justify-center gap-1 text-[8px] shadow">
-                      <span>🌐 {{ displayDomain }}</span>
-                    </div>
                   </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="flex items-center justify-between border-t border-cyan-500/20 pt-1 text-[7px] text-slate-400 font-mono">
-                  <span>STREAMEPRO</span>
-                  <span class="text-cyan-300">[SP]</span>
-                  <span>streamepro.me</span>
-                </div>
-              </div>
-
-              <!-- 1.3 CASO FEED (4:5) & SQUARE (1:1) -->
-              <div v-else class="relative w-full h-full flex flex-col justify-between">
-                <!-- Header -->
-                <div class="flex items-center justify-between border-b border-cyan-500/20 pb-0.5 shrink-0">
-                  <div class="flex items-center gap-1">
-                    <span :class="['font-black text-white', flyerFormat === 'square' ? 'text-[8px]' : 'text-[9px]']">STREAME</span>
-                    <span :class="['font-black text-cyan-400', flyerFormat === 'square' ? 'text-[8px]' : 'text-[9px]']">PRO</span>
+                  <div class="text-[7px] text-slate-300 truncate">
+                    <span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}
                   </div>
-                  <div :class="['rounded-full bg-slate-900 border border-cyan-400 flex items-center justify-center font-bold text-cyan-300', flyerFormat === 'square' ? 'w-3.5 h-3.5 text-[6px]' : 'w-4 h-4 text-[7px]']">
-                    SP
+                  <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg py-1 px-2.5 flex items-center justify-center gap-1 shadow text-[8px]">
+                    <span>🌐 {{ displayDomain }}</span>
                   </div>
-                  <div :class="['font-mono text-cyan-300', flyerFormat === 'square' ? 'text-[7px]' : 'text-[8px]']">
-                    <span class="text-slate-400 font-sans">OFICIAL </span>streamepro.me
-                  </div>
-                </div>
-
-                <!-- Visor Window -->
-                <div :class="['mx-auto rounded-2xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center shadow-lg relative overflow-hidden shrink-0 my-0.5', flyerFormat === 'square' ? 'w-full h-20 p-1' : 'w-full h-24 sm:h-28 p-1.5']">
-                  <div class="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-transparent pointer-events-none"></div>
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1 overflow-hidden">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="max-h-full max-w-full object-contain">
-                  </div>
-                  <div v-else-if="flyerProductType === 'combo'" class="flex items-center justify-center gap-1.5 w-full h-full p-0.5">
-                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-900 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
-                      <span :class="flyerFormat === 'square' ? 'text-xs' : 'text-base'">{{ getPlatformIcon(srv.platform) }}</span>
-                      <span class="text-[6px] text-white font-bold truncate max-w-full">{{ srv.platform }}</span>
-                      <span class="text-[5px] text-cyan-300 font-mono">{{ srv.planLabel }}</span>
-                    </div>
-                  </div>
-                  <div v-else class="flex flex-col items-center justify-center text-center">
-                    <span :class="flyerFormat === 'square' ? 'text-xl' : 'text-2xl sm:text-3xl'">{{ currentPlatformIcon }}</span>
-                    <span :class="['font-black text-cyan-400 uppercase tracking-wider', flyerFormat === 'square' ? 'text-[8px]' : 'text-[10px] mt-0.5']">{{ selectedPlatform }}</span>
-                    <span :class="['text-sky-200 font-mono', flyerFormat === 'square' ? 'text-[6px]' : 'text-[7px]']">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
-                  </div>
-                </div>
-
-                <!-- Content Area -->
-                <div class="space-y-1 text-center my-auto">
-                  <div :class="['inline-block bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black rounded-full uppercase tracking-wider', flyerFormat === 'square' ? 'text-[7px] px-2 py-0.2' : 'text-[8px] px-2.5 py-0.5']">
-                    {{ headlineBadge }}
-                  </div>
-
-                  <div>
-                    <h2 :class="['font-black text-white line-clamp-1 leading-tight', flyerFormat === 'square' ? 'text-[10px]' : 'text-xs']">
-                      {{ displayTitle }}
-                    </h2>
-                    <p :class="['text-cyan-300 font-mono truncate', flyerFormat === 'square' ? 'text-[7px]' : 'text-[8px]']">
-                      {{ displaySubtitle }}
-                    </p>
-                  </div>
-
-                  <!-- Price Card -->
-                  <div :class="['mx-auto rounded-xl bg-slate-950/80 border border-cyan-400/30 shadow-md', flyerFormat === 'square' ? 'py-0.5 px-2 max-w-[200px]' : 'py-1 px-3 max-w-[220px]']">
-                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.2">
-                      <span class="text-slate-400 line-through text-[7px]">
-                        Antes: $${Number(displayOriginalPrice).toLocaleString()}
-                      </span>
-                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">
-                        -${calculatedDiscountPct}%
-                      </span>
-                    </div>
-                    <div v-else class="text-[6px] uppercase font-bold text-slate-400">
-                      PRECIO EXCLUSIVO
-                    </div>
-                    <div class="flex items-baseline justify-center gap-0.5">
-                      <span class="text-[9px] font-black text-amber-400">$</span>
-                      <span :class="['font-black tracking-tight text-white font-mono', flyerFormat === 'square' ? 'text-xs' : 'text-sm sm:text-base']">
-                        {{ displayPrice }}
-                      </span>
-                      <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
-                    </div>
-                  </div>
-
-                  <!-- Bullets -->
-                  <div :class="['text-left text-slate-200 font-medium px-1', flyerFormat === 'square' ? 'space-y-0 text-[7px]' : 'space-y-0.5 text-[8px]']">
-                    <div class="flex items-center gap-1 truncate">
-                      <span class="text-cyan-400 font-bold">✓</span>
-                      <span class="truncate">{{ bullet1 }}</span>
-                    </div>
-                    <div class="flex items-center gap-1 truncate">
-                      <span class="text-cyan-400 font-bold">✓</span>
-                      <span class="truncate">{{ bullet2 }}</span>
-                    </div>
-                    <div v-if="flyerFormat !== 'square'" class="flex items-center gap-1 truncate">
-                      <span class="text-cyan-400 font-bold">✓</span>
-                      <span class="truncate">{{ bullet3 }}</span>
-                    </div>
-                  </div>
-
-                  <!-- CTA -->
-                  <div :class="['bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg flex items-center justify-center gap-1 shadow', flyerFormat === 'square' ? 'py-0.5 px-2 text-[8px]' : 'py-1 px-2.5 text-[9px]']">
-                    <span>🌐</span>
-                    <span class="font-mono">{{ displayDomain }}</span>
-                  </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="flex items-center justify-between border-t border-cyan-500/20 pt-0.5 text-[6px] text-slate-400 font-mono shrink-0">
-                  <span>STREAMEPRO</span>
-                  <span class="text-cyan-300">[SP]</span>
-                  <span>streamepro.me</span>
                 </div>
               </div>
 
