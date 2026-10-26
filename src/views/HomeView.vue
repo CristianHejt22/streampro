@@ -429,9 +429,32 @@ const shareProductWhatsApp = (product) => {
 }
 
 // Búsqueda y Filtros
+// Búsqueda y Filtros con Menús Desplegables Avanzados
 const searchQuery = ref('')
 const selectedCategory = ref('All')
 const physicalCategoryFilter = ref('All')
+const showCategoryDropdown = ref(false)
+const showPhysicalCategoryDropdown = ref(false)
+
+const digitalCategoriesList = computed(() => [
+  { id: 'All', name: 'Todas las Categorías', icon: '🌟', desc: 'Todo el catálogo digital oficial', count: products.value.length },
+  { id: 'Streaming', name: 'Series & Películas', icon: '🍿', desc: 'Netflix, Max, Disney+, Prime Video', count: products.value.filter(p => p.category === 'Streaming').length },
+  { id: 'Musica', name: 'Música & Audio', icon: '🎵', desc: 'Spotify Premium, YouTube Music', count: products.value.filter(p => p.category === 'Musica').length },
+  { id: 'IPTV', name: 'Televisión IPTV', icon: '📺', desc: 'MagisTV Pro +1200 canales en vivo', count: products.value.filter(p => p.category === 'IPTV').length },
+  { id: 'Diseño & Productividad', name: 'Diseño & Productividad', icon: '🎨', desc: 'Canva Pro cuenta oficial a tu correo', count: products.value.filter(p => p.category === 'Diseño & Productividad').length }
+])
+
+const currentDigitalCategory = computed(() => {
+  return digitalCategoriesList.value.find(c => c.id === selectedCategory.value) || digitalCategoriesList.value[0]
+})
+
+const currentPhysicalCategoryObj = computed(() => {
+  if (physicalCategoryFilter.value === 'All') {
+    return { id: 'All', name: 'Todas las Categorías', cantidad: adminStore.physicalProducts.length, icon: '📦' }
+  }
+  const found = adminStore.physicalCategories.find(c => c.id === physicalCategoryFilter.value)
+  return found ? { ...found, icon: '🏷️' } : { id: 'All', name: 'Todas las Categorías', cantidad: adminStore.physicalProducts.length, icon: '📦' }
+})
 
 const filteredProducts = computed(() => {
   return products.value.filter(p => {
@@ -847,12 +870,104 @@ const submitOrder = async () => {
             <input v-model="searchQuery" type="text" placeholder="Buscar por Netflix, Max, Spotify, Disney, IPTV..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
           </div>
           <div class="w-px bg-white/10 my-2"></div>
-          <select v-model="selectedCategory" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
-            <option value="All" class="bg-slate-900">Todas las categorías</option>
-            <option value="Streaming" class="bg-slate-900">Series & Películas</option>
-            <option value="Musica" class="bg-slate-900">Música & Audio</option>
-            <option value="IPTV" class="bg-slate-900">Televisión IPTV</option>
-          </select>
+          <!-- MENÚ DESPLEGABLE DE CATEGORÍAS DIGITALES (PRO) -->
+          <div class="relative">
+            <!-- Backdrop para cerrar al hacer clic afuera -->
+            <div 
+              v-if="showCategoryDropdown" 
+              class="fixed inset-0 z-20 cursor-default" 
+              @click="showCategoryDropdown = false"
+            ></div>
+
+            <!-- Botón del Menú Desplegable -->
+            <button 
+              type="button"
+              @click="showCategoryDropdown = !showCategoryDropdown"
+              class="relative z-30 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-white/[0.08] hover:border-sky-500/40 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap shadow-inner"
+              :class="{ '!border-sky-400 !bg-sky-950/40 shadow-[0_0_15px_rgba(56,189,248,0.25)]': showCategoryDropdown }"
+              title="Filtrar por categoría"
+            >
+              <span class="text-base">{{ currentDigitalCategory.icon }}</span>
+              <span class="hidden md:inline">{{ currentDigitalCategory.name }}</span>
+              <span class="md:hidden">{{ currentDigitalCategory.id === 'All' ? 'Categorías' : currentDigitalCategory.name }}</span>
+              <span class="text-[10px] font-mono bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded-full font-bold border border-sky-500/30">
+                {{ currentDigitalCategory.count }}
+              </span>
+              <span class="text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': showCategoryDropdown }">▼</span>
+            </button>
+
+            <!-- Menú Desplegable Flotante Elegante y Ordenado -->
+            <div 
+              v-if="showCategoryDropdown" 
+              class="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#030712]/95 backdrop-blur-2xl border border-sky-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(56,189,248,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="flex items-center justify-between px-2 py-1 border-b border-white/[0.06] mb-1">
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                  <span>🏷️</span> Filtrar Categorías
+                </span>
+                <button 
+                  v-if="selectedCategory !== 'All'" 
+                  @click="selectedCategory = 'All'; showCategoryDropdown = false"
+                  class="text-[10px] text-sky-400 hover:text-sky-300 hover:underline font-bold"
+                >
+                  Ver Todo
+                </button>
+              </div>
+
+              <div 
+                v-for="cat in digitalCategoriesList" 
+                :key="cat.id"
+                @click="selectedCategory = cat.id; showCategoryDropdown = false"
+                :class="[
+                  'flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all',
+                  selectedCategory === cat.id 
+                    ? 'bg-sky-500/20 border border-sky-400/50 text-white shadow-sm font-bold' 
+                    : 'text-slate-300 hover:bg-slate-900/90 hover:text-white'
+                ]"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-sm shrink-0">
+                    {{ cat.icon }}
+                  </span>
+                  <div class="min-w-0">
+                    <span class="font-bold text-xs block truncate">{{ cat.name }}</span>
+                    <span class="text-[10px] text-slate-400 block truncate">{{ cat.desc }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                  <span class="text-[10px] font-mono bg-slate-900 text-slate-300 px-1.5 py-0.2 rounded border border-slate-800">
+                    {{ cat.count }}
+                  </span>
+                  <span v-if="selectedCategory === cat.id" class="text-sky-400 font-bold text-xs">✓</span>
+                </div>
+              </div>
+
+              <!-- Atajos Rápidos Agregados al Desplegable -->
+              <div class="border-t border-white/[0.08] pt-1.5 mt-1 space-y-1">
+                <button 
+                  @click="storeSection = 'packages'; showCategoryDropdown = false"
+                  class="w-full flex items-center justify-between p-2 rounded-xl text-left bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/20 transition-all font-bold text-xs cursor-pointer"
+                >
+                  <div class="flex items-center gap-2">
+                    <span>🎁</span>
+                    <span>Ver Combos & Paquetes VIP</span>
+                  </div>
+                  <span class="text-[9px] bg-pink-500/30 px-1.5 py-0.2 rounded font-black uppercase">Promo</span>
+                </button>
+
+                <button 
+                  @click="storeSection = 'physical'; showCategoryDropdown = false"
+                  class="w-full flex items-center justify-between p-2 rounded-xl text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition-all font-bold text-xs cursor-pointer"
+                >
+                  <div class="flex items-center gap-2">
+                    <span>📦</span>
+                    <span>Ver Catálogo Físico (tua.ar)</span>
+                  </div>
+                  <span class="text-[9px] bg-amber-500/30 px-1.5 py-0.2 rounded font-black uppercase">Envíos</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Botón Ver Carrito Pro -->
@@ -1108,12 +1223,95 @@ const submitOrder = async () => {
             <input v-model="searchQuery" type="text" placeholder="Buscar productos físicos (herramientas, hogar, electrónica, bazar)..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
           </div>
           <div class="w-px bg-white/10 my-2"></div>
-          <select v-model="physicalCategoryFilter" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
-            <option value="All" class="bg-slate-900">Todas las categorías ({{ adminStore.physicalProducts.length }})</option>
-            <option v-for="cat in adminStore.physicalCategories" :key="cat.id" :value="cat.id" class="bg-slate-900">
-              {{ cat.name }} ({{ cat.cantidad }})
-            </option>
-          </select>
+          <!-- MENÚ DESPLEGABLE DE CATEGORÍAS FÍSICAS (PRO) -->
+          <div class="relative">
+            <!-- Backdrop para cerrar al hacer clic afuera -->
+            <div 
+              v-if="showPhysicalCategoryDropdown" 
+              class="fixed inset-0 z-20 cursor-default" 
+              @click="showPhysicalCategoryDropdown = false"
+            ></div>
+
+            <!-- Botón del Menú Desplegable -->
+            <button 
+              type="button"
+              @click="showPhysicalCategoryDropdown = !showPhysicalCategoryDropdown"
+              class="relative z-30 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-white/[0.08] hover:border-amber-500/40 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap shadow-inner"
+              :class="{ '!border-amber-400 !bg-amber-950/40 shadow-[0_0_15px_rgba(251,191,36,0.25)]': showPhysicalCategoryDropdown }"
+              title="Filtrar categorías del catálogo físico"
+            >
+              <span class="text-base">{{ currentPhysicalCategoryObj.icon }}</span>
+              <span class="hidden md:inline">{{ currentPhysicalCategoryObj.name }}</span>
+              <span class="md:hidden">{{ currentPhysicalCategoryObj.id === 'All' ? 'Categorías' : currentPhysicalCategoryObj.name }}</span>
+              <span class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-full font-bold border border-amber-500/30">
+                {{ currentPhysicalCategoryObj.cantidad }}
+              </span>
+              <span class="text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': showPhysicalCategoryDropdown }">▼</span>
+            </button>
+
+            <!-- Menú Desplegable Flotante de Categorías Físicas -->
+            <div 
+              v-if="showPhysicalCategoryDropdown" 
+              class="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-[#030712]/95 backdrop-blur-2xl border border-amber-500/40 rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(251,191,36,0.2)] z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 max-h-80 overflow-y-auto custom-scrollbar"
+            >
+              <div class="flex items-center justify-between px-2 py-1 border-b border-white/[0.06] mb-1">
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                  <span>📦</span> Categorías Físicas
+                </span>
+                <button 
+                  v-if="physicalCategoryFilter !== 'All'" 
+                  @click="physicalCategoryFilter = 'All'; showPhysicalCategoryDropdown = false"
+                  class="text-[10px] text-amber-400 hover:text-amber-300 hover:underline font-bold"
+                >
+                  Ver Todo
+                </button>
+              </div>
+
+              <div 
+                @click="physicalCategoryFilter = 'All'; showPhysicalCategoryDropdown = false"
+                :class="[
+                  'flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all',
+                  physicalCategoryFilter === 'All' 
+                    ? 'bg-amber-500/20 border border-amber-400/50 text-white shadow-sm font-bold' 
+                    : 'text-slate-300 hover:bg-slate-900/90 hover:text-white'
+                ]"
+              >
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-sm">📦</span>
+                  <span class="font-bold text-xs">Todas las Categorías</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-mono bg-slate-900 text-slate-300 px-1.5 py-0.2 rounded border border-slate-800">
+                    {{ adminStore.physicalProducts.length }}
+                  </span>
+                  <span v-if="physicalCategoryFilter === 'All'" class="text-amber-400 font-bold text-xs">✓</span>
+                </div>
+              </div>
+
+              <div 
+                v-for="cat in adminStore.physicalCategories" 
+                :key="cat.id"
+                @click="physicalCategoryFilter = cat.id; showPhysicalCategoryDropdown = false"
+                :class="[
+                  'flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all',
+                  physicalCategoryFilter === cat.id 
+                    ? 'bg-amber-500/20 border border-amber-400/50 text-white shadow-sm font-bold' 
+                    : 'text-slate-300 hover:bg-slate-900/90 hover:text-white'
+                ]"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-sm shrink-0">🏷️</span>
+                  <span class="font-bold text-xs truncate">{{ cat.name }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                  <span class="text-[10px] font-mono bg-slate-900 text-slate-300 px-1.5 py-0.2 rounded border border-slate-800">
+                    {{ cat.cantidad }}
+                  </span>
+                  <span v-if="physicalCategoryFilter === cat.id" class="text-amber-400 font-bold text-xs">✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <button 

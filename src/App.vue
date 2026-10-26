@@ -1,17 +1,40 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useToastStore } from './store/toast'
-import { useResellerStore } from './store/admin'
+import { useResellerStore, useAdminStore } from './store/admin'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import UserProfileModal from './components/UserProfileModal.vue'
 
 const route = useRoute()
 const toastStore = useToastStore()
 const resellerStore = useResellerStore()
+const adminStore = useAdminStore()
 
 const showProfileModal = ref(false)
+const showNavDropdown = ref(false)
 const savedUserName = ref('')
+
+const openSupportWhatsApp = () => {
+  const targetPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+  const cleanPhone = targetPhone.replace(/[^0-9]/g, '')
+  const msg = '¡Hola StreamePro! 👋 Necesito información o soporte sobre las suscripciones y cuentas premium.'
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+const copyStoreUrl = () => {
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText('https://streamepro.me').then(() => {
+      toastStore.add('¡Enlace oficial https://streamepro.me copiado con éxito!', 'success')
+    }).catch(() => {
+      toastStore.add('Enlace oficial: https://streamepro.me', 'info')
+    })
+  }
+}
+
+watch(() => route.fullPath, () => {
+  showNavDropdown.value = false
+})
 
 const checkSavedUser = () => {
   try {
@@ -74,7 +97,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
           </div>
 
           <!-- NAVEGACIÓN PARA CLIENTES -->
-          <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
+          <nav v-if="isClientArea" class="flex items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner relative">
             <RouterLink 
               to="/" 
               class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
@@ -85,15 +108,6 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             </RouterLink>
             
             <RouterLink 
-              to="/p" 
-              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
-              active-class="!bg-amber-500/15 !text-amber-300 !border !border-amber-500/30 shadow-sm"
-            >
-              <span>📦</span>
-              <span class="hidden sm:inline">Catálogo Físico</span>
-            </RouterLink>
-
-            <RouterLink 
               to="/portal" 
               class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
               active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
@@ -102,23 +116,26 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               <span class="hidden sm:inline">Mi Bóveda</span>
             </RouterLink>
 
-            <RouterLink 
-              to="/revendedores" 
-              class="px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
-              active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
-            >
-              <span>🚀</span>
-              <span class="hidden md:inline">Ser Revendedor</span>
-            </RouterLink>
-
             <!-- Acceso Rápido / Registro de Usuario -->
             <button 
               @click="showProfileModal = true" 
-              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm"
+              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm cursor-pointer"
               title="Mi Perfil, compras y registro"
             >
               <span>👤</span>
-              <span>{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
+              <span class="hidden sm:inline">{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
+            </button>
+
+            <!-- BOTÓN PRINCIPAL DEL MENÚ DESPLEGABLE -->
+            <button 
+              @click="showNavDropdown = !showNavDropdown" 
+              class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500/20 via-blue-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 text-sky-300 hover:text-white border border-sky-500/40 font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              :class="{ '!bg-sky-500 !text-slate-950 !border-white shadow-[0_0_20px_rgba(56,189,248,0.5)]': showNavDropdown }"
+              title="Abrir menú desplegable con todas las opciones"
+            >
+              <span class="text-sm font-bold">{{ showNavDropdown ? '✕' : '☰' }}</span>
+              <span>Menú</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </button>
           </nav>
 
@@ -157,6 +174,254 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             >
               <span>← Volver a Tienda</span>
             </RouterLink>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- MENÚ DESPLEGABLE PRO (COMPLETO, ATRACTIVO Y ORDENADO)   -->
+      <!-- ======================================================== -->
+      <div 
+        v-if="showNavDropdown" 
+        class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex justify-end p-3 sm:p-5 animate-in fade-in duration-200"
+        @click="showNavDropdown = false"
+      >
+        <div 
+          @click.stop 
+          class="w-full max-w-sm sm:max-w-md bg-[#030712]/98 border border-sky-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_40px_rgba(56,189,248,0.25)] flex flex-col justify-between overflow-y-auto max-h-[94vh] space-y-4 text-xs relative animate-in slide-in-from-top-4 duration-200 custom-scrollbar"
+        >
+          <!-- Encabezado del Menú Desplegable -->
+          <div class="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg shadow-[0_0_20px_rgba(56,189,248,0.4)] border border-white/20">
+                ⚡
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-black text-white text-base tracking-tight">STREAMEPRO</h3>
+                  <span class="text-[9px] font-mono font-bold bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded border border-sky-500/30">
+                    OFICIAL
+                  </span>
+                </div>
+                <p class="text-[11px] text-slate-400 font-medium">Menú Principal & Centro de Servicios</p>
+              </div>
+            </div>
+            <button 
+              @click="showNavDropdown = false" 
+              class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Saludo Personalizado & Estado del Sistema -->
+          <div class="bg-gradient-to-r from-slate-900/90 to-[#082f49]/40 border border-sky-500/30 rounded-2xl p-3 flex items-center justify-between shadow-inner">
+            <div class="flex items-center gap-2.5">
+              <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              <div>
+                <span class="text-[11px] text-white font-bold block">
+                  {{ savedUserName ? `¡Hola, ${savedUserName}!` : 'Bienvenido a la Tienda Oficial' }}
+                </span>
+                <span class="text-[10px] text-emerald-400 font-medium">🟢 Entrega: 10 min a 1 hora • Stock 100%</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+              Garantizado
+            </span>
+          </div>
+
+          <!-- SECCIÓN 1: 🛍️ CATÁLOGOS & SUSCRIPCIONES -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between px-1">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span>🛍️</span> Catálogos & Suscripciones
+              </span>
+              <span class="text-[9px] font-mono text-sky-400">Entrega Inmediata</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2">
+              <RouterLink 
+                to="/" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/[0.06] hover:border-sky-500/40 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                    🎬
+                  </span>
+                  <div>
+                    <span class="font-bold text-white text-xs block group-hover:text-sky-300">Suscripciones Digitales</span>
+                    <span class="text-[10px] text-slate-400">Netflix, Max, Disney+, Spotify, IPTV, Canva Pro</span>
+                  </div>
+                </div>
+                <span class="text-slate-500 group-hover:text-sky-400 font-bold text-sm">→</span>
+              </RouterLink>
+
+              <RouterLink 
+                to="/?sec=packages" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-purple-950/40 via-pink-950/30 to-slate-900/70 hover:bg-slate-800/90 border border-pink-500/30 hover:border-pink-500/60 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-pink-500/20 border border-pink-500/40 text-pink-300 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                    🎁
+                  </span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-white text-xs group-hover:text-pink-300">Combos & Paquetes VIP</span>
+                      <span class="text-[8px] bg-pink-500/20 text-pink-300 px-1.5 py-0.2 rounded font-black border border-pink-500/30 uppercase">
+                        Hasta 40% OFF
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Plataformas combinadas con ahorro máximo</span>
+                  </div>
+                </div>
+                <span class="text-pink-400 font-bold text-sm">→</span>
+              </RouterLink>
+
+              <RouterLink 
+                to="/p" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/70 hover:bg-slate-800/90 border border-amber-500/25 hover:border-amber-500/50 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                    📦
+                  </span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-white text-xs group-hover:text-amber-300">Catálogo de Productos Físicos</span>
+                      <span class="text-[8px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-black border border-amber-500/30 uppercase">
+                        tua.ar
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Tecnología, accesorios, bazar y envíos a todo el país</span>
+                  </div>
+                </div>
+                <span class="text-amber-400 font-bold text-sm">→</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 2: 🔐 TU CUENTA & ACCESOS -->
+          <div class="space-y-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block flex items-center gap-1.5">
+              <span>🔐</span> Tu Cuenta & Accesos Privados
+            </span>
+
+            <div class="grid grid-cols-1 gap-2">
+              <RouterLink 
+                to="/portal" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/[0.06] hover:border-sky-500/40 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-base shrink-0">
+                    🔐
+                  </span>
+                  <div>
+                    <span class="font-bold text-white text-xs block group-hover:text-sky-300">Mi Bóveda de Clientes</span>
+                    <span class="text-[10px] text-slate-400">Consulta tus perfiles y PINs con tu WhatsApp o CBU</span>
+                  </div>
+                </div>
+                <span class="text-slate-500 group-hover:text-sky-400 font-bold text-sm">→</span>
+              </RouterLink>
+
+              <button 
+                @click="showProfileModal = true; showNavDropdown = false"
+                class="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/[0.06] hover:border-sky-500/40 transition-all group text-left shadow-sm cursor-pointer"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center text-base shrink-0">
+                    👤
+                  </span>
+                  <div>
+                    <span class="font-bold text-white text-xs block group-hover:text-blue-300">
+                      {{ savedUserName ? `Perfil de ${savedUserName}` : 'Mi Perfil & Comprobantes' }}
+                    </span>
+                    <span class="text-[10px] text-slate-400">Datos guardados para compras inmediatas y comprobantes</span>
+                  </div>
+                </div>
+                <span class="text-slate-500 group-hover:text-blue-400 font-bold text-sm">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 3: 🚀 DISTRIBUIDORES & NEGOCIO -->
+          <div class="space-y-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block flex items-center gap-1.5">
+              <span>💼</span> Distribuidores & Negocio Mayorista
+            </span>
+
+            <div class="grid grid-cols-1 gap-2">
+              <RouterLink 
+                to="/revendedores" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-slate-900 border border-amber-500/35 hover:border-amber-400 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                    🚀
+                  </span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-black text-amber-300 text-xs group-hover:text-white">Ser Revendedor Autorizado</span>
+                      <span class="text-[8px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black uppercase">
+                        Comisiones
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-slate-300">Gana hasta 50% revendiendo streaming con tu propia tienda</span>
+                  </div>
+                </div>
+                <span class="text-amber-400 font-bold text-sm">→</span>
+              </RouterLink>
+
+              <RouterLink 
+                to="/crm" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-2.5 rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 border border-white/[0.06] hover:border-slate-700 transition-all group text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center text-sm shrink-0">
+                    🔑
+                  </span>
+                  <div>
+                    <span class="font-bold text-slate-300 text-xs block group-hover:text-white">Acceso a Panel de Distribuidores</span>
+                    <span class="text-[10px] text-slate-500">Ingreso exclusivo para mayoristas registrados (RES-01...)</span>
+                  </div>
+                </div>
+                <span class="text-slate-500 group-hover:text-white text-sm">→</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 4: 💬 SOPORTE OFICIAL & ACCIONES RÁPIDAS -->
+          <div class="space-y-2.5 pt-2 border-t border-white/[0.08]">
+            <button 
+              @click="openSupportWhatsApp(); showNavDropdown = false"
+              class="w-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer text-xs sm:text-sm"
+            >
+              <span class="text-lg">💬</span>
+              <span>Soporte Oficial por WhatsApp 24/7</span>
+            </button>
+
+            <div class="flex gap-2">
+              <button 
+                @click="copyStoreUrl"
+                class="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                title="Copiar enlace oficial de la tienda"
+              >
+                <span>🔗</span>
+                <span>Copiar Enlace Tienda</span>
+              </button>
+              
+              <button 
+                @click="showNavDropdown = false"
+                class="px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 py-2.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
+              >
+                Cerrar Menú
+              </button>
+            </div>
           </div>
         </div>
       </div>
