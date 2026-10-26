@@ -731,7 +731,7 @@ const submitOrder = async () => {
         </h2>
         <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-normal">
           Acceso oficial por pantalla individual o cuentas multi-dispositivo.
-          Personaliza los nombres de tus perfiles y selecciona tus preferencias de PIN con seguridad blindada.
+          Acceso oficial garantizado con entrega de perfil y PIN exclusivo listo para usar.
         </p>
 
         <!-- Trust Metrics -->
@@ -928,18 +928,22 @@ const submitOrder = async () => {
               </button>
             </div>
             
-            <div class="space-y-1.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800 mb-4 text-xs">
-              <div class="flex justify-between items-center text-slate-300">
-                <span>1 Perfil Individual:</span>
-                <strong class="text-white">${{ product.plans['1_perfil']?.clientPrice }} ARS</strong>
+            <!-- Modalidades Disponibles (Precios visibles al Elegir Plan) -->
+            <div class="space-y-2 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 mb-4 text-xs">
+              <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <span>✨</span> Modalidades Oficiales
+                </span>
+                <span class="text-[9px] text-slate-500 font-mono font-medium">Ver precios al elegir plan</span>
               </div>
-              <div v-if="product.plans['2_dispositivos']" class="flex justify-between items-center text-slate-300">
-                <span>2 Dispositivos:</span>
-                <strong class="text-emerald-400">${{ product.plans['2_dispositivos']?.clientPrice }} ARS</strong>
-              </div>
-              <div v-if="product.plans['4_dispositivos']" class="flex justify-between items-center text-slate-300">
-                <span>4 Dispositivos (Full):</span>
-                <strong class="text-amber-300">${{ product.plans['4_dispositivos']?.clientPrice }} ARS</strong>
+              <div class="space-y-1 pt-0.5">
+                <div v-for="(plan, pKey) in product.plans" :key="pKey" class="flex items-center justify-between text-slate-300 py-0.5">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-emerald-400 font-bold text-xs">✓</span>
+                    <span class="font-medium text-slate-200">{{ plan.label }}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800/80">Oficial</span>
+                </div>
               </div>
             </div>
           </div>
@@ -948,7 +952,7 @@ const submitOrder = async () => {
             <button 
               type="button" 
               @click="openStreamingInfo(product)"
-              class="px-3 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              class="px-3.5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
               title="Ver detalles y especificaciones del servicio"
             >
               <span>ℹ️</span>
@@ -956,7 +960,7 @@ const submitOrder = async () => {
             </button>
             <button @click="openConfig(product)" class="flex-1 bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm text-xs sm:text-sm cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-              <span>Elegir Plan & Nombres</span>
+              <span>Elegir Plan</span>
             </button>
           </div>
         </div>
@@ -1251,64 +1255,59 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- MODAL DE CONFIGURACIÓN -->
+    <!-- MODAL DE ELECCIÓN DE PLAN -->
     <div v-if="showConfigModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-5">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
-            <h3 class="text-xl font-black text-white">Configurar: {{ selectedProduct.name }}</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Elige la modalidad que deseas y personaliza los nombres sin complicaciones.</p>
+            <h3 class="text-xl font-black text-white">Elegir Plan: {{ selectedProduct.name }}</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Selecciona la modalidad deseada para tu orden oficial.</p>
           </div>
-          <button @click="showConfigModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showConfigModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
         </div>
 
-        <!-- Selector Desplegable de Modalidades -->
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Selecciona tu Modalidad</label>
-          <div class="relative">
-            <select 
-              v-model="selectedPlanKey" 
-              @change="onPlanChange"
-              class="w-full bg-slate-950 border-2 border-slate-700 focus:border-brand-accent rounded-xl p-3.5 text-white font-bold text-sm outline-none appearance-none cursor-pointer pr-10"
-            >
-              <option v-for="(plan, pKey) in selectedProduct.plans" :key="pKey" :value="pKey">
-                {{ plan.label }} — ${{ plan.clientPrice }} ARS
-              </option>
-            </select>
-            <svg class="w-5 h-5 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </div>
-        </div>
-
-        <!-- Preferencia de PIN -->
-        <div v-if="customProfiles.length > 1" class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
-          <label class="block text-xs font-bold uppercase text-slate-300 tracking-wider">
-            ¿Cómo prefieres los PINs de tus pantallas?
+        <!-- Selector Visual de Planes con Precios Dentro de las Selecciones -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">
+            Modalidades y Precios Disponibles
           </label>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <button 
-              type="button" 
-              @click="pinPreference = 'same'"
+          <div class="grid grid-cols-1 gap-2.5">
+            <div 
+              v-for="(plan, pKey) in selectedProduct.plans" 
+              :key="pKey"
+              @click="selectedPlanKey = pKey; onPlanChange()"
               :class="[
-                'p-2.5 rounded-lg border font-semibold text-center transition-all',
-                pinPreference === 'same' 
-                  ? 'bg-brand-accent/20 border-brand-accent text-brand-accent font-bold' 
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                'p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between',
+                selectedPlanKey === pKey 
+                  ? 'bg-sky-500/15 border-brand-accent text-white shadow-[0_0_20px_rgba(56,189,248,0.25)]' 
+                  : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
               ]"
             >
-              🔒 Mismo PIN para ambos
-            </button>
-            <button 
-              type="button" 
-              @click="pinPreference = 'different'"
-              :class="[
-                'p-2.5 rounded-lg border font-semibold text-center transition-all',
-                pinPreference === 'different' 
-                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 font-bold' 
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-              ]"
-            >
-              🔑 PINs distintos
-            </button>
+              <div class="flex items-center gap-3">
+                <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0', selectedPlanKey === pKey ? 'border-brand-accent bg-brand-accent' : 'border-slate-600']">
+                  <div v-if="selectedPlanKey === pKey" class="w-2 h-2 rounded-full bg-slate-950"></div>
+                </div>
+                <div>
+                  <div class="font-black text-sm text-white">{{ plan.label }}</div>
+                  <div class="text-[11px] text-slate-400">Entrega rápida con PIN exclusivo</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-black text-base text-brand-accent font-mono">${{ plan.clientPrice }} <span class="text-[10px] font-normal text-slate-400">ARS</span></div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Garantizado</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nota Oficial: Nombre de Perfil y PIN se entregan en las cuentas -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-slate-300">
+          <span class="text-base shrink-0">🛡️</span>
+          <div>
+            <div class="font-bold text-white mb-0.5">Asignación Oficial de Perfil & PIN</div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              El nombre del perfil y su PIN exclusivo se te entregarán directamente en las credenciales finales de tu cuenta, listos para acceder sin necesidad de configuraciones previas.
+            </p>
           </div>
         </div>
 
@@ -1335,53 +1334,15 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Nombres de Perfiles -->
-        <div class="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/60">
-          <button 
-            type="button" 
-            @click="isProfilesExpanded = !isProfilesExpanded"
-            class="w-full p-3.5 flex justify-between items-center text-left hover:bg-slate-800/40 transition-colors"
-          >
-            <div class="flex items-center gap-2">
-              <span class="text-brand-accent font-bold text-xs uppercase tracking-wider">
-                Personalizar Nombres ({{ customProfiles.length }} {{ customProfiles.length === 1 ? 'perfil' : 'dispositivos' }})
-              </span>
-              <span class="text-[10px] text-slate-400 font-medium bg-slate-900 px-2 py-0.5 rounded border border-slate-800">(Opcional)</span>
-            </div>
-            <svg 
-              :class="['w-4 h-4 text-slate-400 transition-transform duration-200', isProfilesExpanded ? 'rotate-180' : '']" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-
-          <div v-show="isProfilesExpanded" class="p-3.5 pt-0 space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar border-t border-slate-800/60 mt-1">
-            <p class="text-[11px] text-slate-300 mb-2 leading-relaxed">
-              Escribe el nombre deseado para cada acceso. El PIN te llegará con las credenciales finales: u otros se brindara los datos generados.
-            </p>
-            <div v-for="(prof, idx) in customProfiles" :key="idx" class="flex gap-2 items-center bg-slate-900/90 p-2 rounded-lg border border-slate-800">
-              <span class="text-xs font-bold text-slate-500 w-6 text-center">#{{ idx + 1 }}</span>
-              <input 
-                v-model="prof.name" 
-                type="text" 
-                :placeholder="`Nombre de perfil ${idx + 1} (opcional)`" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-white font-mono focus:border-brand-accent outline-none"
-              >
-            </div>
-          </div>
-        </div>
-
-        <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <!-- Total y Añadir a la Orden -->
+        <div class="flex justify-between items-center bg-slate-950 p-4 rounded-2xl border border-slate-800">
           <div>
             <p class="text-xs text-slate-400 font-medium">Total a pagar:</p>
-            <p class="text-2xl font-black text-brand-accent">
+            <p class="text-2xl font-black text-brand-accent font-mono">
               ${{ selectedProduct.plans[selectedPlanKey]?.clientPrice }} <span class="text-xs text-slate-400 font-normal">ARS</span>
             </p>
           </div>
-          <button @click="confirmAddToCart" class="bg-brand-accent text-slate-950 font-black px-6 py-3 rounded-xl hover:bg-sky-400 transition-all shadow-md text-sm">
+          <button @click="confirmAddToCart" class="bg-brand-accent text-slate-950 font-black px-6 py-3 rounded-xl hover:bg-sky-400 transition-all shadow-md text-sm cursor-pointer">
             Añadir a la Orden
           </button>
         </div>
@@ -1418,10 +1379,8 @@ const submitOrder = async () => {
                   </span>
                 </div>
                 
-                <div v-if="item.profiles && item.profiles.length > 0" class="flex flex-wrap gap-1.5 text-xs pt-1">
-                  <span v-for="(p, pIdx) in item.profiles" :key="pIdx" class="bg-slate-900 px-2 py-0.5 rounded text-slate-300 font-mono text-[11px] border border-slate-800">
-                    👤 {{ p.name }}
-                  </span>
+                <div v-if="item.itemType !== 'physical'" class="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
+                  <span class="text-emerald-400 font-bold">✓</span> Perfil y PIN oficial asignados al entregar
                 </div>
 
                 <div class="text-xs text-slate-400 pt-1">
@@ -1806,7 +1765,7 @@ const submitOrder = async () => {
             @click="openConfigFromInfo"
             class="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-brand-accent hover:bg-sky-400 transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] cursor-pointer flex items-center gap-2"
           >
-            <span>Elegir Plan & Configurar</span>
+            <span>Elegir Plan</span>
             <span>→</span>
           </button>
         </div>
