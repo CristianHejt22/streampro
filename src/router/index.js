@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import CustomerPortal from '../views/CustomerPortal.vue'
 import ResellerDashboard from '../views/ResellerDashboard.vue'
 import AdminDashboard from '../views/AdminDashboard.vue'
+import ResellerRecruitmentView from '../views/ResellerRecruitmentView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -65,13 +66,34 @@ const router = createRouter({
       path: '/revendedores',
       alias: ['/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'],
       name: 'recruitment',
-      component: () => import('../views/ResellerRecruitmentView.vue')
+      component: ResellerRecruitmentView
     },
     {
       path: '/:pathMatch(.*)*',
       redirect: '/'
     }
   ]
+})
+
+// Manejo inteligente de fallos de carga de chunks cuando se despliega una nueva versión
+router.onError((error, to) => {
+  const isChunkError = 
+    error?.message?.includes('Failed to fetch dynamically imported module') ||
+    error?.message?.includes('Importing a module script failed') ||
+    error?.message?.includes('Expected a JavaScript-or-Wasm module script')
+
+  if (isChunkError) {
+    const lastReload = sessionStorage.getItem('last_chunk_reload')
+    const now = Date.now()
+    if (!lastReload || now - parseInt(lastReload) > 10000) {
+      sessionStorage.setItem('last_chunk_reload', now.toString())
+      if (to?.fullPath) {
+        window.location.href = to.fullPath
+      } else {
+        window.location.reload()
+      }
+    }
+  }
 })
 
 export default router

@@ -4,6 +4,12 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 
+// Manejador global para actualización de recursos al desplegar nuevas versiones
+window.addEventListener('vite:preloadError', (event) => {
+  console.warn('Nueva versión de StreamePro detectada. Actualizando recursos...', event)
+  window.location.reload()
+})
+
 const app = createApp(App)
 
 app.use(createPinia())
