@@ -1,4 +1,4 @@
-// Servicio de Mini Nube de Comprobantes de Pago para StreamPro
+// Servicio de Mini Nube de Comprobantes de Pago para StreamePro
 // Almacena comprobantes en formato JPG, PNG, WEBP y PDF en almacenamiento de alto volumen (IndexedDB)
 // Permite que el revendedor y el proveedor verifiquen los comprobantes directamente desde sus paneles
 // Al confirmar el cierre de la orden, el comprobante se elimina definitivamente para no ocupar espacio en disco.

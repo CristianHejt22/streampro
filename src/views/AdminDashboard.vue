@@ -220,7 +220,7 @@ const handleAddReseller = () => {
 
 const copyResellerCredentials = (reseller) => {
   const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
-  const text = `👋 *STREAMPRO - CREDENCIALES OFICIALES DE DISTRIBUIDOR*\n\n` +
+  const text = `👋 *STREAMEPRO - CREDENCIALES OFICIALES DE DISTRIBUIDOR*\n\n` +
     `¡Hola ${reseller.name}!\nTu cuenta de revendedor mayorista ha sido activada en el sistema:\n\n` +
     `🏪 *Tienda:* ${reseller.storeName || reseller.name}\n` +
     `🔑 *Código:* ${reseller.id}\n` +
@@ -409,7 +409,7 @@ const formatWaPhone = (phone) => {
 
 const sendWhatsAppRenewalReminder = (client) => {
   const phone = formatWaPhone(client.phone)
-  const storeTitle = adminStore.providerBankInfo.holderName || 'StreamPro Mayorista'
+  const storeTitle = adminStore.providerBankInfo.holderName || 'StreamePro Mayorista'
   const daysRemaining = getClientExpiryDays(client.expiry)
   const timeText = daysRemaining <= 0 ? 'hoy' : daysRemaining === 1 ? 'mañana' : `en ${daysRemaining} días`
 
@@ -417,8 +417,8 @@ const sendWhatsAppRenewalReminder = (client) => {
     `¡Hola ${client.name}! Te saludamos de ${storeTitle}. 👋\n\n` +
     `Te recordamos que tu suscripción de *${client.platform}* (${client.planName || 'Plan Oficial'}) vence *${timeText}* (Fecha: ${client.expiry}). 📅\n\n` +
     `Para conservar tus perfiles, favoritos y no quedarte sin servicio este fin de semana, confírmanos por aquí para renovar tu mes.\n\n` +
-    `🏦 Alias: ${adminStore.providerBankInfo.cbuAlias || 'STREAMPRO.MAYORISTA'}\n` +
-    `💳 Titular: ${adminStore.providerBankInfo.holderName || 'StreamPro'}\n\n` +
+    `🏦 Alias: ${adminStore.providerBankInfo.cbuAlias || 'STREAMEPRO.MAYORISTA'}\n` +
+    `💳 Titular: ${adminStore.providerBankInfo.holderName || 'StreamePro'}\n\n` +
     `¡Respondé a este mensaje para renovar en 1 minuto! ✨`
 
   if (phone && phone.length >= 8) {
@@ -494,7 +494,7 @@ const filteredAlertsForAdmin = computed(() => {
 
 const copyClientDeliveryFormat = (client) => {
   const profilesList = (client.profiles || []).map(p => `• ${p.name} (PIN: ${p.pin})`).join('\n')
-  const text = `🎬 *STREAMPRO - CREDENCIALES OFICIALES*\nHola ${client.name}!\nN° Cliente: ${client.clientNumber || client.id}\nPlataforma: *${client.platform}*\nPlan: *${client.planName || client.devices + ' pantallas'}*\nCorreo: ${client.account}\nClave: ${client.pass}\nVence: ${client.expiry}\n\n*Perfiles asignados:*\n${profilesList}\n\n¡Garantía StreamPro activa!`
+  const text = `🎬 *STREAMEPRO - CREDENCIALES OFICIALES*\nHola ${client.name}!\nN° Cliente: ${client.clientNumber || client.id}\nPlataforma: *${client.platform}*\nPlan: *${client.planName || client.devices + ' pantallas'}*\nCorreo: ${client.account}\nClave: ${client.pass}\nVence: ${client.expiry}\n\n*Perfiles asignados:*\n${profilesList}\n\n¡Garantía StreamePro activa!`
   navigator.clipboard.writeText(text).then(() => {
     toast.add(`Credenciales de ${client.name} copiadas para WhatsApp`, 'success')
   })
@@ -990,7 +990,7 @@ const downloadBackupFile = () => {
 // Contactar directamente al cliente de una venta oficial por WhatsApp
 const contactDirectCustomerWhatsApp = (order) => {
   const cleanPhone = formatWaPhone(order.customerPhone)
-  const msg = `¡Hola ${order.customerName}! Te contactamos desde StreamPro Oficial respecto a tu pedido de ${order.platform} (${order.customerNumber}). Estamos preparando tu activación.`
+  const msg = `¡Hola ${order.customerName}! Te contactamos desde StreamePro Oficial respecto a tu pedido de ${order.platform} (${order.customerNumber}). Estamos preparando tu activación.`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
@@ -1040,7 +1040,7 @@ const sendCredentialsWhatsApp = (data) => {
 
 const contactApplicantWhatsApp = (app) => {
   const cleanPhone = formatWaPhone(app.whatsapp)
-  const msg = `¡Hola ${app.fullName}! Te contactamos desde el Panel de Proveedor Mayorista de StreamPro respecto a tu postulación como distribuidor oficial.`
+  const msg = `¡Hola ${app.fullName}! Te contactamos desde el Panel de Proveedor Mayorista de StreamePro respecto a tu postulación como distribuidor oficial.`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
@@ -1508,7 +1508,7 @@ const deletePackageItem = (pkgId) => {
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="font-black text-white text-sm sm:text-base">Centro Mayorista StreamPro S.R.L.</h3>
+            <h3 class="font-black text-white text-sm sm:text-base">Centro Mayorista StreamePro S.R.L.</h3>
             <span class="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
               ADMIN SESIÓN ACTIVA
             </span>
@@ -3657,7 +3657,7 @@ const deletePackageItem = (pkgId) => {
           </div>
           <div>
             <h2 class="text-2xl font-black text-white">Sistema & Base de Datos Depurada</h2>
-            <p class="text-xs text-slate-400">Supervisión, salud y restauración inmaculada de todas las dependencias del ecosistema StreamPro.</p>
+            <p class="text-xs text-slate-400">Supervisión, salud y restauración inmaculada de todas las dependencias del ecosistema StreamePro.</p>
           </div>
         </div>
 
@@ -4697,7 +4697,7 @@ const deletePackageItem = (pkgId) => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Titular de la Cuenta</label>
-              <input v-model="newAccountForm.holderName" type="text" placeholder="Ej: StreamPro Central" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
+              <input v-model="newAccountForm.holderName" type="text" placeholder="Ej: StreamePro Central" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Entidad Bancaria</label>
@@ -4708,7 +4708,7 @@ const deletePackageItem = (pkgId) => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Alias CBU / CVU</label>
-              <input v-model="newAccountForm.cbuAlias" type="text" placeholder="Ej: STREAMPRO.MAYORISTA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono font-bold text-amber-300" required>
+              <input v-model="newAccountForm.cbuAlias" type="text" placeholder="Ej: STREAMEPRO.MAYORISTA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono font-bold text-amber-300" required>
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">CUIT / CUIL</label>
@@ -4748,7 +4748,7 @@ const deletePackageItem = (pkgId) => {
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       @close="showFlyerModal = false" 
-      :default-store-name="adminStore.adminAuth.name || 'StreamPro Mayorista'" 
+      :default-store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
     />
 

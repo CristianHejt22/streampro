@@ -5,7 +5,7 @@ import { useToastStore } from '../store/toast'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  defaultStoreName: { type: String, default: 'StreamPro Oficial' },
+  defaultStoreName: { type: String, default: 'StreamePro Oficial' },
   initialProduct: { type: Object, default: null },
   resellerRef: { type: String, default: 'DIRECT' },
   websiteDomain: { type: String, default: 'streamepro.me' }

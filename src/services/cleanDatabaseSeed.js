@@ -1,4 +1,4 @@
-// Servicio de Semilla y Restauración de Base de Datos Depurada para Producción (StreamPro)
+// Servicio de Semilla y Restauración de Base de Datos Depurada para Producción (StreamePro)
 // Provee una estructura inicial inmaculada para todas las dependencias del ecosistema.
 
 import { DB_KEYS, saveDb, loadDb } from './db'
@@ -242,7 +242,7 @@ export function createStarterAccountForPlatform(platform, index = 1) {
     id: `INV-${Date.now().toString().slice(-4)}${index}`,
     platform: platform,
     account: `${cleanPrefix}.stock${randomSuffix}@streampro.me`,
-    pass: `StreamPro${Math.floor(1000 + Math.random() * 9000)}*`,
+    pass: `StreamePro${Math.floor(1000 + Math.random() * 9000)}*`,
     cost: costs[platform] || 10000,
     maxProfiles: maxProfiles,
     status: 'Available',
@@ -262,10 +262,10 @@ export function getCleanDatabaseSeed() {
       id: 'acc_mp_principal',
       name: 'Mercado Pago Principal (Cobros)',
       isActive: true,
-      holderName: 'StreamPro Mayorista Central',
+      holderName: 'StreamePro Mayorista Central',
       bankName: 'Mercado Pago',
       cuit: '20-00000000-0',
-      cbuAlias: 'STREAMPRO.MAYORISTA',
+      cbuAlias: 'STREAMEPRO.MAYORISTA',
       cbuNumber: '0000000000000000000000',
       whatsapp: '+54 9 11 0000-0000',
       email: 'pagos@streampro.com',
@@ -275,10 +275,10 @@ export function getCleanDatabaseSeed() {
       id: 'acc_galicia_secundaria',
       name: 'Banco Galicia (Transferencias)',
       isActive: false,
-      holderName: 'StreamPro Mayorista Central',
+      holderName: 'StreamePro Mayorista Central',
       bankName: 'Banco Galicia',
       cuit: '20-00000000-0',
-      cbuAlias: 'STREAMPRO.GALICIA',
+      cbuAlias: 'STREAMEPRO.GALICIA',
       cbuNumber: '0070000000000000000000',
       whatsapp: '+54 9 11 0000-0000',
       email: 'pagos@streampro.com',
@@ -290,12 +290,12 @@ export function getCleanDatabaseSeed() {
     {
       id: 'RES-01',
       name: 'Distribuidor Central Oficial',
-      storeName: 'StreamPro Digital Store',
+      storeName: 'StreamePro Digital Store',
       username: 'dist_oficial',
       password: 'StreamPro2026*Dist',
       isActive: true,
       contactNumber: '+54 9 11 0000-0000',
-      cbuAlias: 'STREAMPRO.DIST.MP',
+      cbuAlias: 'STREAMEPRO.DIST.MP',
       bankName: 'Mercado Pago',
       holderName: 'Distribuidor Central Oficial',
       cuit: '20-00000000-0',

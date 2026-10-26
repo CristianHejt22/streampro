@@ -263,7 +263,7 @@ const copyVaultAccessForClient = () => {
   if (!selectedVoucherClient.value) return
   const c = selectedVoucherClient.value
   const origin = getBaseOrigin()
-  const msg = `🧾 *STREAMPRO - CERTIFICADO OFICIAL DE SUSCRIPCIÓN*\n━━━━━━━━━━━━━━━━━━━━\n👤 Cliente: *${c.name}*\n🏷️ N° Cliente: *${c.clientNumber || c.id}*\n🍿 Servicio: *${c.platform}* (${c.planName || c.devices + ' pantallas'})\n📅 Vencimiento: *${c.expiry}*\n\n🔐 *Acceso a tus credenciales y perfiles asignados:*\nPuedes consultar tus accesos de forma 100% segura en tu Bóveda Privada:\n👉 ${origin}/boveda\n(Ingresa con tu N° de Cliente: *${c.clientNumber || c.id}*)\n━━━━━━━━━━━━━━━━━━━━\n🛡️ Garantía oficial y soporte prioritario activo.\n¡Que disfrutes tu servicio!`
+  const msg = `🧾 *STREAMEPRO - CERTIFICADO OFICIAL DE SUSCRIPCIÓN*\n━━━━━━━━━━━━━━━━━━━━\n👤 Cliente: *${c.name}*\n🏷️ N° Cliente: *${c.clientNumber || c.id}*\n🍿 Servicio: *${c.platform}* (${c.planName || c.devices + ' pantallas'})\n📅 Vencimiento: *${c.expiry}*\n\n🔐 *Acceso a tus credenciales y perfiles asignados:*\nPuedes consultar tus accesos de forma 100% segura en tu Bóveda Privada:\n👉 ${origin}/boveda\n(Ingresa con tu N° de Cliente: *${c.clientNumber || c.id}*)\n━━━━━━━━━━━━━━━━━━━━\n🛡️ Garantía oficial y soporte prioritario activo.\n¡Que disfrutes tu servicio!`
   
   navigator.clipboard.writeText(msg).then(() => {
     toast.add('¡Texto del comprobante y link de Bóveda copiado para tu cliente!', 'success')
@@ -1787,7 +1787,7 @@ const openProductInNewTab = (product) => {
             <span class="text-xs font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
               Reglas de Comisión Automática
             </span>
-            <span class="text-xs text-slate-300">Catálogo Físico StreamPro</span>
+            <span class="text-xs text-slate-300">Catálogo Físico StreamePro</span>
           </div>
           <h4 class="text-base font-bold text-white">¿Cómo ganas comisiones con productos físicos?</h4>
           <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
@@ -2869,7 +2869,7 @@ const openProductInNewTab = (product) => {
                 SP
               </div>
               <div>
-                <h4 class="font-black text-sm tracking-tight">STREAMPRO DIGITAL</h4>
+                <h4 class="font-black text-sm tracking-tight">STREAMEPRO DIGITAL</h4>
                 <p class="text-[9px] text-slate-400 font-mono">CERTIFICADO DE SUSCRIPCIÓN</p>
               </div>
             </div>
@@ -2894,7 +2894,7 @@ const openProductInNewTab = (product) => {
           <div class="space-y-1.5 text-xs bg-[#020617] p-3 rounded-xl border border-slate-800/80 font-mono">
             <div class="flex justify-between">
               <span class="text-slate-400">Entrega de Accesos:</span>
-              <strong class="text-emerald-400">Bóveda Privada StreamPro</strong>
+              <strong class="text-emerald-400">Bóveda Privada StreamePro</strong>
             </div>
             <div class="flex justify-between">
               <span class="text-slate-400">Consulta de Credenciales:</span>
@@ -3151,7 +3151,7 @@ const openProductInNewTab = (product) => {
       :initial-product="flyerInitialProduct"
       :reseller-ref="currentResellerId"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
-      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamPro Distribuidor'" 
+      :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'" 
       website-domain="streamepro.me"
     />
 

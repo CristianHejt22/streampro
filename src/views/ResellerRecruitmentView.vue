@@ -68,7 +68,7 @@ const resetForm = () => {
 const contactPriorityWhatsApp = () => {
   const cleanPhone = providerWhatsApp.value.replace(/[^0-9]/g, '')
   const name = submittedApplication.value?.fullName || applicationForm.value.fullName || 'Revendedor'
-  const text = `¡Hola! Acabo de enviar mi solicitud de registro como REVENDEDOR OFICIAL en la web de StreamPro a nombre de *${name}*. ¿Podrían habilitar mi panel prioritariamente?`
+  const text = `¡Hola! Acabo de enviar mi solicitud de registro como REVENDEDOR OFICIAL en la web de StreamePro a nombre de *${name}*. ¿Podrían habilitar mi panel prioritariamente?`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank')
 }
 
@@ -98,7 +98,7 @@ const providerWhatsApp = computed(() => {
 const contactProviderWhatsApp = () => {
   const cleanPhone = providerWhatsApp.value.replace(/[^0-9]/g, '')
   const text = 
-`¡Hola! Vi la propuesta en la web de StreamPro y quiero registrarme como REVENDEDOR OFICIAL para comenzar a vender streaming y tecnología. ¿Me brindarían información para habilitar mi panel?`
+`¡Hola! Vi la propuesta en la web de StreamePro y quiero registrarme como REVENDEDOR OFICIAL para comenzar a vender streaming y tecnología. ¿Me brindarían información para habilitar mi panel?`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank')
 }
 
@@ -119,7 +119,7 @@ const faqs = [
   },
   {
     q: '¿Qué pasa si una cuenta tiene alguna eventualidad o cambia la contraseña?',
-    a: 'StreamPro cuenta con garantía total mayorista. Si un cliente reporta una novedad, el panel de administración central actualiza o estabiliza la cuenta y te notifica automáticamente con el estado [YA FUE AVISADO]. Tu reputación siempre está protegida.'
+    a: 'StreamePro cuenta con garantía total mayorista. Si un cliente reporta una novedad, el panel de administración central actualiza o estabiliza la cuenta y te notifica automáticamente con el estado [YA FUE AVISADO]. Tu reputación siempre está protegida.'
   },
   {
     q: '¿Cómo me pagan mis clientes?',
@@ -144,7 +144,7 @@ const faqs = [
           </div>
           <div>
             <span class="font-black text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-              StreamPro
+              StreamePro
             </span>
             <span class="text-[10px] font-mono block text-amber-400 -mt-1 font-bold">RED DE DISTRIBUIDORES</span>
           </div>
@@ -497,7 +497,7 @@ const faqs = [
             <!-- Privacidad y Garantía -->
             <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-center gap-3 text-[11px] text-slate-400">
               <span class="text-base text-amber-400">🔒</span>
-              <span>Tus datos son seguros y se utilizarán exclusivamente para habilitar y dar soporte a tu cuenta de distribuidor StreamPro.</span>
+              <span>Tus datos son seguros y se utilizarán exclusivamente para habilitar y dar soporte a tu cuenta de distribuidor StreamePro.</span>
             </div>
 
             <!-- Botón de Envío -->
@@ -618,7 +618,7 @@ const faqs = [
 
     <!-- FOOTER -->
     <footer class="border-t border-slate-800/80 py-8 text-center text-xs text-slate-500 font-mono">
-      <p>© 2026 StreamPro Mayorista Central. Red de Distribución Oficial de Cuentas & Tecnología.</p>
+      <p>© 2026 StreamePro Mayorista Central. Red de Distribución Oficial de Cuentas & Tecnología.</p>
     </footer>
 
   </div>

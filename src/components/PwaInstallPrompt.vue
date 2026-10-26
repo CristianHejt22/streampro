@@ -55,8 +55,8 @@ onMounted(() => {
   window.addEventListener('appinstalled', () => {
     isInstalled.value = true
     deferredPrompt.value = null
-    toast.add('¡StreamPro instalado con éxito en tu dispositivo!', 'success')
-    sendLocalNotification('⚡ ¡StreamPro Instalado!', {
+    toast.add('¡StreamePro instalado con éxito en tu dispositivo!', 'success')
+    sendLocalNotification('⚡ ¡StreamePro Instalado!', {
       body: 'Ya tienes acceso rápido a tu catálogo de streaming y tecnología en tu pantalla de inicio.',
       icon: '/pwa-192x192.png'
     })
@@ -74,7 +74,7 @@ const handleInstallClick = async () => {
       deferredPrompt.value.prompt()
       const choice = await deferredPrompt.value.userChoice
       if (choice.outcome === 'accepted') {
-        toast.add('Instalando StreamPro...', 'info')
+        toast.add('Instalando StreamePro...', 'info')
       }
       deferredPrompt.value = null
     } catch (err) {
@@ -126,7 +126,7 @@ const dismissBanner = () => {
           </div>
           <div>
             <div class="flex items-center gap-1.5">
-              <h4 class="font-black text-white text-xs sm:text-sm">Instalar StreamPro</h4>
+              <h4 class="font-black text-white text-xs sm:text-sm">Instalar StreamePro</h4>
               <span class="text-[9px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-1 rounded">App Móvil</span>
             </div>
             <p class="text-[11px] text-slate-300 leading-snug mt-0.5">

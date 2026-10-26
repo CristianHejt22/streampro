@@ -150,7 +150,7 @@ const handleLogout = () => {
             👤
           </div>
           <div>
-            <h3 class="text-xl font-black text-white">Mi Cuenta StreamPro</h3>
+            <h3 class="text-xl font-black text-white">Mi Cuenta StreamePro</h3>
             <p class="text-xs text-slate-400">Facilidad de navegación y compras rápidas</p>
           </div>
         </div>

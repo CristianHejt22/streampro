@@ -157,10 +157,10 @@ const currentReseller = computed(() => {
 // Nombre comercial limpio de la tienda para los clientes
 const resellerStoreName = computed(() => {
   if (isDirectSale.value) {
-    return 'StreamPro Tienda Oficial'
+    return 'StreamePro Tienda Oficial'
   }
   const r = currentReseller.value
-  if (!r) return 'StreamPro Tienda Oficial'
+  if (!r) return 'StreamePro Tienda Oficial'
   if (r.storeName) return r.storeName
   return r.name.replace(/\s*\(Distribuidor\s*#?\d+\)/gi, '').replace(/^\[.*?\]\s*/, '').trim()
 })
@@ -382,7 +382,7 @@ const copyShareProductUrl = (product) => {
 
 const shareProductWhatsApp = (product) => {
   const shareUrl = getProductDirectUrl(product)
-  const msg = `🔥 *MIRA ESTE PRODUCTO EN STREAMPRO*\n📦 *${product.name}*\n💰 Precio: *${product.price}*\n\n👉 Compra directa aquí:\n${shareUrl}`
+  const msg = `🔥 *MIRA ESTE PRODUCTO EN STREAMEPRO*\n📦 *${product.name}*\n💰 Precio: *${product.price}*\n\n👉 Compra directa aquí:\n${shareUrl}`
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
@@ -455,11 +455,11 @@ const copyBankDetails = () => {
     ? lastPlacedOrder.value.providerBankInfo 
     : lastPlacedOrder.value.reseller
   
-  const text = `DATOS PARA TRANSFERENCIA BANCARIA - STREAMPRO\n` +
-    `• Titular: ${info?.holderName || info?.name || 'StreamPro'}\n` +
+  const text = `DATOS PARA TRANSFERENCIA BANCARIA - STREAMEPRO\n` +
+    `• Titular: ${info?.holderName || info?.name || 'StreamePro'}\n` +
     `• Banco/Entidad: ${info?.bankName || 'Mercado Pago'}\n` +
     `• CUIT/CUIL: ${info?.cuit || '20-00000000-0'}\n` +
-    `• CBU/Alias: ${info?.cbuAlias || 'STREAMPRO.PAGOS'}\n` +
+    `• CBU/Alias: ${info?.cbuAlias || 'STREAMEPRO.PAGOS'}\n` +
     `• Monto Total: $${lastPlacedOrder.value.total.toFixed(2)} ARS\n` +
     `• N° de Pedido: ${lastPlacedOrder.value.clientNumber}`
 
@@ -496,7 +496,7 @@ const sendOrderToWhatsApp = () => {
     return `• ${name} (x${qty}): $${(price * qty).toLocaleString()} ARS`
   }).join('\n')
 
-  let message = `¡Hola! Acabo de registrar mi pedido en la web de *StreamPro* 🚀\n\n` +
+  let message = `¡Hola! Acabo de registrar mi pedido en la web de *StreamePro* 🚀\n\n` +
     `📋 *N° de Pedido:* ${ord.clientNumber}\n` +
     `👤 *Cliente:* ${ord.customerName}\n` +
     `📱 *WhatsApp:* ${ord.customerPhone}\n\n` +
@@ -604,7 +604,7 @@ const submitOrder = async () => {
       resellerProfit: isDirect ? 0 : item.resellerProfit,
       clientPrice: item.clientPrice,
       resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
-      resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (currentReseller.value?.name || 'Distribuidor Asignado'),
+      resellerName: isDirect ? 'StreamePro Oficial (Venta Directa)' : (currentReseller.value?.name || 'Distribuidor Asignado'),
       voucher: clientForm.value.transferVoucher || (hasUploadedReceipt ? `Comprobante en Nube (${receiptMeta.fileName})` : 'Sin comprobante adjunto'),
       hasReceipt: hasUploadedReceipt,
       receiptFileName: receiptMeta.fileName || null,
@@ -725,7 +725,7 @@ const submitOrder = async () => {
       </div>
       <button 
         type="button"
-        @click="clientForm.selectedResellerId = 'DIRECT'; localStorage.removeItem('streamepro_referral'); toast.add('Comprando ahora directamente en StreamPro Tienda Oficial', 'info')" 
+        @click="clientForm.selectedResellerId = 'DIRECT'; localStorage.removeItem('streamepro_referral'); toast.add('Comprando ahora directamente en StreamePro Tienda Oficial', 'info')" 
         class="text-[11px] font-bold text-slate-400 hover:text-white underline self-end sm:self-auto shrink-0 transition-colors"
       >
         Ir a Tienda Principal Directa →
@@ -1063,7 +1063,7 @@ const submitOrder = async () => {
       <div class="w-full rounded-2xl overflow-hidden border border-amber-500/30 shadow-2xl relative bg-slate-950 group">
         <img 
           src="https://tua.ar/images/banner22.webp" 
-          alt="Catálogo Oficial Productos Físicos StreamPro" 
+          alt="Catálogo Oficial Productos Físicos StreamePro" 
           class="w-full h-auto max-h-64 sm:max-h-72 object-cover object-center group-hover:scale-[1.01] transition-transform duration-500"
           loading="eager"
         >
@@ -1404,7 +1404,7 @@ const submitOrder = async () => {
                 Distribuidor: {{ currentReseller?.name }} ({{ currentReseller?.id }})
               </span>
               <span v-else class="text-[10px] text-sky-400 block font-mono">
-                Compra Directa Oficial • Proveedor StreamPro Central
+                Compra Directa Oficial • Proveedor StreamePro Central
               </span>
             </div>
             <span :class="['text-[10px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1', isDirectSale ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30']">
@@ -1449,11 +1449,11 @@ const submitOrder = async () => {
             
             <!-- CASO 1: VENTA DIRECTA OFICIAL (PROVEEDOR CENTRAL RECIBE PAGO) -->
             <div v-if="isDirectSale" class="space-y-1 text-slate-300 font-mono text-xs">
-              <p>Titular Oficial: <strong class="text-white">{{ adminStore.providerBankInfo?.holderName || 'StreamPro Mayorista Central' }}</strong></p>
+              <p>Titular Oficial: <strong class="text-white">{{ adminStore.providerBankInfo?.holderName || 'StreamePro Mayorista Central' }}</strong></p>
               <p>Entidad: <span class="text-slate-300">{{ adminStore.providerBankInfo?.bankName || 'Mercado Pago / Banco' }}</span></p>
               <p>CUIT/CUIL: <span class="text-slate-300">{{ adminStore.providerBankInfo?.cuit || '20-00000000-0' }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
-                <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMPRO.MAYORISTA' }}</span>
+                <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA' }}</span>
                 <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000' }}</span>
               </div>
             </div>
@@ -1755,7 +1755,7 @@ const submitOrder = async () => {
             <div class="flex justify-between">
               <span class="text-slate-500">Titular:</span>
               <strong class="text-white">
-                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.holderName || 'StreamPro Mayorista Central') : (lastPlacedOrder.reseller?.holderName || lastPlacedOrder.reseller?.name) }}
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.holderName || 'StreamePro Mayorista Central') : (lastPlacedOrder.reseller?.holderName || lastPlacedOrder.reseller?.name) }}
               </strong>
             </div>
             <div class="flex justify-between">
@@ -1773,7 +1773,7 @@ const submitOrder = async () => {
             <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
               <span class="text-slate-400 text-[11px]">CBU / Alias:</span>
               <span class="text-amber-300 font-bold text-sm tracking-wide">
-                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cbuAlias || 'STREAMPRO.MAYORISTA') : (lastPlacedOrder.reseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR') }}
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA') : (lastPlacedOrder.reseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR') }}
               </span>
             </div>
           </div>

@@ -212,10 +212,10 @@ export const PLATFORM_PLANS = DEFAULT_PLATFORM_PLANS
 const DEFAULT_INITIAL_RESELLERS = []
 
 const DEFAULT_PROVIDER_BANK = {
-  holderName: 'StreamPro Mayorista Central',
+  holderName: 'StreamePro Mayorista Central',
   bankName: 'Mercado Pago',
   cuit: '20-00000000-0',
-  cbuAlias: 'STREAMPRO.MAYORISTA',
+  cbuAlias: 'STREAMEPRO.MAYORISTA',
   cbuNumber: '0000000000000000000000',
   whatsapp: '+54 9 11 0000-0000',
   email: 'pagos@streampro.com'
@@ -319,7 +319,7 @@ export const useAdminStore = defineStore('admin', {
       {
         id: 'USR-PROV-01',
         clientNumber: 'ADM-001',
-        name: 'Administrador StreamPro',
+        name: 'Administrador StreamePro',
         phone: '+54 9 11 0000-0000',
         email: 'soporte@streamepro.me',
         role: 'provider',
@@ -1109,7 +1109,7 @@ export const useAdminStore = defineStore('admin', {
       const details = order.accountDetails
       const profilesText = (details.profiles || []).map((p, i) => `  👤 *Perfil ${i + 1}:* ${p.name} (PIN: 🔒 ${p.pin})`).join('\n')
       
-      return `🎉 *¡Tu pedido en StreamPro ha sido ENTREGADO con éxito!* 🍿🎬\n\n` +
+      return `🎉 *¡Tu pedido en StreamePro ha sido ENTREGADO con éxito!* 🍿🎬\n\n` +
         `📦 *Orden:* #${order.id} | *Cliente:* ${order.customerName} (${order.customerNumber})\n` +
         `📺 *Servicio:* ${order.platform} - ${order.planLabel || order.devices + ' Pantalla(s)'}\n\n` +
         `🔐 *Credenciales Oficiales:*\n` +
@@ -1375,7 +1375,7 @@ export const useAdminStore = defineStore('admin', {
         resellerProfit: isDirect ? 0 : (orderData.resellerProfit || 0),
         clientPrice: orderData.clientPrice || 0,
         resellerId: isDirect ? 'DIRECT' : orderData.resellerId,
-        resellerName: isDirect ? 'StreamPro Oficial (Venta Directa)' : (resellerObj?.name || orderData.resellerName || 'Distribuidor Asignado'),
+        resellerName: isDirect ? 'StreamePro Oficial (Venta Directa)' : (resellerObj?.name || orderData.resellerName || 'Distribuidor Asignado'),
         voucher: orderData.voucher || 'Sin comprobante adjunto',
         hasReceipt: Boolean(orderData.hasReceipt),
         receiptFileName: orderData.receiptFileName || null,
@@ -1440,7 +1440,7 @@ export const useAdminStore = defineStore('admin', {
         customerPhone: customerPhone || '+54 9 11 0000-0000',
         shippingAddress: shippingAddress || 'Retiro en punto acordado / Envío a coordinar',
         resellerId: targetResellerId,
-        resellerName: isDirect ? 'StreamPro Tienda Oficial (Venta Directa)' : (resellerObj?.name || 'Distribuidor Asignado'),
+        resellerName: isDirect ? 'StreamePro Tienda Oficial (Venta Directa)' : (resellerObj?.name || 'Distribuidor Asignado'),
         source: isDirect ? 'direct_store' : source,
         commissionRate,
         commissionAmount,
@@ -1737,7 +1737,7 @@ export const useAdminStore = defineStore('admin', {
 
       // Generar usuario base amigable
       const baseUser = app.fullName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 14) || `dist_${nextNum}`
-      const initialPassword = customData.password?.trim() || `StreamPro${Math.floor(1000 + Math.random() * 9000)}*`
+      const initialPassword = customData.password?.trim() || `StreamePro${Math.floor(1000 + Math.random() * 9000)}*`
       const username = customData.username?.trim().toLowerCase() || baseUser
 
       const newReseller = {
@@ -1768,7 +1768,7 @@ export const useAdminStore = defineStore('admin', {
         success: true, 
         reseller: newReseller, 
         application: app,
-        credentialsMessage: `🎉 ¡Felicitaciones ${newReseller.name}! Tu solicitud como distribuidor en StreamPro ha sido aprobada.\n\n` +
+        credentialsMessage: `🎉 ¡Felicitaciones ${newReseller.name}! Tu solicitud como distribuidor en StreamePro ha sido aprobada.\n\n` +
           `🔐 *Tus datos de acceso al Panel Oficial:*\n` +
           `🌐 *Enlace:* https://streamepro.me/crm\n` +
           `👤 *Usuario:* ${newReseller.username} (o ${newReseller.id})\n` +
@@ -1812,10 +1812,10 @@ export const useAdminStore = defineStore('admin', {
         whatsapp: '+54 9 11 0000-0000'
       }
       this.providerBankInfo = {
-        holderName: 'StreamPro Mayorista Central',
+        holderName: 'StreamePro Mayorista Central',
         bankName: 'Banco / Billetera Virtual',
         cuit: '20-00000000-0',
-        cbuAlias: 'STREAMPRO.MAYORISTA',
+        cbuAlias: 'STREAMEPRO.MAYORISTA',
         cbuNumber: '0000000000000000000000',
         whatsapp: '+54 9 11 0000-0000',
         email: 'pagos@streampro.com'

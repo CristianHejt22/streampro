@@ -1,5 +1,5 @@
 // Servicio de Autenticación Biométrica (WebAuthn / Windows Hello / Face ID / Touch ID)
-// y Gestión de Sesión Recordada para StreamPro
+// y Gestión de Sesión Recordada para StreamePro
 
 const BIOMETRIC_PREFIX = 'streamepro_bio_'
 const SESSION_PREFIX = 'streamepro_session_'
@@ -21,7 +21,7 @@ export async function isBiometricsAvailable() {
 }
 
 function getRpConfig() {
-  const rp = { name: 'StreamPro Digital' }
+  const rp = { name: 'StreamePro Digital' }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname
     // WebAuthn only accepts valid domain names or 'localhost', NOT raw IPv4 addresses
@@ -53,7 +53,7 @@ export async function registerBiometricCredential(role, userObj) {
           user: {
             id: userId,
             name: userObj.username || userObj.id || role,
-            displayName: userObj.name || userObj.storeName || 'Usuario StreamPro'
+            displayName: userObj.name || userObj.storeName || 'Usuario StreamePro'
           },
           pubKeyCredParams: [
             { alg: -7, type: 'public-key' },  // ES256
