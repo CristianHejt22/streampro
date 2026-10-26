@@ -245,6 +245,17 @@ const resolveReseller = (param) => {
 }
 
 // Detección de Parámetros de URL: Afiliado (?ref=RES-01) y Producto compartido (?prod=962)
+const selectSection = (sec) => {
+  storeSection.value = sec
+  const q = { ...route.query }
+  if (sec === 'digital') {
+    delete q.sec
+  } else {
+    q.sec = sec
+  }
+  router.replace({ query: q }).catch(() => {})
+}
+
 const applyRouteParams = () => {
   const refParam = route.query.ref
   if (refParam) {
@@ -816,11 +827,11 @@ const submitOrder = async () => {
 
     <!-- Selector Principal de Sección: Streaming Digital vs Paquetes vs Productos Físicos -->
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
-      <div class="flex flex-wrap p-1.5 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg gap-1">
+      <div class="flex flex-wrap p-1 sm:p-1.5 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg gap-1">
         <button 
-          @click="storeSection = 'digital'"
+          @click="selectSection('digital')"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer',
             storeSection === 'digital' 
               ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-sky-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -831,25 +842,25 @@ const submitOrder = async () => {
         </button>
 
         <button 
-          @click="storeSection = 'packages'"
+          @click="selectSection('packages')"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer',
             storeSection === 'packages' 
               ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-lg shadow-purple-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎁</span>
-          <span>Paquetes & Combos en Oferta</span>
+          <span>Combos en Oferta</span>
           <span class="bg-slate-950/80 text-pink-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-pink-400/30">
             {{ adminStore.packages.filter(p => p.active).length }}
           </span>
         </button>
 
         <button 
-          @click="storeSection = 'physical'"
+          @click="selectSection('physical')"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer',
             storeSection === 'physical' 
               ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -863,15 +874,19 @@ const submitOrder = async () => {
         </button>
       </div>
 
-      <!-- Banner de Afiliación / Reseller Asignado (Sin porcentajes privados para el cliente) -->
-      <div class="flex items-center gap-2 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-white/[0.08] text-xs">
-        <span class="text-slate-400">Distribuidor Asignado:</span>
+      <!-- Estado de la Tienda: Oficial Directo vs Canal de Distribuidor -->
+      <div v-if="!isDirectSale && currentReseller" class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-2xl border border-amber-500/30 text-xs">
+        <span class="text-slate-400">Atendido por:</span>
         <strong class="text-white font-bold bg-slate-800 px-2.5 py-0.5 rounded">{{ resellerStoreName }}</strong>
-        <span v-if="clientForm.isSharedUrl" class="bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-500/30">
-          🤝 Recomendación Compartida
+        <span class="bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded text-[10px] border border-amber-500/30">
+          Dist. Verificado
         </span>
-        <span v-else class="bg-sky-500/15 text-sky-300 font-bold px-2.5 py-0.5 rounded text-[11px] border border-sky-500/30 flex items-center gap-1 shadow-sm">
-          🛍️ Tienda Oficial (VERIFICADO)
+      </div>
+      <div v-else class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-2xl border border-white/[0.08] text-xs self-start sm:self-auto">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-300 font-medium">Tienda Oficial StreamePro</span>
+        <span class="bg-sky-500/15 text-sky-300 font-bold px-2 py-0.5 rounded text-[10px] border border-sky-500/30">
+          Oficial Directo
         </span>
       </div>
     </div>
@@ -955,7 +970,7 @@ const submitOrder = async () => {
               <!-- Atajos Rápidos Agregados al Desplegable -->
               <div class="border-t border-white/[0.08] pt-1.5 mt-1 space-y-1">
                 <button 
-                  @click="storeSection = 'packages'; showCategoryDropdown = false"
+                  @click="selectSection('packages'); showCategoryDropdown = false"
                   class="w-full flex items-center justify-between p-2 rounded-xl text-left bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/20 transition-all font-bold text-xs cursor-pointer"
                 >
                   <div class="flex items-center gap-2">
@@ -966,7 +981,7 @@ const submitOrder = async () => {
                 </button>
 
                 <button 
-                  @click="storeSection = 'physical'; showCategoryDropdown = false"
+                  @click="selectSection('physical'); showCategoryDropdown = false"
                   class="w-full flex items-center justify-between p-2 rounded-xl text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition-all font-bold text-xs cursor-pointer"
                 >
                   <div class="flex items-center gap-2">
@@ -1782,7 +1797,7 @@ const submitOrder = async () => {
                   Haz clic o arrastra tu comprobante en <span class="text-brand-accent font-black">JPG, PNG o PDF</span>
                 </p>
                 <p class="text-[10px] text-slate-400">
-                  Llegará directamente al panel del revendedor y proveedor para verificar el pago y se eliminará al confirmar la entrega.
+                  Llegará directamente al panel oficial para verificar el pago y se confirmará la entrega.
                 </p>
               </div>
             </div>
@@ -2169,7 +2184,7 @@ const submitOrder = async () => {
             <span>¡Pedido Registrado Directamente en el Panel Oficial!</span>
           </div>
           <p class="text-slate-300 text-xs leading-relaxed">
-            Tu orden ha ingresado de forma instantánea al <strong class="text-white">Panel del {{ lastPlacedOrder.isDirect ? 'Proveedor Mayorista' : 'Revendedor y Proveedor' }}</strong>.
+            Tu orden ha ingresado de forma instantánea al <strong class="text-white">Panel Oficial de Validación y Entrega</strong>.
             Tiempo estimado de entrega de accesos: <strong class="text-amber-300 font-bold">10 minutos a 1 hora</strong>.
           </p>
 

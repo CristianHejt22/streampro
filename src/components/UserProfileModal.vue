@@ -114,9 +114,12 @@ const goToReseller = () => {
   router.push('/crm')
 }
 
-const goToRecruitment = () => {
+const openSupportWhatsApp = () => {
   closeModal()
-  router.push('/revendedores')
+  const targetPhone = adminStore.providerBankInfo?.whatsapp || '+54 9 11 0000-0000'
+  const cleanPhone = targetPhone.replace(/[^0-9]/g, '')
+  const msg = `¡Hola StreamePro! 👋 Necesito soporte o información sobre mi cuenta (${profile.value.name || 'Cliente'}).`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 const handleLogout = () => {
@@ -195,23 +198,23 @@ const handleLogout = () => {
           </button>
 
           <button 
-            v-if="profile.role === 'reseller' || resellerStore.isAuthenticated"
+            v-if="resellerStore.isAuthenticated"
             @click="goToReseller" 
-            class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center"
+            class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center cursor-pointer"
           >
-            <span class="text-xl">🚀</span>
-            <span class="text-xs font-black">Panel Revendedor</span>
-            <span class="text-[10px] text-slate-900 font-bold">Comisiones & Flyers</span>
+            <span class="text-xl">💼</span>
+            <span class="text-xs font-black">Panel Distribuidor</span>
+            <span class="text-[10px] text-slate-900 font-bold">Sesión activa</span>
           </button>
 
           <button 
             v-else
-            @click="goToRecruitment" 
-            class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 text-center"
+            @click="openSupportWhatsApp" 
+            class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center cursor-pointer"
           >
-            <span class="text-xl">⭐</span>
-            <span class="text-xs font-black">Ser Revendedor</span>
-            <span class="text-[10px] text-slate-400">Genera ganancias</span>
+            <span class="text-xl">💬</span>
+            <span class="text-xs font-black">Soporte WhatsApp</span>
+            <span class="text-[10px] text-emerald-100 opacity-90">Atención oficial 24/7</span>
           </button>
         </div>
 
