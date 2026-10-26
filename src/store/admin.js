@@ -797,30 +797,58 @@ export const useAdminStore = defineStore('admin', {
     // Carga de Inventario Mayorista Real
     addStock(item) {
       const generatedProfiles = item.profiles && item.profiles.length > 0 
-        ? item.profiles.map(p => ({
-            name: p.name || '',
-            pin: p.pin || String(Math.floor(1000 + Math.random() * 9000)),
-            isAssigned: false,
-            assignedTo: null
+        ? item.profiles.map((p, idx) => ({
+            name: p.name?.trim() || `Perfil ${idx + 1}`,
+            pin: String(p.pin ?? '').trim(),
+            isAssigned: Boolean(p.isAssigned),
+            assignedTo: p.assignedTo || null
           }))
-        : Array.from({ length: item.maxProfiles || 4 }, (_, idx) => ({
-            name: '',
-            pin: String(Math.floor(1000 + Math.random() * 9000)),
+        : Array.from({ length: Number(item.maxProfiles) || 4 }, (_, idx) => ({
+            name: `Perfil ${idx + 1}`,
+            pin: '',
             isAssigned: false,
             assignedTo: null
           }))
 
       const newItem = {
+        ...item,
         id: `INV-${Date.now().toString().slice(-4)}`,
         status: 'Available',
-        maxProfiles: item.maxProfiles || 4,
+        maxProfiles: Number(item.maxProfiles) || (generatedProfiles.length || 4),
         profiles: generatedProfiles,
-        ...item
+        createdAt: new Date().toISOString()
       }
 
       this.inventory.push(newItem)
       this.persist(DB_KEYS.INVENTORY)
       return newItem
+    },
+
+    updateInventoryItem(updatedItem) {
+      const idx = this.inventory.findIndex(i => i.id === updatedItem.id)
+      if (idx !== -1) {
+        const existing = this.inventory[idx]
+        const cleanProfiles = (updatedItem.profiles || []).map((p, pIdx) => ({
+          name: p.name?.trim() || `Perfil ${pIdx + 1}`,
+          pin: String(p.pin ?? '').trim(),
+          isAssigned: Boolean(p.isAssigned),
+          assignedTo: p.assignedTo || null
+        }))
+
+        this.inventory[idx] = {
+          ...existing,
+          platform: updatedItem.platform || existing.platform,
+          account: updatedItem.account || existing.account,
+          pass: updatedItem.pass !== undefined ? updatedItem.pass : existing.pass,
+          cost: Number(updatedItem.cost) || existing.cost,
+          maxProfiles: Number(updatedItem.maxProfiles) || cleanProfiles.length || existing.maxProfiles,
+          profiles: cleanProfiles,
+          lastUpdated: new Date().toISOString()
+        }
+        this.persist(DB_KEYS.INVENTORY)
+        return { success: true, item: this.inventory[idx] }
+      }
+      return { error: 'Lote de inventario no encontrado' }
     },
 
     deleteInventoryItem(invId) {
