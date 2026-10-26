@@ -847,9 +847,9 @@ function renderCanvasFlyerBlob() {
           const pCardY = subY + 20
           drawCyberPriceCard(ctx, rightX, pCardY, rightW, 165, false)
 
-          drawCyberBullets(ctx, rightX + 20, pCardY + 165 + 38, 52, 3, false)
+          drawCyberBullets(ctx, rightX + 20, pCardY + 165 + 50, 68, 3, false)
 
-          drawCyberCTAButton(ctx, rightX, 785, rightW, 95, domainText, true, false)
+          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
 
         } else if (format === 'story') {
           // ================= STORY (1080 x 1920, 9:16) =================
@@ -873,9 +873,9 @@ function renderCanvasFlyerBlob() {
           const pCardY = subY + 30
           drawCyberPriceCard(ctx, 110, pCardY, 860, 190, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 190 + 40, 56, 3, false)
+          drawCyberBullets(ctx, 145, pCardY + 190 + 55, 75, 3, false)
 
-          drawCyberCTAButton(ctx, 110, 1615, 860, 95, domainText, true, false)
+          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
 
         } else if (format === 'feed') {
           // ================= FEED PORTRAIT (1080 x 1350, 4:5) =================
@@ -899,9 +899,9 @@ function renderCanvasFlyerBlob() {
           const pCardY = subY + 22
           drawCyberPriceCard(ctx, 110, pCardY, 860, 160, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 160 + 34, 48, 3, false)
+          drawCyberBullets(ctx, 145, pCardY + 160 + 45, 60, 3, false)
 
-          drawCyberCTAButton(ctx, 110, 1140, 860, 85, domainText, true, false)
+          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
 
         } else {
           // ================= SQUARE (1080 x 1080, 1:1) =================
@@ -927,7 +927,7 @@ function renderCanvasFlyerBlob() {
 
           drawCyberBullets(ctx, 150, pCardY + 115 + 20, 36, 2, true)
 
-          drawCyberCTAButton(ctx, 120, 965, 840, 68, domainText, false, true)
+          // Etiqueta celeste eliminada: ya incluida en el diseño oficial
         }
 
         canvas.toBlob((blob) => {
@@ -2081,13 +2081,7 @@ const shareToWhatsAppStatus = () => {
                     <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                     <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
-                  <div class="w-full">
-                    <div class="text-[7px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">⚡ ¡Haz tu pedido online con garantía oficial!</div>
-                    <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-xl py-1.5 px-3 flex items-center justify-center gap-1 shadow-md text-xs">
-                      <span class="text-xs">🌐</span>
-                      <span class="font-mono font-black tracking-wide">{{ displayDomain }}</span>
-                    </div>
-                  </div>
+
                 </div>
               </div>
 
@@ -2138,12 +2132,7 @@ const shareToWhatsAppStatus = () => {
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
-                  <div class="w-full">
-                    <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg py-1 px-2.5 flex items-center justify-center gap-1 shadow text-[9px]">
-                      <span>🌐</span>
-                      <span class="font-mono font-bold">{{ displayDomain }}</span>
-                    </div>
-                  </div>
+
                 </div>
               </div>
 
@@ -2191,12 +2180,7 @@ const shareToWhatsAppStatus = () => {
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
                   </div>
-                  <div class="w-full">
-                    <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded py-0.5 px-2 flex items-center justify-center gap-1 shadow text-[8px]">
-                      <span>🌐</span>
-                      <span class="font-mono font-bold">{{ displayDomain }}</span>
-                    </div>
-                  </div>
+
                 </div>
               </div>
 
@@ -2243,9 +2227,7 @@ const shareToWhatsAppStatus = () => {
                   <div class="text-[7px] text-slate-300 truncate">
                     <span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}
                   </div>
-                  <div class="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-lg py-1 px-2.5 flex items-center justify-center gap-1 shadow text-[8px]">
-                    <span>🌐 {{ displayDomain }}</span>
-                  </div>
+
                 </div>
               </div>
 
