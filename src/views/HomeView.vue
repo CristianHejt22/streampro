@@ -17,6 +17,14 @@ const toast = useToastStore()
 const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
 
+const openFlyerForPackage = (pkg) => {
+  flyerInitialProduct.value = {
+    itemType: 'package',
+    ...pkg
+  }
+  showFlyerModal.value = true
+}
+
 const openFlyerForPhysical = (prod) => {
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
@@ -1024,6 +1032,14 @@ const submitOrder = async () => {
               <span>🤝</span>
               <span>AYUDAR COMPARTIENDO</span>
             </button>
+            <button 
+              @click="openFlyerForPackage(pkg)"
+              class="w-full bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-amber-200 text-xs font-bold py-2 px-3 rounded-xl transition-all border border-amber-500/30 flex items-center justify-center gap-1.5"
+              title="Crear Flyer promocional de este combo para WhatsApp o redes"
+            >
+              <span>🎨</span>
+              <span>Crear Flyer de este Combo</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1090,20 +1106,20 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- Grid de Productos Físicos -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+      <!-- Grid de Productos Físicos (2 columnas en móviles, 4 en desktop) -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
         <div 
           v-for="item in filteredPhysicalProducts" 
           :key="item.id" 
-          class="bg-slate-900/80 rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col justify-between hover:border-amber-400/40 hover:-translate-y-1 transition-all duration-300 shadow-lg group relative"
+          class="bg-slate-900/80 rounded-xl sm:rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col justify-between hover:border-amber-400/40 hover:-translate-y-1 transition-all duration-300 shadow-lg group relative"
         >
           <!-- Envío Gratis Badge si corresponde -->
-          <div v-if="item.priceNumeric >= 40000" class="absolute top-3 left-3 bg-emerald-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md z-10">
+          <div v-if="item.priceNumeric >= 40000" class="absolute top-2 left-2 sm:top-3 sm:left-3 bg-emerald-500 text-slate-950 text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md z-10">
             ENVÍO GRATIS
           </div>
 
           <!-- Imagen del Producto -->
-          <div class="w-full h-52 bg-white flex items-center justify-center p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
+          <div class="w-full h-36 sm:h-52 bg-white flex items-center justify-center p-2 sm:p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
             <img 
               :src="item.image" 
               :alt="item.name" 
@@ -1113,51 +1129,51 @@ const submitOrder = async () => {
           </div>
 
           <!-- Información y Precios -->
-          <div class="p-4 flex flex-col flex-1 justify-between space-y-3">
+          <div class="p-2 sm:p-4 flex flex-col flex-1 justify-between space-y-1.5 sm:space-y-3">
             <div>
-              <h4 class="font-bold text-white text-sm line-clamp-2 leading-snug cursor-pointer hover:text-amber-300 transition-colors" @click="openPhysicalModal(item)">
+              <h4 class="font-bold text-white text-[11px] sm:text-sm line-clamp-2 leading-snug cursor-pointer hover:text-amber-300 transition-colors" @click="openPhysicalModal(item)">
                 {{ item.name }}
               </h4>
-              <p class="text-[11px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+              <p class="text-[10px] sm:text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1 leading-relaxed hidden sm:block">
                 {{ item.description || 'Producto físico oficial con garantía.' }}
               </p>
             </div>
 
-            <div class="pt-2 border-t border-slate-800">
-              <div class="flex justify-between items-baseline mb-3">
-                <span class="text-xs text-slate-400">Precio Oficial:</span>
-                <span class="text-lg font-black text-amber-400">{{ item.price }}</span>
+            <div class="pt-1.5 sm:pt-2 border-t border-slate-800">
+              <div class="flex justify-between items-baseline mb-1.5 sm:mb-3">
+                <span class="text-[9px] sm:text-xs text-slate-400">Oficial:</span>
+                <span class="text-xs sm:text-lg font-black text-amber-400 font-mono">{{ item.price }}</span>
               </div>
 
               <!-- Botones de Acción: Ver Más, Agregar y Compartir Link -->
-              <div class="space-y-2">
-                <div class="flex gap-2">
+              <div class="space-y-1 sm:space-y-2">
+                <div class="flex gap-1 sm:gap-2">
                   <button 
                     @click="openPhysicalModal(item)" 
-                    class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-xl transition-colors border border-slate-700 flex items-center justify-center gap-1"
+                    class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-xs font-bold py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-colors border border-slate-700 flex items-center justify-center gap-1"
                   >
-                    <span>Ver Ficha</span>
+                    <span>Ficha</span>
                   </button>
                   <button 
                     @click="addPhysicalToCart(item, 1)" 
-                    class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-2 rounded-xl transition-all shadow flex items-center justify-center gap-1"
+                    class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow flex items-center justify-center gap-1"
                   >
                     <span>+ Carrito</span>
                   </button>
                 </div>
 
                 <!-- Botón AYUDAR COMPARTIENDO -->
-                <div class="flex gap-1.5 pt-1">
+                <div class="flex gap-1 pt-0.5">
                   <button 
                     @click="copyShareProductUrl(item)" 
-                    class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-[11px] font-black py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:text-amber-200 transition-colors flex items-center justify-center gap-1.5"
+                    class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-[9px] sm:text-[11px] font-black py-1 sm:py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:text-amber-200 transition-colors flex items-center justify-center gap-1 truncate px-1"
                     title="Copiar enlace para ayudar compartiendo"
                   >
-                    <span>🤝 AYUDAR COMPARTIENDO</span>
+                    <span class="truncate">🤝 COMPARTIR</span>
                   </button>
                   <button 
                     @click="shareProductWhatsApp(item)" 
-                    class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold px-2 py-1.5 rounded-lg border border-emerald-500/30 transition-colors"
+                    class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-emerald-500/30 transition-colors shrink-0"
                     title="Compartir por WhatsApp"
                   >
                     💬
@@ -1852,7 +1868,7 @@ const submitOrder = async () => {
       :initial-product="flyerInitialProduct"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
       :default-store-name="resellerStoreName"
-      website-domain="streamepro.me"
+      website-domain="https://spro.li"
       @close="showFlyerModal = false" 
     />
   </div>
