@@ -54,17 +54,7 @@ const flyerFormatLabels = {
 const isExporting = ref(false)
 const flyerPreviewRef = ref(null)
 
-// Badges sugeridos
-const suggestedBadges = [
-  '🔥 25% OFF - RECOMENDADO',
-  '🎁 COMBO RECOMENDADO',
-  '🔥 ¡OFERTA EXCLUSIVA!',
-  '⏱️ ENTREGA 10 MIN A 1 HORA',
-  '🍿 CINE EN CASA ULTRA HD',
-  '🚀 100% GARANTIZADO',
-  '💎 CALIDAD ULTRA HD 4K',
-  '📦 ENVÍO A TODO EL PAÍS'
-]
+// Badges sugeridos reactivos definidos junto al cálculo dinámico
 
 // Bullet points destacados
 const bullet1 = ref('Calidad Ultra HD 4K Sin Caídas')
@@ -342,6 +332,84 @@ const displayOriginalPrice = computed(() => {
   }
   return null
 })
+
+// Cálculo dinámico del porcentaje de descuento basado en precios ajustados
+const calculatedDiscountPct = computed(() => {
+  const promo = Number(displayPriceNumeric.value)
+  const regular = Number(displayOriginalPrice.value)
+  if (regular > 0 && promo > 0 && regular > promo) {
+    const pct = Math.round(((regular - promo) / regular) * 100)
+    return (pct > 0 && pct < 100) ? pct : null
+  }
+  return null
+})
+
+// Badges sugeridos reactivos al porcentaje calculado
+const suggestedBadges = computed(() => {
+  const pct = calculatedDiscountPct.value
+  const list = []
+  if (pct) {
+    list.push(`🔥 ${pct}% OFF - RECOMENDADO`)
+    list.push(`⚡ ${pct}% DE DESCUENTO`)
+    list.push(`💥 MEGA PROMO ${pct}% OFF`)
+    list.push(`🔥 AHORRA ${pct}% HOY`)
+  } else {
+    list.push('🔥 25% OFF - RECOMENDADO')
+    list.push('🔥 ¡OFERTA EXCLUSIVA!')
+  }
+  list.push(
+    '🎁 COMBO RECOMENDADO',
+    '⏱️ ENTREGA 10 MIN A 1 HORA',
+    '🍿 CINE EN CASA ULTRA HD',
+    '🚀 100% GARANTIZADO',
+    '💎 CALIDAD ULTRA HD 4K',
+    '📦 ENVÍO A TODO EL PAÍS'
+  )
+  return list
+})
+
+// Función para actualizar el texto del badge reconociendo el porcentaje
+const updateHeadlineBadgeWithDiscount = (newPct) => {
+  if (!newPct) return
+  if (!headlineBadge.value || !headlineBadge.value.trim()) {
+    headlineBadge.value = `🔥 ${newPct}% OFF - RECOMENDADO`
+    return
+  }
+
+  // Si ya tiene un patrón de porcentaje (ej: 25% OFF, 25%, 25% DE DESCUENTO)
+  if (/(\d+)%\s*off/i.test(headlineBadge.value)) {
+    headlineBadge.value = headlineBadge.value.replace(/(\d+)%\s*off/gi, `${newPct}% OFF`)
+  } else if (/(\d+)%\s*de descuento/i.test(headlineBadge.value)) {
+    headlineBadge.value = headlineBadge.value.replace(/(\d+)%\s*de descuento/gi, `${newPct}% DE DESCUENTO`)
+  } else if (/(\d+)%/i.test(headlineBadge.value)) {
+    headlineBadge.value = headlineBadge.value.replace(/(\d+)%/gi, `${newPct}%`)
+  } else if (
+    headlineBadge.value === '🔥 ¡OFERTA EXCLUSIVA!' || 
+    headlineBadge.value === '📦 ENVÍO A TODO EL PAÍS' || 
+    headlineBadge.value === '🎁 COMBO RECOMENDADO' ||
+    headlineBadge.value.includes('RECOMENDADO')
+  ) {
+    headlineBadge.value = `🔥 ${newPct}% OFF - RECOMENDADO`
+  }
+}
+
+// Watcher que sincroniza automáticamente el Badge de Impacto cuando cambian los precios (computados o manuales)
+watch([displayPriceNumeric, displayOriginalPrice], () => {
+  if (calculatedDiscountPct.value) {
+    updateHeadlineBadgeWithDiscount(calculatedDiscountPct.value)
+  }
+}, { immediate: true })
+
+const applyCalculatedBadge = (customFormat = 'recomendado') => {
+  if (!calculatedDiscountPct.value) return
+  if (customFormat === 'descuento') {
+    headlineBadge.value = `⚡ ${calculatedDiscountPct.value}% DE DESCUENTO`
+  } else if (customFormat === 'promo') {
+    headlineBadge.value = `💥 MEGA PROMO ${calculatedDiscountPct.value}% OFF`
+  } else {
+    headlineBadge.value = `🔥 ${calculatedDiscountPct.value}% OFF - RECOMENDADO`
+  }
+}
 
 // Título principal
 const displayTitle = computed(() => {
@@ -1161,34 +1229,77 @@ const shareToWhatsAppStatus = () => {
           <!-- BADGE SUPERIOR Y PRECIOS -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Badge de Impacto</label>
-              <input v-model="headlineBadge" list="badgesList" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-amber-300 font-bold outline-none">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-xs">Badge de Impacto</label>
+                <span 
+                  v-if="calculatedDiscountPct" 
+                  class="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 shadow-sm"
+                  title="Porcentaje calculado a partir de precio promo y normal"
+                >
+                  <span>🔥</span> -{{ calculatedDiscountPct }}% OFF
+                </span>
+              </div>
+              <input 
+                v-model="headlineBadge" 
+                list="badgesList" 
+                type="text" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-amber-300 font-bold outline-none focus:border-amber-400 text-sm"
+                placeholder="🔥 25% OFF - RECOMENDADO"
+              >
               <datalist id="badgesList">
                 <option v-for="b in suggestedBadges" :key="b" :value="b" />
               </datalist>
+
+              <!-- Atajos rápidos para el Badge de Impacto -->
+              <div v-if="calculatedDiscountPct" class="mt-1.5 flex flex-wrap gap-1">
+                <button 
+                  type="button"
+                  @click="applyCalculatedBadge('recomendado')"
+                  class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors"
+                >
+                  🔥 {{ calculatedDiscountPct }}% OFF
+                </button>
+                <button 
+                  type="button"
+                  @click="applyCalculatedBadge('descuento')"
+                  class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-colors"
+                >
+                  ⚡ {{ calculatedDiscountPct }}% DESC
+                </button>
+              </div>
             </div>
 
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">
-                Precio Promo (ARS)
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-xs">
+                  Precio Promo (ARS)
+                </label>
+                <span v-if="calculatedDiscountPct" class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  -{{ calculatedDiscountPct }}% OFF
+                </span>
+              </div>
               <input 
                 v-model="customPrice" 
                 type="number" 
-                :placeholder="`$${displayPrice}`" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono font-bold outline-none"
+                :placeholder="'$' + displayPrice" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono font-bold outline-none focus:border-emerald-400 text-sm"
               >
             </div>
 
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">
-                Precio Normal (Tachado)
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-xs">
+                  Precio Normal (Tachado)
+                </label>
+                <span v-if="displayOriginalPrice && displayPriceNumeric && Number(displayOriginalPrice) > Number(displayPriceNumeric)" class="text-[10px] font-mono text-slate-400 truncate max-w-[110px]" :title="'Ahorro: $' + (Number(displayOriginalPrice) - Number(displayPriceNumeric)).toLocaleString()">
+                  Ahorro: ${{ (Number(displayOriginalPrice) - Number(displayPriceNumeric)).toLocaleString() }}
+                </span>
+              </div>
               <input 
                 v-model="customOriginalPrice" 
                 type="number" 
-                :placeholder="displayOriginalPrice ? `$${displayOriginalPrice.toLocaleString()}` : 'Opcional (Tachado)'" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-slate-300 font-mono outline-none"
+                :placeholder="displayOriginalPrice ? '$' + Number(displayOriginalPrice).toLocaleString() : 'Opcional (Tachado)'" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-slate-300 font-mono outline-none focus:border-slate-600 text-sm"
               >
             </div>
           </div>
@@ -1420,6 +1531,9 @@ const shareToWhatsAppStatus = () => {
                   <span v-if="displayOriginalPrice" class="text-[10px] text-slate-400 line-through">
                     ${{ Number(displayOriginalPrice).toLocaleString() }}
                   </span>
+                  <span v-if="calculatedDiscountPct" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">
+                    -{{ calculatedDiscountPct }}%
+                  </span>
                   <div class="flex items-baseline gap-0.5">
                     <span class="text-amber-400 font-bold text-xs">$</span>
                     <span class="font-black text-base text-white font-mono">{{ displayPrice }}</span>
@@ -1507,8 +1621,8 @@ const shareToWhatsAppStatus = () => {
                   <span class="text-[10px] text-slate-400 line-through">
                     Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}
                   </span>
-                  <span v-if="Number(displayOriginalPrice) > Number(displayPriceNumeric)" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">
-                    -{{ Math.round((1 - Number(displayPriceNumeric) / Number(displayOriginalPrice)) * 100) }}%
+                  <span v-if="calculatedDiscountPct" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">
+                    -{{ calculatedDiscountPct }}%
                   </span>
                 </div>
                 <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">
