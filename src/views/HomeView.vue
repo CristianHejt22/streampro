@@ -516,8 +516,8 @@ const sendOrderToWhatsApp = () => {
   if (!lastPlacedOrder.value) return
   const ord = lastPlacedOrder.value
   const targetPhone = ord.isDirect
-    ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000')
-    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 11 0000-0000')
+    ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321')
+    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 291 565-9321')
 
   let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) {
@@ -556,7 +556,15 @@ const sendOrderToWhatsApp = () => {
     message += `\n📦 Dirección de envío informada: ${ord.shippingAddress || 'A coordinar'}\nConsulto disponibilidad y costo final de envío.`
   }
 
-  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank')
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+  try {
+    const win = window.open(waUrl, '_blank')
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = waUrl
+    }
+  } catch (e) {
+    window.location.href = waUrl
+  }
 }
 
 const goToCustomerPortal = () => {
@@ -688,6 +696,20 @@ const submitOrder = async () => {
   showCheckoutModal.value = false
   showOrderSuccessModal.value = true
   cartStore.clearCart()
+
+  // 1. Redirección automática inmediata a WhatsApp oficial (+54 9 291 565-9321)
+  sendOrderToWhatsApp()
+
+  // 2. Disparar alerta en tiempo real al Bot de Telegram
+  fetch('/api/notify-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      order: orderSnapshot,
+      telegramToken: adminStore.telegramConfig?.botToken,
+      telegramChatId: adminStore.telegramConfig?.chatId
+    })
+  }).catch(() => {})
 
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
@@ -1513,7 +1535,7 @@ const submitOrder = async () => {
               <p>CUIT/CUIL: <span class="text-slate-300">{{ adminStore.providerBankInfo?.cuit || '20-00000000-0' }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
                 <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA' }}</span>
-                <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000' }}</span>
+                <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321' }}</span>
               </div>
             </div>
 
@@ -1985,30 +2007,32 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- ACCIONES PRINCIPALES: PORTAL DE CLIENTES Y NAVEGACIÓN -->
+        <!-- ACCIONES PRINCIPALES: WHATSAPP DIRECTO Y BÓVEDA -->
         <div class="space-y-2.5 pt-1">
           <button 
-            @click="goToCustomerPortal" 
-            class="w-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 hover:opacity-95 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-sky-500/25 transition-all text-sm flex items-center justify-center gap-2.5 cursor-pointer"
+            @click="sendOrderToWhatsApp" 
+            class="w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:brightness-110 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer animate-pulse"
           >
-            <span class="text-base">🔐</span>
-            <span>Ir a mi Bóveda y Consultar Mis Accesos</span>
+            <span class="text-xl">📲</span>
+            <span>Enviar Pedido por WhatsApp</span>
+            <span class="text-[11px] bg-slate-950/20 px-2 py-0.5 rounded-full font-mono font-bold">+54 9 291 565-9321</span>
             <span>→</span>
           </button>
           
-          <div class="flex gap-2">
+          <button 
+            @click="goToCustomerPortal" 
+            class="w-full bg-slate-800/90 hover:bg-slate-700 text-sky-400 border border-sky-500/20 font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span class="text-sm">🔐</span>
+            <span>Ir a mi Bóveda y Consultar Mis Accesos</span>
+          </button>
+
+          <div class="flex justify-center pt-1">
             <button 
               @click="showOrderSuccessModal = false" 
-              class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+              class="text-slate-400 hover:text-slate-200 text-xs py-1 transition-colors cursor-pointer"
             >
-              🛒 Seguir en la Tienda
-            </button>
-            <button 
-              @click="sendOrderToWhatsApp" 
-              class="px-4 py-2.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Opcional: Si requieres asistencia directa por WhatsApp"
-            >
-              <span>💬 Soporte</span>
+              🛒 Continuar en la Tienda
             </button>
           </div>
         </div>

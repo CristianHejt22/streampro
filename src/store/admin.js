@@ -6,6 +6,23 @@ import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailPa
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
+import { 
+  initFirebase, 
+  saveStreamingOrderToFirebase, 
+  savePhysicalOrderToFirebase, 
+  listenToStreamingOrders, 
+  listenToPhysicalOrders,
+  testFirebaseConnection 
+} from '../services/firebase'
+
+export const OFFICIAL_PROVIDER_WHATSAPP = '+54 9 291 565-9321'
+
+function sanitizePhone(phone) {
+  if (!phone || phone.includes('0000-0000') || phone.includes('0000000') || phone.trim() === '') {
+    return OFFICIAL_PROVIDER_WHATSAPP
+  }
+  return phone
+}
 
 // Catálogo Base Oficial de Planes de Productos Virtuales
 export const DEFAULT_PLATFORM_PLANS = {
@@ -230,12 +247,16 @@ const DEFAULT_PROVIDER_BANK = {
   cuit: '20-00000000-0',
   cbuAlias: 'STREAMEPRO.MAYORISTA',
   cbuNumber: '0000000000000000000000',
-  whatsapp: '+54 9 11 0000-0000',
+  whatsapp: OFFICIAL_PROVIDER_WHATSAPP,
   email: 'pagos@streampro.com'
 }
 
 function getInitialProviderBankSetup() {
-  const savedBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, DEFAULT_PROVIDER_BANK)
+  const rawBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, DEFAULT_PROVIDER_BANK)
+  const savedBankInfo = {
+    ...rawBankInfo,
+    whatsapp: sanitizePhone(rawBankInfo?.whatsapp)
+  }
   let savedAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, null)
 
   if (!Array.isArray(savedAccounts) || savedAccounts.length === 0) {
@@ -249,11 +270,15 @@ function getInitialProviderBankSetup() {
         cuit: savedBankInfo.cuit || DEFAULT_PROVIDER_BANK.cuit,
         cbuAlias: savedBankInfo.cbuAlias || DEFAULT_PROVIDER_BANK.cbuAlias,
         cbuNumber: savedBankInfo.cbuNumber || DEFAULT_PROVIDER_BANK.cbuNumber,
-        whatsapp: savedBankInfo.whatsapp || DEFAULT_PROVIDER_BANK.whatsapp,
+        whatsapp: sanitizePhone(savedBankInfo.whatsapp),
         email: savedBankInfo.email || DEFAULT_PROVIDER_BANK.email,
         notifyEmail: savedBankInfo.notifyEmail || savedBankInfo.email || 'cobros.streampro@gmail.com'
       }
     ]
+  } else {
+    savedAccounts.forEach(acc => {
+      acc.whatsapp = sanitizePhone(acc.whatsapp)
+    })
   }
 
   // Asegurar que exista al menos una cuenta activa
@@ -269,7 +294,7 @@ function getInitialProviderBankSetup() {
     cuit: activeAcc.cuit,
     cbuAlias: activeAcc.cbuAlias,
     cbuNumber: activeAcc.cbuNumber,
-    whatsapp: activeAcc.whatsapp,
+    whatsapp: sanitizePhone(activeAcc.whatsapp),
     email: activeAcc.email
   }
 
@@ -281,11 +306,33 @@ export const useAdminStore = defineStore('admin', {
     const initialBank = getInitialProviderBankSetup()
     return {
       // Credenciales Maestras Verídicas de Administrador
-      adminAuth: loadDb(DB_KEYS.ADMIN_AUTH, {
-        username: 'admin',
-        password: 'StreamPro2026*Admin',
-        name: 'Administrador Principal',
-        whatsapp: '+54 9 11 0000-0000'
+      adminAuth: (() => {
+        const auth = loadDb(DB_KEYS.ADMIN_AUTH, {
+          username: 'admin',
+          password: 'StreamPro2026*Admin',
+          name: 'Administrador Principal',
+          whatsapp: OFFICIAL_PROVIDER_WHATSAPP
+        })
+        auth.whatsapp = sanitizePhone(auth.whatsapp)
+        return auth
+      })(),
+
+      // Configuración de Notificaciones Automáticas por Telegram Bot
+      telegramConfig: loadDb(DB_KEYS.TELEGRAM_CONFIG, {
+        botToken: '',
+        chatId: '',
+        enabled: true
+      }),
+
+      // Configuración de Sincronización en la Nube con Firebase Firestore
+      firebaseConfig: loadDb(DB_KEYS.FIREBASE_CONFIG, {
+        apiKey: '',
+        authDomain: '',
+        projectId: '',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
+        enabled: false
       }),
 
       // Catálogo de Productos Virtuales y Precios persistente
@@ -333,7 +380,7 @@ export const useAdminStore = defineStore('admin', {
         id: 'USR-PROV-01',
         clientNumber: 'ADM-001',
         name: 'Administrador StreamePro',
-        phone: '+54 9 11 0000-0000',
+        phone: OFFICIAL_PROVIDER_WHATSAPP,
         email: 'soporte@streamepro.me',
         role: 'provider',
         status: 'Verificado',
@@ -458,6 +505,10 @@ export const useAdminStore = defineStore('admin', {
     persist(key) {
       if (key && this[key] !== undefined) {
         saveDb(key, this[key])
+      } else if (key === DB_KEYS.TELEGRAM_CONFIG) {
+        saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
+      } else if (key === DB_KEYS.FIREBASE_CONFIG) {
+        saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -475,6 +526,70 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
         saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
         saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
+        saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
+        saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
+      }
+    },
+
+    // Actualización de credenciales y estado del Bot de Telegram
+    updateTelegramConfig({ botToken, chatId, enabled }) {
+      if (botToken !== undefined) this.telegramConfig.botToken = botToken.trim()
+      if (chatId !== undefined) this.telegramConfig.chatId = chatId.trim()
+      if (enabled !== undefined) this.telegramConfig.enabled = Boolean(enabled)
+      this.persist(DB_KEYS.TELEGRAM_CONFIG)
+      return { success: true }
+    },
+
+    // Actualización de configuración de Firebase Firestore
+    updateFirebaseConfig(config) {
+      this.firebaseConfig = { ...this.firebaseConfig, ...config }
+      this.persist(DB_KEYS.FIREBASE_CONFIG)
+      this.initCloudSync()
+      return { success: true }
+    },
+
+    // Inicialización y escucha en tiempo real de Firebase
+    initCloudSync() {
+      if (this.firebaseConfig && this.firebaseConfig.apiKey && this.firebaseConfig.projectId) {
+        initFirebase(this.firebaseConfig)
+        
+        // Escucha en tiempo real de pedidos de Streaming
+        listenToStreamingOrders((remoteOrders) => {
+          if (!remoteOrders || remoteOrders.length === 0) return
+          let updated = false
+          remoteOrders.forEach(rem => {
+            const idx = this.orders.findIndex(o => o.id === rem.id)
+            if (idx === -1) {
+              this.orders.unshift(rem)
+              updated = true
+            } else if (this.orders[idx].status !== rem.status) {
+              this.orders[idx] = { ...this.orders[idx], ...rem }
+              updated = true
+            }
+          })
+          if (updated) {
+            this.persist(DB_KEYS.ORDERS)
+          }
+        })
+
+        // Escucha en tiempo real de pedidos Físicos
+        listenToPhysicalOrders((remotePhysical) => {
+          if (!remotePhysical || remotePhysical.length === 0) return
+          let updated = false
+          remotePhysical.forEach(rem => {
+            const idx = this.physicalOrders.findIndex(o => o.id === rem.id)
+            if (idx === -1) {
+              this.physicalOrders.unshift(rem)
+              updated = true
+            } else if (this.physicalOrders[idx].status !== rem.status) {
+              this.physicalOrders[idx] = { ...this.physicalOrders[idx], ...rem }
+              updated = true
+            }
+          })
+          if (updated) {
+            this.persist(DB_KEYS.PHYSICAL_ORDERS)
+          }
+        })
       }
     },
 
@@ -1455,6 +1570,9 @@ export const useAdminStore = defineStore('admin', {
       this.orders.unshift(newOrder)
       this.persist(DB_KEYS.ORDERS)
 
+      // Guardar en la nube (Firebase Firestore) si está configurado
+      saveStreamingOrderToFirebase(newOrder).catch(() => {})
+
       // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
       this.registerOrUpdateUser({
         name: newOrder.customerName,
@@ -1498,7 +1616,7 @@ export const useAdminStore = defineStore('admin', {
         id: orderId,
         customerNumber: customerNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: customerName || 'Cliente',
-        customerPhone: customerPhone || '+54 9 11 0000-0000',
+        customerPhone: customerPhone || OFFICIAL_PROVIDER_WHATSAPP,
         shippingAddress: shippingAddress || 'Retiro en punto acordado / Envío a coordinar',
         resellerId: targetResellerId,
         resellerName: isDirect ? 'StreamePro Tienda Oficial (Venta Directa)' : (resellerObj?.name || 'Distribuidor Asignado'),
@@ -1526,6 +1644,10 @@ export const useAdminStore = defineStore('admin', {
       }
 
       this.physicalOrders.unshift(newOrder)
+      this.persist(DB_KEYS.PHYSICAL_ORDERS)
+
+      // Guardar en la nube (Firebase Firestore) si está configurado
+      savePhysicalOrderToFirebase(newOrder).catch(() => {})
 
       // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
       this.registerOrUpdateUser({
@@ -2103,7 +2225,7 @@ export const useResellerStore = defineStore('reseller', {
         id: orderId,
         customerNumber,
         customerName: customerName || `Cliente de ${this.activeResellerId}`,
-        customerPhone: customerPhone || '+54 9 11 0000-0000',
+        customerPhone: customerPhone || OFFICIAL_PROVIDER_WHATSAPP,
         platform,
         devices: Number(units || plan.units),
         pinPreference,

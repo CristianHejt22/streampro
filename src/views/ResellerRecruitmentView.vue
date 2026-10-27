@@ -92,7 +92,7 @@ const totalEstimatedMonthlyProfit = computed(() => {
 
 // WhatsApp de contacto con el proveedor
 const providerWhatsApp = computed(() => {
-  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
 })
 
 const contactProviderWhatsApp = () => {

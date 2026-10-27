@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+import { useAdminStore } from './store/admin'
 
 // Manejador global para actualización de recursos al desplegar nuevas versiones
 window.addEventListener('vite:preloadError', (event) => {
@@ -11,9 +12,18 @@ window.addEventListener('vite:preloadError', (event) => {
 })
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
+
+// Inicializar sincronización en la nube (Firebase Firestore)
+try {
+  const adminStore = useAdminStore()
+  adminStore.initCloudSync()
+} catch (e) {
+  console.warn('[Sync] Inicialización en segundo plano:', e)
+}
 
 // Limpieza de Service Workers obsoletos en entorno de desarrollo
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {

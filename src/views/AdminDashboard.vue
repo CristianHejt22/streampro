@@ -4,6 +4,7 @@ import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
+import { testFirebaseConnection } from '../services/firebase'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
 import { 
@@ -704,7 +705,87 @@ const confirmRechargeWallet = () => {
 }
 
 // GESTIÓN MULTI-CUENTA BANCARIA & VALIDADOR DE TRANSFERENCIAS (ESTILO WANDERLUST)
-const bankSubTab = ref('accounts') // 'accounts' | 'validator' | 'webhook_guide'
+const bankSubTab = ref('accounts') // 'accounts' | 'validator' | 'webhook_guide' | 'cloud_notifications'
+
+// CONFIGURACIÓN TELEGRAM BOT & FIREBASE CLOUD SYNC
+const telegramForm = ref({
+  botToken: adminStore.telegramConfig?.botToken || '',
+  chatId: adminStore.telegramConfig?.chatId || '',
+  enabled: adminStore.telegramConfig?.enabled !== false
+})
+
+const firebaseForm = ref({
+  apiKey: adminStore.firebaseConfig?.apiKey || '',
+  authDomain: adminStore.firebaseConfig?.authDomain || '',
+  projectId: adminStore.firebaseConfig?.projectId || '',
+  storageBucket: adminStore.firebaseConfig?.storageBucket || '',
+  messagingSenderId: adminStore.firebaseConfig?.messagingSenderId || '',
+  appId: adminStore.firebaseConfig?.appId || '',
+  enabled: Boolean(adminStore.firebaseConfig?.enabled)
+})
+
+const isTestingTelegram = ref(false)
+const isTestingFirebase = ref(false)
+
+const saveTelegramSettings = () => {
+  adminStore.updateTelegramConfig(telegramForm.value)
+  toast.add('¡Configuración de Telegram guardada!', 'success')
+}
+
+const testTelegramBot = async () => {
+  if (!telegramForm.value.botToken || !telegramForm.value.chatId) {
+    toast.add('Ingresa el Bot Token y Chat ID antes de probar', 'error')
+    return
+  }
+  isTestingTelegram.value = true
+  try {
+    const res = await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        test: true,
+        telegramToken: telegramForm.value.botToken,
+        telegramChatId: telegramForm.value.chatId
+      })
+    })
+    const data = await res.json()
+    if (data.success) {
+      toast.add('¡Mensaje de prueba enviado con éxito a Telegram! Revisa tu teléfono.', 'success')
+    } else {
+      toast.add(`Error de Telegram: ${data.result?.description || data.message || 'No se pudo enviar'}`, 'error')
+    }
+  } catch (e) {
+    toast.add('Error al conectar con la API de notificaciones: ' + e.message, 'error')
+  } finally {
+    isTestingTelegram.value = false
+  }
+}
+
+const saveFirebaseSettings = () => {
+  firebaseForm.value.enabled = true
+  adminStore.updateFirebaseConfig(firebaseForm.value)
+  toast.add('¡Credenciales de Firebase guardadas y sincronización iniciada!', 'success')
+}
+
+const testFirebaseConnectionHandler = async () => {
+  if (!firebaseForm.value.apiKey || !firebaseForm.value.projectId) {
+    toast.add('Ingresa al menos API Key y Project ID para probar', 'error')
+    return
+  }
+  isTestingFirebase.value = true
+  try {
+    const res = await testFirebaseConnection(firebaseForm.value)
+    if (res.success) {
+      toast.add('¡Conexión exitosa con Firebase Firestore!', 'success')
+    } else {
+      toast.add('Error conectando a Firebase: ' + res.message, 'error')
+    }
+  } catch (e) {
+    toast.add('Error en prueba de Firebase: ' + e.message, 'error')
+  } finally {
+    isTestingFirebase.value = false
+  }
+}
 const isEditingProviderBank = ref(false)
 const showAddAccountModal = ref(false)
 const editingAccountId = ref(null)
@@ -1244,7 +1325,7 @@ const openAdminAuthModal = () => {
     username: adminStore.adminAuth?.username || 'admin',
     password: adminStore.adminAuth?.password || '',
     name: adminStore.adminAuth?.name || 'Administrador Principal',
-    whatsapp: adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+    whatsapp: adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
   }
   showAdminAuthModal.value = true
 }
@@ -2772,6 +2853,13 @@ const deletePackageItem = (pkgId) => {
           >
             <span>🤖 Conexión Gmail / IMAP</span>
           </button>
+          <button 
+            @click="bankSubTab = 'cloud_notifications'"
+            :class="['px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer', bankSubTab === 'cloud_notifications' ? 'bg-sky-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+          >
+            <span>☁️ Alertas Telegram & Firebase</span>
+            <span v-if="adminStore.telegramConfig?.botToken || adminStore.firebaseConfig?.projectId" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
         </div>
       </div>
 
@@ -3042,6 +3130,149 @@ const deletePackageItem = (pkgId) => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- SUB-TAB 4: ALERTAS TELEGRAM BOT & SINCRONIZACIÓN FIREBASE CLOUD -->
+      <div v-if="bankSubTab === 'cloud_notifications'" class="space-y-8">
+        
+        <!-- SECCIÓN 1: BOT DE TELEGRAM (ALERTAS A TU CELULAR) -->
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🤖</span>
+                <h3 class="text-lg font-black text-white">Bot de Notificaciones de Telegram</h3>
+                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', adminStore.telegramConfig?.botToken && adminStore.telegramConfig?.chatId ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400']">
+                  {{ adminStore.telegramConfig?.botToken && adminStore.telegramConfig?.chatId ? '🟢 Conectado y Activo' : '⚪ Pendiente de Configurar' }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                Tu teléfono sonará al segundo exacto en que un cliente presione "Confirmar Pedido", con todo el desglose y voucher.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="testTelegramBot" 
+                :disabled="isTestingTelegram"
+                class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <span>{{ isTestingTelegram ? '⏳ Enviando...' : '📲 Probar Notificación' }}</span>
+              </button>
+              <button 
+                @click="saveTelegramSettings" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow cursor-pointer"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label class="block text-xs font-bold uppercase text-slate-300">Bot Token de Telegram *</label>
+              <input 
+                v-model="telegramForm.botToken" 
+                type="text" 
+                placeholder="Ej: 7123456789:AAHk..." 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono outline-none focus:border-sky-400"
+              />
+              <span class="text-[10px] text-slate-500">Obtenido de @BotFather al crear el bot</span>
+            </div>
+            <div class="space-y-1">
+              <label class="block text-xs font-bold uppercase text-slate-300">Tu Chat ID (ID de Telegram) *</label>
+              <input 
+                v-model="telegramForm.chatId" 
+                type="text" 
+                placeholder="Ej: 123456789" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono outline-none focus:border-sky-400"
+              />
+              <span class="text-[10px] text-slate-500">Tu número identificador obtenido de @userinfobot</span>
+            </div>
+          </div>
+
+          <!-- Guía rápida de 4 pasos para Telegram -->
+          <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+            <span class="font-bold text-sky-400 block">📖 Pasos rápidos para obtener tu Bot en 2 minutos:</span>
+            <ol class="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+              <li>Abre Telegram y busca al usuario oficial <strong>@BotFather</strong>.</li>
+              <li>Envía el mensaje <code class="text-amber-300 font-mono">/newbot</code>, dale un nombre (ej: <em>StreamePro Avisos</em>) y un usuario terminado en bot (ej: <em>streamepro_pedidos_bot</em>). Te devolverá el <strong>Token</strong>.</li>
+              <li>Busca en Telegram a <strong>@userinfobot</strong> y pulsa Iniciar para ver tu <strong>Id</strong> numérico (Chat ID).</li>
+              <li>Abre tu nuevo bot en Telegram, presiona <strong>/start</strong>, pega el Token y tu Chat ID arriba y pulsa <strong>Probar Notificación</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: BASE DE DATOS EN LA NUBE FIREBASE FIRESTORE -->
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🔥</span>
+                <h3 class="text-lg font-black text-white">Google Firebase Firestore (Nube Central)</h3>
+                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', adminStore.firebaseConfig?.projectId ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400']">
+                  {{ adminStore.firebaseConfig?.projectId ? '🟢 Sincronización en Vivo' : '⚪ Sin Conectar' }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                Conecta la base de datos de Firebase para que todos los pedidos de la web aparezcan en tiempo real en tu panel desde cualquier celular o PC.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="testFirebaseConnectionHandler" 
+                :disabled="isTestingFirebase"
+                class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <span>{{ isTestingFirebase ? '⏳ Probando...' : '🔥 Probar Conexión' }}</span>
+              </button>
+              <button 
+                @click="saveFirebaseSettings" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow cursor-pointer"
+              >
+                Guardar y Conectar
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">API Key *</label>
+              <input v-model="firebaseForm.apiKey" type="text" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">Project ID *</label>
+              <input v-model="firebaseForm.projectId" type="text" placeholder="streamepro-prod" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">Auth Domain</label>
+              <input v-model="firebaseForm.authDomain" type="text" placeholder="streamepro-prod.firebaseapp.com" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">Storage Bucket</label>
+              <input v-model="firebaseForm.storageBucket" type="text" placeholder="streamepro-prod.appspot.com" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">Messaging Sender ID</label>
+              <input v-model="firebaseForm.messagingSenderId" type="text" placeholder="1234567890" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-300 text-[11px]">App ID</label>
+              <input v-model="firebaseForm.appId" type="text" placeholder="1:123456:web:abcd" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-amber-400" />
+            </div>
+          </div>
+
+          <!-- Guía rápida de configuración Firebase -->
+          <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+            <span class="font-bold text-amber-400 block">📖 Pasos para crear tu proyecto gratuito en Google Firebase:</span>
+            <ol class="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+              <li>Ingresa a <a href="https://console.firebase.google.com" target="_blank" class="text-brand-accent underline">console.firebase.google.com</a> con tu cuenta de Google y haz clic en <strong>"Crear un proyecto"</strong>.</li>
+              <li>En el menú izquierdo, haz clic en <strong>"Compilación" -> "Firestore Database"</strong> y pulsa <strong>"Crear base de datos"</strong> (puedes elegir comenzar en Modo de Prueba).</li>
+              <li>Ve a la rueda de engranaje ⚙️ (Configuración del proyecto) -> pestaña <strong>"General"</strong> -> baja hasta "Tus apps" y haz clic en el ícono Web <code class="text-amber-300 font-mono">&lt;/&gt;</code>.</li>
+              <li>Copia los valores de <code class="text-amber-300 font-mono">firebaseConfig</code>, pégalos arriba y haz clic en <strong>"Guardar y Conectar"</strong>. ¡Todo quedará sincronizado!</li>
+            </ol>
+          </div>
+        </div>
+
       </div>
 
       <!-- SUB-TAB 3: GUÍA DE CONEXIÓN GMAIL & WEBHOOK -->
@@ -5109,7 +5340,7 @@ const deletePackageItem = (pkgId) => {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Soporte</label>
-              <input v-model="newAccountForm.whatsapp" type="text" placeholder="+54 9 11 0000-0000" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
+              <input v-model="newAccountForm.whatsapp" type="text" placeholder="+54 9 291 565-9321" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Correo de Notificaciones</label>

@@ -189,7 +189,7 @@ const sendHogarViaWhatsApp = () => {
     (hogarForm.value.tvModel ? `• *Dispositivo:* ${hogarForm.value.tvModel}\n` : '') +
     `\nAcabo de presionar 'Actualizar Hogar / Estoy de viaje' en mi TV. Por favor confírmenme el enlace o código para continuar viendo.`
 
-  const providerPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 11 0000-0000'
+  const providerPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
   const cleanPhone = providerPhone.replace(/[^0-9]/g, '')
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
