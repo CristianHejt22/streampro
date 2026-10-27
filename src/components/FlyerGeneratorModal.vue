@@ -683,30 +683,13 @@ function renderCanvasFlyerBlob() {
             ctx.fillText('📦', centerX, centerY + iconSize * 0.25)
           }
 
-          // Ubicación elegante de "ENVÍO A TODO EL PAÍS" como pastilla integrada en el rectángulo
-          const shipText = '🚚 ENVÍO A TODO EL PAÍS'
-          ctx.font = '900 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          const badgeTextW = ctx.measureText(shipText).width
-          const badgeW = badgeTextW + 24
-          const badgeH = 28
-          const badgeX = innerX + 12
-          const badgeY = innerY + 12
+          ctx.restore()
 
-          ctx.fillStyle = 'rgba(2, 6, 23, 0.92)'
-          ctx.shadowColor = '#00f0ff'
+          // Borde con resplandor neón alrededor del marco interno (sin obstruir la imagen)
+          ctx.save()
+          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
           ctx.shadowBlur = 10
-          roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 14, true, true, '#00f0ff', 1.5)
-          ctx.shadowBlur = 0
-
-          ctx.fillStyle = '#38bdf8'
-          ctx.textAlign = 'center'
-          ctx.fillText(shipText, badgeX + badgeW / 2, badgeY + 19)
-
-          // Borde sutil del marco interno
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'
-          ctx.lineWidth = 1.5
-          roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, 'rgba(56, 189, 248, 0.4)', 1.5)
-
+          roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, 'rgba(56, 189, 248, 0.6)', 1.5)
           ctx.restore()
         } else if (flyerProductType.value === 'combo') {
           // Combos streaming: Tarjetas translúcidas futuristas encajadas en el rectángulo
@@ -2158,11 +2141,8 @@ const shareToWhatsAppStatus = () => {
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/40 overflow-hidden relative">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border border-cyan-400/50 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <div class="absolute top-2 left-2 bg-slate-950/90 border border-cyan-400 text-cyan-300 text-[8px] font-black px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                      <span>🚚</span><span>ENVÍO A TODO EL PAÍS</span>
-                    </div>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-1 shadow-md">
@@ -2216,12 +2196,9 @@ const shareToWhatsAppStatus = () => {
               <!-- 1.2 FEED (4:5) -->
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
                 <!-- Visor Window -->
-                <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[29.0%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg border border-cyan-400/40 overflow-hidden relative">
+                <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[28.5%] flex items-center justify-center p-1.5 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/50 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <div class="absolute top-1.5 left-1.5 bg-slate-950/90 border border-cyan-400 text-cyan-300 text-[7px] font-black px-1.5 py-0.2 rounded-full shadow flex items-center gap-1">
-                      <span>🚚</span><span>ENVÍO A TODO EL PAÍS</span>
-                    </div>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-0.5">
@@ -2274,12 +2251,9 @@ const shareToWhatsAppStatus = () => {
               <!-- 1.3 SQUARE (1:1) -->
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
-                <div class="absolute top-[14.7%] left-[26.2%] w-[47.6%] h-[46.3%] flex items-center justify-center p-1 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg border border-cyan-400/40 overflow-hidden relative">
+                <div class="absolute top-[14.4%] left-[25.9%] w-[48.1%] h-[44.4%] flex items-center justify-center p-1 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/50 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <div class="absolute top-1 left-1 bg-slate-950/90 border border-cyan-400 text-cyan-300 text-[6px] font-black px-1.5 py-0.2 rounded-full shadow flex items-center gap-0.5">
-                      <span>🚚</span><span>ENVÍO A TODO EL PAÍS</span>
-                    </div>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
@@ -2329,12 +2303,9 @@ const shareToWhatsAppStatus = () => {
               <!-- 1.4 BANNER (16:9) -->
               <div v-else class="relative w-full h-full">
                 <!-- Visor Window -->
-                <div class="absolute top-[25.6%] left-[7.8%] w-[27.0%] h-[51.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/40 overflow-hidden relative">
+                <div class="absolute top-[24.1%] left-[7.8%] w-[27.1%] h-[51.9%] flex items-center justify-center p-1.5 z-10">
+                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border border-cyan-400/50 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <div class="absolute top-2 left-2 bg-slate-950/90 border border-cyan-400 text-cyan-300 text-[7px] font-black px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                      <span>🚚</span><span>ENVÍO A TODO EL PAÍS</span>
-                    </div>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" class="rounded bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
