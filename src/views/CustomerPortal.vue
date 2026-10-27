@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 
@@ -11,6 +11,22 @@ const error = ref('')
 const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+onMounted(() => {
+  adminStore.initCloudSync()
+  try {
+    const raw = localStorage.getItem('streampro_user_profile')
+    if (raw) {
+      const saved = JSON.parse(raw)
+      if (saved.phone && !searchIdentifier.value) {
+        searchIdentifier.value = saved.phone
+      }
+      if (saved.pin && !masterPin.value) {
+        masterPin.value = saved.pin
+      }
+    }
+  } catch {}
+})
 
 // Cuentas filtradas del cliente que ingresó su número de teléfono, ID de cliente o PIN
 const authenticatedClients = ref([])

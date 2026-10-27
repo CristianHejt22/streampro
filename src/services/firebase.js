@@ -109,6 +109,96 @@ export async function savePhysicalOrderToFirebase(orderData) {
 }
 
 /**
+ * Guarda un usuario en la colección 'registered_users' de Firestore
+ */
+export async function saveUserToFirebase(userData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanUser = JSON.parse(JSON.stringify(userData))
+    cleanUser.updatedAt = new Date().toISOString()
+    const docId = String(cleanUser.clientNumber || cleanUser.id || `USR-${cleanUser.phone || Date.now()}`)
+    await setDoc(doc(dbInstance, 'registered_users', docId), cleanUser, { merge: true })
+    return { success: true, id: docId }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando usuario:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Consulta directa y única de todas las órdenes de streaming
+ */
+export async function fetchLatestOrdersFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return []
+
+  try {
+    const q = query(collection(dbInstance, 'orders'), limit(150))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.warn('[Firebase] Error al consultar orders:', error)
+    return []
+  }
+}
+
+/**
+ * Consulta directa y única de todas las órdenes físicas
+ */
+export async function fetchLatestPhysicalOrdersFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return []
+
+  try {
+    const q = query(collection(dbInstance, 'physical_orders'), limit(150))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.warn('[Firebase] Error al consultar physical_orders:', error)
+    return []
+  }
+}
+
+/**
+ * Consulta directa de usuarios registrados
+ */
+export async function fetchRegisteredUsersFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return []
+
+  try {
+    const q = query(collection(dbInstance, 'registered_users'), limit(150))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.warn('[Firebase] Error al consultar registered_users:', error)
+    return []
+  }
+}
+
+/**
  * Escucha cambios en tiempo real en la colección 'orders'
  */
 export function listenToStreamingOrders(callback) {
@@ -118,7 +208,7 @@ export function listenToStreamingOrders(callback) {
   if (!dbInstance) return () => {}
 
   try {
-    const q = query(collection(dbInstance, 'orders'), limit(100))
+    const q = query(collection(dbInstance, 'orders'), limit(150))
     return onSnapshot(q, (snapshot) => {
       const orders = []
       snapshot.forEach((docSnap) => {
@@ -144,7 +234,7 @@ export function listenToPhysicalOrders(callback) {
   if (!dbInstance) return () => {}
 
   try {
-    const q = query(collection(dbInstance, 'physical_orders'), limit(100))
+    const q = query(collection(dbInstance, 'physical_orders'), limit(150))
     return onSnapshot(q, (snapshot) => {
       const orders = []
       snapshot.forEach((docSnap) => {
@@ -153,6 +243,32 @@ export function listenToPhysicalOrders(callback) {
       callback(orders)
     }, (err) => {
       console.warn('[Firebase] Snapshot error en physical_orders:', err)
+    })
+  } catch (err) {
+    console.warn('[Firebase] Listener error:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Escucha cambios en tiempo real en la colección 'registered_users'
+ */
+export function listenToRegisteredUsers(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return () => {}
+
+  try {
+    const q = query(collection(dbInstance, 'registered_users'), limit(150))
+    return onSnapshot(q, (snapshot) => {
+      const users = []
+      snapshot.forEach((docSnap) => {
+        users.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      callback(users)
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error en registered_users:', err)
     })
   } catch (err) {
     console.warn('[Firebase] Listener error:', err)

@@ -1218,7 +1218,27 @@ const adminBiometricsAvailable = ref(false)
 const hasAdminEnrolledBiometrics = ref(false)
 const isAdminBiometricLoading = ref(false)
 
+const isSyncingCloud = ref(false)
+const manualCloudSync = async () => {
+  isSyncingCloud.value = true
+  try {
+    const res = await adminStore.syncFromCloud()
+    if (res.success) {
+      toast.add(`¡Nube Sincronizada! ${res.streamingCount} órdenes streaming, ${res.physicalCount} físicas.`, 'success')
+    } else {
+      toast.add('Error al sincronizar con Firebase: ' + (res.error || ''), 'error')
+    }
+  } catch (e) {
+    toast.add('Error: ' + e.message, 'error')
+  } finally {
+    isSyncingCloud.value = false
+  }
+}
+
 onMounted(async () => {
+  // Sincronización automática de órdenes en la nube
+  adminStore.initCloudSync()
+
   adminBiometricsAvailable.value = await isBiometricsAvailable()
   hasAdminEnrolledBiometrics.value = hasBiometricEnrolled('admin')
 
@@ -1912,6 +1932,14 @@ const deletePackageItem = (pkgId) => {
           <h2 class="text-2xl font-black">Centro de Despacho de Pedidos</h2>
           <p class="text-xs text-slate-400">Entrega cuentas verificando el Número de Cliente y los perfiles requeridos.</p>
         </div>
+        <button 
+          @click="manualCloudSync" 
+          :disabled="isSyncingCloud"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow disabled:opacity-50 shrink-0"
+          title="Sincronizar pedidos desde la base de datos de Firebase"
+        >
+          <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
+        </button>
       </div>
       
       <div v-if="adminStore.pendingOrders.length === 0" class="text-slate-500 text-center py-10 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed">
@@ -1926,6 +1954,9 @@ const deletePackageItem = (pkgId) => {
                 <span class="text-lg font-black text-white">{{ order.platform }}</span>
                 <span class="text-xs font-mono text-brand-accent bg-brand-accent/15 px-2 py-0.5 rounded border border-brand-accent/30 font-bold">
                   {{ order.customerNumber }}
+                </span>
+                <span v-if="order.pin" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold" title="PIN de Bóveda del Cliente">
+                  🔐 PIN: {{ order.pin }}
                 </span>
                 <span v-if="order.paymentMethod" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                   {{ order.paymentMethod }}

@@ -169,16 +169,29 @@ const showCartDrawer = ref(false)
 
 // Modal y Formulario Checkout
 const showCheckoutModal = ref(false)
-const clientForm = ref({
-  clientNumber: `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
-  fullName: '',
-  whatsapp: '',
-  shippingAddress: '',
-  selectedResellerId: 'DIRECT', // Por defecto Venta Directa Oficial (Proveedor)
-  paymentMethod: 'Transferencia Bancaria / CBU',
-  transferVoucher: '',
-  isSharedUrl: false
-})
+
+const getInitialClientForm = () => {
+  let saved = null
+  try {
+    const raw = localStorage.getItem('streampro_user_profile')
+    if (raw) saved = JSON.parse(raw)
+  } catch {}
+
+  const defaultPin = String(Math.floor(1000 + Math.random() * 9000))
+  return {
+    clientNumber: saved?.clientNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
+    fullName: saved?.name || '',
+    whatsapp: saved?.phone || '',
+    pin: saved?.pin || defaultPin,
+    shippingAddress: saved?.address || '',
+    selectedResellerId: 'DIRECT',
+    paymentMethod: 'Transferencia Bancaria / CBU',
+    transferVoucher: '',
+    isSharedUrl: false
+  }
+}
+
+const clientForm = ref(getInitialClientForm())
 
 // Determina si es venta directa oficial (sin intermediario) o referida por revendedor
 const isDirectSale = computed(() => {
@@ -545,9 +558,12 @@ const sendOrderToWhatsApp = () => {
   let message = `¡Hola! Acabo de registrar mi pedido en la web de *StreamePro* 🚀\n\n` +
     `📋 *N° de Pedido:* ${ord.clientNumber}\n` +
     `👤 *Cliente:* ${ord.customerName}\n` +
-    `📱 *WhatsApp:* ${ord.customerPhone}\n\n` +
+    `📱 *WhatsApp:* ${ord.customerPhone}\n` +
+    (ord.pin ? `🔐 *PIN de Bóveda:* ${ord.pin}\n\n` : `\n`) +
     `🛒 *Detalle de la compra:*\n${itemsList}\n\n` +
-    `💰 *Total:* $${ord.total.toFixed(2)} ARS\n`
+    `💰 *Total:* $${ord.total.toFixed(2)} ARS\n` +
+    `\n🔐 *Mi Bóveda de Accesos:* https://streamepro.me/boveda\n` +
+    `(Consulto mis accesos con mi número de celular y mi PIN)`
 
   if (ord.digitalItems.length > 0) {
     message += `\n📎 Adjunto mi comprobante de transferencia bancaria para agilizar la entrega de mis cuentas (Tiempo estimado: 10 min a 1 hora).`
@@ -632,11 +648,21 @@ const submitOrder = async () => {
     }
   }
 
-  // Registrar órdenes digitales de streaming usando la acción persistente
-  digitalItems.forEach(item => {
+  // 1. Guardar o actualizar perfil local del cliente
+  try {
+    localStorage.setItem('streampro_user_profile', JSON.stringify({
+      clientNumber: clientForm.value.clientNumber,
+      name: clientForm.value.fullName,
+      phone: clientForm.value.whatsapp,
+      pin: clientForm.value.pin,
+      address: clientForm.value.shippingAddress || ''
+    }))
+  } catch {}
+
+  // 2. Registrar órdenes digitales de streaming esperando confirmación de guardado en la nube
+  for (const item of digitalItems) {
     const streamingOrderId = `ORD-${Date.now().toString().slice(-4)}`
     
-    // Si subió comprobante, también indexar con el ID específico del streaming
     if (hasUploadedReceipt) {
       saveReceipt(streamingOrderId, {
         fileName: receiptMeta.fileName,
@@ -649,11 +675,12 @@ const submitOrder = async () => {
       }).catch(() => {})
     }
 
-    adminStore.createStreamingOrder({
+    await adminStore.createStreamingOrder({
       id: streamingOrderId,
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
+      pin: clientForm.value.pin,
       platform: item.platform,
       activationEmail: item.activationEmail || null,
       devices: item.units,
@@ -675,15 +702,16 @@ const submitOrder = async () => {
         name: p.name
       }))
     })
-  })
+  }
 
-  // Registrar orden de productos físicos
+  // 3. Registrar orden de productos físicos esperando confirmación
   if (physicalItems.length > 0) {
     const source = clientForm.value.isSharedUrl ? 'shared_url' : 'store'
-    adminStore.createPhysicalOrder({
+    await adminStore.createPhysicalOrder({
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
+      pin: clientForm.value.pin,
       shippingAddress: clientForm.value.shippingAddress || 'A coordinar por WhatsApp',
       resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
       source,
@@ -697,24 +725,36 @@ const submitOrder = async () => {
     })
   }
 
-  lastPlacedOrder.value = orderSnapshot
+  // 4. Disparar y esperar notificación a Telegram
+  try {
+    await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order: {
+          ...orderSnapshot,
+          pin: clientForm.value.pin
+        },
+        telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
+        telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
+      })
+    })
+  } catch (err) {
+    console.warn('Telegram notify error:', err)
+  }
+
+  lastPlacedOrder.value = {
+    ...orderSnapshot,
+    pin: clientForm.value.pin
+  }
   showCheckoutModal.value = false
   showOrderSuccessModal.value = true
   cartStore.clearCart()
 
-  // 1. Redirección automática inmediata a WhatsApp oficial (+54 9 291 565-9321)
-  sendOrderToWhatsApp()
-
-  // 2. Disparar alerta en tiempo real al Bot de Telegram
-  fetch('/api/notify-order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      order: orderSnapshot,
-      telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
-      telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
-    })
-  }).catch(() => {})
+  // 5. Redirigir a WhatsApp tras retardo para permitir al usuario ver su PIN
+  setTimeout(() => {
+    sendOrderToWhatsApp()
+  }, 1200)
 
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
@@ -1470,12 +1510,35 @@ const submitOrder = async () => {
           <!-- Datos Personales del Cliente -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Completo</label>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Completo *</label>
               <input v-model="clientForm.fullName" type="text" placeholder="Ej: Carlos Lopez" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium" required>
             </div>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Contacto</label>
+              <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Contacto *</label>
               <input v-model="clientForm.whatsapp" type="tel" placeholder="+54 9 11 1234-5678" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium" required>
+            </div>
+          </div>
+
+          <!-- PIN de Seguridad para Bóveda Privada -->
+          <div class="bg-gradient-to-r from-slate-950 to-indigo-950/40 p-3.5 rounded-xl border border-indigo-500/30 flex items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                <span>🔐</span>
+                <span>PIN de Seguridad para tu Bóveda</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5">
+                Generado para que consultes tus cuentas y accesos en cualquier momento.
+              </p>
+            </div>
+            <div class="w-24 shrink-0">
+              <input 
+                v-model="clientForm.pin" 
+                type="text" 
+                maxlength="6"
+                class="w-full bg-slate-900 border border-indigo-500/50 rounded-xl p-2 text-center text-sm font-black font-mono text-amber-300 outline-none focus:border-amber-400 shadow-inner"
+                placeholder="PIN"
+                required
+              />
             </div>
           </div>
 

@@ -10,8 +10,13 @@ import {
   initFirebase, 
   saveStreamingOrderToFirebase, 
   savePhysicalOrderToFirebase, 
+  saveUserToFirebase,
+  fetchLatestOrdersFromFirebase,
+  fetchLatestPhysicalOrdersFromFirebase,
+  fetchRegisteredUsersFromFirebase,
   listenToStreamingOrders, 
   listenToPhysicalOrders,
+  listenToRegisteredUsers,
   testFirebaseConnection 
 } from '../services/firebase'
 
@@ -568,49 +573,126 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
+    // Sincronización completa directa desde la nube Firebase
+    async syncFromCloud() {
+      initFirebase(this.firebaseConfig)
+      try {
+        const [remoteStreaming, remotePhysical, remoteUsers] = await Promise.all([
+          fetchLatestOrdersFromFirebase(),
+          fetchLatestPhysicalOrdersFromFirebase(),
+          fetchRegisteredUsersFromFirebase()
+        ])
+
+        let updatedStreaming = 0
+        let updatedPhysical = 0
+        let updatedUsers = 0
+
+        remoteStreaming.forEach(rem => {
+          const idx = this.orders.findIndex(o => o.id === rem.id)
+          if (idx === -1) {
+            this.orders.unshift(rem)
+            updatedStreaming++
+          } else if (this.orders[idx].status !== rem.status) {
+            this.orders[idx] = { ...this.orders[idx], ...rem }
+            updatedStreaming++
+          }
+        })
+        if (updatedStreaming > 0) this.persist(DB_KEYS.ORDERS)
+
+        remotePhysical.forEach(rem => {
+          const idx = this.physicalOrders.findIndex(o => o.id === rem.id)
+          if (idx === -1) {
+            this.physicalOrders.unshift(rem)
+            updatedPhysical++
+          } else if (this.physicalOrders[idx].status !== rem.status) {
+            this.physicalOrders[idx] = { ...this.physicalOrders[idx], ...rem }
+            updatedPhysical++
+          }
+        })
+        if (updatedPhysical > 0) this.persist(DB_KEYS.PHYSICAL_ORDERS)
+
+        remoteUsers.forEach(rem => {
+          const idx = this.registeredUsers.findIndex(u => u.clientNumber === rem.clientNumber || (u.phone && rem.phone && u.phone.replace(/[^0-9]/g, '') === rem.phone.replace(/[^0-9]/g, '')))
+          if (idx === -1) {
+            this.registeredUsers.unshift(rem)
+            updatedUsers++
+          }
+        })
+        if (updatedUsers > 0) this.persist(DB_KEYS.REGISTERED_USERS)
+
+        return {
+          success: true,
+          streamingCount: remoteStreaming.length,
+          physicalCount: remotePhysical.length,
+          usersCount: remoteUsers.length,
+          totalNew: updatedStreaming + updatedPhysical + updatedUsers
+        }
+      } catch (e) {
+        console.warn('[Sync] Error al sincronizar desde la nube:', e)
+        return { success: false, error: e.message }
+      }
+    },
+
     // Inicialización y escucha en tiempo real de Firebase
     initCloudSync() {
-      if (this.firebaseConfig && this.firebaseConfig.apiKey && this.firebaseConfig.projectId) {
-        initFirebase(this.firebaseConfig)
-        
-        // Escucha en tiempo real de pedidos de Streaming
-        listenToStreamingOrders((remoteOrders) => {
-          if (!remoteOrders || remoteOrders.length === 0) return
-          let updated = false
-          remoteOrders.forEach(rem => {
-            const idx = this.orders.findIndex(o => o.id === rem.id)
-            if (idx === -1) {
-              this.orders.unshift(rem)
-              updated = true
-            } else if (this.orders[idx].status !== rem.status) {
-              this.orders[idx] = { ...this.orders[idx], ...rem }
-              updated = true
-            }
-          })
-          if (updated) {
-            this.persist(DB_KEYS.ORDERS)
-          }
-        })
+      initFirebase(this.firebaseConfig)
 
-        // Escucha en tiempo real de pedidos Físicos
-        listenToPhysicalOrders((remotePhysical) => {
-          if (!remotePhysical || remotePhysical.length === 0) return
-          let updated = false
-          remotePhysical.forEach(rem => {
-            const idx = this.physicalOrders.findIndex(o => o.id === rem.id)
-            if (idx === -1) {
-              this.physicalOrders.unshift(rem)
-              updated = true
-            } else if (this.physicalOrders[idx].status !== rem.status) {
-              this.physicalOrders[idx] = { ...this.physicalOrders[idx], ...rem }
-              updated = true
-            }
-          })
-          if (updated) {
-            this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      // Carga inicial directa de la nube
+      this.syncFromCloud().catch(() => {})
+
+      // Escucha en tiempo real de pedidos de Streaming
+      listenToStreamingOrders((remoteOrders) => {
+        if (!remoteOrders || remoteOrders.length === 0) return
+        let updated = false
+        remoteOrders.forEach(rem => {
+          const idx = this.orders.findIndex(o => o.id === rem.id)
+          if (idx === -1) {
+            this.orders.unshift(rem)
+            updated = true
+          } else if (this.orders[idx].status !== rem.status) {
+            this.orders[idx] = { ...this.orders[idx], ...rem }
+            updated = true
           }
         })
-      }
+        if (updated) {
+          this.persist(DB_KEYS.ORDERS)
+        }
+      })
+
+      // Escucha en tiempo real de pedidos Físicos
+      listenToPhysicalOrders((remotePhysical) => {
+        if (!remotePhysical || remotePhysical.length === 0) return
+        let updated = false
+        remotePhysical.forEach(rem => {
+          const idx = this.physicalOrders.findIndex(o => o.id === rem.id)
+          if (idx === -1) {
+            this.physicalOrders.unshift(rem)
+            updated = true
+          } else if (this.physicalOrders[idx].status !== rem.status) {
+            this.physicalOrders[idx] = { ...this.physicalOrders[idx], ...rem }
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.PHYSICAL_ORDERS)
+        }
+      })
+
+      // Escucha en tiempo real de clientes registrados
+      listenToRegisteredUsers((remoteUsers) => {
+        if (!remoteUsers || remoteUsers.length === 0) return
+        let updated = false
+        remoteUsers.forEach(rem => {
+          const idx = this.registeredUsers.findIndex(u => u.clientNumber === rem.clientNumber || (u.phone && rem.phone && u.phone.replace(/[^0-9]/g, '') === rem.phone.replace(/[^0-9]/g, '')))
+          if (idx === -1) {
+            this.registeredUsers.unshift(rem)
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.REGISTERED_USERS)
+        }
+      })
     },
 
     // Gestión de Credenciales Maestras del Administrador
@@ -919,6 +1001,7 @@ export const useAdminStore = defineStore('admin', {
       }
 
       this.persist(DB_KEYS.REGISTERED_USERS)
+      saveUserToFirebase(existing).catch(() => {})
       return existing
     },
 
@@ -1552,7 +1635,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // CREAR PEDIDO STREAMING DIGITAL (DIRECTO O POR REVENDEDOR)
-    createStreamingOrder(orderData) {
+    async createStreamingOrder(orderData) {
       const isDirect = !orderData.resellerId || orderData.resellerId === 'DIRECT'
       const resellerObj = isDirect ? null : this.resellers.find(r => r.id === orderData.resellerId)
       
@@ -1561,6 +1644,7 @@ export const useAdminStore = defineStore('admin', {
         customerNumber: orderData.customerNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: orderData.customerName || 'Cliente',
         customerPhone: orderData.customerPhone || '',
+        pin: orderData.pin || null,
         platform: orderData.platform,
         activationEmail: orderData.activationEmail || null,
         devices: orderData.devices || 1,
@@ -1590,14 +1674,19 @@ export const useAdminStore = defineStore('admin', {
       this.orders.unshift(newOrder)
       this.persist(DB_KEYS.ORDERS)
 
-      // Guardar en la nube (Firebase Firestore) si está configurado
-      saveStreamingOrderToFirebase(newOrder).catch(() => {})
+      // Guardar en la nube (Firebase Firestore) con AWAIT garantizado
+      try {
+        await saveStreamingOrderToFirebase(newOrder)
+      } catch (e) {
+        console.warn('[Firebase] Error guardando streaming order:', e)
+      }
 
       // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
       this.registerOrUpdateUser({
         name: newOrder.customerName,
         phone: newOrder.customerPhone,
         clientNumber: newOrder.customerNumber,
+        pin: orderData.pin,
         resellerId: newOrder.resellerId,
         amount: newOrder.clientPrice,
         role: 'client',
@@ -1621,7 +1710,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // PEDIDOS FÍSICOS
-    createPhysicalOrder({ customerNumber, customerName, customerPhone, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria', voucher = '', hasReceipt = false, receiptFileName = null, receiptFileType = null, receiptFileSize = 0 }) {
+    async createPhysicalOrder({ customerNumber, customerName, customerPhone, pin = null, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria', voucher = '', hasReceipt = false, receiptFileName = null, receiptFileType = null, receiptFileSize = 0 }) {
       const isDirect = !resellerId || resellerId === 'DIRECT'
       const targetResellerId = isDirect ? 'DIRECT' : resellerId
       const resellerObj = isDirect ? null : this.resellers.find(r => r.id === targetResellerId)
@@ -1663,17 +1752,23 @@ export const useAdminStore = defineStore('admin', {
         }))
       }
 
+      newOrder.pin = pin || null
       this.physicalOrders.unshift(newOrder)
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
 
-      // Guardar en la nube (Firebase Firestore) si está configurado
-      savePhysicalOrderToFirebase(newOrder).catch(() => {})
+      // Guardar en la nube (Firebase Firestore) con AWAIT garantizado
+      try {
+        await savePhysicalOrderToFirebase(newOrder)
+      } catch (e) {
+        console.warn('[Firebase] Error guardando physical order:', e)
+      }
 
       // Registrar o actualizar automáticamente al cliente en el Directorio de Usuarios
       this.registerOrUpdateUser({
         name: newOrder.customerName,
         phone: newOrder.customerPhone,
         clientNumber: newOrder.customerNumber,
+        pin: pin,
         address: newOrder.shippingAddress,
         resellerId: targetResellerId,
         amount: totalAmount,
