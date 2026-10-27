@@ -985,6 +985,111 @@ const availableAccountsForOrder = computed(() => {
   )
 })
 
+// GESTIÓN Y CONTROL ORDENADO DE PEDIDOS STREAMING
+const streamingOrderSearch = ref('')
+const streamingOrderStatusFilter = ref('All') // 'All' | 'Waiting Provider' | 'Dispatched' | 'Cancelado'
+const streamingOrderResellerFilter = ref('All')
+
+const filteredStreamingOrdersForAdmin = computed(() => {
+  let list = adminStore.orders || []
+  if (streamingOrderStatusFilter.value !== 'All') {
+    list = list.filter(o => o.status === streamingOrderStatusFilter.value)
+  }
+  if (streamingOrderResellerFilter.value !== 'All') {
+    if (streamingOrderResellerFilter.value === 'DIRECT') {
+      list = list.filter(o => o.resellerId === 'DIRECT' || !o.resellerId)
+    } else {
+      list = list.filter(o => o.resellerId === streamingOrderResellerFilter.value)
+    }
+  }
+  if (streamingOrderSearch.value.trim()) {
+    const q = streamingOrderSearch.value.trim().toLowerCase()
+    list = list.filter(o => 
+      (o.id && o.id.toLowerCase().includes(q)) ||
+      (o.customerNumber && o.customerNumber.toLowerCase().includes(q)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+      (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
+      (o.platform && o.platform.toLowerCase().includes(q)) ||
+      (o.pin && String(o.pin).includes(q)) ||
+      (o.voucher && o.voucher.toLowerCase().includes(q)) ||
+      (o.resellerName && o.resellerName.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
+
+const streamingStats = computed(() => {
+  const all = adminStore.orders || []
+  const pending = all.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente').length
+  const dispatched = all.filter(o => o.status === 'Dispatched').length
+  const cancelled = all.filter(o => o.status === 'Cancelado').length
+  const totalAmount = all.reduce((sum, o) => sum + (o.status !== 'Cancelado' ? Number(o.clientPrice || o.total || 0) : 0), 0)
+  return { all: all.length, pending, dispatched, cancelled, totalAmount }
+})
+
+const handleCancelStreamingOrder = (order) => {
+  const reason = prompt('Indica el motivo de cancelación del pedido:', 'Cancelado por administración')
+  if (reason === null) return
+  const result = adminStore.cancelStreamingOrder(order.id, reason)
+  if (result.success) {
+    toast.add(`Pedido #${order.id} cancelado correctamente`, 'info')
+  } else {
+    toast.add(result.error || 'Error al cancelar pedido', 'error')
+  }
+}
+
+const handleDeleteStreamingOrder = (order) => {
+  if (!confirm(`¿Eliminar definitivamente la orden #${order.id} de ${order.customerName}? Esta acción no se puede deshacer.`)) {
+    return
+  }
+  const result = adminStore.deleteStreamingOrder(order.id)
+  if (result.success) {
+    toast.add(`Orden #${order.id} eliminada`, 'info')
+  }
+}
+
+const handleDeletePhysicalOrder = (order) => {
+  if (!confirm(`¿Eliminar definitivamente el pedido físico #${order.id} de ${order.customerName}? Esta acción no se puede deshacer.`)) {
+    return
+  }
+  const res = adminStore.deletePhysicalOrder(order.id)
+  if (res.success) {
+    toast.add(`Pedido físico #${order.id} eliminado`, 'info')
+  }
+}
+
+const copyOrderCredentials = (order) => {
+  if (!order.accountDetails) {
+    toast.add('No hay credenciales guardadas en este pedido', 'error')
+    return
+  }
+  const acc = order.accountDetails
+  let text = `🎬 Credenciales para ${order.platform} (${order.customerNumber}):\n` +
+    `📧 Correo: ${acc.email}\n` +
+    `🔑 Contraseña: ${acc.pass}\n`
+  if (acc.profiles && acc.profiles.length > 0) {
+    text += `\n👤 Perfiles asignados:\n`
+    acc.profiles.forEach(p => {
+      text += `• ${p.name} - PIN: ${p.pin}\n`
+    })
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    toast.add('Credenciales copiadas al portapapeles', 'success')
+  }).catch(() => {
+    toast.add('Error al copiar', 'error')
+  })
+}
+
+const resendOrderCredentialsWhatsApp = (order) => {
+  if (!order.accountDetails) {
+    toast.add('El pedido no tiene credenciales despachadas', 'error')
+    return
+  }
+  const msg = adminStore.generateDeliveryWhatsAppMessage(order)
+  const cleanPhone = (order.customerPhone || '').replace(/\D/g, '')
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 const openDispatchModal = (order) => {
   selectedOrder.value = order
   
@@ -1822,6 +1927,12 @@ const deletePackageItem = (pkgId) => {
           👤 Clientes & Ventas ({{ resellerStore.clients.length }})
         </button>
         <button 
+          @click="adminTab = 'users'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'users' ? 'bg-sky-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+        >
+          📇 Directorio Clientes & PINs ({{ adminStore.registeredUsers.length }})
+        </button>
+        <button 
           @click="adminTab = 'physical'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'physical' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
@@ -1860,7 +1971,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Módulo de Renovaciones Solicitadas: El Proveedor puede cambiar datos de cuenta -->
-    <div v-if="adminTab === 'renewals' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
+    <div v-if="adminTab === 'renewals'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
         <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
           🔄
@@ -1923,44 +2034,163 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Centro de Despachos de Pedidos -->
-    <div v-if="adminTab === 'orders' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
-      <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-        </div>
-        <div class="flex-1">
-          <h2 class="text-2xl font-black">Centro de Despacho de Pedidos</h2>
-          <p class="text-xs text-slate-400">Entrega cuentas verificando el Número de Cliente y los perfiles requeridos.</p>
-        </div>
-        <button 
-          @click="manualCloudSync" 
-          :disabled="isSyncingCloud"
-          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow disabled:opacity-50 shrink-0"
-          title="Sincronizar pedidos desde la base de datos de Firebase"
-        >
-          <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
-        </button>
-      </div>
+    <div v-if="adminTab === 'orders'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
       
-      <div v-if="adminStore.pendingOrders.length === 0" class="text-slate-500 text-center py-10 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed">
-        <p class="font-medium">Todos los pedidos se encuentran despachados y al día.</p>
+      <!-- HEADER CON TÍTULO Y BOTÓN DE SINCRONIZACIÓN -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-2xl font-black text-white">Centro de Despacho & Control de Pedidos Streaming</h2>
+            <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+              {{ streamingStats.pending }} Pendiente(s)
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Entrega cuentas oficiales, verifica comprobantes de pago y consulta el historial completo de ventas directas y de revendedores.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button 
+            @click="manualCloudSync" 
+            :disabled="isSyncingCloud"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 shrink-0"
+            title="Sincronizar pedidos desde la base de datos de Firebase"
+          >
+            <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
+          </button>
+        </div>
       </div>
-      
+
+      <!-- MÉTRICAS Y RESUMEN DE GESTIÓN ORDENADA -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-[#020617] p-4 rounded-2xl border border-amber-500/30">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Por Despachar</span>
+          <span class="text-2xl font-black text-amber-400 font-mono">{{ streamingStats.pending }}</span>
+        </div>
+        <div class="bg-[#020617] p-4 rounded-2xl border border-emerald-500/30">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Entregados / Activos</span>
+          <span class="text-2xl font-black text-emerald-400 font-mono">{{ streamingStats.dispatched }}</span>
+        </div>
+        <div class="bg-[#020617] p-4 rounded-2xl border border-slate-800">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Total Histórico</span>
+          <span class="text-2xl font-black text-white font-mono">{{ streamingStats.all }}</span>
+        </div>
+        <div class="bg-[#020617] p-4 rounded-2xl border border-sky-500/30">
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Facturado Total</span>
+          <span class="text-xl font-black text-sky-400 font-mono">${{ streamingStats.totalAmount.toLocaleString() }} ARS</span>
+        </div>
+      </div>
+
+      <!-- BARRA DE FILTROS Y BÚSQUEDA ORDENADA -->
+      <div class="flex flex-col md:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+        <div class="flex-1 relative">
+          <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+          <input 
+            v-model="streamingOrderSearch" 
+            type="text" 
+            placeholder="Buscar por N° Orden, cliente, WhatsApp, PIN, plataforma..." 
+            class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-brand-accent transition-colors"
+          >
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filtro por Estado -->
+          <select 
+            v-model="streamingOrderStatusFilter" 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-brand-accent cursor-pointer"
+          >
+            <option value="All">Todos los Estados ({{ adminStore.orders.length }})</option>
+            <option value="Waiting Provider">⏳ Pendientes ({{ streamingStats.pending }})</option>
+            <option value="Dispatched">✅ Despachados ({{ streamingStats.dispatched }})</option>
+            <option value="Cancelado">❌ Cancelados ({{ streamingStats.cancelled }})</option>
+          </select>
+
+          <!-- Filtro por Canal / Revendedor -->
+          <select 
+            v-model="streamingOrderResellerFilter" 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-brand-accent cursor-pointer"
+          >
+            <option value="All">Todos los Canales</option>
+            <option value="DIRECT">🛒 Ventas Directas Oficiales</option>
+            <option v-for="res in adminStore.resellers" :key="res.id" :value="res.id">
+              [{{ res.id }}] {{ res.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- LISTA DE PEDIDOS FILTRADOS -->
+      <div v-if="filteredStreamingOrdersForAdmin.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
+        <p class="font-medium">No se encontraron pedidos de streaming con los filtros seleccionados.</p>
+      </div>
+
       <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div v-for="order in adminStore.pendingOrders" :key="order.id" class="bg-[#020617] p-6 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-colors shadow-xl space-y-4">
+        <div 
+          v-for="order in filteredStreamingOrdersForAdmin" 
+          :key="order.id" 
+          :class="[
+            'bg-[#020617] p-6 rounded-2xl border transition-all shadow-xl space-y-4',
+            order.status === 'Waiting Provider' || order.status === 'Pendiente' ? 'border-amber-500/40 hover:border-amber-400' :
+            order.status === 'Dispatched' ? 'border-emerald-500/40 hover:border-emerald-400' :
+            'border-rose-500/30 opacity-80'
+          ]"
+        >
           <div class="flex justify-between items-start gap-4">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
                 <span class="text-lg font-black text-white">{{ order.platform }}</span>
                 <span class="text-xs font-mono text-brand-accent bg-brand-accent/15 px-2 py-0.5 rounded border border-brand-accent/30 font-bold">
+                  {{ order.id }}
+                </span>
+                <span class="text-xs font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                   {{ order.customerNumber }}
                 </span>
-                <span v-if="order.pin" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold" title="PIN de Bóveda del Cliente">
+                <span v-if="order.pin" class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded font-mono font-bold" title="PIN de Bóveda del Cliente">
                   🔐 PIN: {{ order.pin }}
                 </span>
-                <span v-if="order.paymentMethod" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
-                  {{ order.paymentMethod }}
+                <span :class="[
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                  order.status === 'Waiting Provider' || order.status === 'Pendiente' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 animate-pulse' :
+                  order.status === 'Dispatched' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                  'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                ]">
+                  {{ 
+                    order.status === 'Waiting Provider' || order.status === 'Pendiente' ? '⏳ Pendiente' :
+                    order.status === 'Dispatched' ? '✅ Despachado' :
+                    '❌ Cancelado'
+                  }}
                 </span>
+              </div>
+
+              <!-- Metadatos del Cliente -->
+              <div class="text-xs text-slate-400 space-y-0.5 pt-1">
+                <p>
+                  Cliente: <strong class="text-white">{{ order.customerName }}</strong> 
+                  <span class="font-mono text-slate-300 ml-1">({{ order.customerPhone }})</span>
+                </p>
+                <p v-if="order.activationEmail" class="text-indigo-300 font-bold flex items-center gap-1.5 mt-0.5 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/30">
+                  <span>✉️</span>
+                  <span>Correo Activación: <strong class="text-white font-mono">{{ order.activationEmail }}</strong></span>
+                </p>
+                <p class="pt-0.5">
+                  <span v-if="order.resellerId === 'DIRECT' || !order.resellerId" class="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                    <span>🛒</span> VENTA DIRECTA OFICIAL (PROVEEDOR)
+                  </span>
+                  <span v-else class="text-[11px] text-amber-400 font-medium">
+                    Revendedor: <strong>[{{ order.resellerId }}] {{ order.resellerName || '' }}</strong>
+                  </span>
+                </p>
+                <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 pt-0.5">
+                  <span>Plan: <strong class="text-slate-200">{{ order.planLabel || order.devices + ' Pantallas' }}</strong></span>
+                  <span>•</span>
+                  <span>Monto: <strong class="text-emerald-400 font-mono">${{ (order.clientPrice || order.total || 0).toLocaleString() }} ARS</strong></span>
+                  <span v-if="order.paymentMethod">• {{ order.paymentMethod }}</span>
+                </div>
+              </div>
+
+              <!-- Comprobante adjunto -->
+              <div class="pt-1 flex items-center gap-2">
                 <button 
                   v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
                   @click="openReceiptViewer(order, false)"
@@ -1973,61 +2203,110 @@ const deletePackageItem = (pkgId) => {
                 <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono">
                   ✓ Comprobante depurado
                 </span>
-                <span v-if="order.bankTransferVerified" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
-                  <span>✓</span> Acreditada en {{ order.bankTransferDetails?.bankName || 'Banco' }} (${{ (order.bankTransferDetails?.amount || order.clientPrice).toLocaleString() }})
-                </span>
-              </div>
-              <div class="text-xs text-slate-400 space-y-0.5">
-                <p>Cliente: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerPhone }})</p>
-                <p v-if="order.activationEmail" class="text-indigo-300 font-bold flex items-center gap-1.5 mt-0.5 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/30">
-                  <span>✉️</span>
-                  <span>Correo Activación: <strong class="text-white font-mono">{{ order.activationEmail }}</strong></span>
-                </p>
-                <p v-if="order.resellerId === 'DIRECT' || !order.resellerId" class="pt-0.5">
-                  <span class="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                    <span>🛒</span> VENTA DIRECTA OFICIAL (PROVEEDOR)
-                  </span>
-                </p>
-                <p v-else>Revendedor: <strong class="text-amber-400">[{{ order.resellerId }}] {{ order.resellerName || '' }}</strong></p>
-                <p>Plan: <strong class="text-slate-200">{{ order.planLabel }}</strong> • {{ order.pinPreference === 'same' ? 'Mismo PIN' : 'PINs distintos' }}</p>
               </div>
             </div>
-            
-            <div class="flex flex-col gap-2">
-              <button 
-                @click="handleSmartDispatch(order)" 
-                class="bg-brand-accent hover:bg-sky-400 text-slate-950 px-4 py-2.5 font-black text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
-                title="Auto-asignar stock disponible y generar credenciales de inmediato"
-              >
-                <span>⚡ Despacho Rápido (1-Clic)</span>
-              </button>
-              <button 
-                @click="openDispatchModal(order)" 
-                class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 font-bold text-[11px] rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
-                title="Seleccionar cuenta y PINs manualmente"
-              >
-                <span>⚙️ Despacho Manual</span>
-              </button>
-              <button 
-                v-if="order.resellerId === 'DIRECT' || !order.resellerId"
-                @click="contactDirectCustomerWhatsApp(order)" 
-                class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 font-bold text-[11px] rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                title="Contactar al cliente directamente por WhatsApp"
-              >
-                <span>💬 WhatsApp Cliente</span>
-              </button>
-              <button 
-                v-else
-                @click="openIncidentModal(order)" 
-                class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 font-bold text-[11px] rounded-lg border border-slate-700 transition-colors cursor-pointer"
-                title="Avisar novedad de este cliente al revendedor"
-              >
-                📢 Avisar Revendedor
-              </button>
+
+            <!-- BOTONES DE ACCIÓN RÁPIDA -->
+            <div class="flex flex-col gap-2 shrink-0">
+              <!-- Acciones para Pedidos Pendientes -->
+              <template v-if="order.status === 'Waiting Provider' || order.status === 'Pendiente'">
+                <button 
+                  @click="handleSmartDispatch(order)" 
+                  class="bg-brand-accent hover:bg-sky-400 text-slate-950 px-3.5 py-2 font-black text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Auto-asignar stock disponible y generar credenciales de inmediato"
+                >
+                  <span>⚡ Despacho Rápido (1-Clic)</span>
+                </button>
+                <button 
+                  @click="openDispatchModal(order)" 
+                  class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 font-bold text-[11px] rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  title="Seleccionar cuenta y PINs manualmente"
+                >
+                  <span>⚙️ Despacho Manual</span>
+                </button>
+                <button 
+                  @click="contactDirectCustomerWhatsApp(order)" 
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 font-bold text-[11px] rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  title="Contactar al cliente directamente por WhatsApp"
+                >
+                  <span>💬 WhatsApp Cliente</span>
+                </button>
+                <button 
+                  @click="handleCancelStreamingOrder(order)" 
+                  class="bg-rose-950/40 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-[10px] font-bold px-2 py-1 rounded-lg transition cursor-pointer"
+                >
+                  ✕ Cancelar
+                </button>
+              </template>
+
+              <!-- Acciones para Pedidos Despachados -->
+              <template v-else-if="order.status === 'Dispatched'">
+                <button 
+                  @click="copyOrderCredentials(order)" 
+                  class="bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                  title="Copiar correo, contraseña y perfiles"
+                >
+                  <span>📋 Copiar Accesos</span>
+                </button>
+                <button 
+                  @click="resendOrderCredentialsWhatsApp(order)" 
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                  title="Re-enviar credenciales por WhatsApp"
+                >
+                  <span>💬 Enviar WhatsApp</span>
+                </button>
+                <button 
+                  @click="handleDeleteStreamingOrder(order)" 
+                  class="text-slate-500 hover:text-rose-400 text-[10px] py-1 transition cursor-pointer"
+                >
+                  🗑️ Eliminar
+                </button>
+              </template>
+
+              <!-- Acciones para Pedidos Cancelados -->
+              <template v-else>
+                <button 
+                  @click="contactDirectCustomerWhatsApp(order)" 
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
+                >
+                  💬 WhatsApp
+                </button>
+                <button 
+                  @click="handleDeleteStreamingOrder(order)" 
+                  class="text-slate-500 hover:text-rose-400 text-[10px] py-1 transition cursor-pointer"
+                >
+                  🗑️ Eliminar
+                </button>
+              </template>
             </div>
           </div>
 
-          <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+          <!-- DETALLES ADICIONALES DE LA ORDEN -->
+          <!-- Si es Despachado: Muestra las credenciales asignadas -->
+          <div v-if="order.status === 'Dispatched' && order.accountDetails" class="bg-slate-950/90 p-3.5 rounded-xl border border-emerald-500/30 space-y-2 text-xs">
+            <div class="flex items-center justify-between text-emerald-400 font-bold">
+              <span>✓ Credenciales Entregadas al Cliente:</span>
+              <span class="text-[10px] text-slate-400 font-mono">{{ order.accountDetails.dispatchedAt }}</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
+              <div class="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[9px] uppercase">Cuenta:</span>
+                <span class="text-white font-bold truncate block">{{ order.accountDetails.email }}</span>
+              </div>
+              <div class="bg-slate-900 p-2 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[9px] uppercase">Contraseña:</span>
+                <span class="text-amber-300 font-bold truncate block">{{ order.accountDetails.pass }}</span>
+              </div>
+            </div>
+            <div v-if="order.accountDetails.profiles && order.accountDetails.profiles.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+              <span v-for="(p, pIdx) in order.accountDetails.profiles" :key="pIdx" class="bg-slate-900 text-sky-300 text-[10px] px-2 py-0.5 rounded border border-slate-800 font-mono">
+                👤 {{ p.name }} (PIN: {{ p.pin }})
+              </span>
+            </div>
+          </div>
+
+          <!-- Si es Pendiente: Muestra los perfiles requeridos -->
+          <div v-else-if="order.status === 'Waiting Provider' || order.status === 'Pendiente'" class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Nombres requeridos:</p>
             <div class="flex flex-wrap gap-2">
               <div v-for="(p, pIdx) in order.profileSelections" :key="pIdx" class="bg-slate-950 px-2.5 py-1 rounded text-xs border border-slate-800 flex items-center gap-1.5">
@@ -2035,6 +2314,12 @@ const deletePackageItem = (pkgId) => {
                 <span class="text-slate-500 text-[10px]">PIN por asignar</span>
               </div>
             </div>
+          </div>
+
+          <!-- Si es Cancelado: Muestra el motivo -->
+          <div v-else-if="order.status === 'Cancelado'" class="bg-rose-950/20 p-3 rounded-xl border border-rose-500/20 text-xs text-rose-300 space-y-1">
+            <strong>Motivo de Cancelación:</strong> {{ order.cancelReason || 'Sin motivo especificado' }}
+            <p v-if="order.cancelledAt" class="text-[10px] text-slate-500 font-mono">Fecha: {{ order.cancelledAt }}</p>
           </div>
         </div>
       </div>
@@ -3513,6 +3798,15 @@ const deletePackageItem = (pkgId) => {
                   title="Cancelar pedido físico"
                 >
                   <span>✕ Cancelar</span>
+                </button>
+
+                <!-- Eliminar orden física -->
+                <button 
+                  @click="handleDeletePhysicalOrder(order)"
+                  class="bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-bold text-xs px-2.5 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Eliminar pedido físico"
+                >
+                  <span>🗑️</span>
                 </button>
               </div>
             </div>

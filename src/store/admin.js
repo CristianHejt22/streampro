@@ -1255,6 +1255,7 @@ export const useAdminStore = defineStore('admin', {
 
       this.persist(DB_KEYS.INVENTORY)
       this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
 
       const deliveryMessage = this.generateDeliveryWhatsAppMessage(order)
       return { success: true, order, deliveryMessage }
@@ -1323,6 +1324,7 @@ export const useAdminStore = defineStore('admin', {
 
       this.persist(DB_KEYS.INVENTORY)
       this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
 
       const deliveryMessage = this.generateDeliveryWhatsAppMessage(order)
 
@@ -1811,6 +1813,7 @@ export const useAdminStore = defineStore('admin', {
       })
 
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      savePhysicalOrderToFirebase(order).catch(() => {})
       return { success: true, order }
     },
 
@@ -1876,6 +1879,7 @@ export const useAdminStore = defineStore('admin', {
       }
 
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      savePhysicalOrderToFirebase(order).catch(() => {})
       return { success: true, order }
     },
 
@@ -1929,7 +1933,43 @@ export const useAdminStore = defineStore('admin', {
       })
 
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      savePhysicalOrderToFirebase(order).catch(() => {})
       return { success: true, order }
+    },
+
+    cancelStreamingOrder(orderId, reason = 'Cancelado por administración') {
+      const order = this.orders.find(o => o.id === orderId)
+      if (!order) return { error: 'Orden no encontrada' }
+
+      order.status = 'Cancelado'
+      order.cancelReason = reason
+      order.cancelledAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+
+      this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
+      return { success: true, order }
+    },
+
+    deleteStreamingOrder(orderId) {
+      const idx = this.orders.findIndex(o => o.id === orderId)
+      if (idx === -1) return { error: 'Orden no encontrada' }
+      const removed = this.orders.splice(idx, 1)[0]
+      this.persist(DB_KEYS.ORDERS)
+      if (removed.hasReceipt || removed.receiptStatus) {
+        deleteReceipt(removed.id).catch(() => {})
+      }
+      return { success: true }
+    },
+
+    deletePhysicalOrder(orderId) {
+      const idx = this.physicalOrders.findIndex(o => o.id === orderId)
+      if (idx === -1) return { error: 'Pedido no encontrado' }
+      const removed = this.physicalOrders.splice(idx, 1)[0]
+      this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      if (removed.hasReceipt || removed.receiptStatus) {
+        deleteReceipt(removed.id).catch(() => {})
+      }
+      return { success: true }
     },
 
     createPackage({ title, description, badge = 'OFERTA ESPECIAL', services = [], promoPrice, createdBy = 'provider', resellerId = 'ALL' }) {
@@ -2227,6 +2267,7 @@ export const useResellerStore = defineStore('reseller', {
         clientNumber: order.customerNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
         name: order.customerName,
         phone: order.customerPhone || '+54 9 11 0000-0000',
+        pin: order.pin || null,
         account: order.accountDetails?.email || 'cuenta.oficial@streampro.com',
         pass: order.accountDetails?.pass || 'Stream2026*',
         platform: order.platform,
