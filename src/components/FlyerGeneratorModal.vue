@@ -645,12 +645,12 @@ function renderCanvasFlyerBlob() {
           const imgEl = await loadFlyerImageElement(productImageCORS.value)
 
           // Marco interno exacto del rectángulo
-          const pad = 8
+          const pad = (visorW < 450) ? 14 : 8
           const innerX = visorX + pad
           const innerY = visorY + pad
           const innerW = visorW - pad * 2
           const innerH = visorH - pad * 2
-          const cornerR = Math.min(26, innerW * 0.06)
+          const cornerR = Math.min(26, innerW * 0.065)
 
           ctx.save()
           roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, false)
@@ -695,12 +695,12 @@ function renderCanvasFlyerBlob() {
           // Combos streaming: Tarjetas translúcidas futuristas encajadas en el rectángulo
           const services = (selectedPackage.value?.services || []).slice(0, 3)
           if (services.length > 0) {
-            const pad = 10
+            const pad = (visorW < 450) ? 8 : 10
             const innerX = visorX + pad
             const innerY = visorY + pad
             const innerW = visorW - pad * 2
             const innerH = visorH - pad * 2
-            const gap = 12
+            const gap = (visorW < 450) ? 8 : 12
             const cardW = (innerW - (services.length - 1) * gap) / services.length
             const cardH = innerH
 
@@ -743,7 +743,7 @@ function renderCanvasFlyerBlob() {
           // Streaming Individual: Emblema Holográfico de Marca perfectamente proporcionado
           const platStyle = getPlatformCyberStyle(selectedPlatform.value)
 
-          const shieldSize = Math.min(visorH * 0.42, 140)
+          const shieldSize = Math.min(visorH * 0.38, 120)
           const shieldY = centerY - visorH * 0.12
 
           ctx.shadowColor = platStyle.glow
@@ -1010,30 +1010,32 @@ function renderCanvasFlyerBlob() {
 
         } else {
           // ================= SQUARE (1080 x 1080, 1:1) =================
-          // Visor superior exacto: X=280, Y=155, W=520, H=480
-          await drawVisorHeroContent(ctx, 280, 155, 520, 480)
+          // Visor superior exacto: X=353, Y=148, W=374, H=376
+          await drawVisorHeroContent(ctx, 353, 148, 374, 376)
 
-          // Contenido estrictamente dentro del cuadrante (Y=645..970)
-          drawCyberBadge(ctx, width / 2, 645, 36, 820, true)
+          // Contenido estrictamente dentro del cuadrante (Y=545..940)
+          drawCyberBadge(ctx, width / 2, 545, 42, 800, false)
 
           ctx.textAlign = 'center'
-          ctx.font = '900 27px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           ctx.fillStyle = '#ffffff'
           ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-          ctx.shadowBlur = 8
-          const titleLines = wrapText(displayTitle.value, 34).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 702 + i * 32))
+          ctx.shadowBlur = 10
+          const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
+          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 622 + i * 36))
           ctx.shadowBlur = 0
-          const subY = 702 + titleLines.length * 32 + 4
+          const subY = 622 + titleLines.length * 36 + 4
 
-          ctx.font = 'bold 15px sans-serif'
+          ctx.font = 'bold 18px sans-serif'
           ctx.fillStyle = '#38bdf8'
-          ctx.fillText(displaySubtitle.value.length > 46 ? displaySubtitle.value.slice(0, 44) + '...' : displaySubtitle.value, width / 2, subY)
+          ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          const pCardY = subY + 12
-          drawCyberPriceCard(ctx, 130, pCardY, 820, 115, true)
+          const pCardY = subY + 16
+          drawCyberPriceCard(ctx, 130, pCardY, 820, 130, true)
 
-          drawCyberBullets(ctx, 160, pCardY + 115 + 24, 34, 2, true)
+          const bulletsY = pCardY + 130 + 20
+          const numBullets = titleLines.length > 1 ? 2 : 3
+          drawCyberBullets(ctx, 150, bulletsY, 34, numBullets, true)
         }
 
         canvas.toBlob((blob) => {
@@ -2251,7 +2253,7 @@ const shareToWhatsAppStatus = () => {
               <!-- 1.3 SQUARE (1:1) -->
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
-                <div class="absolute top-[14.4%] left-[25.9%] w-[48.1%] h-[44.4%] flex items-center justify-center p-1 z-10">
+                <div class="absolute top-[13.7%] left-[32.7%] w-[34.6%] h-[34.8%] flex items-center justify-center p-1 z-10">
                   <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/50 overflow-hidden relative">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                   </div>
@@ -2262,7 +2264,7 @@ const shareToWhatsAppStatus = () => {
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <div class="w-9 h-9 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                    <div class="w-10 h-10 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
                       <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
                     </div>
                     <span class="font-black text-white text-[10px] uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
@@ -2270,32 +2272,34 @@ const shareToWhatsAppStatus = () => {
                   </div>
                 </div>
 
-                <!-- Contenido Inferior (Dentro del cuadrante Y=645..970) -->
-                <div class="absolute top-[62.5%] bottom-[3.5%] left-[11%] right-[11%] flex flex-col justify-between items-center text-center z-10 py-0.5">
-                  <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black px-2 py-0.2 rounded-full shadow text-[7px] uppercase">
+                <!-- Contenido Inferior (Dentro del cuadrante Y=545..950) -->
+                <div class="absolute top-[51.0%] bottom-[9.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
+                  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider">
                     {{ headlineBadge }}
                   </div>
-                  <div class="space-y-0.2 w-full">
-                    <h2 class="font-black text-[10px] text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
-                    <p class="font-bold text-cyan-300 text-[7px] font-mono truncate">{{ displaySubtitle }}</p>
+                  <div class="space-y-0.5 w-full">
+                    <h2 class="font-black text-xs tracking-tight leading-tight line-clamp-2 text-white">{{ displayTitle }}</h2>
+                    <p class="font-bold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-lg py-0.5 px-2 shadow">
-                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1">
-                      <span class="text-slate-400 line-through text-[6px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
+                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
+                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
+                      <span class="text-slate-400 line-through text-[7px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-${calculatedDiscountPct}%</span>
                     </div>
+                    <div v-else class="text-[6px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
-                      <span class="text-[8px] font-black text-amber-400">$</span>
-                      <span class="font-black tracking-tight text-white font-mono text-xs">{{ displayPrice }}</span>
+                      <span class="text-[9px] font-black text-amber-400">$</span>
+                      <span class="font-black tracking-tight text-white font-mono text-sm sm:text-base">{{ displayPrice }}</span>
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
-                    <div class="text-[5.5px] text-cyan-300 font-bold truncate">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País' : '⚡ Entrega Inmediata · 100% Garantía' }}
+                    <div class="text-[6px] text-cyan-300 font-bold truncate">
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
-                  <div class="w-full text-left space-y-0 text-[7px] font-medium text-slate-200 px-1">
+                  <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
                     <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
                 </div>
               </div>
