@@ -119,14 +119,6 @@ const goToRecruitment = () => {
   router.push('/revendedores')
 }
 
-const openSupportWhatsApp = () => {
-  closeModal()
-  const targetPhone = adminStore.providerBankInfo?.whatsapp || '+54 9 11 0000-0000'
-  const cleanPhone = targetPhone.replace(/[^0-9]/g, '')
-  const msg = `¡Hola StreamePro! 👋 Necesito soporte o información sobre mi cuenta (${profile.value.name || 'Cliente'}).`
-  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
-}
-
 const handleLogout = () => {
   try {
     localStorage.removeItem(STORAGE_PROFILE_KEY)
@@ -195,7 +187,7 @@ const handleLogout = () => {
         <div class="grid grid-cols-2 gap-3">
           <button 
             @click="goToVault" 
-            class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center cursor-pointer"
+            class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center"
           >
             <span class="text-xl">🔐</span>
             <span class="text-xs font-black">Mi Bóveda</span>
@@ -203,45 +195,25 @@ const handleLogout = () => {
           </button>
 
           <button 
-            @click="openSupportWhatsApp" 
-            class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center cursor-pointer"
+            v-if="profile.role === 'reseller' || resellerStore.isAuthenticated"
+            @click="goToReseller" 
+            class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold p-3.5 rounded-2xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 text-center"
           >
-            <span class="text-xl">💬</span>
-            <span class="text-xs font-black">Soporte WhatsApp</span>
-            <span class="text-[10px] text-emerald-100 opacity-90">Atención oficial 24/7</span>
+            <span class="text-xl">🚀</span>
+            <span class="text-xs font-black">Panel Revendedor</span>
+            <span class="text-[10px] text-slate-900 font-bold">Comisiones & Flyers</span>
+          </button>
+
+          <button 
+            v-else
+            @click="goToRecruitment" 
+            class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 text-center"
+          >
+            <span class="text-xl">⭐</span>
+            <span class="text-xs font-black">Ser Revendedor</span>
+            <span class="text-[10px] text-slate-400">Genera ganancias</span>
           </button>
         </div>
-
-        <!-- Opción para ser revendedor o entrar al panel -->
-        <button 
-          v-if="resellerStore.isAuthenticated"
-          @click="goToReseller" 
-          class="w-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-slate-900 border border-amber-500/40 hover:border-amber-400 p-3 rounded-2xl transition-all flex items-center justify-between group cursor-pointer"
-        >
-          <div class="flex items-center gap-2.5">
-            <span class="text-lg">💼</span>
-            <div class="text-left">
-              <span class="text-xs font-black text-amber-300 block">Panel de Distribuidor</span>
-              <span class="text-[10px] text-slate-400">Ir al panel de gestión y saldo</span>
-            </div>
-          </div>
-          <span class="text-amber-400 text-xs font-bold group-hover:translate-x-1 transition-transform">→</span>
-        </button>
-
-        <button 
-          v-else
-          @click="goToRecruitment" 
-          class="w-full bg-slate-950/60 hover:bg-slate-900/80 border border-amber-500/30 hover:border-amber-500/60 p-3 rounded-2xl transition-all flex items-center justify-between group cursor-pointer"
-        >
-          <div class="flex items-center gap-2.5">
-            <span class="text-lg">🚀</span>
-            <div class="text-left">
-              <span class="text-xs font-black text-amber-300 block">¿Quieres ser revendedor oficial?</span>
-              <span class="text-[10px] text-slate-400">Gana hasta 50% de comisiones con tu propia tienda</span>
-            </div>
-          </div>
-          <span class="text-amber-400 text-xs font-bold group-hover:translate-x-1 transition-transform">Postularse →</span>
-        </button>
 
         <!-- Historial de Pedidos Recientes -->
         <div v-if="clientOrders.length > 0" class="space-y-2">
