@@ -12,8 +12,8 @@ const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
 
-onMounted(() => {
-  adminStore.initCloudSync()
+onMounted(async () => {
+  await adminStore.initCloudSync()
   try {
     const raw = localStorage.getItem('streampro_user_profile')
     if (raw) {
@@ -24,6 +24,10 @@ onMounted(() => {
       if (saved.pin && !masterPin.value) {
         masterPin.value = saved.pin
       }
+      // Si el cliente tiene datos guardados de compra reciente, autodesbloquear su bóveda
+      if (searchIdentifier.value) {
+        unlockVault(true)
+      }
     }
   } catch {}
 })
@@ -32,9 +36,11 @@ onMounted(() => {
 const authenticatedClients = ref([])
 const authenticatedPendingOrders = ref([])
 
-const unlockVault = () => {
+const unlockVault = (silent = false) => {
   error.value = ''
-  const query = searchIdentifier.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+  const rawQuery = searchIdentifier.value.trim()
+  const query = rawQuery.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const queryDigits = rawQuery.replace(/[^0-9]/g, '')
   const pin = masterPin.value.trim()
 
   if (!query && !pin) {
@@ -42,69 +48,80 @@ const unlockVault = () => {
     return
   }
 
-  // Buscar clientes coincidentes en servicios streaming activos
+  const matchPhoneOrId = (storedPhone, storedId) => {
+    if (storedId && query && storedId.toLowerCase().replace(/[^a-z0-9]/g, '').includes(query)) return true
+    if (!storedPhone || !queryDigits) return false
+    const sDigits = storedPhone.replace(/[^0-9]/g, '')
+    if (sDigits.includes(queryDigits) || queryDigits.includes(sDigits)) return true
+    const sClean = sDigits.replace(/^549?/, '').replace(/^0/, '')
+    const qClean = queryDigits.replace(/^549?/, '').replace(/^0/, '')
+    if (sClean && qClean && (sClean.includes(qClean) || qClean.includes(sClean))) return true
+    return false
+  }
+
+  // 1. Clientes con cuentas/perfiles ya asignados en el CRM
   let matched = []
   if (query) {
-    matched = resellerStore.clients.filter(c => {
-      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
-      const cleanId = (c.clientNumber || c.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      return cleanPhone.includes(query) || cleanId.includes(query) || query.includes(cleanPhone)
-    })
+    matched = resellerStore.clients.filter(c => matchPhoneOrId(c.phone, c.clientNumber || c.id))
   }
 
-  // Buscar pedidos virtuales de streaming pendientes o en proceso
+  // 2. Pedidos virtuales de streaming (pendientes o entregados)
   let matchedOrders = []
   if (query) {
-    matchedOrders = adminStore.orders.filter(o => {
-      const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '')
-      const cleanId = (o.customerNumber || o.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const isPending = o.status === 'Waiting Provider' || o.status === 'Pendiente'
-      return isPending && ((cleanPhone && (cleanPhone.includes(query) || query.includes(cleanPhone))) || (cleanId && cleanId.includes(query)))
-    })
+    matchedOrders = adminStore.orders.filter(o => matchPhoneOrId(o.customerPhone, o.customerNumber || o.id))
   }
 
-  // Buscar pedidos físicos asociados
+  // 3. Pedidos físicos asociados
   let matchedPhysical = []
   if (query) {
-    matchedPhysical = adminStore.physicalOrders.filter(o => {
-      const cleanPhone = (o.customerPhone || '').replace(/[^0-9]/g, '')
-      const cleanId = (o.customerNumber || o.id || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      return (cleanPhone && (cleanPhone.includes(query) || query.includes(cleanPhone))) || (cleanId && cleanId.includes(query))
-    })
+    matchedPhysical = adminStore.physicalOrders.filter(o => matchPhoneOrId(o.customerPhone, o.customerNumber || o.id))
   }
 
-  // Validación de PIN contra perfiles asignados si hay servicios activos
-  if (matched.length > 0) {
-    if (pin) {
-      const pinMatches = matched.some(c => 
-        c.profiles && c.profiles.some(p => p.pin === pin)
-      )
-      if (!pinMatches) {
-        error.value = 'El PIN ingresado no coincide con tu perfil asignado. Revisa el PIN enviado en tu comprobante.'
-        toast.add('PIN inválido para esta cuenta', 'error')
-        return
-      }
+  // 4. Clientes registrados en el Directorio
+  let matchedUsers = []
+  if (query) {
+    matchedUsers = adminStore.registeredUsers.filter(u => matchPhoneOrId(u.phone, u.clientNumber || u.id))
+  }
+
+  // Validación de PIN si fue ingresado por el cliente
+  if (pin) {
+    const pinMatchesProfile = matched.some(c => 
+      (c.pin && c.pin === pin) ||
+      (c.profiles && c.profiles.some(p => p.pin === pin))
+    )
+    const pinMatchesOrder = matchedOrders.some(o => o.pin && o.pin === pin)
+    const pinMatchesPhysical = matchedPhysical.some(o => o.pin && o.pin === pin)
+    const pinMatchesUser = matchedUsers.some(u => u.pin === pin)
+
+    const hasAnyRecord = matched.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0 || matchedUsers.length > 0
+    if (hasAnyRecord && !pinMatchesProfile && !pinMatchesOrder && !pinMatchesPhysical && !pinMatchesUser) {
+      error.value = 'El PIN ingresado no coincide con tu registro. Por favor verifica tus 4 dígitos.'
+      if (!silent) toast.add('PIN incorrecto para esta cuenta', 'error')
+      return
     }
+  }
+
+  if (matched.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0) {
     authenticatedClients.value = matched
     authenticatedPendingOrders.value = matchedOrders
     isUnlocked.value = true
-    portalTab.value = 'streaming'
-    toast.add(`¡Bienvenido! Se encontraron tus servicios y accesos oficiales`, 'success')
-  } else if (matchedOrders.length > 0) {
-    authenticatedClients.value = []
-    authenticatedPendingOrders.value = matchedOrders
-    isUnlocked.value = true
-    portalTab.value = 'streaming'
-    toast.add(`¡Bienvenido! Tu pedido está en preparación y entrega oficial`, 'info')
-  } else if (matchedPhysical.length > 0) {
-    authenticatedClients.value = []
-    authenticatedPendingOrders.value = []
-    isUnlocked.value = true
-    portalTab.value = 'physical'
-    toast.add(`¡Bienvenido! Se encontraron ${matchedPhysical.length} pedido(s) físicos asociados`, 'success')
+    if (matchedPhysical.length > 0 && matched.length === 0 && matchedOrders.length === 0) {
+      portalTab.value = 'physical'
+    } else {
+      portalTab.value = 'streaming'
+    }
+    if (!silent) {
+      if (matched.length > 0) {
+        toast.add('¡Bienvenido! Se encontraron tus servicios y accesos oficiales', 'success')
+      } else if (matchedOrders.length > 0) {
+        toast.add('¡Bienvenido! Tu pedido está registrado en tu Bóveda', 'info')
+      } else {
+        toast.add(`¡Bienvenido! Se encontraron ${matchedPhysical.length} pedido(s) asociados`, 'success')
+      }
+    }
   } else {
     error.value = 'No se encontraron servicios ni pedidos activos con esos datos. Verifica tu número de WhatsApp o N° de Cliente.'
-    toast.add('No encontramos tus servicios ni pedidos', 'error')
+    if (!silent) toast.add('No encontramos tus servicios ni pedidos', 'error')
   }
 }
 
@@ -210,6 +227,40 @@ const sendHogarViaWhatsApp = () => {
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
+const openOrderWhatsApp = (order) => {
+  const providerPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
+  let cleanPhone = providerPhone.replace(/[^0-9]/g, '')
+  if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
+  if (cleanPhone.length === 10) cleanPhone = `549${cleanPhone}`
+
+  const msg = `¡Hola! Tengo una consulta sobre mi Pedido *#${order.id || order.clientNumber}* en StreamePro 🚀\n\n` +
+    `👤 *Cliente:* ${order.customerName || 'Cliente'}\n` +
+    `📱 *WhatsApp:* ${order.customerPhone || ''}\n` +
+    (order.pin ? `🔐 *PIN de Bóveda:* ${order.pin}\n` : '') +
+    `🎬 *Servicio:* ${order.platform || 'Streaming'} - ${order.planLabel || (order.devices ? order.devices + ' Pantalla(s)' : '1 Pantalla')}\n` +
+    `💰 *Total:* ${(order.clientPrice || order.total || 0).toLocaleString()} ARS\n\n` +
+    `Adjunto mi consulta / comprobante de pago.`
+
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+const openPhysicalOrderWhatsApp = (order) => {
+  const providerPhone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
+  let cleanPhone = providerPhone.replace(/[^0-9]/g, '')
+  if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
+  if (cleanPhone.length === 10) cleanPhone = `549${cleanPhone}`
+
+  const msg = `¡Hola! Tengo una consulta sobre mi Pedido Físico *#${order.id || order.clientNumber}* en StreamePro 📦\n\n` +
+    `👤 *Cliente:* ${order.customerName || 'Cliente'}\n` +
+    `📱 *WhatsApp:* ${order.customerPhone || ''}\n` +
+    (order.pin ? `🔐 *PIN de Bóveda:* ${order.pin}\n` : '') +
+    `📦 *Dirección:* ${order.shippingAddress || 'A coordinar'}\n` +
+    `💰 *Total:* ${(order.totalAmount || 0).toLocaleString()} ARS\n\n` +
+    `Consulto por disponibilidad y coordinación de entrega.`
+
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 const handleCustomerRenewal = (acc) => {
   const result = adminStore.requestRenewal({
     clientId: acc.id,
@@ -295,7 +346,7 @@ const handleCustomerRenewal = (acc) => {
       <!-- Estado Desbloqueado: Mis Servicios y Pedidos -->
       <div v-else class="space-y-6">
         <!-- Navegación entre Servicios Streaming y Pedidos de Productos Físicos -->
-        <div class="flex justify-between items-center bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
+        <div class="flex flex-wrap justify-between items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
           <div class="flex flex-wrap items-center gap-2">
             <button 
               @click="portalTab = 'streaming'"
@@ -307,7 +358,7 @@ const handleCustomerRenewal = (acc) => {
               ]"
             >
               <span>🎬</span>
-              <span>Suscripciones Streaming ({{ customerAccounts.length }})</span>
+              <span>Suscripciones Streaming ({{ customerAccounts.length + customerPendingOrders.length }})</span>
             </button>
             <button 
               @click="portalTab = 'physical'"
@@ -322,9 +373,19 @@ const handleCustomerRenewal = (acc) => {
               <span>Pedidos Físicos ({{ customerPhysicalOrders.length }})</span>
             </button>
           </div>
-          <button @click="isUnlocked = false; masterPin = ''; authenticatedClients = []" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors border border-slate-700 text-slate-300">
-            Bloquear Vista
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="adminStore.syncFromCloud(); toast.add('Bóveda sincronizada con la nube', 'info')" 
+              class="px-3 py-2 bg-slate-950 hover:bg-slate-800 text-xs font-bold rounded-xl transition-colors border border-slate-800 text-sky-400 flex items-center gap-1.5 cursor-pointer"
+              title="Actualizar datos con la nube"
+            >
+              <span>🔄</span>
+              <span>Actualizar</span>
+            </button>
+            <button @click="isUnlocked = false; masterPin = ''; authenticatedClients = []; authenticatedPendingOrders = []" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition-colors border border-slate-700 text-slate-300 cursor-pointer">
+              Bloquear Vista
+            </button>
+          </div>
         </div>
 
         <!-- PESTAÑA 1: SUSCRIPCIONES STREAMING DIGITALES -->
@@ -346,26 +407,43 @@ const handleCustomerRenewal = (acc) => {
                     <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
                       Orden #{{ order.id }}
                     </span>
-                    <h4 class="text-white font-bold text-sm">{{ order.platform }} - {{ order.planLabel || order.devices + ' Pantalla(s)' }}</h4>
+                    <h4 class="text-white font-bold text-sm">{{ order.platform }} - {{ order.planLabel || (order.devices ? order.devices + ' Pantalla(s)' : '1 Pantalla') }}</h4>
                   </div>
                   <p class="text-xs text-slate-300 mt-1">
                     Registrado a nombre de: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerNumber }})
                   </p>
                 </div>
-                <span class="text-xs font-bold bg-amber-400 text-slate-950 px-3 py-1 rounded-full shadow flex items-center gap-1.5 animate-pulse">
-                  <span>⏳</span>
-                  <span>En Preparación (10 min a 1 hora)</span>
-                </span>
+                <div class="flex items-center gap-2">
+                  <span v-if="order.pin" class="text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-1 rounded-lg">
+                    🔐 PIN: {{ order.pin }}
+                  </span>
+                  <span class="text-xs font-bold bg-amber-400 text-slate-950 px-3 py-1 rounded-full shadow flex items-center gap-1.5 animate-pulse">
+                    <span>⏳</span>
+                    <span>En Preparación (10 min a 1 hora)</span>
+                  </span>
+                </div>
               </div>
 
               <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5">
                 <div class="flex items-center gap-2 text-emerald-400 font-bold">
                   <span>✓</span>
-                  <span>{{ order.hasReceipt || order.receiptStatus ? 'Comprobante recibido en la mini nube (en verificación por el proveedor)' : 'Pedido registrado en el sistema oficial' }}</span>
+                  <span>{{ order.hasReceipt || order.receiptStatus ? 'Comprobante recibido en la nube (en verificación por el proveedor)' : 'Pedido registrado en el sistema oficial' }}</span>
                 </div>
                 <p class="text-slate-400 text-[11px] leading-relaxed">
                   Tus credenciales (correo, contraseña y PIN asignado) aparecerán en esta misma pantalla en cuanto el proveedor complete la activación.
                 </p>
+              </div>
+
+              <!-- Botón opcional para WhatsApp si el cliente lo necesita -->
+              <div class="pt-1 flex flex-wrap gap-2">
+                <button 
+                  @click="openOrderWhatsApp(order)"
+                  class="flex-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <span class="text-base">💬</span>
+                  <span>Contactar Asesor por WhatsApp sobre esta Orden</span>
+                  <span class="text-[10px] font-mono opacity-80">+54 9 291 565-9321</span>
+                </button>
               </div>
             </div>
           </div>
@@ -567,6 +645,18 @@ const handleCustomerRenewal = (acc) => {
 
                 <div v-if="order.status === 'Cancelado' && order.cancelReason" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-300">
                   <strong>Motivo de cancelación:</strong> {{ order.cancelReason }}
+                </div>
+
+                <!-- Botón de contacto para orden física -->
+                <div class="pt-2 flex flex-wrap gap-2">
+                  <button 
+                    @click="openPhysicalOrderWhatsApp(order)"
+                    class="flex-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <span class="text-base">💬</span>
+                    <span>Contactar Asesor por WhatsApp sobre este Pedido</span>
+                    <span class="text-[10px] font-mono opacity-80">+54 9 291 565-9321</span>
+                  </button>
                 </div>
               </div>
             </div>

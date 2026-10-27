@@ -177,12 +177,11 @@ const getInitialClientForm = () => {
     if (raw) saved = JSON.parse(raw)
   } catch {}
 
-  const defaultPin = String(Math.floor(1000 + Math.random() * 9000))
   return {
     clientNumber: saved?.clientNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: saved?.name || '',
     whatsapp: saved?.phone || '',
-    pin: saved?.pin || defaultPin,
+    pin: saved?.pin || '',
     shippingAddress: saved?.address || '',
     selectedResellerId: 'DIRECT',
     paymentMethod: 'Transferencia Bancaria / CBU',
@@ -599,6 +598,12 @@ const submitOrder = async () => {
     return
   }
 
+  const cleanPin = (clientForm.value.pin || '').trim()
+  if (!cleanPin || cleanPin.length !== 4) {
+    toast.add('Por favor ingresa un PIN de 4 dígitos para tu Bóveda (Ej: 1234)', 'error')
+    return
+  }
+
   const digitalItems = cartStore.items.filter(i => i.itemType !== 'physical')
   const physicalItems = cartStore.items.filter(i => i.itemType === 'physical')
   const isDirect = isDirectSale.value
@@ -751,14 +756,9 @@ const submitOrder = async () => {
   showOrderSuccessModal.value = true
   cartStore.clearCart()
 
-  // 5. Redirigir a WhatsApp tras retardo para permitir al usuario ver su PIN
-  setTimeout(() => {
-    sendOrderToWhatsApp()
-  }, 1200)
-
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
-    body: `Tu pedido por $${orderSnapshot.total.toLocaleString()} ARS fue enviado a los paneles de atención. Tiempo de entrega: 10 min a 1 hora.`,
+    body: `Tu pedido por ${orderSnapshot.total.toLocaleString()} ARS fue enviado a los paneles de atención. Tiempo de entrega: 10 min a 1 hora.`,
     icon: '/pwa-192x192.png',
     tag: `streampro-order-${prevNum}`
   })
@@ -767,6 +767,7 @@ const submitOrder = async () => {
     clientNumber: `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: '',
     whatsapp: '',
+    pin: '',
     shippingAddress: '',
     selectedResellerId: currentRef, // Mantener estado de sesión actual
     paymentMethod: 'Transferencia Bancaria / CBU',
@@ -1519,26 +1520,36 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <!-- PIN de Seguridad para Bóveda Privada -->
-          <div class="bg-gradient-to-r from-slate-950 to-indigo-950/40 p-3.5 rounded-xl border border-indigo-500/30 flex items-center justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+          <!-- PIN de Seguridad para Bóveda Privada (Opción C - Manual Obligatorio) -->
+          <div class="bg-gradient-to-r from-indigo-950/60 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/40 space-y-2.5 shadow-lg">
+            <div class="flex items-center justify-between">
+              <label class="font-black uppercase text-indigo-300 text-xs flex items-center gap-2">
                 <span>🔐</span>
-                <span>PIN de Seguridad para tu Bóveda</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">
-                Generado para que consultes tus cuentas y accesos en cualquier momento.
-              </p>
+                <span>Crea tu PIN de Acceso a tu Bóveda (4 dígitos) *</span>
+              </label>
+              <span class="text-[10px] bg-amber-400/15 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-400/30">
+                Obligatorio
+              </span>
             </div>
-            <div class="w-24 shrink-0">
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Elige 4 dígitos personales (ej: <strong>1234</strong>). Te servirán para ingresar a tu Bóveda en cualquier momento y ver tus pedidos o accesos.
+            </p>
+            <div class="flex items-center gap-3">
               <input 
                 v-model="clientForm.pin" 
+                @input="clientForm.pin = (clientForm.pin || '').replace(/\D/g, '').slice(0, 4)"
                 type="text" 
-                maxlength="6"
-                class="w-full bg-slate-900 border border-indigo-500/50 rounded-xl p-2 text-center text-sm font-black font-mono text-amber-300 outline-none focus:border-amber-400 shadow-inner"
-                placeholder="PIN"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                minlength="4"
+                class="w-36 bg-slate-900 border-2 border-indigo-500/60 focus:border-amber-400 rounded-xl py-2.5 px-3 text-center text-lg font-black font-mono tracking-[0.3em] text-amber-300 outline-none shadow-inner placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-xs"
+                placeholder="Ej: 1234"
                 required
               />
+              <span class="text-[11px] font-medium text-slate-400">
+                {{ clientForm.pin && clientForm.pin.length === 4 ? '✓ PIN de 4 dígitos ingresado' : 'Ingresa 4 dígitos numéricos' }}
+              </span>
             </div>
           </div>
 
@@ -1972,6 +1983,23 @@ const submitOrder = async () => {
           </div>
         </div>
 
+        <!-- CLAVE DE ACCESO A TU BÓVEDA -->
+        <div class="bg-gradient-to-r from-amber-500/10 via-slate-950 to-indigo-950/40 p-4 rounded-2xl border border-amber-500/30 flex items-center justify-between gap-3 shadow-lg">
+          <div>
+            <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs uppercase tracking-wider">
+              <span>🔐</span>
+              <span>Clave PIN de tu Bóveda Privada</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-0.5">
+              Guarda este PIN junto a tu celular para consultar tus accesos y cuentas en <span class="text-sky-300 font-mono">streamepro.me/boveda</span>
+            </p>
+          </div>
+          <div class="bg-slate-950 border border-amber-500/50 px-4 py-2 rounded-xl text-center shrink-0 shadow-inner">
+            <span class="text-[9px] text-slate-400 uppercase font-mono block">Tu PIN</span>
+            <span class="text-xl font-black font-mono text-amber-300 tracking-widest">{{ lastPlacedOrder.pin }}</span>
+          </div>
+        </div>
+
         <!-- PASO 1: RESUMEN DEL PEDIDO -->
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs font-mono">
           <div class="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-2">
@@ -2075,24 +2103,26 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- ACCIONES PRINCIPALES: WHATSAPP DIRECTO Y BÓVEDA -->
-        <div class="space-y-2.5 pt-1">
-          <button 
-            @click="sendOrderToWhatsApp" 
-            class="w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:brightness-110 text-slate-950 font-black py-4 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer animate-pulse"
-          >
-            <span class="text-xl">📲</span>
-            <span>Enviar Pedido por WhatsApp</span>
-            <span class="text-[11px] bg-slate-950/20 px-2 py-0.5 rounded-full font-mono font-bold">+54 9 291 565-9321</span>
-            <span>→</span>
-          </button>
-          
+        <!-- ACCIONES PRINCIPALES: BÓVEDA DIRECTA Y WHATSAPP OPCIONAL -->
+        <div class="space-y-3 pt-1">
+          <!-- BOTÓN PRINCIPAL: IR A LA BÓVEDA -->
           <button 
             @click="goToCustomerPortal" 
-            class="w-full bg-slate-800/90 hover:bg-slate-700 text-sky-400 border border-sky-500/20 font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            class="w-full bg-gradient-to-r from-sky-500 via-indigo-600 to-blue-600 hover:brightness-110 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-500/25 transition-all text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span class="text-sm">🔐</span>
+            <span class="text-xl">🔐</span>
             <span>Ir a mi Bóveda y Consultar Mis Accesos</span>
+            <span>→</span>
+          </button>
+
+          <!-- BOTÓN SECUNDARIO: WHATSAPP OPCIONAL -->
+          <button 
+            @click="sendOrderToWhatsApp" 
+            class="w-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span class="text-base">💬</span>
+            <span>Enviar comprobante o consultar por WhatsApp (Opcional)</span>
+            <span class="text-[10px] bg-slate-950/40 px-2 py-0.5 rounded-full font-mono text-emerald-400 font-bold">+54 9 291 565-9321</span>
           </button>
 
           <div class="flex justify-center pt-1">
