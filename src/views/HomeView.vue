@@ -874,19 +874,15 @@ const submitOrder = async () => {
         </button>
       </div>
 
-      <!-- Estado de la Tienda: Oficial Directo vs Canal de Distribuidor -->
-      <div v-if="!isDirectSale && currentReseller" class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-2xl border border-amber-500/30 text-xs">
-        <span class="text-slate-400">Atendido por:</span>
+      <!-- Banner de Afiliación / Reseller Asignado (Sin porcentajes privados para el cliente) -->
+      <div class="flex items-center gap-2 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-white/[0.08] text-xs">
+        <span class="text-slate-400">Distribuidor Asignado:</span>
         <strong class="text-white font-bold bg-slate-800 px-2.5 py-0.5 rounded">{{ resellerStoreName }}</strong>
-        <span class="bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded text-[10px] border border-amber-500/30">
-          Dist. Verificado
+        <span v-if="clientForm.isSharedUrl" class="bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-500/30">
+          🤝 Recomendación Compartida
         </span>
-      </div>
-      <div v-else class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-2xl border border-white/[0.08] text-xs self-start sm:self-auto">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-300 font-medium">Tienda Oficial StreamePro</span>
-        <span class="bg-sky-500/15 text-sky-300 font-bold px-2 py-0.5 rounded text-[10px] border border-sky-500/30">
-          Oficial Directo
+        <span v-else class="bg-sky-500/15 text-sky-300 font-bold px-2.5 py-0.5 rounded text-[11px] border border-sky-500/30 flex items-center gap-1 shadow-sm">
+          🛍️ Tienda Oficial (VERIFICADO)
         </span>
       </div>
     </div>
@@ -1797,7 +1793,7 @@ const submitOrder = async () => {
                   Haz clic o arrastra tu comprobante en <span class="text-brand-accent font-black">JPG, PNG o PDF</span>
                 </p>
                 <p class="text-[10px] text-slate-400">
-                  Llegará directamente al panel oficial para verificar el pago y se confirmará la entrega.
+                  Llegará directamente al panel del revendedor y proveedor para verificar el pago y se eliminará al confirmar la entrega.
                 </p>
               </div>
             </div>
@@ -2184,7 +2180,7 @@ const submitOrder = async () => {
             <span>¡Pedido Registrado Directamente en el Panel Oficial!</span>
           </div>
           <p class="text-slate-300 text-xs leading-relaxed">
-            Tu orden ha ingresado de forma instantánea al <strong class="text-white">Panel Oficial de Validación y Entrega</strong>.
+            Tu orden ha ingresado de forma instantánea al <strong class="text-white">Panel del {{ lastPlacedOrder.isDirect ? 'Proveedor Mayorista' : 'Revendedor y Proveedor' }}</strong>.
             Tiempo estimado de entrega de accesos: <strong class="text-amber-300 font-bold">10 minutos a 1 hora</strong>.
           </p>
 

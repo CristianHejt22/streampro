@@ -96,17 +96,68 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
           </div>
 
-          <!-- NAVEGACIÓN PARA CLIENTES: Exclusivamente el botón del Menú Desplegable (para no duplicar en la barra lo que ya está dentro del menú) -->
-          <nav v-if="isClientArea" class="flex items-center">
+          <!-- NAVEGACIÓN PARA CLIENTES: Todas las funciones activas como antes + Menú desplegable mejorado -->
+          <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1 sm:gap-1.5 text-xs font-bold bg-slate-900/80 p-1 sm:p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
+            <RouterLink 
+              to="/" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
+              title="Tienda Oficial"
+            >
+              <span class="text-sm">🛒</span>
+              <span class="hidden sm:inline">Tienda</span>
+            </RouterLink>
+            
+            <RouterLink 
+              to="/p" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              active-class="!bg-amber-500/15 !text-amber-300 !border !border-amber-500/30 shadow-sm"
+              title="Catálogo de Productos Físicos tua.ar"
+            >
+              <span>📦</span>
+              <span class="hidden sm:inline">Catálogo Físico</span>
+            </RouterLink>
+
+            <RouterLink 
+              to="/portal" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
+              title="Mi Bóveda de Clientes"
+            >
+              <span>🔐</span>
+              <span class="hidden sm:inline">Mi Bóveda</span>
+            </RouterLink>
+
+            <RouterLink 
+              to="/revendedores" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
+              active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
+              title="Ser Revendedor Oficial"
+            >
+              <span>🚀</span>
+              <span class="hidden md:inline">Ser Revendedor</span>
+            </RouterLink>
+
+            <!-- Acceso Rápido / Registro de Usuario -->
+            <button 
+              @click="showProfileModal = true" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm cursor-pointer"
+              title="Mi Perfil, compras y registro"
+            >
+              <span>👤</span>
+              <span class="hidden sm:inline">{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
+            </button>
+
+            <!-- BOTÓN DEL MENÚ DESPLEGABLE MEJORADO -->
             <button 
               @click="showNavDropdown = !showNavDropdown" 
-              class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-gradient-to-r from-sky-500/20 via-blue-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 text-sky-300 hover:text-white border border-sky-500/40 font-black transition-all flex items-center gap-2 shadow-lg active:scale-95 cursor-pointer text-xs sm:text-sm"
-              :class="{ '!bg-sky-500 !text-slate-950 !border-white shadow-[0_0_25px_rgba(56,189,248,0.5)]': showNavDropdown }"
-              title="Abrir Menú Desplegable Completo"
+              class="px-2.5 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500/20 via-blue-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 text-sky-300 hover:text-white border border-sky-500/40 font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              :class="{ '!bg-sky-500 !text-slate-950 !border-white shadow-[0_0_20px_rgba(56,189,248,0.5)]': showNavDropdown }"
+              title="Abrir menú desplegable con todas las opciones"
             >
-              <span class="text-sm sm:text-base font-bold">{{ showNavDropdown ? '✕' : '☰' }}</span>
-              <span class="tracking-wide">{{ savedUserName ? `Menú (${savedUserName})` : 'Menú' }}</span>
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-sm font-bold">{{ showNavDropdown ? '✕' : '☰' }}</span>
+              <span class="hidden sm:inline">Menú</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </button>
           </nav>
 
