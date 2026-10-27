@@ -96,48 +96,17 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
           </div>
 
-          <!-- NAVEGACIÓN PARA CLIENTES -->
-          <nav v-if="isClientArea" class="flex items-center gap-1 sm:gap-1.5 text-xs font-bold bg-slate-900/80 p-1 sm:p-1.5 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
-            <RouterLink 
-              to="/" 
-              class="p-2 sm:px-3 sm:py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
-              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
-              title="Tienda Oficial"
-            >
-              <span class="text-sm">🛒</span>
-              <span class="hidden sm:inline">Tienda</span>
-            </RouterLink>
-            
-            <RouterLink 
-              to="/portal" 
-              class="p-2 sm:px-3 sm:py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
-              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
-              title="Mi Bóveda de Clientes"
-            >
-              <span class="text-sm">🔐</span>
-              <span class="hidden sm:inline">Mi Bóveda</span>
-            </RouterLink>
-
-            <!-- Acceso Rápido / Registro de Usuario -->
-            <button 
-              @click="showProfileModal = true" 
-              class="p-2 sm:px-3 sm:py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm cursor-pointer"
-              title="Mi Perfil, compras y registro"
-            >
-              <span class="text-sm">👤</span>
-              <span class="hidden sm:inline">{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
-            </button>
-
-            <!-- BOTÓN PRINCIPAL DEL MENÚ DESPLEGABLE -->
+          <!-- NAVEGACIÓN PARA CLIENTES: Exclusivamente el botón del Menú Desplegable (para no duplicar en la barra lo que ya está dentro del menú) -->
+          <nav v-if="isClientArea" class="flex items-center">
             <button 
               @click="showNavDropdown = !showNavDropdown" 
-              class="px-2.5 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500/20 via-blue-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 text-sky-300 hover:text-white border border-sky-500/40 font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-              :class="{ '!bg-sky-500 !text-slate-950 !border-white shadow-[0_0_20px_rgba(56,189,248,0.5)]': showNavDropdown }"
-              title="Abrir menú desplegable con todas las opciones"
+              class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-gradient-to-r from-sky-500/20 via-blue-500/20 to-indigo-500/20 hover:from-sky-500/30 hover:to-indigo-500/30 text-sky-300 hover:text-white border border-sky-500/40 font-black transition-all flex items-center gap-2 shadow-lg active:scale-95 cursor-pointer text-xs sm:text-sm"
+              :class="{ '!bg-sky-500 !text-slate-950 !border-white shadow-[0_0_25px_rgba(56,189,248,0.5)]': showNavDropdown }"
+              title="Abrir Menú Desplegable Completo"
             >
-              <span class="text-sm font-bold">{{ showNavDropdown ? '✕' : '☰' }}</span>
-              <span class="text-xs">Menú</span>
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden xs:inline-block"></span>
+              <span class="text-sm sm:text-base font-bold">{{ showNavDropdown ? '✕' : '☰' }}</span>
+              <span class="tracking-wide">{{ savedUserName ? `Menú (${savedUserName})` : 'Menú' }}</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             </button>
           </nav>
 
@@ -351,7 +320,55 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             </div>
           </div>
 
-          <!-- SECCIÓN 3: 🛡️ GARANTÍA & COMPROMISO OFICIAL -->
+          <!-- SECCIÓN 3: 💼 DISTRIBUIDORES & NEGOCIO MAYORISTA (RECUPERADA) -->
+          <div class="space-y-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block flex items-center gap-1.5">
+              <span>💼</span> Distribuidores & Negocio Mayorista
+            </span>
+
+            <div class="grid grid-cols-1 gap-2">
+              <RouterLink 
+                to="/revendedores" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-slate-900 border border-amber-500/35 hover:border-amber-400 transition-all group shadow-sm"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center text-base shrink-0 group-hover:scale-105 transition-transform">
+                    🚀
+                  </span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-black text-amber-300 text-xs group-hover:text-white">Ser Revendedor Autorizado</span>
+                      <span class="text-[8px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black uppercase">
+                        Comisiones
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-slate-300">Gana hasta 50% revendiendo streaming con tu propia tienda</span>
+                  </div>
+                </div>
+                <span class="text-amber-400 font-bold text-sm">→</span>
+              </RouterLink>
+
+              <RouterLink 
+                to="/crm" 
+                @click="showNavDropdown = false"
+                class="flex items-center justify-between p-2.5 rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 border border-white/[0.06] hover:border-slate-700 transition-all group text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center text-sm shrink-0">
+                    🔑
+                  </span>
+                  <div>
+                    <span class="font-bold text-slate-300 text-xs block group-hover:text-white">Acceso a Panel de Distribuidores</span>
+                    <span class="text-[10px] text-slate-500">Ingreso exclusivo para mayoristas registrados (RES-01...)</span>
+                  </div>
+                </div>
+                <span class="text-slate-500 group-hover:text-white text-sm">→</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- SECCIÓN 4: 🛡️ GARANTÍA & COMPROMISO OFICIAL -->
           <div class="bg-gradient-to-br from-slate-900/90 to-blue-950/30 border border-white/[0.08] rounded-2xl p-3.5 space-y-2">
             <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <span>🛡️</span> Garantía StreamePro 100%
@@ -376,7 +393,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             </div>
           </div>
 
-          <!-- SECCIÓN 4: 💬 SOPORTE OFICIAL & ACCIONES RÁPIDAS -->
+          <!-- SECCIÓN 5: 💬 SOPORTE OFICIAL & ACCIONES RÁPIDAS -->
           <div class="space-y-2.5 pt-2 border-t border-white/[0.08]">
             <button 
               @click="openSupportWhatsApp(); showNavDropdown = false"
