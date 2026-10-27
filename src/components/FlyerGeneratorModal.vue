@@ -51,6 +51,113 @@ const flyerFormatLabels = {
   banner: '16:9 Banner Horizontal'
 }
 
+// Configuración adaptativa de Estilos / Temas con el mismo diseño oficial y efectos específicos
+const currentTheme = computed(() => {
+  switch (flyerTheme.value) {
+    case 'cinema':
+      return {
+        id: 'cinema',
+        name: 'Cinema Dark',
+        filter: 'hue-rotate(170deg) saturate(1.25) contrast(1.05)',
+        accent: '#ef4444',
+        accentLight: '#f87171',
+        glow: 'rgba(239, 68, 68, 0.45)',
+        border: 'rgba(239, 68, 68, 0.65)',
+        badgeGrad: ['#dc2626', '#b91c1c'],
+        cardBg: 'rgba(28, 6, 14, 0.95)',
+        cardBorder: 'rgba(239, 68, 68, 0.55)',
+        textAccent: '#f87171',
+        pedGlow: 'rgba(239, 68, 68, 0.22)',
+        bulletColor: '#ef4444',
+        cssBorder: 'border-red-500/50',
+        cssText: 'text-red-400',
+        cssTagBorder: 'border-red-500/40 bg-red-950/80 text-red-200',
+        cssBadge: 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 text-white shadow-lg shadow-red-950/60',
+        cssPriceBox: 'bg-slate-950/90 border border-red-500/40 shadow-xl shadow-red-950/50',
+        cssCheck: 'bg-red-500 text-slate-950',
+        cssCheckText: 'text-red-400',
+        cssContainerBorder: 'border-red-500/50 shadow-red-950/70',
+        cssCurrency: 'text-red-400'
+      }
+    case 'emerald':
+      return {
+        id: 'emerald',
+        name: 'Emerald Deal',
+        filter: 'hue-rotate(-50deg) saturate(1.2) contrast(1.05)',
+        accent: '#10b981',
+        accentLight: '#34d399',
+        glow: 'rgba(16, 185, 129, 0.45)',
+        border: 'rgba(16, 185, 129, 0.65)',
+        badgeGrad: ['#059669', '#047857'],
+        cardBg: 'rgba(6, 26, 18, 0.95)',
+        cardBorder: 'rgba(16, 185, 129, 0.55)',
+        textAccent: '#34d399',
+        pedGlow: 'rgba(16, 185, 129, 0.22)',
+        bulletColor: '#10b981',
+        cssBorder: 'border-emerald-500/50',
+        cssText: 'text-emerald-400',
+        cssTagBorder: 'border-emerald-500/40 bg-emerald-950/80 text-emerald-200',
+        cssBadge: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white shadow-lg shadow-emerald-950/60',
+        cssPriceBox: 'bg-slate-950/90 border border-emerald-500/40 shadow-xl shadow-emerald-950/50',
+        cssCheck: 'bg-emerald-400 text-slate-950',
+        cssCheckText: 'text-emerald-400',
+        cssContainerBorder: 'border-emerald-500/50 shadow-emerald-950/70',
+        cssCurrency: 'text-emerald-400'
+      }
+    case 'blue':
+      return {
+        id: 'blue',
+        name: 'Deep Blue',
+        filter: 'hue-rotate(30deg) saturate(1.3) contrast(1.05)',
+        accent: '#3b82f6',
+        accentLight: '#60a5fa',
+        glow: 'rgba(59, 130, 246, 0.45)',
+        border: 'rgba(59, 130, 246, 0.65)',
+        badgeGrad: ['#1d4ed8', '#1e40af'],
+        cardBg: 'rgba(8, 18, 44, 0.95)',
+        cardBorder: 'rgba(59, 130, 246, 0.55)',
+        textAccent: '#60a5fa',
+        pedGlow: 'rgba(59, 130, 246, 0.22)',
+        bulletColor: '#3b82f6',
+        cssBorder: 'border-blue-500/50',
+        cssText: 'text-blue-400',
+        cssTagBorder: 'border-blue-500/40 bg-blue-950/80 text-blue-200',
+        cssBadge: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-blue-950/60',
+        cssPriceBox: 'bg-slate-950/90 border border-blue-500/40 shadow-xl shadow-blue-950/50',
+        cssCheck: 'bg-blue-400 text-slate-950',
+        cssCheckText: 'text-blue-400',
+        cssContainerBorder: 'border-blue-500/50 shadow-blue-950/70',
+        cssCurrency: 'text-blue-400'
+      }
+    case 'cyber':
+    default:
+      return {
+        id: 'cyber',
+        name: 'Cyber Pro',
+        filter: 'none',
+        accent: '#00f0ff',
+        accentLight: '#38bdf8',
+        glow: 'rgba(0, 240, 255, 0.4)',
+        border: 'rgba(56, 189, 248, 0.65)',
+        badgeGrad: ['#f59e0b', '#ea580c'],
+        cardBg: 'rgba(15, 23, 42, 0.95)',
+        cardBorder: 'rgba(56, 189, 248, 0.55)',
+        textAccent: '#38bdf8',
+        pedGlow: 'rgba(0, 240, 255, 0.18)',
+        bulletColor: '#00f0ff',
+        cssBorder: 'border-cyan-400/50',
+        cssText: 'text-cyan-300',
+        cssTagBorder: 'border-cyan-500/40 bg-cyan-950/80 text-cyan-200',
+        cssBadge: 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 shadow-lg shadow-cyan-950/40',
+        cssPriceBox: 'bg-slate-950/90 border border-cyan-400/40 shadow-xl shadow-cyan-950/40',
+        cssCheck: 'bg-cyan-400 text-slate-950',
+        cssCheckText: 'text-cyan-400',
+        cssContainerBorder: 'border-cyan-400/50 shadow-cyan-950/60',
+        cssCurrency: 'text-amber-400'
+      }
+  }
+})
+
 const isExporting = ref(false)
 const flyerPreviewRef = ref(null)
 
@@ -618,10 +725,10 @@ function renderCanvasFlyerBlob() {
       // ========================================================
       // HELPERS DEL SISTEMA DE DISEÑO CYBER OFICIAL ELEVADO
       // ========================================================
-      function drawCyberBackground(ctx, w, h) {
+      function drawCyberBackground(ctx, w, h, th) {
         const bgGrad = ctx.createLinearGradient(0, 0, 0, h)
         bgGrad.addColorStop(0, '#020617')
-        bgGrad.addColorStop(0.5, '#082f49')
+        bgGrad.addColorStop(0.5, (th && th.cardBg) ? th.cardBg : '#082f49')
         bgGrad.addColorStop(1, '#020617')
         ctx.fillStyle = bgGrad
         ctx.fillRect(0, 0, w, h)
@@ -630,12 +737,13 @@ function renderCanvasFlyerBlob() {
       async function drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH) {
         const centerX = visorX + visorW / 2
         const centerY = visorY + visorH / 2
+        const th = currentTheme.value
 
         ctx.save()
 
         // Resplandor holográfico sutil de fondo
         const pedGlow = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, visorW * 0.5)
-        pedGlow.addColorStop(0, 'rgba(0, 240, 255, 0.18)')
+        pedGlow.addColorStop(0, th.pedGlow)
         pedGlow.addColorStop(1, 'transparent')
         ctx.fillStyle = pedGlow
         ctx.fillRect(visorX, visorY, visorW, visorH)
@@ -687,9 +795,9 @@ function renderCanvasFlyerBlob() {
 
           // Borde con resplandor neón alrededor del marco interno (sin obstruir la imagen)
           ctx.save()
-          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 10
-          roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, 'rgba(56, 189, 248, 0.6)', 1.5)
+          roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, th.border, 1.5)
           ctx.restore()
         } else if (flyerProductType.value === 'combo') {
           // Combos streaming: Tarjetas translúcidas futuristas encajadas en el rectángulo
@@ -708,9 +816,9 @@ function renderCanvasFlyerBlob() {
               const cx = innerX + idx * (cardW + gap)
               const pStyle = getPlatformCyberStyle(srv.platform)
 
-              ctx.shadowColor = pStyle.glow
+              ctx.shadowColor = th.glow
               ctx.shadowBlur = 16
-              ctx.fillStyle = 'rgba(10, 20, 42, 0.92)'
+              ctx.fillStyle = th.cardBg
               roundRect(ctx, cx, innerY, cardW, cardH, 20, true, true, pStyle.color, 2)
               ctx.shadowBlur = 0
 
@@ -724,7 +832,7 @@ function renderCanvasFlyerBlob() {
               ctx.fillText(srv.platform, cx + cardW / 2, innerY + cardH * 0.55)
 
               ctx.font = `bold ${Math.min(15, Math.max(10, cardW * 0.09))}px monospace`
-              ctx.fillStyle = '#38bdf8'
+              ctx.fillStyle = th.textAccent
               ctx.fillText(srv.planLabel || '1 Perfil', cx + cardW / 2, innerY + cardH * 0.72)
 
               const badgeW = Math.min(cardW - 16, 92)
@@ -746,9 +854,9 @@ function renderCanvasFlyerBlob() {
           const shieldSize = Math.min(visorH * 0.38, 120)
           const shieldY = centerY - visorH * 0.12
 
-          ctx.shadowColor = platStyle.glow
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 28
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)'
+          ctx.fillStyle = th.cardBg
           roundRect(ctx, centerX - shieldSize / 2, shieldY - shieldSize / 2, shieldSize, shieldSize, 28, true, true, platStyle.color, 2.5)
           ctx.shadowBlur = 0
 
@@ -759,7 +867,7 @@ function renderCanvasFlyerBlob() {
           const titleSize = Math.min(48, Math.max(24, visorH * 0.16))
           ctx.font = `900 ${titleSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 240, 255, 0.5)'
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 14
           ctx.fillText(platStyle.label, centerX, centerY + visorH * 0.2)
           ctx.shadowBlur = 0
@@ -770,7 +878,7 @@ function renderCanvasFlyerBlob() {
           const tagW = ctx.measureText(subtagText).width + 36
           const tagH = tagFontSize + 16
           ctx.fillStyle = 'rgba(10, 20, 45, 0.85)'
-          roundRect(ctx, centerX - tagW / 2, centerY + visorH * 0.28, tagW, tagH, tagH / 2, true, true, 'rgba(56, 189, 248, 0.65)', 1.5)
+          roundRect(ctx, centerX - tagW / 2, centerY + visorH * 0.28, tagW, tagH, tagH / 2, true, true, th.border, 1.5)
           ctx.fillStyle = '#a5f3fc'
           ctx.fillText(subtagText, centerX, centerY + visorH * 0.28 + tagH * 0.68)
         }
@@ -780,37 +888,39 @@ function renderCanvasFlyerBlob() {
 
       function drawCyberBadge(ctx, centerX, y, h, maxW = 860, isSmall = false) {
         ctx.save()
+        const th = currentTheme.value
         const badgeText = headlineBadge.value.toUpperCase()
         ctx.font = `900 ${isSmall ? 18 : 24}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
         const bW = Math.min(ctx.measureText(badgeText).width + (isSmall ? 36 : 52), maxW)
         const bX = centerX - bW / 2
 
-        ctx.shadowColor = 'rgba(245, 158, 11, 0.45)'
+        ctx.shadowColor = th.glow
         ctx.shadowBlur = 18
 
         const bGrad = ctx.createLinearGradient(bX, y, bX + bW, y)
-        bGrad.addColorStop(0, '#f59e0b')
-        bGrad.addColorStop(1, '#ea580c')
+        bGrad.addColorStop(0, th.badgeGrad[0])
+        bGrad.addColorStop(1, th.badgeGrad[1])
         ctx.fillStyle = bGrad
         roundRect(ctx, bX, y, bW, h, h / 2, true, false)
 
         ctx.shadowBlur = 0
         ctx.textAlign = 'center'
-        ctx.fillStyle = '#020617'
+        ctx.fillStyle = th.id === 'cyber' ? '#020617' : '#ffffff'
         ctx.fillText(badgeText, centerX, y + h / 2 + (isSmall ? 6 : 8))
         ctx.restore()
       }
 
       function drawCyberPriceCard(ctx, x, y, w, h, isSquare = false) {
         ctx.save()
-        ctx.shadowColor = 'rgba(56, 189, 248, 0.25)'
+        const th = currentTheme.value
+        ctx.shadowColor = th.glow
         ctx.shadowBlur = 18
 
         const cGrad = ctx.createLinearGradient(x, y, x, y + h)
-        cGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)')
-        cGrad.addColorStop(1, 'rgba(8, 16, 38, 0.96)')
+        cGrad.addColorStop(0, th.cardBg)
+        cGrad.addColorStop(1, '#020617')
         ctx.fillStyle = cGrad
-        roundRect(ctx, x, y, w, h, isSquare ? 18 : 24, true, true, 'rgba(56, 189, 248, 0.5)', 2)
+        roundRect(ctx, x, y, w, h, isSquare ? 18 : 24, true, true, th.cardBorder, 2)
         ctx.shadowBlur = 0
 
         const centerX = x + w / 2
@@ -822,7 +932,7 @@ function renderCanvasFlyerBlob() {
         if (hasOrig) {
           ctx.font = `bold ${isSquare ? 15 : 21}px sans-serif`
           ctx.fillStyle = '#94a3b8'
-          const origText = `Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`
+          const origText = `Antes: ${Number(displayOriginalPrice.value).toLocaleString()} ARS`
           const origW = ctx.measureText(origText).width
           const discountShift = calculatedDiscountPct.value ? (isSquare ? 40 : 52) : 0
           const textX = centerX - discountShift
@@ -852,13 +962,13 @@ function renderCanvasFlyerBlob() {
           ctx.textAlign = 'center'
           ctx.font = `900 ${isSquare ? 46 : 74}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 16
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 72 : 110))
+          ctx.fillText(`${displayPrice.value} ARS`, centerX, y + (isSquare ? 72 : 110))
           ctx.shadowBlur = 0
 
           ctx.font = `bold ${isSquare ? 12 : 17}px sans-serif`
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(guaranteeText, centerX, y + (isSquare ? 96 : 148))
         } else {
           ctx.font = `bold ${isSquare ? 15 : 21}px sans-serif`
@@ -868,13 +978,13 @@ function renderCanvasFlyerBlob() {
 
           ctx.font = `900 ${isSquare ? 48 : 76}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 240, 255, 0.4)'
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 16
-          ctx.fillText(`$${displayPrice.value} ARS`, centerX, y + (isSquare ? 72 : 112))
+          ctx.fillText(`${displayPrice.value} ARS`, centerX, y + (isSquare ? 72 : 112))
           ctx.shadowBlur = 0
 
           ctx.font = `bold ${isSquare ? 12 : 17}px sans-serif`
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(guaranteeText, centerX, y + (isSquare ? 96 : 148))
         }
         ctx.restore()
@@ -882,21 +992,22 @@ function renderCanvasFlyerBlob() {
 
       function drawCyberBullets(ctx, startX, startY, lineSpacing, maxBullets = 3, isSmall = false) {
         ctx.save()
+        const th = currentTheme.value
         const bullets = [bullet1.value, bullet2.value, bullet3.value].slice(0, maxBullets)
         ctx.textAlign = 'left'
         bullets.forEach((b, idx) => {
           const by = startY + idx * lineSpacing
           const radius = isSmall ? 9 : 13
 
-          ctx.shadowColor = '#00f0ff'
+          ctx.shadowColor = th.glow
           ctx.shadowBlur = 12
-          ctx.fillStyle = '#00f0ff'
+          ctx.fillStyle = th.bulletColor
           ctx.beginPath()
           ctx.arc(startX, by - (isSmall ? 4 : 6), radius, 0, Math.PI * 2)
           ctx.fill()
           ctx.shadowBlur = 0
 
-          ctx.fillStyle = '#020617'
+          ctx.fillStyle = (th.id === 'cinema') ? '#ffffff' : '#020617'
           ctx.font = `bold ${isSmall ? 13 : 17}px sans-serif`
           ctx.textAlign = 'center'
           ctx.fillText('✓', startX, by - (isSmall ? 0 : 1))
@@ -914,16 +1025,23 @@ function renderCanvasFlyerBlob() {
       }
 
       // ========================================================
-      // 1. TEMA CYBER OFICIAL (CANVA ENGINE PRO - ENCAJE EXACTO)
+      // 1. MOTOR DE DISEÑO OFICIAL UNIFICADO CON CANVA ENGINE PRO
+      //    (CYBER PRO, CINEMA DARK, EMERALD DEAL, DEEP BLUE)
       // ========================================================
-      if (flyerTheme.value === 'cyber') {
-        const tplUrl = getCyberTemplateUrl(format)
-        const cyberImg = await loadFlyerImageElement(tplUrl)
-        if (cyberImg) {
-          ctx.drawImage(cyberImg, 0, 0, width, height)
-        } else {
-          drawCyberBackground(ctx, width, height)
+      const tplUrl = getCyberTemplateUrl(format)
+      const cyberImg = await loadFlyerImageElement(tplUrl)
+      const th = currentTheme.value
+
+      if (cyberImg) {
+        ctx.save()
+        if (th.filter && th.filter !== 'none') {
+          ctx.filter = th.filter
         }
+        ctx.drawImage(cyberImg, 0, 0, width, height)
+        ctx.restore()
+      } else {
+        drawCyberBackground(ctx, width, height, th)
+      }
 
         if (format === 'banner') {
           // ================= BANNER HORIZONTAL (1920 x 1080) =================
@@ -946,7 +1064,7 @@ function renderCanvasFlyerBlob() {
           const subY = 230 + titleLines.length * 50 + 6
 
           ctx.font = 'bold 23px sans-serif'
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
 
           const pCardY = subY + 20
@@ -973,7 +1091,7 @@ function renderCanvasFlyerBlob() {
           const subY = 940 + titleLines.length * 50 + 8
 
           ctx.font = 'bold 24px sans-serif'
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
           const pCardY = subY + 28
@@ -1000,7 +1118,7 @@ function renderCanvasFlyerBlob() {
           const subY = 675 + titleLines.length * 42 + 6
 
           ctx.font = 'bold 21px sans-serif'
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
           const pCardY = subY + 20
@@ -1027,7 +1145,7 @@ function renderCanvasFlyerBlob() {
           const subY = 622 + titleLines.length * 36 + 4
 
           ctx.font = 'bold 18px sans-serif'
-          ctx.fillStyle = '#38bdf8'
+          ctx.fillStyle = th.textAccent
           ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
           const pCardY = subY + 16
@@ -1045,456 +1163,12 @@ function renderCanvasFlyerBlob() {
           }
           resolve(blob)
         }, 'image/png')
-        return
+      } catch (e) {
+        reject(e)
       }
+    })
+  }
 
-      // 2. TEMAS CLÁSICOS (CINEMA, EMERALD, BLUE)
-      // ========================================================
-      let gradTop = '#020617'
-      let gradMid = '#1e0506'
-      let gradBot = '#020617'
-      let accentBorder = '#ef4444'
-      let glowColor = 'rgba(239, 68, 68, 0.25)'
-
-      if (flyerTheme.value === 'emerald') {
-        gradMid = '#064e3b'
-        accentBorder = '#10b981'
-        glowColor = 'rgba(16, 185, 129, 0.28)'
-      } else if (flyerTheme.value === 'blue') {
-        gradMid = '#0c4a6e'
-        accentBorder = '#0ea5e9'
-        glowColor = 'rgba(14, 165, 233, 0.28)'
-      }
-
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, height)
-      bgGrad.addColorStop(0, gradTop)
-      bgGrad.addColorStop(0.5, gradMid)
-      bgGrad.addColorStop(1, gradBot)
-      ctx.fillStyle = bgGrad
-      ctx.fillRect(0, 0, width, height)
-
-      const glow1 = ctx.createRadialGradient(width * 0.8, height * 0.15, 20, width * 0.8, height * 0.15, width * 0.55)
-      glow1.addColorStop(0, glowColor)
-      glow1.addColorStop(1, 'transparent')
-      ctx.fillStyle = glow1
-      ctx.fillRect(0, 0, width, height)
-
-      const glow2 = ctx.createRadialGradient(width * 0.2, height * 0.85, 20, width * 0.2, height * 0.85, width * 0.55)
-      glow2.addColorStop(0, 'rgba(245, 158, 11, 0.16)')
-      glow2.addColorStop(1, 'transparent')
-      ctx.fillStyle = glow2
-      ctx.fillRect(0, 0, width, height)
-
-      roundRect(ctx, 24, 24, width - 48, height - 48, 48, false, true, accentBorder, 3)
-
-      const isBanner = format === 'banner'
-
-      if (isBanner) {
-        ctx.textAlign = 'left'
-        ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.fillStyle = '#fbbf24'
-        ctx.fillText(storeName.value.toUpperCase(), 100, 105)
-
-        const boxX = 100
-        const boxY = 150
-        const boxW = 660
-        const boxH = 690
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
-        roundRect(ctx, boxX, boxY, boxW, boxH, 36, true, true, 'rgba(255,255,255,0.18)', 2)
-
-        if (flyerProductType.value === 'physical') {
-          const imgEl = await loadFlyerImageElement(productImageCORS.value)
-          if (imgEl) {
-            ctx.fillStyle = '#ffffff'
-            roundRect(ctx, boxX + 40, boxY + 40, boxW - 80, boxH - 80, 24, true, false)
-            const imgAspect = imgEl.width / (imgEl.height || 1)
-            let dw = boxW - 120
-            let dh = boxH - 120
-            if (imgAspect > 1) {
-              dh = dw / imgAspect
-            } else {
-              dw = dh * imgAspect
-            }
-            const dx = boxX + (boxW - dw) / 2
-            const dy = boxY + (boxH - dh) / 2
-            ctx.drawImage(imgEl, dx, dy, dw, dh)
-          } else {
-            ctx.font = '160px sans-serif'
-            ctx.textAlign = 'center'
-            ctx.fillText('📦', boxX + boxW / 2, boxY + boxH / 2 + 50)
-          }
-        } else if (flyerProductType.value === 'combo') {
-          const services = (selectedPackage.value?.services || []).slice(0, 4)
-          if (services.length > 0) {
-            const cardW = 270
-            const cardH = 140
-            const startX = boxX + (boxW - (cardW * 2 + 20)) / 2
-            const startY = boxY + (boxH - (cardH * 2 + 20)) / 2
-            services.forEach((srv, idx) => {
-              const r = Math.floor(idx / 2)
-              const c = idx % 2
-              const cx = startX + c * (cardW + 20)
-              const cy = startY + r * (cardH + 20)
-              ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'
-              roundRect(ctx, cx, cy, cardW, cardH, 20, true, true, 'rgba(236, 72, 153, 0.4)', 2)
-              ctx.font = '48px sans-serif'
-              ctx.textAlign = 'center'
-              ctx.fillText(getPlatformIcon(srv.platform), cx + cardW / 2, cy + 55)
-              ctx.font = 'bold 22px sans-serif'
-              ctx.fillStyle = '#ffffff'
-              ctx.fillText(srv.platform, cx + cardW / 2, cy + 90)
-              ctx.font = '16px monospace'
-              ctx.fillStyle = '#f472b6'
-              ctx.fillText(srv.planLabel || '1 Perfil', cx + cardW / 2, cy + 118)
-            })
-          } else {
-            ctx.font = '90px sans-serif'
-            ctx.textAlign = 'center'
-            ctx.fillText('🍿 🎬 ✨', boxX + boxW / 2, boxY + boxH / 2 + 30)
-          }
-        } else {
-          ctx.font = '180px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(currentPlatformIcon.value, boxX + boxW / 2, boxY + boxH / 2 + 10)
-          ctx.font = '900 36px sans-serif'
-          ctx.fillStyle = '#fbbf24'
-          ctx.fillText(selectedPlatform.value.toUpperCase(), boxX + boxW / 2, boxY + boxH / 2 + 90)
-          ctx.font = 'bold 22px sans-serif'
-          ctx.fillStyle = '#94a3b8'
-          ctx.fillText('CALIDAD ULTRA HD 4K', boxX + boxW / 2, boxY + boxH / 2 + 130)
-        }
-
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.75)'
-        roundRect(ctx, boxX, 865, boxW, 80, 24, true, true, 'rgba(16, 185, 129, 0.35)', 1.5)
-        ctx.font = 'bold 22px sans-serif'
-        ctx.fillStyle = '#34d399'
-        ctx.textAlign = 'center'
-        ctx.fillText('✓ DISTRIBUIDOR OFICIAL VERIFICADO · GARANTÍA 24/7', boxX + boxW / 2, 915)
-
-        const rightX = 820
-        const rightW = 1000
-        ctx.textAlign = 'left'
-
-        const badgeText = headlineBadge.value.toUpperCase()
-        ctx.font = '900 28px sans-serif'
-        const bW = Math.min(ctx.measureText(badgeText).width + 56, rightW)
-        const bGrad = ctx.createLinearGradient(rightX, 100, rightX + bW, 100)
-        bGrad.addColorStop(0, '#f59e0b')
-        bGrad.addColorStop(1, '#ea580c')
-        ctx.fillStyle = bGrad
-        roundRect(ctx, rightX, 100, bW, 58, 29, true, false)
-        ctx.fillStyle = '#020617'
-        ctx.textAlign = 'center'
-        ctx.fillText(badgeText, rightX + bW / 2, 140)
-
-        ctx.textAlign = 'left'
-        ctx.font = '900 50px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.fillStyle = '#ffffff'
-        const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
-        let tY = 220
-        titleLines.forEach((tl, i) => {
-          ctx.fillText(tl, rightX, tY + i * 58)
-        })
-        const subY = tY + titleLines.length * 58 + 10
-
-        ctx.font = 'bold 26px sans-serif'
-        ctx.fillStyle = '#fbbf24'
-        ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
-
-        const pCardY = subY + 35
-        const pCardH = 160
-        ctx.fillStyle = 'rgba(0,0,0,0.7)'
-        roundRect(ctx, rightX, pCardY, rightW, pCardH, 28, true, true, 'rgba(255,255,255,0.15)', 2)
-
-        if (displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)) {
-          ctx.font = 'bold 24px sans-serif'
-          ctx.fillStyle = '#94a3b8'
-          const origText = `Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`
-          ctx.fillText(origText, rightX + 40, pCardY + 48)
-          const origW = ctx.measureText(origText).width
-          ctx.strokeStyle = '#ef4444'
-          ctx.lineWidth = 2.5
-          ctx.beginPath()
-          ctx.moveTo(rightX + 40, pCardY + 40)
-          ctx.lineTo(rightX + 40 + origW, pCardY + 40)
-          ctx.stroke()
-
-          if (calculatedDiscountPct.value) {
-            ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-            roundRect(ctx, rightX + 50 + origW, pCardY + 26, 100, 32, 12, true, true, '#10b981', 1)
-            ctx.fillStyle = '#34d399'
-            ctx.font = '900 18px monospace'
-            ctx.textAlign = 'center'
-            ctx.fillText(`-${calculatedDiscountPct.value}%`, rightX + 100 + origW, pCardY + 48)
-            ctx.textAlign = 'left'
-          }
-
-          ctx.font = '900 68px sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, rightX + 40, pCardY + 124)
-        } else {
-          ctx.font = 'bold 22px sans-serif'
-          ctx.fillStyle = '#94a3b8'
-          ctx.fillText('PRECIO EXCLUSIVO', rightX + 40, pCardY + 48)
-
-          ctx.font = '900 70px sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, rightX + 40, pCardY + 124)
-        }
-
-        const bullets = [bullet1.value, bullet2.value, bullet3.value]
-        const bulletsStartY = pCardY + pCardH + 45
-        bullets.forEach((b, idx) => {
-          const by = bulletsStartY + idx * 52
-          ctx.fillStyle = '#10b981'
-          ctx.beginPath()
-          ctx.arc(rightX + 20, by - 8, 14, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.fillStyle = '#020617'
-          ctx.font = 'bold 18px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText('✓', rightX + 20, by - 2)
-          ctx.textAlign = 'left'
-
-          ctx.font = '600 26px sans-serif'
-          ctx.fillStyle = '#f8fafc'
-          ctx.fillText(b.length > 52 ? b.slice(0, 50) + '...' : b, rightX + 50, by)
-        })
-
-        const footY = 865
-        const footH = 95
-        const webGrad = ctx.createLinearGradient(rightX, footY, rightX + rightW, footY)
-        webGrad.addColorStop(0, '#0284c7')
-        webGrad.addColorStop(1, '#0ea5e9')
-        ctx.fillStyle = webGrad
-        roundRect(ctx, rightX, footY, rightW, footH, 28, true, false)
-        ctx.textAlign = 'center'
-        ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.fillStyle = '#020617'
-        ctx.fillText(`🌐 ${domainText}   ·   ¡HAZ TU PEDIDO ONLINE AHORA!`, rightX + rightW / 2, footY + 58)
-
-      } else {
-        const isStory = format === 'story'
-        const isFeed = format === 'feed'
-        const isSquare = format === 'square'
-
-        ctx.textAlign = 'left'
-        ctx.font = `bold ${isStory ? 34 : isFeed ? 28 : 24}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        ctx.fillStyle = '#fbbf24'
-        const headerY = isStory ? 140 : isFeed ? 95 : 75
-        ctx.fillText(storeName.value.toUpperCase(), 80, headerY)
-
-        ctx.textAlign = 'right'
-        ctx.font = `bold ${isStory ? 24 : isFeed ? 20 : 17}px sans-serif`
-        ctx.fillStyle = '#94a3b8'
-        ctx.fillText('⭐ DISTRIBUIDOR OFICIAL', width - 80, headerY)
-
-        const badgeY = isStory ? 220 : isFeed ? 150 : 120
-        const badgeH = isStory ? 68 : isFeed ? 56 : 46
-        const badgeText = headlineBadge.value.toUpperCase()
-        ctx.font = `900 ${isStory ? 28 : isFeed ? 23 : 19}px sans-serif`
-        const bW = Math.min(ctx.measureText(badgeText).width + 52, width - 140)
-        const bX = (width - bW) / 2
-        const bGrad = ctx.createLinearGradient(bX, badgeY, bX + bW, badgeY)
-        bGrad.addColorStop(0, '#f59e0b')
-        bGrad.addColorStop(1, '#ea580c')
-        ctx.fillStyle = bGrad
-        roundRect(ctx, bX, badgeY, bW, badgeH, badgeH / 2, true, false)
-        ctx.textAlign = 'center'
-        ctx.fillStyle = '#020617'
-        ctx.fillText(badgeText, width / 2, badgeY + badgeH / 2 + (isStory ? 9 : isFeed ? 8 : 6))
-
-        const heroBoxSize = isStory ? 440 : isFeed ? 320 : 230
-        const heroX = (width - heroBoxSize) / 2
-        const heroY = isStory ? 330 : isFeed ? 240 : 190
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
-        roundRect(ctx, heroX, heroY, heroBoxSize, heroBoxSize, isStory ? 40 : 30, true, true, 'rgba(255,255,255,0.18)', 2)
-
-        if (flyerProductType.value === 'physical') {
-          const imgEl = await loadFlyerImageElement(productImageCORS.value)
-          if (imgEl) {
-            ctx.fillStyle = '#ffffff'
-            roundRect(ctx, heroX + 20, heroY + 20, heroBoxSize - 40, heroBoxSize - 40, 20, true, false)
-            const imgAspect = imgEl.width / (imgEl.height || 1)
-            let dw = heroBoxSize - 60
-            let dh = heroBoxSize - 60
-            if (imgAspect > 1) {
-              dh = dw / imgAspect
-            } else {
-              dw = dh * imgAspect
-            }
-            const dx = heroX + (heroBoxSize - dw) / 2
-            const dy = heroY + (heroBoxSize - dh) / 2
-            ctx.drawImage(imgEl, dx, dy, dw, dh)
-          } else {
-            ctx.font = `${isStory ? 140 : isFeed ? 100 : 75}px sans-serif`
-            ctx.textAlign = 'center'
-            ctx.fillText('📦', width / 2, heroY + heroBoxSize / 2 + 45)
-          }
-        } else if (flyerProductType.value === 'combo') {
-          const services = (selectedPackage.value?.services || []).slice(0, 3)
-          if (services.length > 0) {
-            const cardW = isStory ? 120 : isFeed ? 90 : 65
-            const cardH = isStory ? 140 : isFeed ? 100 : 75
-            const totalW = services.length * cardW + (services.length - 1) * (isStory ? 16 : 10)
-            const startX = (width - totalW) / 2
-            const startY = heroY + (heroBoxSize - cardH) / 2
-            services.forEach((srv, idx) => {
-              const cx = startX + idx * (cardW + (isStory ? 16 : 10))
-              ctx.fillStyle = 'rgba(2, 6, 23, 0.95)'
-              roundRect(ctx, cx, startY, cardW, cardH, isStory ? 20 : 14, true, true, 'rgba(236, 72, 153, 0.45)', 2)
-              ctx.font = `${isStory ? 44 : isFeed ? 32 : 24}px sans-serif`
-              ctx.textAlign = 'center'
-              ctx.fillText(getPlatformIcon(srv.platform), cx + cardW / 2, startY + (isStory ? 52 : isFeed ? 38 : 28))
-              ctx.font = `bold ${isStory ? 16 : isFeed ? 13 : 10}px sans-serif`
-              ctx.fillStyle = '#ffffff'
-              ctx.fillText(srv.platform, cx + cardW / 2, startY + (isStory ? 85 : isFeed ? 62 : 46))
-              ctx.font = `${isStory ? 13 : isFeed ? 10 : 8}px monospace`
-              ctx.fillStyle = '#f472b6'
-              ctx.fillText(srv.planLabel || '1 Perfil', cx + cardW / 2, startY + (isStory ? 112 : isFeed ? 82 : 62))
-            })
-          } else {
-            ctx.font = `${isStory ? 90 : isFeed ? 70 : 50}px sans-serif`
-            ctx.textAlign = 'center'
-            ctx.fillText('🍿 🎬 ✨', width / 2, heroY + heroBoxSize / 2 + 25)
-          }
-        } else {
-          ctx.font = `${isStory ? 140 : isFeed ? 100 : 75}px sans-serif`
-          ctx.textAlign = 'center'
-          ctx.fillText(currentPlatformIcon.value, width / 2, heroY + heroBoxSize / 2 + (isStory ? 20 : isFeed ? 15 : 10))
-          ctx.font = `900 ${isStory ? 32 : isFeed ? 24 : 18}px sans-serif`
-          ctx.fillStyle = '#fbbf24'
-          ctx.fillText(selectedPlatform.value.toUpperCase(), width / 2, heroY + heroBoxSize - (isStory ? 45 : isFeed ? 35 : 25))
-        }
-
-        const titleY = heroY + heroBoxSize + (isStory ? 65 : isFeed ? 48 : 34)
-        ctx.textAlign = 'center'
-        ctx.font = `900 ${isStory ? 46 : isFeed ? 36 : 28}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        ctx.fillStyle = '#ffffff'
-        const titleLines = wrapText(displayTitle.value, isStory ? 28 : isFeed ? 30 : 32).slice(0, 2)
-        titleLines.forEach((tl, i) => {
-          ctx.fillText(tl, width / 2, titleY + i * (isStory ? 52 : isFeed ? 42 : 32))
-        })
-        const subY = titleY + titleLines.length * (isStory ? 52 : isFeed ? 42 : 32) + (isStory ? 14 : isFeed ? 10 : 8)
-
-        ctx.font = `bold ${isStory ? 26 : isFeed ? 21 : 17}px sans-serif`
-        ctx.fillStyle = '#fbbf24'
-        ctx.fillText(displaySubtitle.value.length > 46 ? displaySubtitle.value.slice(0, 44) + '...' : displaySubtitle.value, width / 2, subY)
-
-        const priceBoxW = isStory ? 880 : isFeed ? 820 : 760
-        const priceBoxH = isStory ? 200 : isFeed ? 155 : 130
-        const priceBoxX = (width - priceBoxW) / 2
-        const priceBoxY = subY + (isStory ? 40 : isFeed ? 32 : 24)
-
-        ctx.fillStyle = 'rgba(0,0,0,0.72)'
-        roundRect(ctx, priceBoxX, priceBoxY, priceBoxW, priceBoxH, isStory ? 32 : 24, true, true, 'rgba(255,255,255,0.16)', 2)
-
-        if (displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)) {
-          ctx.font = `bold ${isStory ? 24 : isFeed ? 20 : 16}px sans-serif`
-          ctx.fillStyle = '#94a3b8'
-          const origText = `Antes: $${Number(displayOriginalPrice.value).toLocaleString()} ARS`
-          ctx.fillText(origText, width / 2 - (calculatedDiscountPct.value ? 60 : 0), priceBoxY + (isStory ? 46 : isFeed ? 38 : 30))
-          const origW = ctx.measureText(origText).width
-          ctx.strokeStyle = '#ef4444'
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          const stX = width / 2 - (calculatedDiscountPct.value ? 60 : 0) - origW / 2
-          ctx.moveTo(stX, priceBoxY + (isStory ? 38 : isFeed ? 32 : 25))
-          ctx.lineTo(stX + origW, priceBoxY + (isStory ? 38 : isFeed ? 32 : 25))
-          ctx.stroke()
-
-          if (calculatedDiscountPct.value) {
-            ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-            roundRect(ctx, stX + origW + 16, priceBoxY + (isStory ? 24 : isFeed ? 18 : 14), isStory ? 100 : 80, isStory ? 32 : 26, 10, true, true, '#10b981', 1)
-            ctx.fillStyle = '#34d399'
-            ctx.font = `900 ${isStory ? 18 : isFeed ? 15 : 13}px monospace`
-            ctx.textAlign = 'center'
-            ctx.fillText(`-${calculatedDiscountPct.value}%`, stX + origW + 16 + (isStory ? 50 : 40), priceBoxY + (isStory ? 46 : isFeed ? 37 : 32))
-            ctx.textAlign = 'center'
-          }
-
-          ctx.font = `900 ${isStory ? 80 : isFeed ? 64 : 54}px sans-serif`
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, priceBoxY + (isStory ? 128 : isFeed ? 102 : 84))
-
-          if (!isSquare) {
-            ctx.font = 'bold 18px sans-serif'
-            ctx.fillStyle = '#94a3b8'
-            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', width / 2, priceBoxY + (isStory ? 168 : 136))
-          }
-        } else {
-          ctx.font = `bold ${isStory ? 22 : isFeed ? 18 : 15}px sans-serif`
-          ctx.fillStyle = '#94a3b8'
-          ctx.fillText('PRECIO EXCLUSIVO', width / 2, priceBoxY + (isStory ? 46 : isFeed ? 38 : 30))
-
-          ctx.font = `900 ${isStory ? 82 : isFeed ? 66 : 56}px sans-serif`
-          ctx.fillStyle = '#ffffff'
-          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, priceBoxY + (isStory ? 130 : isFeed ? 104 : 86))
-
-          if (!isSquare) {
-            ctx.font = 'bold 18px sans-serif'
-            ctx.fillStyle = '#94a3b8'
-            ctx.fillText('⚡ Entrega Inmediata · Garantía Oficial 100%', width / 2, priceBoxY + (isStory ? 168 : 136))
-          }
-        }
-
-        const bulletsStartY = priceBoxY + priceBoxH + (isStory ? 45 : isFeed ? 34 : 24)
-        const bullets = [bullet1.value, bullet2.value, bullet3.value]
-        ctx.textAlign = 'left'
-        bullets.forEach((b, idx) => {
-          if (isSquare && idx === 2) return
-          const by = bulletsStartY + idx * (isStory ? 60 : isFeed ? 48 : 36)
-          const bX = isStory ? 140 : isFeed ? 140 : 160
-
-          ctx.fillStyle = '#10b981'
-          ctx.beginPath()
-          ctx.arc(bX, by - (isStory ? 8 : 6), isStory ? 14 : isFeed ? 12 : 9, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.fillStyle = '#020617'
-          ctx.font = `bold ${isStory ? 18 : isFeed ? 15 : 12}px sans-serif`
-          ctx.textAlign = 'center'
-          ctx.fillText('✓', bX, by - (isStory ? 2 : 2))
-          ctx.textAlign = 'left'
-
-          ctx.font = `600 ${isStory ? 30 : isFeed ? 24 : 19}px sans-serif`
-          ctx.fillStyle = '#f8fafc'
-          ctx.fillText(b.length > 44 ? b.slice(0, 42) + '...' : b, bX + (isStory ? 30 : 24), by)
-        })
-
-        const footW = isStory ? 880 : isFeed ? 820 : 760
-        const footH = isStory ? 115 : isFeed ? 95 : 80
-        const footX = (width - footW) / 2
-        const footY = height - footH - (isStory ? 90 : isFeed ? 60 : 40)
-
-        ctx.textAlign = 'center'
-        ctx.font = `bold ${isStory ? 22 : isFeed ? 18 : 15}px sans-serif`
-        ctx.fillStyle = '#94a3b8'
-        ctx.fillText('⚡ ¡HAZ TU PEDIDO ONLINE CON GARANTÍA OFICIAL!', width / 2, footY - (isStory ? 20 : isFeed ? 16 : 12))
-
-        const webGrad = ctx.createLinearGradient(footX, footY, footX + footW, footY)
-        webGrad.addColorStop(0, '#0284c7')
-        webGrad.addColorStop(1, '#0ea5e9')
-        ctx.fillStyle = webGrad
-        roundRect(ctx, footX, footY, footW, footH, footH / 2.6, true, false)
-
-        ctx.font = `900 ${isStory ? 42 : isFeed ? 34 : 28}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        ctx.fillStyle = '#020617'
-        ctx.fillText(`🌐 ${domainText}`, width / 2, footY + footH / 2 + (isStory ? 14 : isFeed ? 11 : 9))
-      }
-
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          reject(new Error('Fallo al exportar blob de canvas'))
-          return
-        }
-        resolve(blob)
-      }, 'image/png')
-    } catch (e) {
-      reject(e)
-    }
-  })
-}
 const triggerFileDownload = (fileUrl, filename) => {
   const link = document.createElement('a')
   link.download = filename
@@ -2117,80 +1791,81 @@ const shareToWhatsAppStatus = () => {
           <div 
             ref="flyerPreviewRef" 
             :class="[
-              'w-full rounded-3xl flex flex-col justify-between relative overflow-hidden shadow-2xl border transition-all text-white select-none',
+              'w-full rounded-3xl flex flex-col justify-between relative overflow-hidden shadow-2xl border transition-all text-white select-none p-0',
               flyerFormat === 'story' ? 'max-w-[320px] aspect-[9/16]' :
               flyerFormat === 'feed' ? 'max-w-[330px] aspect-[4/5]' :
               flyerFormat === 'square' ? 'max-w-[340px] aspect-square' :
               'max-w-[480px] aspect-[16/9]',
-              flyerTheme === 'cyber' ? 'p-0 border-cyan-400/40 shadow-cyan-950/60' :
-              (flyerFormat === 'story' ? 'p-4 sm:p-5' : flyerFormat === 'feed' ? 'p-3.5 sm:p-4' : flyerFormat === 'square' ? 'p-3 sm:p-3.5' : 'p-3 sm:p-3.5'),
-              flyerTheme === 'cinema' ? 'bg-gradient-to-b from-black via-red-950/70 to-slate-950 border-red-500/40' :
-              flyerTheme === 'emerald' ? 'bg-gradient-to-b from-slate-950 via-emerald-950/70 to-slate-950 border-emerald-500/40' :
-              flyerTheme === 'blue' ? 'bg-gradient-to-b from-slate-950 via-sky-950/80 to-slate-950 border-sky-500/40' : ''
+              currentTheme.cssContainerBorder
             ]"
-            :style="flyerTheme === 'cyber' ? {
-              backgroundImage: `url(${getCyberTemplateUrl(flyerFormat)})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat'
-            } : {}"
           >
-            <!-- ======================================================== -->
-            <!-- 1. VISTA PREVIA CYBER OFICIAL ELEVADA (4 FORMATOS)       -->
-            <!-- ======================================================== -->
-            <div v-if="flyerTheme === 'cyber'" class="relative w-full h-full text-white pointer-events-none select-none">
+            <!-- Capa de Plantilla de Fondo con Filtro Temático (Cinema, Emerald, Blue, Cyber) -->
+            <div 
+              class="absolute inset-0 pointer-events-none transition-all duration-300 z-0"
+              :style="{
+                backgroundImage: `url(${getCyberTemplateUrl(flyerFormat)})`,
+                backgroundSize: '100% 100%',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                filter: currentTheme.filter
+              }"
+            />
+
+            <!-- Capa de Contenido Elevada Oficial (Sin Filtro, Máxima Fidelidad) -->
+            <div class="relative w-full h-full text-white pointer-events-none select-none z-10">
               
               <!-- 1.1 STORY (9:16) -->
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border border-cyan-400/50 overflow-hidden relative">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
-                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-xl bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-1 shadow-md">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-xl bg-slate-950/90 border flex flex-col items-center justify-center p-1 shadow-md', currentTheme.cssBorder]">
                       <span class="text-xl sm:text-2xl">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[7px] font-black text-white truncate max-w-full mt-0.5">{{ srv.platform }}</span>
-                      <span class="text-[6px] text-cyan-300 truncate font-mono">{{ srv.planLabel }}</span>
+                      <span :class="['text-[6px] truncate font-mono', currentTheme.cssText]">{{ srv.planLabel }}</span>
                       <span class="text-[5px] bg-emerald-500/20 text-emerald-300 font-bold px-1 rounded mt-0.5">✓ INCLUIDO</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow-lg shadow-cyan-950/40">
+                    <div :class="['w-12 h-12 rounded-2xl bg-slate-950/90 border flex items-center justify-center shadow-lg', currentTheme.cssBorder]">
                       <span class="text-2xl drop-shadow">{{ currentPlatformIcon }}</span>
                     </div>
                     <span class="font-black text-white text-xs sm:text-sm uppercase tracking-wider mt-1 drop-shadow">{{ selectedPlatform }}</span>
-                    <span class="text-[7px] font-mono font-bold text-cyan-200 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded-full mt-1">{{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD</span>
+                    <span :class="['text-[7px] font-mono font-bold border px-2 py-0.5 rounded-full mt-1', currentTheme.cssTagBorder]">{{ currentPlanData?.label || '1 PERFIL' }} · 4K ULTRA HD</span>
                   </div>
                 </div>
 
                 <!-- Contenido Inferior (Dentro del cuadrante) -->
                 <div class="absolute top-[43.5%] bottom-[8%] left-[9%] right-[9%] flex flex-col justify-between items-center text-center z-10 py-1">
-                  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-3 py-0.5 rounded-full shadow-lg text-[9px] uppercase tracking-wider">
+                  <div :class="['font-black px-3 py-0.5 rounded-full shadow-lg text-[9px] uppercase tracking-wider', currentTheme.cssBadge]">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.5 w-full">
                     <h2 class="font-black text-xs sm:text-sm tracking-tight leading-tight line-clamp-2 text-white drop-shadow">{{ displayTitle }}</h2>
-                    <p class="font-bold text-cyan-300 text-[9px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p :class="['font-bold text-[9px] font-mono truncate', currentTheme.cssText]">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/90 border border-cyan-400/40 rounded-2xl py-1.5 px-3 shadow-xl">
+                  <div :class="['w-full rounded-2xl py-1.5 px-3', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
                       <span class="text-slate-400 line-through text-[9px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-${calculatedDiscountPct}%</span>
                     </div>
                     <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
-                      <span class="text-xs font-black text-amber-400">$</span>
+                      <span :class="['text-xs font-black', currentTheme.cssCurrency]">$</span>
                       <span class="font-black tracking-tight text-white font-mono text-xl sm:text-2xl">{{ displayPrice }}</span>
                       <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
-                    <div class="text-[7px] text-cyan-300 font-bold truncate">
+                    <div :class="['text-[7px] font-bold truncate', currentTheme.cssText]">
                       {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
-                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet1 }}</span></div>
-                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet2 }}</span></div>
-                    <div class="flex items-center gap-1.5 truncate"><span class="w-3.5 h-3.5 rounded-full bg-cyan-400 text-slate-950 flex items-center justify-center text-[8px] font-bold shrink-0">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
                 </div>
               </div>
@@ -2199,53 +1874,53 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[28.5%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/50 overflow-hidden relative">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
-                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/40 flex flex-col items-center justify-center p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-base">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
-                      <span class="text-[5px] text-cyan-300 truncate font-mono">{{ srv.planLabel }}</span>
+                      <span :class="['text-[5px] truncate font-mono', currentTheme.cssText]">{{ srv.planLabel }}</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <div class="w-10 h-10 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                    <div :class="['w-10 h-10 rounded-xl bg-slate-950/90 border flex items-center justify-center shadow', currentTheme.cssBorder]">
                       <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
                     </div>
                     <span class="font-black text-white text-xs uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] font-mono text-cyan-200 mt-0.5">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
+                    <span :class="['text-[6px] font-mono mt-0.5', currentTheme.cssText]">4K ULTRA HD · {{ currentPlanData?.label || '1 PERFIL' }}</span>
                   </div>
                 </div>
 
                 <!-- Contenido Inferior (Dentro del cuadrante) -->
                 <div class="absolute top-[44.5%] bottom-[8.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
-                  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider">
+                  <div :class="['font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider', currentTheme.cssBadge]">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.5 w-full">
                     <h2 class="font-black text-xs tracking-tight leading-tight line-clamp-2 text-white">{{ displayTitle }}</h2>
-                    <p class="font-bold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p :class="['font-bold text-[8px] font-mono truncate', currentTheme.cssText]">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
+                  <div :class="['w-full rounded-xl py-1 px-2.5 shadow', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
                       <span class="text-slate-400 line-through text-[8px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-${calculatedDiscountPct}%</span>
                     </div>
                     <div v-else class="text-[7px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
-                      <span class="text-[10px] font-black text-amber-400">$</span>
+                      <span :class="['text-[10px] font-black', currentTheme.cssCurrency]">$</span>
                       <span class="font-black tracking-tight text-white font-mono text-base sm:text-lg">{{ displayPrice }}</span>
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
-                    <div class="text-[6px] text-cyan-300 font-bold truncate">
+                    <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
                       {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
                 </div>
               </div>
@@ -2254,52 +1929,52 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.7%] left-[32.7%] w-[34.6%] h-[34.8%] flex items-center justify-center p-1 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border border-cyan-400/50 overflow-hidden relative">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
-                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" class="flex-1 h-full rounded-lg bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <div class="w-10 h-10 rounded-xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                    <div :class="['w-10 h-10 rounded-xl bg-slate-950/90 border flex items-center justify-center shadow', currentTheme.cssBorder]">
                       <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
                     </div>
                     <span class="font-black text-white text-[10px] uppercase tracking-wider mt-0.5">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] font-mono text-cyan-200 mt-0.5">4K ULTRA HD</span>
+                    <span :class="['text-[6px] font-mono mt-0.5', currentTheme.cssText]">4K ULTRA HD</span>
                   </div>
                 </div>
 
                 <!-- Contenido Inferior (Dentro del cuadrante Y=545..950) -->
                 <div class="absolute top-[51.0%] bottom-[9.5%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-10 py-1">
-                  <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider">
+                  <div :class="['font-black px-2.5 py-0.5 rounded-full shadow text-[8px] uppercase tracking-wider', currentTheme.cssBadge]">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.5 w-full">
                     <h2 class="font-black text-xs tracking-tight leading-tight line-clamp-2 text-white">{{ displayTitle }}</h2>
-                    <p class="font-bold text-cyan-300 text-[8px] font-mono truncate">{{ displaySubtitle }}</p>
+                    <p :class="['font-bold text-[8px] font-mono truncate', currentTheme.cssText]">{{ displaySubtitle }}</p>
                   </div>
-                  <div class="w-full bg-slate-950/90 border border-cyan-400/30 rounded-xl py-1 px-2.5 shadow">
+                  <div :class="['w-full rounded-xl py-1 px-2.5 shadow', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
                       <span class="text-slate-400 line-through text-[7px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-${calculatedDiscountPct}%</span>
                     </div>
                     <div v-else class="text-[6px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
-                      <span class="text-[9px] font-black text-amber-400">$</span>
+                      <span :class="['text-[9px] font-black', currentTheme.cssCurrency]">$</span>
                       <span class="font-black tracking-tight text-white font-mono text-sm sm:text-base">{{ displayPrice }}</span>
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
-                    <div class="text-[6px] text-cyan-300 font-bold truncate">
+                    <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
                       {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet1 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet2 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span class="text-cyan-400 font-bold">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet3 }}</span></div>
                   </div>
                 </div>
               </div>
@@ -2308,269 +1983,56 @@ const shareToWhatsAppStatus = () => {
               <div v-else class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[24.1%] left-[7.8%] w-[27.1%] h-[51.9%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" class="w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border border-cyan-400/50 overflow-hidden relative">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
                     <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
-                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" class="rounded bg-slate-950/90 border border-cyan-400/30 flex flex-col items-center justify-center p-0.5">
+                    <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" :class="['rounded bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] text-white font-bold truncate max-w-full">{{ srv.platform }}</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow">
+                    <div :class="['w-12 h-12 rounded-2xl bg-slate-950/90 border flex items-center justify-center shadow', currentTheme.cssBorder]">
                       <span class="text-2xl drop-shadow">{{ currentPlatformIcon }}</span>
                     </div>
                     <span class="font-black text-white text-[10px] uppercase mt-1">{{ selectedPlatform }}</span>
-                    <span class="text-[6px] text-cyan-200 font-mono mt-0.5">4K ULTRA HD</span>
+                    <span :class="['text-[6px] font-mono mt-0.5', currentTheme.cssText]">4K ULTRA HD</span>
                   </div>
                 </div>
 
                 <!-- Contenido Derecha (Dentro del cuadrante) -->
                 <div class="absolute top-[13%] bottom-[9%] left-[38.5%] right-[6%] flex flex-col justify-between z-10 py-1 text-left">
-                  <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase self-start">
+                  <div :class="['inline-block text-[7px] font-black px-2 py-0.5 rounded-full uppercase self-start', currentTheme.cssBadge]">
                     {{ headlineBadge }}
                   </div>
                   <div class="space-y-0.2">
                     <h2 class="text-xs font-black text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
-                    <div class="text-[7px] text-cyan-300 font-bold font-mono truncate">{{ displaySubtitle }}</div>
+                    <div :class="['text-[7px] font-bold font-mono truncate', currentTheme.cssText]">{{ displaySubtitle }}</div>
                   </div>
-                  <div class="w-full bg-slate-950/90 border border-cyan-400/40 rounded-xl py-1 px-3">
+                  <div :class="['w-full rounded-xl py-1 px-3', currentTheme.cssPriceBox]">
                     <div class="flex items-baseline gap-1.5">
                       <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">$${Number(displayOriginalPrice).toLocaleString()}</span>
                       <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-${calculatedDiscountPct}%</span>
                       <div class="flex items-baseline gap-0.5">
-                        <span class="text-amber-400 font-bold text-[9px]">$</span>
+                        <span :class="['font-bold text-[9px]', currentTheme.cssCurrency]">$</span>
                         <span class="font-black text-xs text-white font-mono">{{ displayPrice }}</span>
                         <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                       </div>
                     </div>
-                    <div class="text-[6px] text-cyan-300 font-bold truncate">
+                    <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
                       {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="space-y-0.5 text-[8px] text-slate-200">
-                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet1 }}</div>
-                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet2 }}</div>
-                    <div class="truncate"><span class="text-cyan-400 font-bold">✓</span> {{ bullet3 }}</div>
+                    <div class="truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span> {{ bullet1 }}</div>
+                    <div class="truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span> {{ bullet2 }}</div>
+                    <div class="truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span> {{ bullet3 }}</div>
                   </div>
                 </div>
               </div>
 
             </div>
-
-            <!-- ======================================================== -->
-            <!-- 2. TEMAS CLÁSICOS (CINEMA, EMERALD, BLUE)                -->
-            <!-- ======================================================== -->
-            <template v-else>
-            <!-- Efectos de Luces y Gradientes ambientales -->
-            <div class="absolute -top-12 -right-12 w-44 h-44 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-12 -left-12 w-44 h-44 bg-purple-500/15 rounded-full blur-3xl pointer-events-none"></div>
-
-            <!-- PARTE SUPERIOR: MARCA DE LA TIENDA & BADGE -->
-            <div class="relative z-10 text-center space-y-1 shrink-0">
-              <div class="flex items-center justify-between border-b border-white/10 pb-1">
-                <span :class="['font-mono font-black uppercase tracking-widest text-amber-300 truncate max-w-[200px]', flyerFormat === 'square' ? 'text-[9px]' : 'text-[11px]']">
-                  {{ storeName }}
-                </span>
-                <span :class="['font-bold bg-white/10 px-1.5 py-0.5 rounded-full border border-white/15 text-slate-300', flyerFormat === 'square' ? 'text-[8px]' : 'text-[9px]']">
-                  ⭐ OFICIAL
-                </span>
-              </div>
-
-              <!-- Badge Dinámico (oculto en banner para balancear espacio horizontal) -->
-              <div v-if="flyerFormat !== 'banner'" :class="['inline-block bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black px-3 py-0.5 rounded-full shadow-lg uppercase tracking-wider', flyerFormat === 'square' ? 'text-[8px]' : 'text-[10px]']">
-                {{ headlineBadge }}
-              </div>
-            </div>
-
-            <!-- ============================================== -->
-            <!-- CASO 1: FORMATO BANNER HORIZONTAL (16:9)       -->
-            <!-- ============================================== -->
-            <div v-if="flyerFormat === 'banner'" class="relative z-10 flex items-center gap-3 my-auto">
-              <!-- Columna izquierda: Hero visual -->
-              <div class="w-28 h-28 shrink-0 flex items-center justify-center">
-                <!-- Modo Combo: Cluster de plataformas -->
-                <div v-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1.5 p-1 bg-slate-900/90 rounded-2xl border border-pink-500/40 shadow-xl">
-                  <div 
-                    v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" 
-                    :key="idx"
-                    class="w-10 h-10 rounded-xl bg-slate-950 flex flex-col items-center justify-center p-0.5 border border-white/10"
-                  >
-                    <span class="text-base">{{ getPlatformIcon(srv.platform) }}</span>
-                    <span class="text-[7px] text-white font-bold truncate max-w-full">{{ srv.platform }}</span>
-                  </div>
-                </div>
-
-                <!-- Modo Individual: Icono de Plataforma -->
-                <div v-else-if="flyerProductType === 'individual'" class="w-24 h-24 rounded-2xl bg-slate-900/90 border border-white/20 flex flex-col items-center justify-center shadow-xl p-2">
-                  <span class="text-3xl">{{ currentPlatformIcon }}</span>
-                  <span class="text-[9px] font-black text-amber-300 mt-1 uppercase">{{ selectedPlatform }}</span>
-                </div>
-
-                <!-- Modo Físico: Imagen con CORS -->
-                <div v-else class="w-24 h-24 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-xl border border-white/40 overflow-hidden">
-                  <img 
-                    :src="productImageCORS || selectedPhysicalProduct?.image" 
-                    :alt="displayTitle" 
-                    crossorigin="anonymous"
-                    class="max-h-full max-w-full object-contain filter drop-shadow-sm"
-                  >
-                </div>
-              </div>
-
-              <!-- Columna derecha: Detalles y Precio -->
-              <div class="flex-1 min-w-0 space-y-1">
-                <div class="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  {{ headlineBadge }}
-                </div>
-                <h2 class="text-xs font-black tracking-tight leading-tight text-white line-clamp-1">
-                  {{ displayTitle }}
-                </h2>
-                <div class="text-[8px] font-semibold text-amber-300 font-mono truncate">
-                  {{ displaySubtitle }}
-                </div>
-
-                <!-- Precios con Tachado si corresponde -->
-                <div class="flex items-baseline gap-1.5">
-                  <span v-if="displayOriginalPrice" class="text-[9px] text-slate-400 line-through">
-                    ${{ Number(displayOriginalPrice).toLocaleString() }}
-                  </span>
-                  <span v-if="calculatedDiscountPct" class="text-[7px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">
-                    -{{ calculatedDiscountPct }}%
-                  </span>
-                  <div class="flex items-baseline gap-0.5">
-                    <span class="text-amber-400 font-bold text-[10px]">$</span>
-                    <span class="font-black text-sm text-white font-mono">{{ displayPrice }}</span>
-                    <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
-                  </div>
-                </div>
-
-                <div class="text-[8px] text-slate-300 truncate">
-                  <span class="text-emerald-400 font-bold">✓</span> {{ bullet1 }}
-                </div>
-              </div>
-            </div>
-
-            <!-- ============================================== -->
-            <!-- CASO 2: FORMATOS VERTICALES (9:16, 4:5, 1:1)   -->
-            <!-- ============================================== -->
-            <div v-else class="relative z-10 text-center space-y-1.5 my-auto">
-              
-              <!-- HERO VISUAL SEGÚN EL MODO -->
-              <div v-if="flyerProductType === 'combo'" class="mx-auto flex items-center justify-center gap-1.5 py-0.5">
-                <div 
-                  v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" 
-                  :key="idx"
-                  :class="[
-                    'rounded-2xl bg-slate-900/90 border border-pink-500/40 flex flex-col items-center justify-center shadow-lg transition-all',
-                    flyerFormat === 'story' ? 'w-16 h-16 sm:w-18 sm:h-18 p-1' :
-                    flyerFormat === 'feed' ? 'w-14 h-14 p-1' : 'w-11 h-11 p-0.5'
-                  ]"
-                >
-                  <span :class="flyerFormat === 'square' ? 'text-base' : 'text-xl sm:text-2xl'">{{ getPlatformIcon(srv.platform) }}</span>
-                  <span class="text-[7px] font-black text-white truncate max-w-full mt-0.5">{{ srv.platform }}</span>
-                  <span v-if="flyerFormat !== 'square'" class="text-[6px] text-pink-300 truncate font-mono">{{ srv.planLabel }}</span>
-                </div>
-              </div>
-
-              <!-- Modo Individual: Icono de streaming -->
-              <div 
-                v-else-if="flyerProductType === 'individual'" 
-                :class="[
-                  'mx-auto rounded-3xl bg-slate-900/90 border border-white/20 flex flex-col items-center justify-center shadow-2xl transition-all',
-                  flyerFormat === 'story' ? 'w-24 h-24 sm:w-28 sm:h-28 p-2' :
-                  flyerFormat === 'feed' ? 'w-18 h-18 sm:w-20 sm:h-20 p-1.5' : 'w-14 h-14 p-1'
-                ]"
-              >
-                <span :class="flyerFormat === 'story' ? 'text-4xl sm:text-5xl' : flyerFormat === 'feed' ? 'text-3xl' : 'text-2xl'">
-                  {{ currentPlatformIcon }}
-                </span>
-                <span :class="['font-black text-amber-300 uppercase tracking-wider', flyerFormat === 'square' ? 'text-[7px]' : 'text-[9px] mt-0.5']">
-                  {{ selectedPlatform }}
-                </span>
-              </div>
-
-              <!-- Modo Físico: Foto del producto -->
-              <div 
-                v-else
-                :class="[
-                  'mx-auto rounded-2xl bg-white flex items-center justify-center shadow-xl border border-white/40 overflow-hidden',
-                  flyerFormat === 'story' ? 'w-28 h-28 sm:w-32 sm:h-32 p-2' :
-                  flyerFormat === 'feed' ? 'w-22 h-22 p-1.5' : 'w-16 h-16 p-1'
-                ]"
-              >
-                <img 
-                  :src="productImageCORS || selectedPhysicalProduct?.image" 
-                  :alt="displayTitle"
-                  crossorigin="anonymous"
-                  class="max-h-full max-w-full object-contain filter drop-shadow-sm"
-                >
-              </div>
-
-              <!-- TÍTULO Y SUBTÍTULO -->
-              <div>
-                <h2 :class="['font-black tracking-tight leading-tight drop-shadow text-white', flyerFormat === 'square' ? 'text-[11px] line-clamp-1' : 'text-xs sm:text-sm line-clamp-2']">
-                  {{ displayTitle }}
-                </h2>
-                <p :class="['font-semibold text-amber-300/90 font-mono mt-0.5 truncate', flyerFormat === 'square' ? 'text-[8px]' : 'text-[9px]']">
-                  {{ displaySubtitle }}
-                </p>
-              </div>
-
-              <!-- TARJETA DE PRECIO CON TACHADO -->
-              <div :class="['rounded-2xl bg-black/60 border border-white/10 inline-block shadow-xl', flyerFormat === 'square' ? 'py-0.5 px-2.5' : 'py-1 px-3.5']">
-                <!-- Precio original tachado si existe -->
-                <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
-                  <span :class="['text-slate-400 line-through', flyerFormat === 'square' ? 'text-[8px]' : 'text-[9px]']">
-                    Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}
-                  </span>
-                  <span v-if="calculatedDiscountPct" :class="['bg-emerald-500/20 text-emerald-300 font-black rounded', flyerFormat === 'square' ? 'text-[7px] px-0.5' : 'text-[8px] px-1']">
-                    -{{ calculatedDiscountPct }}%
-                  </span>
-                </div>
-                <div v-else :class="['uppercase font-bold text-slate-400 tracking-wider', flyerFormat === 'square' ? 'text-[7px]' : 'text-[8px]']">
-                  PRECIO EXCLUSIVO
-                </div>
-
-                <!-- Precio final -->
-                <div class="flex items-baseline justify-center gap-0.5">
-                  <span class="text-xs font-black text-amber-400">$</span>
-                  <span :class="['font-black tracking-tight text-white font-mono', flyerFormat === 'square' ? 'text-base' : flyerFormat === 'feed' ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl']">
-                    {{ displayPrice }}
-                  </span>
-                  <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
-                </div>
-              </div>
-
-              <!-- PUNTOS CLAVE / BENEFICIOS -->
-              <div :class="['text-left px-2 font-medium text-slate-200', flyerFormat === 'square' ? 'space-y-0 text-[8px]' : 'space-y-0.5 text-[9px]']">
-                <div class="flex items-center gap-1 truncate">
-                  <span class="text-emerald-400 font-bold">✓</span>
-                  <span class="truncate">{{ bullet1 }}</span>
-                </div>
-                <div class="flex items-center gap-1 truncate">
-                  <span class="text-emerald-400 font-bold">✓</span>
-                  <span class="truncate">{{ bullet2 }}</span>
-                </div>
-                <div v-if="flyerFormat !== 'square'" class="flex items-center gap-1 truncate">
-                  <span class="text-emerald-400 font-bold">✓</span>
-                  <span class="truncate">{{ bullet3 }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- PARTE INFERIOR: LLAMADA A LA ACCIÓN CON DOMINIO -->
-            <div class="relative z-10 text-center space-y-0.5 pt-1 border-t border-white/10 shrink-0">
-              <span :class="['text-slate-400 font-bold uppercase tracking-wider block', flyerFormat === 'square' ? 'text-[7px]' : 'text-[8px]']">
-                ⚡ ¡Haz tu pedido online con garantía oficial!
-              </span>
-              <div :class="['bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 font-black rounded-xl flex items-center justify-center gap-1 shadow-md', flyerFormat === 'square' ? 'py-1 px-2.5 text-[10px]' : 'py-1.5 px-3.5 text-xs']">
-                <span class="text-xs">🌐</span>
-                <span class="font-mono font-black tracking-wide">{{ displayDomain }}</span>
-              </div>
-            </div>
-            </template>
           </div>
         </div>
       </div>
