@@ -318,22 +318,42 @@ export const useAdminStore = defineStore('admin', {
       })(),
 
       // Configuración de Notificaciones Automáticas por Telegram Bot
-      telegramConfig: loadDb(DB_KEYS.TELEGRAM_CONFIG, {
-        botToken: '',
-        chatId: '',
-        enabled: true
-      }),
+      telegramConfig: (() => {
+        const conf = loadDb(DB_KEYS.TELEGRAM_CONFIG, {
+          botToken: '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
+          chatId: '7994226676',
+          enabled: true
+        })
+        if (!conf.botToken) conf.botToken = '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30'
+        if (!conf.chatId) conf.chatId = '7994226676'
+        conf.enabled = true
+        return conf
+      })(),
 
       // Configuración de Sincronización en la Nube con Firebase Firestore
-      firebaseConfig: loadDb(DB_KEYS.FIREBASE_CONFIG, {
-        apiKey: '',
-        authDomain: '',
-        projectId: '',
-        storageBucket: '',
-        messagingSenderId: '',
-        appId: '',
-        enabled: false
-      }),
+      firebaseConfig: (() => {
+        const conf = loadDb(DB_KEYS.FIREBASE_CONFIG, {
+          apiKey: 'AIzaSyBOk3oDY6--EKyETxAfKzRAwasF_HAXMZM',
+          authDomain: 'streamepro-6f5a3.firebaseapp.com',
+          projectId: 'streamepro-6f5a3',
+          storageBucket: 'streamepro-6f5a3.firebasestorage.app',
+          messagingSenderId: '55882803488',
+          appId: '1:55882803488:web:dd4693a750541ce154cf45',
+          measurementId: 'G-DVRKEHEERZ',
+          enabled: true
+        })
+        if (!conf.apiKey || !conf.projectId) {
+          conf.apiKey = 'AIzaSyBOk3oDY6--EKyETxAfKzRAwasF_HAXMZM'
+          conf.authDomain = 'streamepro-6f5a3.firebaseapp.com'
+          conf.projectId = 'streamepro-6f5a3'
+          conf.storageBucket = 'streamepro-6f5a3.firebasestorage.app'
+          conf.messagingSenderId = '55882803488'
+          conf.appId = '1:55882803488:web:dd4693a750541ce154cf45'
+          conf.measurementId = 'G-DVRKEHEERZ'
+          conf.enabled = true
+        }
+        return conf
+      })(),
 
       // Catálogo de Productos Virtuales y Precios persistente
       pricingCatalog: loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS),

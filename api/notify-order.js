@@ -1,11 +1,22 @@
 import https from 'https'
 
+const OFFICIAL_TELEGRAM_BOT_TOKEN = '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30'
+const OFFICIAL_TELEGRAM_CHAT_ID = '7994226676'
+
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function sendTelegramMessage(token, chatId, text) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify({
       chat_id: chatId,
       text: text,
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       disable_web_page_preview: true
     })
 
@@ -50,8 +61,8 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {}
-    const token = body.telegramToken || process.env.TELEGRAM_BOT_TOKEN
-    const chatId = body.telegramChatId || process.env.TELEGRAM_CHAT_ID
+    const token = body.telegramToken || process.env.TELEGRAM_BOT_TOKEN || OFFICIAL_TELEGRAM_BOT_TOKEN
+    const chatId = body.telegramChatId || process.env.TELEGRAM_CHAT_ID || OFFICIAL_TELEGRAM_CHAT_ID
 
     if (!token || !chatId) {
       return res.status(200).json({ 
@@ -65,7 +76,7 @@ export default async function handler(req, res) {
       const result = await sendTelegramMessage(
         token, 
         chatId, 
-        '🔔 *¡Conexión Exitosa con StreamePro!*\n\nTu Bot de Telegram está configurado correctamente y listo para enviarte cada nuevo pedido en tiempo real.'
+        '🔔 <b>¡Conexión Exitosa con StreamePro!</b>\n\nTu Bot de Telegram está configurado correctamente y listo para enviarte cada nuevo pedido en tiempo real.'
       )
       return res.status(200).json({ success: true, result })
     }
@@ -79,22 +90,25 @@ export default async function handler(req, res) {
       const name = i.name || i.platform || 'Item'
       const qty = i.quantity || i.units || 1
       const price = i.clientPrice || (i.priceNumeric || (parseInt(String(i.price || '0').replace(/[$. ]/g, '')) || 0))
-      let s = `• *${name}* (x${qty}): $${(price * qty).toLocaleString()} ARS`
-      if (i.activationEmail) s += `\n  ✉️ Activación: \`${i.activationEmail}\``
+      let s = `• <b>${escapeHtml(name)}</b> (x${qty}): $${(price * qty).toLocaleString()} ARS`
+      if (i.activationEmail) s += `\n  ✉️ Activación: <code>${escapeHtml(i.activationEmail)}</code>`
       return s
     }).join('\n')
 
+    const cleanCustomerPhone = String(ord.customerPhone || '').replace(/[^0-9]/g, '')
+    const waLink = cleanCustomerPhone ? `https://wa.me/${cleanCustomerPhone}` : null
+
     const message = 
-      `🚨 *¡NUEVO PEDIDO EN STREAMEPRO!* 🚀\n\n` +
-      `📋 *N° de Pedido:* \`${ord.clientNumber || 'S/N'}\`\n` +
-      `👤 *Cliente:* ${ord.customerName || 'Cliente'}\n` +
-      `📱 *WhatsApp:* [${ord.customerPhone || 'Sin teléfono'}](https://wa.me/${String(ord.customerPhone || '').replace(/[^0-9]/g, '')})\n` +
-      `💰 *Monto Total:* *$${Number(ord.total || 0).toLocaleString()} ARS*\n` +
-      `💳 *Método de Pago:* ${ord.paymentMethod || 'Transferencia Bancaria'}\n` +
-      `🏢 *Venta:* ${ord.isDirect ? 'Directa (StreamePro Oficial)' : (ord.reseller?.name || 'Distribuidor Asignado')}\n\n` +
-      `🛒 *Productos Solicitados:*\n${itemsText || '• Sin detalle'}\n` +
-      (ord.shippingAddress ? `\n📦 *Dirección de Envío:* ${ord.shippingAddress}\n` : '') +
-      `\n🔗 *Panel de Gestión:* https://streamepro.me/admin`
+      `🚨 <b>¡NUEVO PEDIDO RECIBIDO EN STREAMEPRO!</b> 🚀\n\n` +
+      `📋 <b>N° de Pedido:</b> <code>${escapeHtml(ord.clientNumber || 'S/N')}</code>\n` +
+      `👤 <b>Cliente:</b> ${escapeHtml(ord.customerName || 'Cliente')}\n` +
+      `📱 <b>WhatsApp:</b> ${waLink ? `<a href="${waLink}">${escapeHtml(ord.customerPhone)}</a>` : escapeHtml(ord.customerPhone || 'Sin teléfono')}\n` +
+      `💰 <b>Monto Total:</b> <b>$${Number(ord.total || 0).toLocaleString()} ARS</b>\n` +
+      `💳 <b>Método de Pago:</b> ${escapeHtml(ord.paymentMethod || 'Transferencia Bancaria')}\n` +
+      `🏢 <b>Canal:</b> ${ord.isDirect ? 'Directo (StreamePro Oficial)' : escapeHtml(ord.reseller?.name || 'Distribuidor')}\n\n` +
+      `🛒 <b>Productos Solicitados:</b>\n${itemsText || '• Sin detalle'}\n` +
+      (ord.shippingAddress ? `\n📦 <b>Dirección de Envío:</b> ${escapeHtml(ord.shippingAddress)}\n` : '') +
+      `\n🔗 <b>Panel de Gestión:</b> https://streamepro.me/admin`
 
     const telegramRes = await sendTelegramMessage(token, chatId, message)
     return res.status(200).json({ success: true, telegramRes })

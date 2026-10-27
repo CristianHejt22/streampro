@@ -557,13 +557,18 @@ const sendOrderToWhatsApp = () => {
   }
 
   const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-  try {
-    const win = window.open(waUrl, '_blank')
-    if (!win || win.closed || typeof win.closed === 'undefined') {
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  if (isMobile) {
+    window.location.href = waUrl
+  } else {
+    try {
+      const win = window.open(waUrl, '_blank')
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = waUrl
+      }
+    } catch (e) {
       window.location.href = waUrl
     }
-  } catch (e) {
-    window.location.href = waUrl
   }
 }
 
@@ -706,8 +711,8 @@ const submitOrder = async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       order: orderSnapshot,
-      telegramToken: adminStore.telegramConfig?.botToken,
-      telegramChatId: adminStore.telegramConfig?.chatId
+      telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
+      telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
     })
   }).catch(() => {})
 

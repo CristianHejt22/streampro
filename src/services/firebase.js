@@ -5,7 +5,7 @@ import {
   collection, 
   addDoc, 
   setDoc,
-  doc,
+  doc, 
   query, 
   orderBy, 
   onSnapshot, 
@@ -14,21 +14,34 @@ import {
   limit
 } from 'firebase/firestore'
 
+// Configuración Oficial de Firebase de StreamePro
+export const OFFICIAL_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBOk3oDY6--EKyETxAfKzRAwasF_HAXMZM",
+  authDomain: "streamepro-6f5a3.firebaseapp.com",
+  projectId: "streamepro-6f5a3",
+  storageBucket: "streamepro-6f5a3.firebasestorage.app",
+  messagingSenderId: "55882803488",
+  appId: "1:55882803488:web:dd4693a750541ce154cf45",
+  measurementId: "G-DVRKEHEERZ"
+}
+
 let dbInstance = null
 let currentApp = null
 
 /**
- * Inicializa o re-inicializa Firebase con la configuración provista
+ * Inicializa o re-inicializa Firebase con la configuración provista u oficial
  */
-export function initFirebase(config) {
-  if (!config || !config.apiKey || !config.projectId) {
+export function initFirebase(config = null) {
+  const effectiveConfig = (config && config.apiKey && config.projectId) ? config : OFFICIAL_FIREBASE_CONFIG
+
+  if (!effectiveConfig || !effectiveConfig.apiKey || !effectiveConfig.projectId) {
     dbInstance = null
     return null
   }
 
   try {
     const apps = getApps()
-    currentApp = apps.length > 0 ? getApp() : initializeApp(config)
+    currentApp = apps.length > 0 ? getApp() : initializeApp(effectiveConfig)
     dbInstance = getFirestore(currentApp)
     return dbInstance
   } catch (error) {
@@ -39,27 +52,31 @@ export function initFirebase(config) {
 }
 
 export function isFirebaseConfigured() {
+  if (!dbInstance) {
+    initFirebase()
+  }
   return dbInstance !== null
 }
 
 /**
- * Guarda una orden de streaming en la colección 'orders'
+ * Guarda una orden de streaming en la colección 'orders' de Firestore
  */
 export async function saveStreamingOrderToFirebase(orderData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
     const cleanOrder = JSON.parse(JSON.stringify(orderData))
     cleanOrder.createdAtTimestamp = serverTimestamp()
     cleanOrder.sourceOrigin = 'streamepro.me'
+    cleanOrder.updatedAt = new Date().toISOString()
 
-    if (cleanOrder.id) {
-      await setDoc(doc(dbInstance, 'orders', String(cleanOrder.id)), cleanOrder, { merge: true })
-    } else {
-      await addDoc(collection(dbInstance, 'orders'), cleanOrder)
-    }
+    const orderId = String(cleanOrder.id || `ORD-${Date.now().toString().slice(-4)}`)
+    await setDoc(doc(dbInstance, 'orders', orderId), cleanOrder, { merge: true })
 
-    return { success: true }
+    return { success: true, id: orderId }
   } catch (error) {
     console.error('[Firebase] Error guardando orden de streaming:', error)
     return { success: false, error: error.message }
@@ -67,23 +84,24 @@ export async function saveStreamingOrderToFirebase(orderData) {
 }
 
 /**
- * Guarda una orden de productos físicos en la colección 'physical_orders'
+ * Guarda una orden de productos físicos en la colección 'physical_orders' de Firestore
  */
 export async function savePhysicalOrderToFirebase(orderData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
     const cleanOrder = JSON.parse(JSON.stringify(orderData))
     cleanOrder.createdAtTimestamp = serverTimestamp()
     cleanOrder.sourceOrigin = 'streamepro.me'
+    cleanOrder.updatedAt = new Date().toISOString()
 
-    if (cleanOrder.id) {
-      await setDoc(doc(dbInstance, 'physical_orders', String(cleanOrder.id)), cleanOrder, { merge: true })
-    } else {
-      await addDoc(collection(dbInstance, 'physical_orders'), cleanOrder)
-    }
+    const orderId = String(cleanOrder.id || `PED-FIS-${Date.now().toString().slice(-4)}`)
+    await setDoc(doc(dbInstance, 'physical_orders', orderId), cleanOrder, { merge: true })
 
-    return { success: true }
+    return { success: true, id: orderId }
   } catch (error) {
     console.error('[Firebase] Error guardando orden física:', error)
     return { success: false, error: error.message }
@@ -94,10 +112,13 @@ export async function savePhysicalOrderToFirebase(orderData) {
  * Escucha cambios en tiempo real en la colección 'orders'
  */
 export function listenToStreamingOrders(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
   if (!dbInstance) return () => {}
 
   try {
-    const q = query(collection(dbInstance, 'orders'), orderBy('createdAtTimestamp', 'desc'), limit(100))
+    const q = query(collection(dbInstance, 'orders'), limit(100))
     return onSnapshot(q, (snapshot) => {
       const orders = []
       snapshot.forEach((docSnap) => {
@@ -117,10 +138,13 @@ export function listenToStreamingOrders(callback) {
  * Escucha cambios en tiempo real en la colección 'physical_orders'
  */
 export function listenToPhysicalOrders(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
   if (!dbInstance) return () => {}
 
   try {
-    const q = query(collection(dbInstance, 'physical_orders'), orderBy('createdAtTimestamp', 'desc'), limit(100))
+    const q = query(collection(dbInstance, 'physical_orders'), limit(100))
     return onSnapshot(q, (snapshot) => {
       const orders = []
       snapshot.forEach((docSnap) => {
@@ -139,9 +163,10 @@ export function listenToPhysicalOrders(callback) {
 /**
  * Prueba la conexión con Firebase intentando una lectura básica
  */
-export async function testFirebaseConnection(config) {
+export async function testFirebaseConnection(config = null) {
   try {
-    const testApp = initializeApp(config, 'test-app-' + Date.now())
+    const testConfig = (config && config.apiKey && config.projectId) ? config : OFFICIAL_FIREBASE_CONFIG
+    const testApp = initializeApp(testConfig, 'test-app-' + Date.now())
     const testDb = getFirestore(testApp)
     const q = query(collection(testDb, 'orders'), limit(1))
     await getDocs(q)
