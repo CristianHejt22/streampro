@@ -1,15 +1,18 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useAdminStore, useResellerStore } from './store/admin'
+import { useCartStore } from './store/cart'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import UserProfileModal from './components/UserProfileModal.vue'
 
 const route = useRoute()
+const router = useRouter()
 const toastStore = useToastStore()
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
+const cartStore = useCartStore()
 
 const showProfileModal = ref(false)
 const savedUserName = ref('')
@@ -40,6 +43,26 @@ const handleProfileSaved = (prof) => {
 const isClientArea = computed(() => route.name === 'home' || route.name === 'portal' || route.name === 'recruitment' || ['/', '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente', '/p', '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'].includes(route.path))
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
+
+const publicPhysicalCount = computed(() => {
+  return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
+})
+
+const navigateSection = (sec) => {
+  if (route.path === '/') {
+    router.push({ path: '/', query: { ...route.query, sec } })
+  } else {
+    router.push({ path: '/', query: { sec } })
+  }
+}
+
+const handleOpenCart = () => {
+  if (route.name === 'home' || route.path === '/') {
+    cartStore.openDrawer()
+  } else {
+    router.push({ path: '/', query: { openCart: 'true' } })
+  }
+}
 </script>
 
 <template>
@@ -48,54 +71,55 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-accent/20 blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
 
-    <header class="bg-[#030712]/80 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-50 transition-all">
-      <div class="container mx-auto px-4 py-3 flex flex-wrap gap-4 justify-between items-center">
-        <!-- Logo & Enterprise Brand -->
-        <RouterLink to="/" class="flex items-center gap-3 group">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.4)] border border-white/20 group-hover:scale-105 transition-transform">
-            <svg class="w-5 h-5 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-300 to-indigo-300 tracking-tight">STREAMEPRO</h1>
-              <span v-if="isClientArea" class="text-[10px] font-mono font-black uppercase tracking-widest bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded">Oficial</span>
-              <span v-else-if="isResellerArea" class="text-[10px] font-mono font-black uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded">Distribuidores</span>
-              <span v-else-if="isAdminArea" class="text-[10px] font-mono font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">Mayorista Central</span>
+    <header class="bg-[#030712]/90 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-50 transition-all shadow-lg shadow-black/20">
+      <div class="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
+        <!-- Fila Principal: Logo + Status + Acciones / Navegación -->
+        <div class="flex items-center justify-between gap-3">
+          <!-- 1. Logo & Identidad de Marca -->
+          <RouterLink to="/" class="flex items-center gap-2.5 sm:gap-3 group shrink-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.4)] border border-white/20 group-hover:scale-105 transition-transform">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <p class="text-[10px] text-slate-500 font-medium tracking-wide">
-              {{ isClientArea ? 'Tienda Oficial de Cuentas Premium' : isResellerArea ? 'Panel Exclusivo de Distribuidores' : 'Centro de Control & Inventario Proveedor' }}
-            </p>
-          </div>
-        </RouterLink>
+            <div>
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <h1 class="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-300 to-indigo-300 tracking-tight">STREAMEPRO</h1>
+                <span v-if="isClientArea" class="text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.2 rounded">Oficial</span>
+                <span v-else-if="isResellerArea" class="text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 rounded">Distribuidores</span>
+                <span v-else-if="isAdminArea" class="text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">Mayorista Central</span>
+              </div>
+              <p class="hidden sm:block text-[10px] text-slate-500 font-medium tracking-wide">
+                {{ isClientArea ? 'Tienda Oficial de Cuentas Premium & Tecnología' : isResellerArea ? 'Panel Exclusivo de Distribuidores' : 'Centro de Control & Inventario Proveedor' }}
+              </p>
+            </div>
+          </RouterLink>
 
-        <!-- System Status & Separated Navigation -->
-        <div class="flex items-center gap-3">
-          <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <!-- 2. Badge de Garantía (Visible en Pantallas Grandes) -->
+          <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
           </div>
 
-          <!-- NAVEGACIÓN PARA CLIENTES -->
-          <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
+          <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
+          <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
             <button 
               type="button"
-              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'all' } })" 
+              @click="navigateSection('all')" 
               :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
                 $route.path === '/' && (!$route.query.sec || $route.query.sec === 'all')
                   ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' 
                   : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
               ]"
             >
               <span>🌟</span>
-              <span>Todo el Catálogo</span>
+              <span>Todo</span>
             </button>
             
             <button 
               type="button"
-              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'digital' } })" 
+              @click="navigateSection('digital')" 
               :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
                 $route.path === '/' && $route.query.sec === 'digital'
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' 
                   : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
@@ -107,24 +131,24 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             
             <button 
               type="button"
-              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'physical' } })" 
+              @click="navigateSection('physical')" 
               :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
                 $route.path === '/' && $route.query.sec === 'physical'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' 
                   : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
               ]"
             >
               <span>📦</span>
-              <span>Productos Físicos</span>
+              <span>Físicos</span>
               <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
-                {{ adminStore.physicalProducts.length }}
+                {{ publicPhysicalCount }}
               </span>
             </button>
 
             <RouterLink 
               to="/portal" 
-              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
+              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5 whitespace-nowrap" 
               active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
             >
               <span>🔐</span>
@@ -133,25 +157,41 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 
             <RouterLink 
               to="/revendedores" 
-              class="px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold" 
+              class="px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold whitespace-nowrap" 
               active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
             >
               <span>🚀</span>
-              <span class="hidden sm:inline">Revendedores</span>
+              <span>Revendedores</span>
             </RouterLink>
-
-            <!-- Acceso Rápido / Registro de Usuario -->
-            <button 
-              @click="showProfileModal = true" 
-              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold shadow-sm"
-              title="Mi Perfil, compras y registro"
-            >
-              <span>👤</span>
-              <span>{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
-            </button>
           </nav>
 
-          <!-- NAVEGACIÓN CUANDO SE ENCUENTRA EN EL PANEL DE REVENDEDOR -->
+          <!-- 4. Acciones Principales (Mi Cuenta + Carrito) -->
+          <div v-if="isClientArea" class="flex items-center gap-2 shrink-0">
+            <!-- Acceso Mi Cuenta / Perfil -->
+            <button 
+              @click="showProfileModal = true" 
+              class="px-2.5 sm:px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold text-xs shadow-sm cursor-pointer"
+              title="Mi Perfil, compras y registro"
+            >
+              <span class="text-sm">👤</span>
+              <span class="max-w-[70px] sm:max-w-[100px] truncate">{{ savedUserName ? savedUserName : 'Mi Cuenta' }}</span>
+            </button>
+
+            <!-- Botón Ver Carrito Pro con Contador Dinámico -->
+            <button 
+              @click="handleOpenCart" 
+              class="relative bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 hover:from-sky-300 hover:to-indigo-500 text-slate-950 font-black px-3 sm:px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(56,189,248,0.25)] hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] flex items-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              title="Abrir Carrito de Compras"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+              <span class="hidden sm:inline">Carrito</span>
+              <span v-if="cartStore.totalItems > 0" class="bg-amber-400 text-slate-950 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center font-mono animate-pulse shadow-sm">
+                {{ cartStore.totalItems }}
+              </span>
+            </button>
+          </div>
+
+          <!-- Reseller Navigation -->
           <div v-else-if="isResellerArea" class="flex items-center gap-2">
             <div v-if="resellerStore.isAuthenticated" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
               <span class="text-slate-400">Distribuidor:</span>
@@ -161,7 +201,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 
             <button 
               @click="showProfileModal = true" 
-              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold transition-all flex items-center gap-1.5"
+              class="px-3 py-2 rounded-xl text-sky-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>👤</span>
               <span class="hidden sm:inline">Mi Perfil</span>
@@ -175,7 +215,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             </RouterLink>
           </div>
 
-          <!-- NAVEGACIÓN CUANDO SE ENCUENTRA EN EL PANEL DE ADMIN -->
+          <!-- Admin Navigation -->
           <div v-else-if="isAdminArea" class="flex flex-wrap items-center gap-2">
             <span class="hidden sm:inline-block text-xs font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-xl">
               Panel Mayorista Proveedor
@@ -190,11 +230,77 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
             <RouterLink 
               to="/p" 
               class="text-xs font-bold px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-white border border-amber-500/30 transition-all flex items-center gap-1.5"
-              title="Ver Catálogo Físico de 59 productos"
+              title="Ver Catálogo Físico"
             >
-              <span>📦 Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
+              <span>📦 Catálogo Físico ({{ publicPhysicalCount }})</span>
             </RouterLink>
           </div>
+        </div>
+
+        <!-- Tier 2 para Móviles y Tablets (< lg): Barra de Pestañas con Desplazamiento Horizontal Suave -->
+        <div v-if="isClientArea" class="lg:hidden mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-1">
+          <button 
+            type="button"
+            @click="navigateSection('all')" 
+            :class="[
+              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
+              $route.path === '/' && (!$route.query.sec || $route.query.sec === 'all')
+                ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' 
+                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
+            ]"
+          >
+            <span>🌟</span>
+            <span>Todo</span>
+          </button>
+          
+          <button 
+            type="button"
+            @click="navigateSection('digital')" 
+            :class="[
+              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
+              $route.path === '/' && $route.query.sec === 'digital'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' 
+                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
+            ]"
+          >
+            <span>🎬</span>
+            <span>Suscripciones</span>
+          </button>
+          
+          <button 
+            type="button"
+            @click="navigateSection('physical')" 
+            :class="[
+              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
+              $route.path === '/' && $route.query.sec === 'physical'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' 
+                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
+            ]"
+          >
+            <span>📦</span>
+            <span>Físicos</span>
+            <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
+              {{ publicPhysicalCount }}
+            </span>
+          </button>
+
+          <RouterLink 
+            to="/portal" 
+            class="px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap" 
+            active-class="!bg-sky-500/15 !text-sky-300 !border-sky-500/40 font-bold"
+          >
+            <span>🔐</span>
+            <span>Mi Bóveda</span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/revendedores" 
+            class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap font-bold" 
+            active-class="!bg-amber-500/25 !text-amber-200 !border-amber-500/40"
+          >
+            <span>🚀</span>
+            <span>Revendedores</span>
+          </RouterLink>
         </div>
       </div>
     </header>
@@ -398,6 +504,15 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 </template>
 
 <style>
+/* Scrollbar invisible para pill-bar en móviles */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Toast Animations */
 .toast-enter-active,
 .toast-leave-active {

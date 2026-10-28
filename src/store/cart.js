@@ -4,6 +4,7 @@ import { parseArgentinePrice } from '../utils/pricing'
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: [],
+    isDrawerOpen: false
   }),
   getters: {
     totalItems: (state) => {
@@ -39,6 +40,15 @@ export const useCartStore = defineStore('cart', {
     hasDigitalItems: (state) => state.items.some(i => i.itemType !== 'physical')
   },
   actions: {
+    openDrawer() {
+      this.isDrawerOpen = true
+    },
+    closeDrawer() {
+      this.isDrawerOpen = false
+    },
+    toggleDrawer() {
+      this.isDrawerOpen = !this.isDrawerOpen
+    },
     addItem(product, planKey, planData, profiles = [], activationEmail = '') {
       const defaultProfiles = profiles.length > 0 ? profiles : Array.from({ length: planData.units }, (_, idx) => ({
         name: planData.type === 'perfil' 

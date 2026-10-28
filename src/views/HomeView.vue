@@ -169,6 +169,13 @@ const physicalQuantity = ref(1)
 // Modal del Carrito previo al envío
 const showCartDrawer = ref(false)
 
+watch(() => cartStore.isDrawerOpen, (isOpen) => {
+  showCartDrawer.value = isOpen
+})
+watch(showCartDrawer, (isOpen) => {
+  cartStore.isDrawerOpen = isOpen
+})
+
 // Modal y Formulario Checkout
 const showCheckoutModal = ref(false)
 const showOrderSuccessModal = ref(false)
@@ -423,6 +430,12 @@ const applyRouteParams = () => {
     }
   } else if (route.query.sec === 'all' || !route.query.sec) {
     storeSection.value = 'all'
+  }
+
+  // Apertura automática del carrito si viene en URL (?openCart=true)
+  if (route.query.openCart === 'true' || route.query.cart === 'true') {
+    showCartDrawer.value = true
+    cartStore.openDrawer()
   }
 
   // Previsualización y apertura automática de producto físico compartido
