@@ -155,8 +155,8 @@ const openConfigFromInfo = () => {
   }
 }
 
-// Sección Activa en Tienda: 'digital' (Streaming & Música) vs 'physical' (Productos Físicos del Catálogo)
-const storeSection = ref('digital') // 'digital' | 'physical'
+// Sección Activa en Tienda: 'all' (Todo el Catálogo) | 'digital' (Streaming) | 'physical' (Productos Físicos) | 'packages' (Combos)
+const storeSection = ref('all')
 
 // Modal de Detalle de Producto Físico
 const selectedPhysicalProduct = ref(null)
@@ -406,15 +406,19 @@ const applyRouteParams = () => {
     }
   }
 
-  // Redirección y activación de sección física o paquetes
+  // Redirección y activación de sección física, digital, paquetes o todo
   if (route.query.sec === 'physical') {
     storeSection.value = 'physical'
+  } else if (route.query.sec === 'digital') {
+    storeSection.value = 'digital'
   } else if (route.query.sec === 'packages' || route.query.pkg) {
     storeSection.value = 'packages'
     if (route.query.pkg) {
       clientForm.value.isSharedUrl = true
       toast.add('¡Mostrando paquete promocional seleccionado!', 'info')
     }
+  } else if (route.query.sec === 'all' || !route.query.sec) {
+    storeSection.value = 'all'
   }
 
   // Previsualización y apertura automática de producto físico compartido
@@ -936,6 +940,17 @@ const submitOrder = async () => {
         <div class="mt-6 flex flex-wrap items-center gap-2.5">
           <button 
             type="button"
+            @click="storeSection = 'all'"
+            :class="[
+              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
+              storeSection === 'all' ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sky-500/20' : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
+            ]"
+          >
+            <span>🌟</span>
+            <span>Ver Todo el Catálogo</span>
+          </button>
+          <button 
+            type="button"
             @click="storeSection = 'digital'"
             :class="[
               'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
@@ -998,9 +1013,22 @@ const submitOrder = async () => {
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
       <div class="flex flex-wrap p-1.5 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg gap-1">
         <button 
+          @click="storeSection = 'all'"
+          :class="[
+            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            storeSection === 'all' 
+              ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 shadow-lg font-black' 
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+          ]"
+        >
+          <span>🌟</span>
+          <span>Todo el Catálogo</span>
+        </button>
+
+        <button 
           @click="storeSection = 'digital'"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
             storeSection === 'digital' 
               ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-sky-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -1013,7 +1041,7 @@ const submitOrder = async () => {
         <button 
           @click="storeSection = 'packages'"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
             storeSection === 'packages' 
               ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-lg shadow-purple-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -1029,7 +1057,7 @@ const submitOrder = async () => {
         <button 
           @click="storeSection = 'physical'"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2',
+            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
             storeSection === 'physical' 
               ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
@@ -1057,9 +1085,23 @@ const submitOrder = async () => {
     </div>
 
     <!-- SECCIÓN 1: SUSCRIPCIONES DIGITALES -->
-    <div v-if="storeSection === 'digital'" class="space-y-6">
-      <!-- Banner Destacado para Descubrir Catálogo Físico -->
-      <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-orange-950/30 p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+    <div v-if="storeSection === 'all' || storeSection === 'digital'" id="suscripciones-digitales" class="space-y-6">
+      <!-- Header de Sección Oficial -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-gradient-to-r from-sky-950/40 via-slate-900 to-slate-950 p-4 rounded-2xl border border-sky-500/30">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🎬</span>
+          <div>
+            <h3 class="text-lg font-black text-white">Suscripciones Digitales & Cuentas Oficiales</h3>
+            <p class="text-xs text-slate-400">Netflix, Max, Spotify, Disney+, IPTV, Prime Video, YouTube Premium y Canva Pro con PIN exclusivo y entrega de 10 min a 1 hora.</p>
+          </div>
+        </div>
+        <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-3 py-1 rounded-xl shrink-0">
+          8 Plataformas Disponibles
+        </span>
+      </div>
+
+      <!-- Banner Destacado para Descubrir Catálogo Físico (Visible si se filtra sólo digital) -->
+      <div v-if="storeSection === 'digital'" class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-orange-950/30 p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0 border border-amber-500/30">
             📦
@@ -1202,7 +1244,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- SECCIÓN 2: PAQUETES & COMBOS EN OFERTA -->
-    <div v-else-if="storeSection === 'packages'" class="space-y-6">
+    <div v-if="storeSection === 'all' || storeSection === 'packages'" id="paquetes-combos" class="space-y-6">
       <!-- Barra de Filtros y Ver Carrito para Combos -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
@@ -1337,9 +1379,23 @@ const submitOrder = async () => {
     </div>
 
     <!-- SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (C:\Users\yo\catalogo) -->
-    <div v-else class="space-y-6">
-      <!-- Banner Destacado para Volver a Streaming Digital -->
-      <div class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/30 p-4 rounded-2xl border border-sky-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+    <div v-if="storeSection === 'all' || storeSection === 'physical'" id="catalogo-fisico" class="space-y-6">
+      <!-- Header de Sección Oficial -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 p-4 rounded-2xl border border-amber-500/30">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📦</span>
+          <div>
+            <h3 class="text-lg font-black text-white">Tienda & Catálogo de Productos Físicos</h3>
+            <p class="text-xs text-slate-400">Electrónica, tecnología, accesorios, hogar, bazar y herramientas con asesoramiento directo por WhatsApp.</p>
+          </div>
+        </div>
+        <span class="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-xl shrink-0">
+          {{ adminStore.physicalProducts.length }} Productos Sincronizados
+        </span>
+      </div>
+
+      <!-- Banner Destacado para Volver a Streaming Digital (Visible si se filtra sólo físico) -->
+      <div v-if="storeSection === 'physical'" class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/30 p-4 rounded-2xl border border-sky-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl shrink-0 border border-sky-500/30">
             🎬

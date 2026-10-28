@@ -79,10 +79,24 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
           <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
             <button 
               type="button"
-              @click="$router.push({ path: '/', query: { ...$route.query, sec: undefined } })" 
+              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'all' } })" 
               :class="[
                 'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
-                $route.path === '/' && (!$route.query.sec || $route.query.sec === 'digital')
+                $route.path === '/' && (!$route.query.sec || $route.query.sec === 'all')
+                  ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' 
+                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+              ]"
+            >
+              <span>🌟</span>
+              <span>Todo el Catálogo</span>
+            </button>
+            
+            <button 
+              type="button"
+              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'digital' } })" 
+              :class="[
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                $route.path === '/' && $route.query.sec === 'digital'
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' 
                   : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
               ]"
@@ -162,15 +176,23 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
           </div>
 
           <!-- NAVEGACIÓN CUANDO SE ENCUENTRA EN EL PANEL DE ADMIN -->
-          <div v-else-if="isAdminArea" class="flex items-center gap-2">
+          <div v-else-if="isAdminArea" class="flex flex-wrap items-center gap-2">
             <span class="hidden sm:inline-block text-xs font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-xl">
               Panel Mayorista Proveedor
             </span>
             <RouterLink 
               to="/" 
-              class="text-xs font-bold px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1.5"
+              class="text-xs font-bold px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 transition-all flex items-center gap-1.5"
+              title="Ver Tienda Pública completa de suscripciones y catálogo"
             >
-              <span>← Volver a Tienda</span>
+              <span>🎬 Tienda Pública</span>
+            </RouterLink>
+            <RouterLink 
+              to="/p" 
+              class="text-xs font-bold px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-white border border-amber-500/30 transition-all flex items-center gap-1.5"
+              title="Ver Catálogo Físico de 59 productos"
+            >
+              <span>📦 Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
             </RouterLink>
           </div>
         </div>

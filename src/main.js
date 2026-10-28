@@ -25,13 +25,32 @@ try {
   console.warn('[Sync] Inicialización en segundo plano:', e)
 }
 
-// Limpieza de Service Workers obsoletos en entorno de desarrollo
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    for (const r of registrations) {
-      r.unregister()
-    }
-  })
+// Control de Service Workers y actualización garantizada en producción
+if ('serviceWorker' in navigator) {
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const r of registrations) {
+        r.unregister()
+      }
+    })
+  } else {
+    // En producción: forzar chequeo de actualización inmediata
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const r of registrations) {
+        r.update().catch(() => {})
+      }
+    })
+    
+    // Si un nuevo Service Worker toma el control, recargar para servir la última versión
+    let hasReloaded = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hasReloaded) {
+        hasReloaded = true
+        console.log('[StreamePro] Nueva versión activada. Actualizando vista...')
+        window.location.reload()
+      }
+    })
+  }
 }
 
 // Modo producción listo

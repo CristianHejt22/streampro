@@ -1995,6 +1995,84 @@ const deletePackageItem = (pkgId) => {
       </button>
     </div>
 
+    <!-- ACCESO RÁPIDO DUAL: TIENDA DE SUSCRIPCIONES & TIENDA DE PRODUCTOS FÍSICOS -->
+    <div v-if="adminTab === 'inventory'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Tarjeta 1: Tienda de Suscripciones -->
+      <div class="bg-gradient-to-br from-sky-950/50 via-slate-900 to-indigo-950/40 p-6 rounded-3xl border border-sky-500/30 shadow-xl flex flex-col justify-between space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow-inner">
+              🎬
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">Tienda de Suscripciones Digitales</h3>
+              <p class="text-xs text-slate-300">8 plataformas activas (Netflix, Max, Spotify, Disney+, IPTV, etc.)</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono font-bold bg-sky-400/15 text-sky-300 border border-sky-400/30 px-2.5 py-1 rounded-xl">
+            {{ adminStore.orders.length }} Órdenes
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
+          <button 
+            type="button" 
+            @click="adminTab = 'catalog'"
+            class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🏷️ Editar Precios & Planes</span>
+          </button>
+          <button 
+            type="button" 
+            @click="adminTab = 'orders'"
+            class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🚚 Despachos ({{ adminStore.pendingOrders.length }})</span>
+          </button>
+          <a 
+            href="/?sec=digital" 
+            target="_blank" 
+            class="bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
+          >
+            <span>🌐 Ver Tienda Pública ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Tarjeta 2: Tienda de Productos Físicos -->
+      <div class="bg-gradient-to-br from-amber-950/50 via-slate-900 to-orange-950/40 p-6 rounded-3xl border border-amber-500/30 shadow-xl flex flex-col justify-between space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-2xl shadow-inner">
+              📦
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">Tienda & Catálogo de Productos Físicos</h3>
+              <p class="text-xs text-slate-300">{{ adminStore.physicalProducts.length }} productos sincronizados (tecnología, bazar, herramientas)</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-1 rounded-xl">
+            {{ adminStore.pendingPhysicalOrders.length }} Pendientes
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
+          <button 
+            type="button" 
+            @click="adminTab = 'physical'"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📦 Ver Catálogo & Pedidos Físicos</span>
+          </button>
+          <a 
+            href="/p" 
+            target="_blank" 
+            class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
+          >
+            <span>🌐 Ver Catálogo en Vivo (/p) ↗</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
     <!-- Módulo de Renovaciones Solicitadas: El Proveedor puede cambiar datos de cuenta -->
     <div v-if="adminTab === 'renewals' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
