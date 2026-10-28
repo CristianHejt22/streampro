@@ -606,6 +606,10 @@ const filteredPhysicalProducts = computed(() => {
   const list = adminStore.physicalProducts || []
   return list.filter(p => {
     if (!p) return false
+    // Excluir contenido o páginas marcadas como visibles solo en admin
+    if (p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) {
+      return false
+    }
     const matchesCat = physicalCategoryFilter.value === 'All' || 
       (p.categoryIds && p.categoryIds.includes(physicalCategoryFilter.value))
     const q = (physicalSearchQuery.value || '').toLowerCase().trim()
@@ -1456,8 +1460,8 @@ const submitOrder = async () => {
           </div>
           <div class="w-px bg-white/10 my-2"></div>
           <select v-model="physicalCategoryFilter" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
-            <option value="All" class="bg-slate-900">Todas las categorías ({{ adminStore.physicalProducts.length }})</option>
-            <option v-for="cat in adminStore.physicalCategories" :key="cat.id" :value="cat.id" class="bg-slate-900">
+            <option value="All" class="bg-slate-900">Todas las categorías ({{ adminStore.physicalProducts.filter(p => !p.adminOnly).length }})</option>
+            <option v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly)" :key="cat.id" :value="cat.id" class="bg-slate-900">
               {{ cat.name }} ({{ cat.cantidad }})
             </option>
           </select>

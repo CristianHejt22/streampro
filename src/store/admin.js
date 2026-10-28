@@ -390,11 +390,12 @@ export const useAdminStore = defineStore('admin', {
     // PEDIDOS VIRTUALES: Órdenes de streaming (Limpio en producción)
     orders: loadDb(DB_KEYS.ORDERS, []),
 
-    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar)
+    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar y Gestión Admin)
     physicalProducts: (() => {
       const stored = loadDb(DB_KEYS.PHYSICAL_PRODUCTS, null)
-      if (Array.isArray(stored) && stored.length > 0 && stored[0]?.source === 'revende.com.ar') {
-        return stored
+      if (Array.isArray(stored) && stored.length >= 140 && stored[0]?.source === 'revende.com.ar') {
+        const hasPages = stored.some(p => p.adminOnly || p.categoryId === 'paginas')
+        if (hasPages) return stored
       }
       const initial = physicalProductsData.map(p => ({
         ...p,
@@ -406,10 +407,10 @@ export const useAdminStore = defineStore('admin', {
     })(),
     physicalCategories: (() => {
       const stored = loadDb(DB_KEYS.PHYSICAL_CATEGORIES, null)
-      if (Array.isArray(stored) && stored.length > 0 && stored.some(c => c.slug)) {
+      if (Array.isArray(stored) && stored.length > 0 && stored.some(c => c.id === 'paginas')) {
         return stored
       }
-      const initial = physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+      const initial = physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0 || c.adminOnly)
       saveDb(DB_KEYS.PHYSICAL_CATEGORIES, initial)
       return initial
     })(),
@@ -982,6 +983,162 @@ export const useAdminStore = defineStore('admin', {
         }
         return { error: err.message || 'No se pudo conectar con revende.com.ar' }
       }
+    },
+
+    // GESTIÓN CRUD DE PRODUCTOS FÍSICOS Y PÁGINAS (ADMIN)
+    createPhysicalProduct(payload) {
+      const id = payload.id || ('PROD-' + Date.now().toString().slice(-6))
+      const priceNumeric = typeof payload.priceNumeric === 'number' ? payload.priceNumeric : parseArgentinePrice(payload.price)
+      const originalPriceNumeric = payload.originalPriceNumeric ? Number(payload.originalPriceNumeric) : null
+      const hasDiscount = Boolean(originalPriceNumeric && originalPriceNumeric > priceNumeric)
+      const discountPercentage = hasDiscount 
+        ? Math.round(((originalPriceNumeric - priceNumeric) / originalPriceNumeric) * 100) 
+        : 0
+
+      const formatPriceStr = (num) => {
+        if (!num) return '$0,00'
+        return '$' + Number(num).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      }
+
+      const categoryName = payload.category?.trim() || 'General'
+      const categoryId = payload.categoryId || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+      const newProduct = {
+        id: String(id),
+        sku: (payload.sku || '').trim(),
+        name: (payload.name || payload.title || 'Nuevo Producto').trim(),
+        title: (payload.name || payload.title || 'Nuevo Producto').trim(),
+        category: categoryName,
+        categoryId: categoryId,
+        categoryIds: [categoryId],
+        categoryHierarchy: [categoryName],
+        price: payload.priceFormatted || formatPriceStr(priceNumeric),
+        priceNumeric: priceNumeric,
+        originalPrice: originalPriceNumeric ? formatPriceStr(originalPriceNumeric) : null,
+        originalPriceNumeric: originalPriceNumeric,
+        hasDiscount: hasDiscount,
+        discountPercentage: discountPercentage,
+        stock: typeof payload.stock === 'number' ? payload.stock : (parseInt(payload.stock) || 0),
+        description: payload.description || '',
+        image: payload.image || 'https://streamepro.me/og-banner.png',
+        images: Array.isArray(payload.images) && payload.images.length > 0 ? payload.images : [payload.image || 'https://streamepro.me/og-banner.png'],
+        url: payload.url || ('https://streamepro.me/p/' + id),
+        variables: Array.isArray(payload.variables) ? payload.variables : [],
+        requiresShipping: payload.requiresShipping !== false,
+        source: payload.adminOnly ? 'admin-pages' : 'admin-created',
+        adminOnly: Boolean(payload.adminOnly || categoryId === 'paginas'),
+        pageSlug: payload.pageSlug || null,
+        pageType: payload.pageType || 'producto',
+        updatedAt: new Date().toISOString()
+      }
+
+      this.physicalProducts.unshift(newProduct)
+      this.recalculatePhysicalCategoryCounts()
+      this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      return { success: true, product: newProduct }
+    },
+
+    updatePhysicalProduct(id, payload) {
+      const idx = this.physicalProducts.findIndex(p => String(p.id).trim() === String(id).trim())
+      if (idx === -1) return { error: 'Producto no encontrado' }
+
+      const current = this.physicalProducts[idx]
+      const priceNumeric = payload.priceNumeric !== undefined 
+        ? Number(payload.priceNumeric) 
+        : (payload.price ? parseArgentinePrice(payload.price) : current.priceNumeric)
+      
+      const originalPriceNumeric = payload.originalPriceNumeric !== undefined 
+        ? (payload.originalPriceNumeric ? Number(payload.originalPriceNumeric) : null)
+        : current.originalPriceNumeric
+
+      const hasDiscount = Boolean(originalPriceNumeric && originalPriceNumeric > priceNumeric)
+      const discountPercentage = hasDiscount 
+        ? Math.round(((originalPriceNumeric - priceNumeric) / originalPriceNumeric) * 100) 
+        : 0
+
+      const formatPriceStr = (num) => {
+        if (!num) return '$0,00'
+        return '$' + Number(num).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      }
+
+      const categoryName = payload.category !== undefined ? payload.category.trim() : current.category
+      const categoryId = payload.categoryId || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+      const updated = {
+        ...current,
+        ...payload,
+        id: String(current.id),
+        name: (payload.name || payload.title || current.name).trim(),
+        title: (payload.name || payload.title || current.title).trim(),
+        sku: payload.sku !== undefined ? payload.sku.trim() : current.sku,
+        category: categoryName,
+        categoryId: categoryId,
+        categoryIds: [categoryId],
+        price: formatPriceStr(priceNumeric),
+        priceNumeric: priceNumeric,
+        originalPrice: originalPriceNumeric ? formatPriceStr(originalPriceNumeric) : null,
+        originalPriceNumeric: originalPriceNumeric,
+        hasDiscount: hasDiscount,
+        discountPercentage: discountPercentage,
+        stock: payload.stock !== undefined ? Number(payload.stock) : current.stock,
+        description: payload.description !== undefined ? payload.description : current.description,
+        image: payload.image || current.image,
+        images: Array.isArray(payload.images) && payload.images.length > 0 ? payload.images : current.images,
+        variables: Array.isArray(payload.variables) ? payload.variables : current.variables,
+        adminOnly: Boolean(payload.adminOnly !== undefined ? payload.adminOnly : (current.adminOnly || categoryId === 'paginas')),
+        updatedAt: new Date().toISOString()
+      }
+
+      this.physicalProducts[idx] = updated
+      this.recalculatePhysicalCategoryCounts()
+      this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      return { success: true, product: updated }
+    },
+
+    deletePhysicalProduct(id) {
+      const idx = this.physicalProducts.findIndex(p => String(p.id).trim() === String(id).trim())
+      if (idx === -1) return { error: 'Producto no encontrado' }
+
+      const removed = this.physicalProducts.splice(idx, 1)[0]
+      this.recalculatePhysicalCategoryCounts()
+      this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      return { success: true, product: removed }
+    },
+
+    updatePhysicalStock(id, newStock) {
+      const prod = this.physicalProducts.find(p => String(p.id).trim() === String(id).trim())
+      if (!prod) return { error: 'Producto no encontrado' }
+      prod.stock = Math.max(0, parseInt(newStock) || 0)
+      prod.updatedAt = new Date().toISOString()
+      this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      return { success: true, stock: prod.stock }
+    },
+
+    recalculatePhysicalCategoryCounts() {
+      if (!Array.isArray(this.physicalCategories)) return
+
+      // Ensure 'paginas' category exists
+      let paginasCat = this.physicalCategories.find(c => c.id === 'paginas')
+      if (!paginasCat) {
+        paginasCat = {
+          id: 'paginas',
+          name: '📄 Páginas y Secciones',
+          slug: 'paginas',
+          adminOnly: true,
+          cantidad: '0'
+        }
+        this.physicalCategories.push(paginasCat)
+      } else {
+        paginasCat.adminOnly = true
+      }
+
+      this.physicalCategories.forEach(cat => {
+        const count = this.physicalProducts.filter(p => 
+          p.categoryId === cat.id || (p.categoryIds && p.categoryIds.includes(cat.id))
+        ).length
+        cat.cantidad = String(count)
+      })
+      this.persist(DB_KEYS.PHYSICAL_CATEGORIES)
     },
 
     // Gestión Centralizada de Usuarios Registrados (Clientes & Distribuidores)

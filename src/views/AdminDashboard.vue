@@ -347,19 +347,247 @@ const handleDeletePlatform = (platKey) => {
 }
 
 // GESTIÓN INTEGRAL DE TIENDA Y CATÁLOGO DE PRODUCTOS FÍSICOS
-const adminPhysicalSubTab = ref('products') // 'products' | 'orders'
+const adminPhysicalSubTab = ref('products') // 'products' | 'orders' | 'pages'
 const adminPhysicalProductSearch = ref('')
 const adminPhysicalCategoryFilter = ref('All')
 
+// Modal de Creación / Edición de Producto Físico o Página
+const showPhysicalProductModal = ref(false)
+const isEditingPhysicalProduct = ref(false)
+const physicalProductForm = ref({
+  id: '',
+  name: '',
+  category: 'General',
+  categoryId: 'general',
+  sku: '',
+  stock: 20,
+  priceNumeric: 0,
+  originalPriceNumeric: null,
+  image: '',
+  galleryUrlsText: '',
+  description: '',
+  adminOnly: false,
+  pageSlug: '',
+  pageType: 'producto',
+  variables: []
+})
+
+// Modal de Previsualización de Página
+const showPagePreviewModal = ref(false)
+const previewingPage = ref(null)
+
+const publicPhysicalProductsCount = computed(() => {
+  return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
+})
+
+const adminPagesList = computed(() => {
+  return (adminStore.physicalProducts || []).filter(p => p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas')))
+})
+
 const filteredPhysicalProductsForAdmin = computed(() => {
   return (adminStore.physicalProducts || []).filter(p => {
+    if (adminPhysicalCategoryFilter.value !== 'paginas' && (p.adminOnly || p.categoryId === 'paginas')) {
+      return false
+    }
     const matchCat = adminPhysicalCategoryFilter.value === 'All' || 
-      (p.categoryIds && p.categoryIds.includes(adminPhysicalCategoryFilter.value))
+      (p.categoryIds && p.categoryIds.includes(adminPhysicalCategoryFilter.value)) ||
+      p.categoryId === adminPhysicalCategoryFilter.value
     const q = (adminPhysicalProductSearch.value || '').toLowerCase().trim()
-    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)) || String(p.id).includes(q)
+    const matchQ = !q || (p.name && p.name.toLowerCase().includes(q)) || (p.description && p.description.toLowerCase().includes(q)) || String(p.id).includes(q) || (p.sku && p.sku.toLowerCase().includes(q))
     return matchCat && matchQ
   })
 })
+
+const filteredAdminPages = computed(() => {
+  const q = (adminPhysicalProductSearch.value || '').toLowerCase().trim()
+  return adminPagesList.value.filter(p => {
+    return !q || (p.name && p.name.toLowerCase().includes(q)) || (p.description && p.description.toLowerCase().includes(q)) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.pageSlug && p.pageSlug.toLowerCase().includes(q))
+  })
+})
+
+const openCreatePhysicalProductModal = (isPage = false) => {
+  isEditingPhysicalProduct.value = false
+  physicalProductForm.value = {
+    id: isPage ? ('PAGE-' + Date.now().toString().slice(-4)) : ('PROD-' + Date.now().toString().slice(-6)),
+    name: '',
+    category: isPage ? 'Páginas y Secciones' : (adminPhysicalCategoryFilter.value !== 'All' ? (adminStore.physicalCategories.find(c => c.id === adminPhysicalCategoryFilter.value)?.name || 'General') : 'General'),
+    categoryId: isPage ? 'paginas' : (adminPhysicalCategoryFilter.value !== 'All' ? adminPhysicalCategoryFilter.value : 'general'),
+    sku: isPage ? ('PAG-' + Date.now().toString().slice(-3)) : '',
+    stock: isPage ? 1 : 20,
+    priceNumeric: 0,
+    originalPriceNumeric: null,
+    image: isPage ? 'https://streamepro.me/og-banner.png' : '',
+    galleryUrlsText: '',
+    description: '',
+    adminOnly: isPage,
+    pageSlug: isPage ? 'nueva-pagina' : '',
+    pageType: isPage ? 'informativa' : 'producto',
+    variables: []
+  }
+  showPhysicalProductModal.value = true
+}
+
+const openEditPhysicalProductModal = (item) => {
+  isEditingPhysicalProduct.value = true
+  const isPage = Boolean(item.adminOnly || item.categoryId === 'paginas')
+  physicalProductForm.value = {
+    id: item.id,
+    name: item.name || item.title || '',
+    category: item.category || (isPage ? 'Páginas y Secciones' : 'General'),
+    categoryId: item.categoryId || (item.categoryIds?.[0]) || (isPage ? 'paginas' : 'general'),
+    sku: item.sku || '',
+    stock: item.stock ?? 20,
+    priceNumeric: item.priceNumeric || 0,
+    originalPriceNumeric: item.originalPriceNumeric || null,
+    image: item.image || '',
+    galleryUrlsText: Array.isArray(item.images) ? item.images.join('\n') : (item.image || ''),
+    description: item.description || '',
+    adminOnly: isPage,
+    pageSlug: item.pageSlug || '',
+    pageType: item.pageType || (isPage ? 'informativa' : 'producto'),
+    variables: item.variables ? JSON.parse(JSON.stringify(item.variables)) : []
+  }
+  showPhysicalProductModal.value = true
+}
+
+const savePhysicalProductForm = () => {
+  if (!physicalProductForm.value.name.trim()) {
+    toast.add('El nombre o título es obligatorio', 'error')
+    return
+  }
+
+  const galleryImages = (physicalProductForm.value.galleryUrlsText || '')
+    .split('\n')
+    .map(u => u.trim())
+    .filter(u => u.startsWith('http'))
+
+  const mainImage = physicalProductForm.value.image.trim() || galleryImages[0] || 'https://streamepro.me/og-banner.png'
+  const images = galleryImages.length > 0 ? galleryImages : [mainImage]
+
+  const payload = {
+    ...physicalProductForm.value,
+    image: mainImage,
+    images: images
+  }
+
+  if (isEditingPhysicalProduct.value) {
+    const res = adminStore.updatePhysicalProduct(physicalProductForm.value.id, payload)
+    if (res.success) {
+      toast.add('"' + payload.name + '" actualizado exitosamente', 'success')
+      showPhysicalProductModal.value = false
+    } else {
+      toast.add(res.error || 'Error al actualizar', 'error')
+    }
+  } else {
+    const res = adminStore.createPhysicalProduct(payload)
+    if (res.success) {
+      toast.add('"' + payload.name + '" agregado con éxito', 'success')
+      showPhysicalProductModal.value = false
+    } else {
+      toast.add(res.error || 'Error al crear', 'error')
+    }
+  }
+}
+
+const deletePhysicalProductItem = (item) => {
+  const isPage = item.adminOnly || item.categoryId === 'paginas'
+  const label = isPage ? 'la página' : 'el producto'
+  if (confirm('¿Estás seguro de eliminar ' + label + ' "' + item.name + '"? Esta acción no se puede deshacer.')) {
+    const res = adminStore.deletePhysicalProduct(item.id)
+    if (res.success) {
+      toast.add('"' + item.name + '" eliminado correctamente', 'info')
+    } else {
+      toast.add('Error al eliminar', 'error')
+    }
+  }
+}
+
+const quickAdjustStock = (item, delta) => {
+  const newStock = Math.max(0, (item.stock || 0) + delta)
+  adminStore.updatePhysicalStock(item.id, newStock)
+  toast.add('Stock de "' + item.name.slice(0, 18) + '..." actualizado a ' + newStock + ' un.', 'info')
+}
+
+const applyDescriptionTemplate = () => {
+  const name = physicalProductForm.value.name || 'Producto Oficial'
+  const cat = physicalProductForm.value.category || 'Accesorios y Tecnología'
+  physicalProductForm.value.description = '<div class="product-description-content space-y-3">\n' +
+    '  <p class="font-semibold text-white">' + name + '</p>\n' +
+    '  <p class="text-slate-300">Artículo seleccionado de alta calidad con garantía y compatibilidad garantizada.</p>\n' +
+    '  <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800">\n' +
+    '    <h5 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">📌 Especificaciones Destacadas:</h5>\n' +
+    '    <ul class="list-disc pl-5 space-y-1 text-slate-300 text-xs">\n' +
+    '      <li><strong>Categoría:</strong> ' + cat + '</li>\n' +
+    '      <li><strong>Disponibilidad:</strong> Stock garantizado para despacho inmediato</li>\n' +
+    '      <li><strong>Presentación:</strong> Empaque original protegido para traslados y envíos</li>\n' +
+    '      <li><strong>Condición:</strong> Artículo nuevo y 100% verificado</li>\n' +
+    '    </ul>\n' +
+    '  </div>\n' +
+    '  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1">\n' +
+    '    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2">\n' +
+    '      <span class="text-emerald-400 text-base">🛡️</span>\n' +
+    '      <div>\n' +
+    '        <p class="font-bold text-white">Garantía StreamePro</p>\n' +
+    '        <p class="text-slate-400">Verificado antes del despacho</p>\n' +
+    '      </div>\n' +
+    '    </div>\n' +
+    '    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2">\n' +
+    '      <span class="text-amber-400 text-base">🚚</span>\n' +
+    '      <div>\n' +
+    '        <p class="font-bold text-white">Envíos a Todo el País</p>\n' +
+    '        <p class="text-slate-400">Despacho express asegurado</p>\n' +
+    '      </div>\n' +
+    '    </div>\n' +
+    '  </div>\n' +
+    '</div>'
+  toast.add('¡Plantilla profesional aplicada a la descripción!', 'success')
+}
+
+const cleanDescriptionHtml = () => {
+  let desc = physicalProductForm.value.description || ''
+  desc = desc.replace(/\s*(style|class|dir|id|align|bgcolor)="[^"]*"/gi, '')
+  desc = desc.replace(/\s*(style|class|dir|id|align|bgcolor)='[^']*'/gi, '')
+  desc = desc.replace(/<\/?font[^>]*>/gi, '')
+  desc = desc.replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
+  desc = desc.replace(/<\/?span[^>]*>/gi, '')
+  desc = desc.replace(/<p>\s*(&nbsp;)?\s*<\/p>/gi, '')
+  desc = desc.replace(/<div>\s*(&nbsp;)?\s*<\/div>/gi, '')
+  physicalProductForm.value.description = desc.trim()
+  toast.add('Estilos innecesarios limpiados exitosamente', 'info')
+}
+
+const addVariableToForm = () => {
+  physicalProductForm.value.variables.push({
+    id: Date.now(),
+    name: 'Nueva Variante',
+    sku: physicalProductForm.value.sku || '',
+    price: physicalProductForm.value.priceNumeric,
+    priceFormatted: '$' + Number(physicalProductForm.value.priceNumeric).toLocaleString('es-AR', { minimumFractionDigits: 2 }),
+    comparePrice: physicalProductForm.value.originalPriceNumeric,
+    stock: physicalProductForm.value.stock,
+    available: true,
+    image: physicalProductForm.value.image,
+    options: ['Nueva Variante']
+  })
+}
+
+const removeVariableFromForm = (idx) => {
+  physicalProductForm.value.variables.splice(idx, 1)
+}
+
+const openPagePreview = (page) => {
+  previewingPage.value = page
+  showPagePreviewModal.value = true
+}
+
+const copyPageContent = (page) => {
+  const plainText = (page.description || '').replace(/<[^>]*>/g, '').trim()
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(plainText).then(() => {
+      toast.add('Contenido copiado al portapapeles', 'success')
+    })
+  }
+}
 
 // IMPORTACIÓN Y ACTUALIZACIÓN DEL CATÁLOGO FÍSICO DESDE JSON
 const catalogFileInput = ref(null)
@@ -3813,7 +4041,7 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
-      <!-- NAVEGACIÓN ENTRE SUB-PESTAÑAS: CATÁLOGO DE PRODUCTOS VS PEDIDOS -->
+      <!-- NAVEGACIÓN ENTRE SUB-PESTAÑAS: CATÁLOGO VS PEDIDOS VS PÁGINAS (SOLO ADMIN) -->
       <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
         <div class="flex flex-wrap gap-2">
           <button 
@@ -3825,7 +4053,7 @@ const deletePackageItem = (pkgId) => {
             ]"
           >
             <span>📦</span>
-            <span>Ver Catálogo de Productos ({{ adminStore.physicalProducts.length }})</span>
+            <span>Catálogo de Productos ({{ publicPhysicalProductsCount }})</span>
           </button>
           <button 
             type="button"
@@ -3840,6 +4068,36 @@ const deletePackageItem = (pkgId) => {
             <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="bg-red-500 text-white font-mono text-[9px] px-1.5 py-0.2 rounded-full font-black">
               {{ adminStore.pendingPhysicalOrders.length }}
             </span>
+          </button>
+          <button 
+            type="button"
+            @click="adminPhysicalSubTab = 'pages'"
+            :class="[
+              'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow border',
+              adminPhysicalSubTab === 'pages' ? 'bg-sky-500 text-slate-950 font-black border-sky-400' : 'text-sky-400 border-sky-500/30 hover:bg-sky-500/10'
+            ]"
+          >
+            <span>📄</span>
+            <span>Páginas (Solo Admin) 🔒 ({{ adminPagesList.length }})</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button 
+            v-if="adminPhysicalSubTab === 'products'"
+            type="button"
+            @click="openCreatePhysicalProductModal(false)"
+            class="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>➕ Nuevo Producto Físico</span>
+          </button>
+          <button 
+            v-if="adminPhysicalSubTab === 'pages'"
+            type="button"
+            @click="openCreatePhysicalProductModal(true)"
+            class="bg-gradient-to-r from-sky-400 to-sky-500 hover:from-sky-300 hover:to-sky-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>➕ Nueva Página (Solo Admin)</span>
           </button>
         </div>
       </div>
@@ -3863,7 +4121,7 @@ const deletePackageItem = (pkgId) => {
           >
             <option value="All">Todas las Categorías ({{ adminStore.physicalProducts.length }})</option>
             <option v-for="cat in adminStore.physicalCategories" :key="cat.id" :value="cat.id">
-              {{ cat.name }} ({{ cat.cantidad }})
+              {{ cat.name }} {{ cat.adminOnly ? '🔒 (Solo Admin)' : '' }} ({{ cat.cantidad }})
             </option>
           </select>
         </div>
@@ -3879,13 +4137,20 @@ const deletePackageItem = (pkgId) => {
             class="bg-[#020617] p-4 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 shadow-lg group"
           >
             <div class="space-y-2.5">
-              <div class="w-full h-36 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden">
+              <div class="w-full h-36 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden relative">
                 <img :src="item.image" :alt="item.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform" loading="lazy" />
+                <span v-if="item.adminOnly" class="absolute top-2 left-2 bg-sky-950 text-sky-300 border border-sky-700 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                  🔒 Solo Admin
+                </span>
               </div>
               <div>
                 <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
                   <span>ID: #{{ item.id }}</span>
-                  <span class="text-emerald-400 font-bold">Stock: {{ item.stock ?? 0 }} un.</span>
+                  <div class="flex items-center gap-1">
+                    <span class="text-emerald-400 font-bold">Stock: {{ item.stock ?? 0 }} un.</span>
+                    <button @click.stop="quickAdjustStock(item, -1)" class="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded text-[10px] font-bold flex items-center justify-center leading-none cursor-pointer" title="Restar 1 un.">-</button>
+                    <button @click.stop="quickAdjustStock(item, 1)" class="w-4 h-4 bg-slate-800 hover:bg-slate-700 text-white rounded text-[10px] font-bold flex items-center justify-center leading-none cursor-pointer" title="Sumar 1 un.">+</button>
+                  </div>
                 </div>
                 <div class="flex items-center gap-1.5 mt-1">
                   <span v-if="item.sku" class="text-[9px] font-mono text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 truncate max-w-[120px]" :title="'SKU: ' + item.sku">
@@ -3899,26 +4164,49 @@ const deletePackageItem = (pkgId) => {
                 <div class="text-[10px] text-slate-400 line-clamp-2 mt-1" v-html="item.description"></div>
               </div>
             </div>
-            <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
-              <div class="flex flex-col">
-                <span class="text-sm font-black text-amber-400 font-mono">{{ item.price }}</span>
-                <span v-if="item.hasDiscount && item.originalPrice" class="text-[10px] text-slate-500 line-through font-mono">{{ item.originalPrice }}</span>
+            <div class="pt-2 border-t border-slate-800 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex flex-col">
+                  <span class="text-sm font-black text-amber-400 font-mono">{{ item.price }}</span>
+                  <span v-if="item.hasDiscount && item.originalPrice" class="text-[10px] text-slate-500 line-through font-mono">{{ item.originalPrice }}</span>
+                </div>
+                <a 
+                  v-if="!item.adminOnly"
+                  :href="'/?prod=' + item.id + '&sec=physical'" 
+                  target="_blank" 
+                  class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 px-2 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1 font-bold"
+                  title="Ver este producto en la tienda pública"
+                >
+                  <span>🌐 Tienda</span>
+                </a>
               </div>
-              <a 
-                :href="'/?prod=' + item.id + '&sec=physical'" 
-                target="_blank" 
-                class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1 font-bold"
-                title="Ver este producto en la tienda pública"
-              >
-                <span>🌐 Ver en Tienda</span>
-              </a>
+
+              <!-- BOTONES DE GESTIÓN: EDITAR Y ELIMINAR -->
+              <div class="flex gap-1.5 pt-1">
+                <button 
+                  type="button"
+                  @click="openEditPhysicalProductModal(item)"
+                  class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold py-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                  title="Editar este producto físico"
+                >
+                  <span>✏️ Editar</span>
+                </button>
+                <button 
+                  type="button"
+                  @click="deletePhysicalProductItem(item)"
+                  class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                  title="Eliminar del catálogo"
+                >
+                  <span>🗑️</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- VISTA 2: GESTIÓN DE PEDIDOS FÍSICOS -->
-      <div v-else class="space-y-4">
+      <div v-else-if="adminPhysicalSubTab === 'orders'" class="space-y-4">
         <!-- Filtros de Búsqueda de Pedidos -->
         <div class="flex flex-col sm:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
           <input 
@@ -4095,6 +4383,105 @@ const deletePackageItem = (pkgId) => {
           </div>
         </div>
       </div>
+      </div>
+
+      <!-- VISTA 3: CATEGORÍA DE PÁGINAS Y SECCIONES (SOLO ADMIN) -->
+      <div v-else-if="adminPhysicalSubTab === 'pages'" class="space-y-4">
+        <!-- Banner Informativo -->
+        <div class="bg-gradient-to-r from-sky-950/60 via-slate-900 to-slate-900 p-5 rounded-2xl border border-sky-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">📄</span>
+              <h3 class="text-base font-bold text-white">Categoría de Páginas y Secciones (Solo Admin)</h3>
+              <span class="bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                🔒 Oculto al Público
+              </span>
+            </div>
+            <p class="text-xs text-slate-300">
+              Crea y gestiona páginas institucionales, políticas de garantía, envíos, preguntas frecuentes y material de soporte.
+            </p>
+          </div>
+          <button 
+            type="button"
+            @click="openCreatePhysicalProductModal(true)"
+            class="bg-gradient-to-r from-sky-400 to-sky-500 hover:from-sky-300 hover:to-sky-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <span>➕ Nueva Página</span>
+          </button>
+        </div>
+
+        <!-- Buscador de Páginas -->
+        <div class="flex gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-800">
+          <div class="flex-1 relative">
+            <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+            <input 
+              v-model="adminPhysicalProductSearch" 
+              type="text" 
+              placeholder="Buscar página por título, slug o contenido..."
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-sky-400"
+            />
+          </div>
+        </div>
+
+        <!-- Grid de Páginas -->
+        <div v-if="filteredAdminPages.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
+          No se encontraron páginas en esta categoría. Haz clic en "Nueva Página" para crear una.
+        </div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div 
+            v-for="page in filteredAdminPages" 
+            :key="page.id"
+            class="bg-[#020617] p-5 rounded-2xl border border-slate-800 hover:border-sky-500/40 transition-all shadow-lg flex flex-col justify-between space-y-4"
+          >
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[10px] font-mono text-sky-400 bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800">
+                  /{{ page.pageSlug || page.sku || page.id }}
+                </span>
+                <span class="text-[10px] text-slate-400 font-mono">
+                  ID: #{{ page.id }}
+                </span>
+              </div>
+              <h4 class="text-sm font-bold text-white leading-snug">{{ page.name }}</h4>
+              <div class="text-xs text-slate-400 line-clamp-3 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80" v-html="page.description"></div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+              <button 
+                type="button"
+                @click="openPagePreview(page)"
+                class="bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+              >
+                <span>👁️ Previsualizar</span>
+              </button>
+              <div class="flex items-center gap-1.5">
+                <button 
+                  type="button"
+                  @click="copyPageContent(page)"
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                  title="Copiar texto de la página"
+                >
+                  <span>📋 Copiar</span>
+                </button>
+                <button 
+                  type="button"
+                  @click="openEditPhysicalProductModal(page)"
+                  class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>✏️ Editar</span>
+                </button>
+                <button 
+                  type="button"
+                  @click="deletePhysicalProductItem(page)"
+                  class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold px-2.5 py-1.5 rounded-xl transition flex items-center justify-center cursor-pointer"
+                  title="Eliminar página"
+                >
+                  <span>🗑️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -5925,6 +6312,293 @@ const deletePackageItem = (pkgId) => {
       :default-store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
     />
+
+    <!-- MODAL DE GESTIÓN: CREAR / EDITAR PRODUCTO FÍSICO O PÁGINA (ADMIN) -->
+    <div v-if="showPhysicalProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
+        <!-- Encabezado Modal -->
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-lg font-black text-white flex items-center gap-2">
+              <span>{{ isEditingPhysicalProduct ? '✏️ Editar' : '➕ Nuevo' }} {{ physicalProductForm.adminOnly ? 'Página / Sección' : 'Producto Físico' }}</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+              {{ physicalProductForm.adminOnly ? 'Configuración de página visible únicamente para administradores.' : 'Gestiona los detalles, SKU, stock, precios y descripción en catálogo.' }}
+            </p>
+          </div>
+          <button @click="showPhysicalProductModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+        </div>
+
+        <form @submit.prevent="savePhysicalProductForm" class="space-y-4 text-xs">
+          <!-- Visibilidad: Checkbox Solo Admin -->
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="font-bold text-white flex items-center gap-1.5">
+                <span>🔒</span> Categoría / Visible Solo en Admin
+              </span>
+              <p class="text-[11px] text-slate-400">Si está marcado, este ítem no se mostrará en la tienda pública (Páginas, Políticas, Guías).</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="physicalProductForm.adminOnly" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+            </label>
+          </div>
+
+          <!-- Título / Nombre -->
+          <div>
+            <label class="block text-slate-300 font-bold mb-1">Título / Nombre *</label>
+            <input 
+              v-model="physicalProductForm.name" 
+              type="text" 
+              required
+              placeholder="Ej: Smartwatch D20 Macarrones o Políticas de Devolución" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-400 text-xs"
+            >
+          </div>
+
+          <!-- Categoría y SKU -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Categoría</label>
+              <input 
+                v-model="physicalProductForm.category" 
+                type="text" 
+                placeholder="Ej: Accesorios Celulares, Hogar, Páginas" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-400 text-xs"
+              >
+            </div>
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">SKU / Código</label>
+              <input 
+                v-model="physicalProductForm.sku" 
+                type="text" 
+                placeholder="Ej: D20-MC o PAG-01" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-400 text-xs font-mono"
+              >
+            </div>
+          </div>
+
+          <!-- Precios y Stock (si no es página legal) -->
+          <div v-if="!physicalProductForm.adminOnly" class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+            <div>
+              <label class="block text-amber-400 font-bold mb-1">Precio Oferta ($ ARS) *</label>
+              <input 
+                v-model.number="physicalProductForm.priceNumeric" 
+                type="number" 
+                min="0"
+                step="1"
+                placeholder="Ej: 11990" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
+              >
+            </div>
+            <div>
+              <label class="block text-slate-400 font-bold mb-1">Precio Real / Lista ($ ARS)</label>
+              <input 
+                v-model.number="physicalProductForm.originalPriceNumeric" 
+                type="number" 
+                min="0"
+                step="1"
+                placeholder="Tachado Ej: 13000" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
+              >
+            </div>
+            <div>
+              <label class="block text-emerald-400 font-bold mb-1">Stock Disponible</label>
+              <input 
+                v-model.number="physicalProductForm.stock" 
+                type="number" 
+                min="0"
+                placeholder="Ej: 50" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-emerald-400 text-xs"
+              >
+            </div>
+          </div>
+
+          <!-- Slug si es página -->
+          <div v-if="physicalProductForm.adminOnly" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sky-400 font-bold mb-1">Slug URL</label>
+              <input 
+                v-model="physicalProductForm.pageSlug" 
+                type="text" 
+                placeholder="Ej: politicas-de-garantia" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-sky-400 text-xs"
+              >
+            </div>
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Tipo de Página</label>
+              <select v-model="physicalProductForm.pageType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-sky-400 text-xs cursor-pointer">
+                <option value="informativa">Informativa</option>
+                <option value="legal">Legal / Términos</option>
+                <option value="faq">Preguntas Frecuentes</option>
+                <option value="comercial">Comercial / Promoción</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Imágenes -->
+          <div class="space-y-2">
+            <label class="block text-slate-300 font-bold">URL Imagen Principal</label>
+            <input 
+              v-model="physicalProductForm.image" 
+              type="url" 
+              placeholder="https://..." 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
+            >
+            <label class="block text-slate-400 font-bold mt-2">Galería de Imágenes (una URL por línea)</label>
+            <textarea 
+              v-model="physicalProductForm.galleryUrlsText" 
+              rows="2"
+              placeholder="https://...&#10;https://..." 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white font-mono outline-none focus:border-amber-400 text-xs custom-scrollbar"
+            ></textarea>
+          </div>
+
+          <!-- Variantes / Opciones (si aplica) -->
+          <div v-if="!physicalProductForm.adminOnly" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sky-400 flex items-center gap-1.5">
+                <span>🎨</span> Variantes de Producto (Colores, Talles, Modelos)
+              </span>
+              <button 
+                type="button" 
+                @click="addVariableToForm"
+                class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 font-bold text-[11px] px-2.5 py-1 rounded-lg transition cursor-pointer"
+              >
+                + Añadir Opción
+              </button>
+            </div>
+
+            <div v-if="physicalProductForm.variables.length === 0" class="text-slate-500 text-[11px]">
+              Sin variantes configuradas. El producto se venderá como modelo único.
+            </div>
+            <div v-else class="space-y-2">
+              <div 
+                v-for="(v, vIdx) in physicalProductForm.variables" 
+                :key="v.id || vIdx"
+                class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex flex-wrap items-center gap-2"
+              >
+                <input 
+                  v-model="v.name" 
+                  type="text" 
+                  placeholder="Nombre de Variante (Ej: Blanco)"
+                  class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                >
+                <input 
+                  v-model="v.sku" 
+                  type="text" 
+                  placeholder="SKU"
+                  class="w-24 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white font-mono outline-none"
+                >
+                <input 
+                  v-model.number="v.stock" 
+                  type="number" 
+                  min="0"
+                  placeholder="Stock"
+                  class="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white font-mono outline-none"
+                >
+                <button 
+                  type="button" 
+                  @click="removeVariableFromForm(vIdx)"
+                  class="text-red-400 hover:text-red-300 p-1 font-bold text-xs cursor-pointer"
+                  title="Quitar variante"
+                >✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Descripción y Herramientas de Mejora -->
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label class="block text-slate-300 font-bold">Descripción del Producto / Contenido</label>
+              <div class="flex items-center gap-1.5">
+                <button 
+                  type="button" 
+                  @click="applyDescriptionTemplate"
+                  class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-1 rounded-lg transition cursor-pointer"
+                  title="Inserta una plantilla estructurada con especificaciones y garantías"
+                >
+                  ✨ Plantilla Profesional
+                </button>
+                <button 
+                  type="button" 
+                  @click="cleanDescriptionHtml"
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-lg transition cursor-pointer"
+                  title="Limpia estilos inline y etiquetas sucias"
+                >
+                  🧹 Limpiar Estilos
+                </button>
+              </div>
+            </div>
+            <textarea 
+              v-model="physicalProductForm.description" 
+              rows="6"
+              placeholder="Escribe la descripción o especificaciones en texto o HTML..." 
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white font-mono outline-none focus:border-amber-400 text-xs custom-scrollbar leading-relaxed"
+            ></textarea>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="flex items-center gap-3 pt-3 border-t border-slate-800">
+            <button 
+              type="button" 
+              @click="showPhysicalProductModal = false" 
+              class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl transition shadow-lg cursor-pointer"
+            >
+              {{ isEditingPhysicalProduct ? 'Guardar Cambios' : 'Crear Producto' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: PREVISUALIZADOR DE PÁGINA / CONTENIDO (SOLO ADMIN) -->
+    <div v-if="showPagePreviewModal && previewingPage" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="bg-sky-500/20 text-sky-300 text-[10px] font-bold uppercase px-2 py-0.5 rounded border border-sky-500/30">
+                📄 Página Solo Admin
+              </span>
+              <span class="text-slate-400 text-xs font-mono">/{{ previewingPage.pageSlug || previewingPage.sku }}</span>
+            </div>
+            <h3 class="text-lg font-black text-white leading-snug">{{ previewingPage.name }}</h3>
+          </div>
+          <button @click="showPagePreviewModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+        </div>
+
+        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+          <div 
+            class="text-slate-300 leading-relaxed space-y-3 [&>p]:mb-2 [&>h3]:text-base [&>h3]:font-bold [&>h3]:text-white [&>h4]:text-sm [&>h4]:font-bold [&>h4]:text-amber-400 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-1"
+            v-html="previewingPage.description"
+          ></div>
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+          <button 
+            type="button"
+            @click="copyPageContent(previewingPage)"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📋 Copiar Texto Completo</span>
+          </button>
+          <button 
+            type="button" 
+            @click="showPagePreviewModal = false"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2 rounded-xl transition cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: VISUALIZADOR DE COMPROBANTES EN MINI NUBE (JPG / PDF) -->
     <ReceiptViewerModal 
