@@ -169,6 +169,8 @@ const showCartDrawer = ref(false)
 
 // Modal y Formulario Checkout
 const showCheckoutModal = ref(false)
+const showOrderSuccessModal = ref(false)
+const lastPlacedOrder = ref(null)
 
 const getInitialClientForm = () => {
   let saved = null
@@ -295,7 +297,7 @@ watch(isAnyModalOpen, (isOpen) => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = isOpen ? 'hidden' : ''
   }
-}, { immediate: true })
+})
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
@@ -571,11 +573,16 @@ const filteredProducts = computed(() => {
 })
 
 const filteredPhysicalProducts = computed(() => {
-  return adminStore.physicalProducts.filter(p => {
+  const list = adminStore.physicalProducts || []
+  return list.filter(p => {
+    if (!p) return false
     const matchesCat = physicalCategoryFilter.value === 'All' || 
       (p.categoryIds && p.categoryIds.includes(physicalCategoryFilter.value))
     const q = (physicalSearchQuery.value || '').toLowerCase().trim()
-    const matchesQuery = !q || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)) || String(p.id).includes(q)
+    const name = String(p.name || '').toLowerCase()
+    const desc = String(p.description || '').toLowerCase()
+    const id = String(p.id || '')
+    const matchesQuery = !q || name.includes(q) || desc.includes(q) || id.includes(q)
     return matchesCat && matchesQuery
   })
 })
@@ -616,9 +623,6 @@ const openCheckoutForm = () => {
   showCartDrawer.value = false
   showCheckoutModal.value = true
 }
-
-const showOrderSuccessModal = ref(false)
-const lastPlacedOrder = ref(null)
 
 const copyBankDetails = () => {
   if (!lastPlacedOrder.value) return
