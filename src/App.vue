@@ -2,12 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useToastStore } from './store/toast'
-import { useResellerStore } from './store/admin'
+import { useAdminStore, useResellerStore } from './store/admin'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import UserProfileModal from './components/UserProfileModal.vue'
 
 const route = useRoute()
 const toastStore = useToastStore()
+const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
 
 const showProfileModal = ref(false)
@@ -29,6 +30,7 @@ const checkSavedUser = () => {
 
 onMounted(() => {
   checkSavedUser()
+  adminStore.ensurePhysicalProductsLoaded()
 })
 
 const handleProfileSaved = (prof) => {
@@ -75,23 +77,36 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
 
           <!-- NAVEGACIÓN PARA CLIENTES -->
           <nav v-if="isClientArea" class="flex flex-wrap items-center gap-1.5 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
-            <RouterLink 
-              to="/" 
-              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
-              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
+            <button 
+              type="button"
+              @click="$router.push({ path: '/', query: { ...$route.query, sec: undefined } })" 
+              :class="[
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                $route.path === '/' && (!$route.query.sec || $route.query.sec === 'digital')
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' 
+                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+              ]"
             >
-              <span>🛒</span>
-              <span class="hidden sm:inline">Tienda</span>
-            </RouterLink>
+              <span>🎬</span>
+              <span>Suscripciones</span>
+            </button>
             
-            <RouterLink 
-              to="/p" 
-              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5" 
-              active-class="!bg-amber-500/15 !text-amber-300 !border !border-amber-500/30 shadow-sm"
+            <button 
+              type="button"
+              @click="$router.push({ path: '/', query: { ...$route.query, sec: 'physical' } })" 
+              :class="[
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
+                $route.path === '/' && $route.query.sec === 'physical'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' 
+                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+              ]"
             >
               <span>📦</span>
-              <span class="hidden sm:inline">Catálogo Físico</span>
-            </RouterLink>
+              <span>Productos Físicos</span>
+              <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
+                {{ adminStore.physicalProducts.length }}
+              </span>
+            </button>
 
             <RouterLink 
               to="/portal" 
@@ -99,7 +114,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
             >
               <span>🔐</span>
-              <span class="hidden sm:inline">Mi Bóveda</span>
+              <span>Mi Bóveda</span>
             </RouterLink>
 
             <RouterLink 
@@ -108,7 +123,7 @@ const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/my
               active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
             >
               <span>🚀</span>
-              <span class="hidden md:inline">Ser Revendedor</span>
+              <span class="hidden sm:inline">Revendedores</span>
             </RouterLink>
 
             <!-- Acceso Rápido / Registro de Usuario -->

@@ -346,6 +346,21 @@ const handleDeletePlatform = (platKey) => {
   }
 }
 
+// GESTIÓN INTEGRAL DE TIENDA Y CATÁLOGO DE PRODUCTOS FÍSICOS
+const adminPhysicalSubTab = ref('products') // 'products' | 'orders'
+const adminPhysicalProductSearch = ref('')
+const adminPhysicalCategoryFilter = ref('All')
+
+const filteredPhysicalProductsForAdmin = computed(() => {
+  return (adminStore.physicalProducts || []).filter(p => {
+    const matchCat = adminPhysicalCategoryFilter.value === 'All' || 
+      (p.categoryIds && p.categoryIds.includes(adminPhysicalCategoryFilter.value))
+    const q = (adminPhysicalProductSearch.value || '').toLowerCase().trim()
+    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)) || String(p.id).includes(q)
+    return matchCat && matchQ
+  })
+})
+
 // IMPORTACIÓN Y ACTUALIZACIÓN DEL CATÁLOGO FÍSICO DESDE JSON
 const catalogFileInput = ref(null)
 
@@ -1345,6 +1360,9 @@ const manualCloudSync = async () => {
 }
 
 onMounted(async () => {
+  // Asegurar catálogo de productos físicos disponible
+  adminStore.ensurePhysicalProductsLoaded()
+
   // Sincronización automática de órdenes en la nube
   adminStore.initCloudSync()
 
@@ -1940,7 +1958,10 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'physical'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'physical' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          📦 Pedidos Físicos ({{ adminStore.pendingPhysicalOrders.length }})
+          📦 Tienda & Catálogo Físico ({{ adminStore.physicalProducts.length }})
+          <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
+            {{ adminStore.pendingPhysicalOrders.length }} pedidos
+          </span>
         </button>
         <button 
           @click="adminTab = 'packages'"
@@ -3656,22 +3677,36 @@ const deletePackageItem = (pkgId) => {
       </div>
     </div>
 
-    <!-- SECCIÓN: GESTIÓN DE PEDIDOS DE PRODUCTOS FÍSICOS (APROBAR / CANCELAR / COMISIONES 1% & 3%) -->
+    <!-- SECCIÓN: GESTIÓN DE TIENDA Y CATÁLOGO DE PRODUCTOS FÍSICOS -->
     <div v-if="adminTab === 'physical'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-6">
+      
+      <!-- ENCABEZADO PRINCIPAL CON ACCESO DIRECTO A TIENDA PÚBLICA -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <h2 class="text-2xl font-black text-white">Pedidos & Catálogo Físico</h2>
-            <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
-              {{ adminStore.physicalProducts.length }} Productos Físicos Activos
+            <h2 class="text-2xl font-black text-white">Tienda & Catálogo de Productos Físicos</h2>
+            <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+              {{ adminStore.physicalProducts.length }} Productos en Catálogo
+            </span>
+            <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="text-xs font-mono font-bold bg-red-500 text-white px-2.5 py-0.5 rounded-full animate-pulse">
+              {{ adminStore.pendingPhysicalOrders.length }} Pedidos Pendientes
             </span>
           </div>
           <p class="text-xs text-slate-400 mt-1">
-            Sincronizado con el catálogo de C:\Users\yo\catalogo. Comisión del <strong>1% (tienda)</strong> o <strong>3% (link compartido)</strong>.
+            Visualiza el catálogo de productos físicos sincronizados, gestiona pedidos recibidos de clientes y revendedores.
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div class="flex flex-wrap items-center gap-2">
+          <button 
+            type="button"
+            @click="handleSyncFromTuaApi" 
+            :disabled="isSyncingTua"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Sincronizar directamente con la API en vivo de tua.ar"
+          >
+            <span>{{ isSyncingTua ? '⏳ Sincronizando...' : '🔄 Sincronizar tua.ar' }}</span>
+          </button>
           <input 
             type="file" 
             ref="catalogFileInput" 
@@ -3680,23 +3715,130 @@ const deletePackageItem = (pkgId) => {
             class="hidden"
           >
           <button 
+            type="button"
             @click="triggerPhysicalCatalogUpload" 
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition-all flex items-center gap-1.5"
-            title="Seleccionar el archivo products.json del otro proyecto para actualizar el catálogo al instante"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Importar products.json generado en C:\Users\yo\catalogo\products.json"
           >
-            <span>📥</span>
-            <span>Importar products.json</span>
+            <span>📥 Importar JSON</span>
           </button>
+          <a 
+            href="/p" 
+            target="_blank" 
+            class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-xs font-bold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Abrir la tienda pública en vivo en streamepro.me/p"
+          >
+            <span>🌐 Ver Tienda Pública ↗</span>
+          </a>
+        </div>
+      </div>
 
+      <!-- NAVEGACIÓN ENTRE SUB-PESTAÑAS: CATÁLOGO DE PRODUCTOS VS PEDIDOS -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
+        <div class="flex flex-wrap gap-2">
+          <button 
+            type="button"
+            @click="adminPhysicalSubTab = 'products'"
+            :class="[
+              'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow',
+              adminPhysicalSubTab === 'products' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            ]"
+          >
+            <span>📦</span>
+            <span>Ver Catálogo de Productos ({{ adminStore.physicalProducts.length }})</span>
+          </button>
+          <button 
+            type="button"
+            @click="adminPhysicalSubTab = 'orders'"
+            :class="[
+              'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow',
+              adminPhysicalSubTab === 'orders' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            ]"
+          >
+            <span>🚚</span>
+            <span>Gestión de Pedidos Físicos ({{ adminStore.physicalOrders.length }})</span>
+            <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="bg-red-500 text-white font-mono text-[9px] px-1.5 py-0.2 rounded-full font-black">
+              {{ adminStore.pendingPhysicalOrders.length }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- VISTA 1: CATÁLOGO COMPLETO DE PRODUCTOS FÍSICOS -->
+      <div v-if="adminPhysicalSubTab === 'products'" class="space-y-4">
+        <!-- Buscador y Filtro de Categorías de Productos -->
+        <div class="flex flex-col sm:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <div class="flex-1 relative">
+            <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+            <input 
+              v-model="adminPhysicalProductSearch" 
+              type="text" 
+              placeholder="Buscar producto físico por nombre, ID o descripción..."
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+            />
+          </div>
+          <select 
+            v-model="adminPhysicalCategoryFilter"
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 cursor-pointer"
+          >
+            <option value="All">Todas las Categorías ({{ adminStore.physicalProducts.length }})</option>
+            <option v-for="cat in adminStore.physicalCategories" :key="cat.id" :value="cat.id">
+              {{ cat.name }} ({{ cat.cantidad }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Grid de Tarjetas de Productos Físicos -->
+        <div v-if="filteredPhysicalProductsForAdmin.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
+          No se encontraron productos físicos con los filtros actuales.
+        </div>
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div 
+            v-for="item in filteredPhysicalProductsForAdmin" 
+            :key="item.id" 
+            class="bg-[#020617] p-4 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 shadow-lg group"
+          >
+            <div class="space-y-2.5">
+              <div class="w-full h-36 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden">
+                <img :src="item.image" :alt="item.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform" loading="lazy" />
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                  <span>ID: #{{ item.id }}</span>
+                  <span class="text-emerald-400 font-bold">Stock: {{ item.stock || 20 }} un.</span>
+                </div>
+                <h4 class="text-xs font-bold text-white line-clamp-2 mt-1 leading-snug" :title="item.name">{{ item.name }}</h4>
+                <p class="text-[10px] text-slate-400 line-clamp-2 mt-1">{{ item.description }}</p>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+              <span class="text-sm font-black text-amber-400 font-mono">{{ item.price }}</span>
+              <a 
+                :href="'/?prod=' + item.id + '&sec=physical'" 
+                target="_blank" 
+                class="text-[10px] bg-slate-800 hover:bg-slate-700 text-sky-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1 font-bold"
+                title="Ver este producto en la tienda pública"
+              >
+                <span>🌐 Ver en Tienda</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 2: GESTIÓN DE PEDIDOS FÍSICOS -->
+      <div v-else class="space-y-4">
+        <!-- Filtros de Búsqueda de Pedidos -->
+        <div class="flex flex-col sm:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
           <input 
             v-model="physicalOrderSearch" 
             type="text" 
-            placeholder="Buscar por ID, cliente, teléfono..." 
-            class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 flex-1 md:w-52"
+            placeholder="Buscar pedido por ID, cliente, teléfono..." 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 flex-1"
           >
           <select 
             v-model="physicalOrderStatusFilter" 
-            class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 cursor-pointer"
           >
             <option value="All">Todos los Estados ({{ adminStore.physicalOrders.length }})</option>
             <option value="Pendiente">Pendientes ({{ adminStore.pendingPhysicalOrders.length }})</option>
@@ -3705,23 +3847,6 @@ const deletePackageItem = (pkgId) => {
             <option value="Cancelado">Cancelados ({{ adminStore.cancelledPhysicalOrders.length }})</option>
           </select>
         </div>
-      </div>
-
-      <!-- BANNER DE SINCRONIZACIÓN CON EL OTRO PROYECTO -->
-      <div class="bg-gradient-to-r from-slate-950 via-amber-950/20 to-slate-950 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-3">
-          <span class="text-xl">🔄</span>
-          <div>
-            <strong class="text-white block font-bold">¿Cómo actualizar este catálogo desde tu otro proyecto?</strong>
-            <p class="text-slate-400 text-[11px]">
-              Ejecuta <code class="bg-slate-900 text-amber-300 px-1.5 py-0.5 rounded font-mono">npm run sync:catalogo</code> en la terminal, o pulsa <strong>Importar products.json</strong> arriba y selecciona el archivo generado en <code class="text-slate-300 font-mono">C:\Users\yo\catalogo\products.json</code>.
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-          <span class="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">Categorías: {{ adminStore.physicalCategories.length }}</span>
-        </div>
-      </div>
 
       <div v-if="filteredPhysicalOrdersForAdmin.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
         No se encontraron pedidos de productos físicos con los filtros actuales.
@@ -3878,6 +4003,7 @@ const deletePackageItem = (pkgId) => {
             <strong>Motivo de Cancelación:</strong> {{ order.cancelReason }}
           </div>
         </div>
+      </div>
       </div>
     </div>
 

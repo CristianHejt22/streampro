@@ -390,13 +390,21 @@ export const useAdminStore = defineStore('admin', {
     // PEDIDOS VIRTUALES: Órdenes de streaming (Limpio en producción)
     orders: loadDb(DB_KEYS.ORDERS, []),
 
-    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS
-    physicalProducts: loadDb(DB_KEYS.PHYSICAL_PRODUCTS, physicalProductsData.map(p => ({
-      ...p,
-      image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
-      priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
-    }))),
-    physicalCategories: loadDb(DB_KEYS.PHYSICAL_CATEGORIES, physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)),
+    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Garantizado con recuperación automática)
+    physicalProducts: (() => {
+      const stored = loadDb(DB_KEYS.PHYSICAL_PRODUCTS, null)
+      if (Array.isArray(stored) && stored.length > 0) return stored
+      return physicalProductsData.map(p => ({
+        ...p,
+        image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+        priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
+      }))
+    })(),
+    physicalCategories: (() => {
+      const stored = loadDb(DB_KEYS.PHYSICAL_CATEGORIES, null)
+      if (Array.isArray(stored) && stored.length > 0) return stored
+      return physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+    })(),
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
 
     // DIRECTORIO CENTRAL DE USUARIOS REGISTRADOS (Clientes y Distribuidores)
@@ -906,6 +914,21 @@ export const useAdminStore = defineStore('admin', {
         return { success: true }
       }
       return { error: 'Plataforma no encontrada' }
+    },
+
+    ensurePhysicalProductsLoaded() {
+      if (!this.physicalProducts || !Array.isArray(this.physicalProducts) || this.physicalProducts.length === 0) {
+        this.physicalProducts = physicalProductsData.map(p => ({
+          ...p,
+          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+          priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
+        }))
+        this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      }
+      if (!this.physicalCategories || !Array.isArray(this.physicalCategories) || this.physicalCategories.length === 0) {
+        this.physicalCategories = physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+        this.persist(DB_KEYS.PHYSICAL_CATEGORIES)
+      }
     },
 
     updatePhysicalProductsFromJson(productsList, categoriesList = null) {
@@ -1423,6 +1446,7 @@ export const useAdminStore = defineStore('admin', {
       this.walletTransactions = []
       this.resellerAlerts = []
       this.renewalRequests = []
+      this.ensurePhysicalProductsLoaded()
       
       const resellerStore = useResellerStore()
       resellerStore.clients = []

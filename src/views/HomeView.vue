@@ -432,6 +432,7 @@ const applyRouteParams = () => {
 }
 
 onMounted(() => {
+  adminStore.ensurePhysicalProductsLoaded()
   applyRouteParams()
 })
 
@@ -553,6 +554,7 @@ const shareProductWhatsApp = (product) => {
 
 // Búsqueda y Filtros
 const searchQuery = ref('')
+const physicalSearchQuery = ref('')
 const selectedCategory = ref('All')
 const physicalCategoryFilter = ref('All')
 
@@ -568,8 +570,8 @@ const filteredPhysicalProducts = computed(() => {
   return adminStore.physicalProducts.filter(p => {
     const matchesCat = physicalCategoryFilter.value === 'All' || 
       (p.categoryIds && p.categoryIds.includes(physicalCategoryFilter.value))
-    const q = searchQuery.value.toLowerCase().trim()
-    const matchesQuery = !q || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q))
+    const q = (physicalSearchQuery.value || '').toLowerCase().trim()
+    const matchesQuery = !q || p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)) || String(p.id).includes(q)
     return matchesCat && matchesQuery
   })
 })
@@ -929,6 +931,43 @@ const submitOrder = async () => {
             <span class="text-slate-200">Protección Anti-Caídas</span>
           </div>
         </div>
+
+        <!-- Botones de Acceso Rápido a Secciones de la Tienda -->
+        <div class="mt-6 flex flex-wrap items-center gap-2.5">
+          <button 
+            type="button"
+            @click="storeSection = 'digital'"
+            :class="[
+              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
+              storeSection === 'digital' ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-sky-500/20' : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
+            ]"
+          >
+            <span>🎬</span>
+            <span>Suscripciones Digitales</span>
+          </button>
+          <button 
+            type="button"
+            @click="storeSection = 'physical'"
+            :class="[
+              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
+              storeSection === 'physical' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-amber-500/20' : 'bg-slate-900/90 text-amber-300 hover:text-white border border-amber-500/30 hover:bg-slate-800'
+            ]"
+          >
+            <span>📦</span>
+            <span>Tienda & Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
+          </button>
+          <button 
+            type="button"
+            @click="storeSection = 'packages'"
+            :class="[
+              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
+              storeSection === 'packages' ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-pink-500/20' : 'bg-slate-900/90 text-pink-300 hover:text-white border border-pink-500/30 hover:bg-slate-800'
+            ]"
+          >
+            <span>🎁</span>
+            <span>Combos & Paquetes</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1019,6 +1058,25 @@ const submitOrder = async () => {
 
     <!-- SECCIÓN 1: SUSCRIPCIONES DIGITALES -->
     <div v-if="storeSection === 'digital'" class="space-y-6">
+      <!-- Banner Destacado para Descubrir Catálogo Físico -->
+      <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-orange-950/30 p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0 border border-amber-500/30">
+            📦
+          </div>
+          <div>
+            <strong class="text-white text-xs sm:text-sm block">¿Sabías que también tenemos Catálogo de Productos Físicos?</strong>
+            <p class="text-[11px] text-slate-300 mt-0.5">Tecnología, electrónica, hogar y bazar con stock listo y asesoramiento por WhatsApp.</p>
+          </div>
+        </div>
+        <button 
+          type="button"
+          @click="storeSection = 'physical'"
+          class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-2 rounded-xl transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>Ver Productos Físicos ({{ adminStore.physicalProducts.length }}) →</span>
+        </button>
+      </div>
       <!-- Barra de Búsqueda y Botón de Carrito -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
@@ -1280,12 +1338,31 @@ const submitOrder = async () => {
 
     <!-- SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (C:\Users\yo\catalogo) -->
     <div v-else class="space-y-6">
+      <!-- Banner Destacado para Volver a Streaming Digital -->
+      <div class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/30 p-4 rounded-2xl border border-sky-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl shrink-0 border border-sky-500/30">
+            🎬
+          </div>
+          <div>
+            <strong class="text-white text-xs sm:text-sm block">¿Buscando Cuentas y Pantallas de Streaming?</strong>
+            <p class="text-[11px] text-slate-300 mt-0.5">Netflix, Max, Spotify, Disney+, YouTube Premium e IPTV con entrega de 10 min a 1 hora.</p>
+          </div>
+        </div>
+        <button 
+          type="button"
+          @click="storeSection = 'digital'"
+          class="bg-brand-accent hover:bg-sky-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>Ver Suscripciones Digitales →</span>
+        </button>
+      </div>
       <!-- Filtros del Catálogo Físico -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
           <div class="relative flex-1">
             <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input v-model="searchQuery" type="text" placeholder="Buscar productos físicos (herramientas, hogar, electrónica, bazar)..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
+            <input v-model="physicalSearchQuery" type="text" placeholder="Buscar productos físicos (herramientas, hogar, electrónica, bazar)..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
           </div>
           <div class="w-px bg-white/10 my-2"></div>
           <select v-model="physicalCategoryFilter" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
@@ -1339,8 +1416,22 @@ const submitOrder = async () => {
         </div>
       </div>
 
+      <!-- Estado Vacío si no hay coincidencias -->
+      <div v-if="filteredPhysicalProducts.length === 0" class="text-center py-12 bg-slate-900/40 rounded-3xl border border-slate-800 border-dashed space-y-3">
+        <span class="text-4xl block">📦</span>
+        <h4 class="text-white font-black text-base">No se encontraron productos físicos</h4>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">No hay resultados para "{{ physicalSearchQuery }}". Prueba con otro término o limpia los filtros.</p>
+        <button 
+          type="button"
+          @click="physicalSearchQuery = ''; physicalCategoryFilter = 'All'" 
+          class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-2 rounded-xl transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
+        >
+          <span>Ver todos los {{ adminStore.physicalProducts.length }} productos</span>
+        </button>
+      </div>
+
       <!-- Grid de Productos Físicos (2 columnas en móviles, 4 en desktop) -->
-      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
+      <div v-else class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
         <div 
           v-for="item in filteredPhysicalProducts" 
           :key="item.id" 
