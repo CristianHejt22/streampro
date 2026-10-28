@@ -392,23 +392,25 @@ const handleImportPhysicalCatalog = (event) => {
 }
 
 // GENERADOR DE FLYERS PARA REDES Y ESTADOS DE WHATSAPP
-// SINCRONIZACIÓN EN 1 CLIC DESDE LA API DE TUA.AR
-const isSyncingTua = ref(false)
-const handleSyncFromTuaApi = async () => {
-  isSyncingTua.value = true
+// SINCRONIZACIÓN EN 1 CLIC DESDE LA API DE REVENDE.COM.AR
+const isSyncingRevende = ref(false)
+const handleSyncFromRevendeApi = async () => {
+  isSyncingRevende.value = true
   try {
     const res = await adminStore.syncPhysicalFromApi()
     if (res.success) {
-      toast.add(`¡Catálogo físico actualizado! ${res.count} productos sincronizados en vivo desde tua.ar`, 'success')
+      toast.add(`¡Catálogo físico actualizado! ${res.count} productos sincronizados en vivo desde revende.com.ar`, 'success')
     } else {
-      toast.add(res.error || 'Error al conectar con tua.ar', 'error')
+      toast.add(res.error || 'Error al conectar con revende.com.ar', 'error')
     }
   } catch (err) {
-    toast.add('Error al sincronizar con tua.ar', 'error')
+    toast.add('Error al sincronizar con revende.com.ar', 'error')
   } finally {
-    isSyncingTua.value = false
+    isSyncingRevende.value = false
   }
 }
+const isSyncingTua = isSyncingRevende
+const handleSyncFromTuaApi = handleSyncFromRevendeApi
 
 // DIRECTORIO INTEGRAL DE USUARIOS REGISTRADOS
 const userSearch = ref('')
@@ -3778,12 +3780,12 @@ const deletePackageItem = (pkgId) => {
         <div class="flex flex-wrap items-center gap-2">
           <button 
             type="button"
-            @click="handleSyncFromTuaApi" 
-            :disabled="isSyncingTua"
+            @click="handleSyncFromRevendeApi" 
+            :disabled="isSyncingRevende"
             class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            title="Sincronizar directamente con la API en vivo de tua.ar"
+            title="Sincronizar directamente con la API en vivo de revende.com.ar"
           >
-            <span>{{ isSyncingTua ? '⏳ Sincronizando...' : '🔄 Sincronizar tua.ar' }}</span>
+            <span>{{ isSyncingRevende ? '⏳ Sincronizando...' : '🔄 Sincronizar revende.com.ar' }}</span>
           </button>
           <input 
             type="file" 
@@ -3883,14 +3885,25 @@ const deletePackageItem = (pkgId) => {
               <div>
                 <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
                   <span>ID: #{{ item.id }}</span>
-                  <span class="text-emerald-400 font-bold">Stock: {{ item.stock || 20 }} un.</span>
+                  <span class="text-emerald-400 font-bold">Stock: {{ item.stock ?? 0 }} un.</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <span v-if="item.sku" class="text-[9px] font-mono text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 truncate max-w-[120px]" :title="'SKU: ' + item.sku">
+                    SKU: {{ item.sku }}
+                  </span>
+                  <span v-if="item.variables && item.variables.length > 1" class="text-[9px] font-semibold text-sky-400 bg-sky-950/60 border border-sky-800/60 px-1.5 py-0.5 rounded">
+                    {{ item.variables.length }} variantes
+                  </span>
                 </div>
                 <h4 class="text-xs font-bold text-white line-clamp-2 mt-1 leading-snug" :title="item.name">{{ item.name }}</h4>
-                <p class="text-[10px] text-slate-400 line-clamp-2 mt-1">{{ item.description }}</p>
+                <div class="text-[10px] text-slate-400 line-clamp-2 mt-1" v-html="item.description"></div>
               </div>
             </div>
             <div class="pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
-              <span class="text-sm font-black text-amber-400 font-mono">{{ item.price }}</span>
+              <div class="flex flex-col">
+                <span class="text-sm font-black text-amber-400 font-mono">{{ item.price }}</span>
+                <span v-if="item.hasDiscount && item.originalPrice" class="text-[10px] text-slate-500 line-through font-mono">{{ item.originalPrice }}</span>
+              </div>
               <a 
                 :href="'/?prod=' + item.id + '&sec=physical'" 
                 target="_blank" 

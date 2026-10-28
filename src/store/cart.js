@@ -76,25 +76,43 @@ export const useCartStore = defineStore('cart', {
         })
       }
     },
-    // AGREGAR PRODUCTO FÍSICO DEL CATÁLOGO (C:\Users\yo\catalogo)
-    addPhysicalItem(product, quantity = 1) {
-      const existingItem = this.items.find(i => i.id === product.id && i.itemType === 'physical')
-      const priceNumeric = product.priceNumeric || parseArgentinePrice(product.price)
+    // AGREGAR PRODUCTO FÍSICO DEL CATÁLOGO (revende.com.ar con soporte de SKU y variantes)
+    addPhysicalItem(product, quantity = 1, selectedVariant = null) {
+      const variantId = selectedVariant ? selectedVariant.id : null
+      const variantName = selectedVariant ? selectedVariant.name : ''
+      const sku = selectedVariant?.sku || product.sku || ''
+      const priceNumeric = selectedVariant?.price || product.priceNumeric || parseArgentinePrice(product.price)
+      const priceFormatted = selectedVariant?.priceFormatted || product.price
+      const image = selectedVariant?.image || product.image
+      const originalPrice = selectedVariant?.comparePrice || product.originalPriceNumeric || null
+
+      const cartItemKey = variantId ? `phys_${product.id}_${variantId}` : `phys_${product.id}`
+      const existingItem = this.items.find(i => 
+        (i.cartItemKey === cartItemKey || (!i.cartItemKey && i.id === product.id && !variantId)) && 
+        i.itemType === 'physical'
+      )
 
       if (existingItem) {
         existingItem.quantity += quantity
       } else {
         this.items.push({
+          cartItemKey,
           id: product.id,
-          name: product.name,
+          name: variantName && variantName !== 'Variante 1' ? `${product.name} (${variantName})` : product.name,
+          baseName: product.name,
           platform: 'Producto Físico',
           category: product.category || 'Catálogo Físico',
           planKey: 'fisico_unitario',
-          planLabel: 'Producto Físico',
+          planLabel: variantName && variantName !== 'Variante 1' ? `Variante: ${variantName}` : 'Producto Físico',
           units: 1,
           clientPrice: priceNumeric,
-          image: product.image,
-          priceFormatted: product.price,
+          originalPrice: originalPrice,
+          image: image,
+          priceFormatted: priceFormatted,
+          sku: sku,
+          variantId: variantId,
+          variantName: variantName,
+          stock: selectedVariant?.stock ?? product.stock ?? 20,
           quantity: quantity,
           itemType: 'physical'
         })

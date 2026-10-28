@@ -160,6 +160,8 @@ const storeSection = ref('all')
 
 // Modal de Detalle de Producto Físico
 const selectedPhysicalProduct = ref(null)
+const selectedPhysicalVariant = ref(null)
+const activePhysicalImage = ref('')
 const showPhysicalModal = ref(false)
 const showImageZoomModal = ref(false)
 const physicalQuantity = ref(1)
@@ -500,16 +502,44 @@ const confirmAddToCart = () => {
   showConfigModal.value = false
 }
 
-// GESTIÓN DE PRODUCTOS FÍSICOS
+// GESTIÓN DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar)
 const openPhysicalModal = (product) => {
   selectedPhysicalProduct.value = product
   physicalQuantity.value = 1
+  if (product.variables && product.variables.length > 0) {
+    const firstAvailable = product.variables.find(v => v.available && v.stock > 0) || product.variables[0]
+    selectedPhysicalVariant.value = firstAvailable
+    activePhysicalImage.value = firstAvailable?.image || product.image
+  } else {
+    selectedPhysicalVariant.value = null
+    activePhysicalImage.value = product.image
+  }
   showPhysicalModal.value = true
 }
 
+const selectPhysicalVariant = (variant) => {
+  selectedPhysicalVariant.value = variant
+  if (variant.image) {
+    activePhysicalImage.value = variant.image
+  }
+}
+
+const selectPhysicalImage = (imgUrl) => {
+  activePhysicalImage.value = imgUrl
+}
+
 const addPhysicalToCart = (product, qty = 1) => {
-  cartStore.addPhysicalItem(product, qty)
-  toast.add(`"${product.name.slice(0, 30)}..." añadido al carrito`, 'success')
+  if (!selectedPhysicalProduct.value && product.variables && product.variables.length > 1) {
+    openPhysicalModal(product)
+    return
+  }
+  const variant = (selectedPhysicalProduct.value?.id === product.id)
+    ? selectedPhysicalVariant.value
+    : (product.variables?.[0] || null)
+
+  cartStore.addPhysicalItem(product, qty, variant)
+  const variantTxt = variant && variant.name !== 'Variante 1' ? ` (${variant.name})` : ''
+  toast.add(`"${product.name.slice(0, 25)}..."${variantTxt} añadido al carrito`, 'success')
   showPhysicalModal.value = false
 }
 
@@ -1502,6 +1532,11 @@ const submitOrder = async () => {
             ENVÍO GRATIS
           </div>
 
+          <!-- Badge Descuento / Oferta -->
+          <div v-if="item.hasDiscount && item.discountPercentage > 0" class="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md z-10 flex items-center gap-0.5">
+            <span>🔥</span> {{ item.discountPercentage }}% OFF
+          </div>
+
           <!-- Imagen del Producto -->
           <div class="w-full h-36 sm:h-52 bg-white flex items-center justify-center p-2 sm:p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
             <img 
@@ -1515,6 +1550,19 @@ const submitOrder = async () => {
           <!-- Información y Precios -->
           <div class="p-2 sm:p-4 flex flex-col flex-1 justify-between space-y-1.5 sm:space-y-3">
             <div>
+              <!-- Badges de SKU, Stock y Variantes -->
+              <div class="flex flex-wrap items-center gap-1 mb-1.5">
+                <span v-if="item.sku" class="text-[9px] font-mono text-slate-400 bg-slate-800/90 px-1.5 py-0.5 rounded border border-slate-700/60 truncate max-w-[120px]" :title="'SKU: ' + item.sku">
+                  SKU: {{ item.sku }}
+                </span>
+                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" :class="(item.stock || 0) > 10 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'">
+                  Stock: {{ item.stock || 0 }} un.
+                </span>
+                <span v-if="item.variables && item.variables.length > 1" class="text-[9px] font-semibold text-sky-300 bg-sky-950/60 border border-sky-800/60 px-1.5 py-0.5 rounded">
+                  {{ item.variables.length }} opciones
+                </span>
+              </div>
+
               <h4 class="font-bold text-white text-[11px] sm:text-sm line-clamp-2 leading-snug cursor-pointer hover:text-amber-300 transition-colors" @click="openPhysicalModal(item)">
                 {{ item.name }}
               </h4>
@@ -1529,9 +1577,15 @@ const submitOrder = async () => {
             </div>
 
             <div class="pt-1.5 sm:pt-2 border-t border-slate-800">
-              <div class="flex justify-between items-baseline mb-1.5 sm:mb-3">
-                <span class="text-[9px] sm:text-xs text-slate-400">Oficial:</span>
-                <span class="text-xs sm:text-lg font-black text-amber-400 font-mono">{{ item.price }}</span>
+              <div class="flex flex-col mb-1.5 sm:mb-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[9px] sm:text-xs text-slate-400">Oferta:</span>
+                  <span class="text-xs sm:text-lg font-black text-amber-400 font-mono">{{ item.price }}</span>
+                </div>
+                <div v-if="item.hasDiscount && item.originalPrice" class="flex items-center justify-between text-[10px] sm:text-xs text-slate-400">
+                  <span class="text-[9px] text-slate-500">Real de Lista:</span>
+                  <span class="line-through text-slate-400 font-mono">{{ item.originalPrice }}</span>
+                </div>
               </div>
 
               <!-- Botones de Acción: Ver Más, Agregar y Compartir Link -->
@@ -2234,35 +2288,118 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- MODAL DE DETALLE DE PRODUCTO FÍSICO -->
+    <!-- MODAL DE DETALLE DE PRODUCTO FÍSICO (revende.com.ar) -->
     <div v-if="showPhysicalModal && selectedPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
+        <!-- Encabezado con Categoría, ID, SKU y Stock -->
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-amber-400/30">
-              Catálogo Físico Oficial
+              {{ selectedPhysicalProduct.category || 'Catálogo Oficial' }}
             </span>
             <span class="text-slate-400 text-xs font-mono">ID: #{{ selectedPhysicalProduct.id }}</span>
+            <span v-if="selectedPhysicalVariant?.sku || selectedPhysicalProduct.sku" class="text-slate-300 text-xs font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+              SKU: {{ selectedPhysicalVariant?.sku || selectedPhysicalProduct.sku }}
+            </span>
+            <span class="text-xs font-bold px-2 py-0.5 rounded" :class="((selectedPhysicalVariant ? selectedPhysicalVariant.stock : selectedPhysicalProduct.stock) || 0) > 10 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'">
+              Stock: {{ (selectedPhysicalVariant ? selectedPhysicalVariant.stock : selectedPhysicalProduct.stock) || 0 }} disponibles
+            </span>
           </div>
-          <button @click="showPhysicalModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showPhysicalModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-6 items-center">
-          <div class="w-full sm:w-64 sm:h-64 h-56 bg-white rounded-3xl p-4 flex items-center justify-center shrink-0 shadow-2xl border-2 border-white/20 overflow-hidden group">
-            <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300" @error="(e) => e.target.src = 'https://tua.ar/images/banner22.webp'">
+        <!-- Imagen y Galería + Info de Precios -->
+        <div class="flex flex-col sm:flex-row gap-6 items-start">
+          <div class="w-full sm:w-64 shrink-0 space-y-2">
+            <div class="w-full h-56 sm:h-64 bg-white rounded-3xl p-4 flex items-center justify-center shadow-2xl border-2 border-white/20 overflow-hidden group">
+              <img 
+                :src="activePhysicalImage || selectedPhysicalProduct.image" 
+                :alt="selectedPhysicalProduct.name" 
+                class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+              >
+            </div>
+            <!-- Miniaturas de Galería de Imágenes si hay más de 1 -->
+            <div v-if="selectedPhysicalProduct.images && selectedPhysicalProduct.images.length > 1" class="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
+              <button 
+                v-for="(img, idx) in selectedPhysicalProduct.images" 
+                :key="idx"
+                type="button"
+                @click="selectPhysicalImage(img)"
+                class="w-12 h-12 rounded-xl bg-white p-1 border-2 shrink-0 transition-all cursor-pointer overflow-hidden flex items-center justify-center"
+                :class="(activePhysicalImage === img || (!activePhysicalImage && idx === 0)) ? 'border-amber-400 scale-105 shadow-md' : 'border-slate-700 opacity-70 hover:opacity-100'"
+              >
+                <img :src="img" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain" />
+              </button>
+            </div>
           </div>
-          <div class="space-y-2 flex-1">
-            <h3 class="text-lg font-black text-white leading-snug">{{ selectedPhysicalProduct.name }}</h3>
-            <div class="text-2xl font-black text-amber-400">{{ selectedPhysicalProduct.price }}</div>
-            <div v-if="selectedPhysicalProduct.priceNumeric >= 40000" class="inline-block bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-2.5 py-0.5 rounded-full">
-              ✓ Califica para Envío Gratis
+
+          <div class="space-y-3 flex-1">
+            <h3 class="text-lg sm:text-xl font-black text-white leading-snug">{{ selectedPhysicalProduct.name }}</h3>
+
+            <!-- Precios: Oferta Rebajado + Real de Lista -->
+            <div class="space-y-1 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+              <div class="flex items-baseline gap-3">
+                <span class="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                  {{ selectedPhysicalVariant?.priceFormatted || selectedPhysicalProduct.price }}
+                </span>
+                <span 
+                  v-if="selectedPhysicalVariant?.comparePriceFormatted || (selectedPhysicalProduct.hasDiscount && selectedPhysicalProduct.originalPrice)" 
+                  class="text-sm sm:text-base text-slate-400 line-through font-mono"
+                >
+                  {{ selectedPhysicalVariant?.comparePriceFormatted || selectedPhysicalProduct.originalPrice }}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <span 
+                  v-if="selectedPhysicalProduct.hasDiscount && selectedPhysicalProduct.discountPercentage > 0" 
+                  class="bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-bold px-2 py-0.5 rounded-full"
+                >
+                  🔥 ¡Ahorras {{ selectedPhysicalProduct.discountPercentage }}% en esta oferta!
+                </span>
+                <span 
+                  v-if="(selectedPhysicalVariant ? selectedPhysicalVariant.price : selectedPhysicalProduct.priceNumeric) >= 40000" 
+                  class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-2 py-0.5 rounded-full"
+                >
+                  ✓ Califica para Envío Gratis
+                </span>
+              </div>
+            </div>
+
+            <!-- Selector de Variantes / Opciones (si el producto tiene más de 1 variable) -->
+            <div v-if="selectedPhysicalProduct.variables && selectedPhysicalProduct.variables.length > 1" class="space-y-2 bg-slate-950 p-3.5 rounded-2xl border border-sky-500/30">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-sky-300">Seleccionar Opción / Variante:</span>
+                <span class="text-amber-400 font-mono font-bold">{{ selectedPhysicalVariant?.name }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button 
+                  v-for="v in selectedPhysicalProduct.variables" 
+                  :key="v.id"
+                  type="button"
+                  @click="selectPhysicalVariant(v)"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedPhysicalVariant?.id === v.id 
+                    ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black scale-105' 
+                    : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'"
+                >
+                  <span>{{ v.name }}</span>
+                  <span v-if="v.stock !== undefined" class="text-[10px] opacity-75">({{ v.stock }} un.)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- Descripción Completa -->
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
-          <h4 class="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Descripción y Especificaciones:</h4>
-          <p class="text-slate-300 whitespace-pre-line leading-relaxed">{{ selectedPhysicalProduct.description || 'Sin descripción adicional.' }}</p>
+          <h4 class="font-bold text-slate-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <span>📋</span>
+            <span>Descripción y Especificaciones:</span>
+          </h4>
+          <div 
+            class="text-slate-300 leading-relaxed space-y-2 [&>p]:mb-2 [&>h1]:text-sm [&>h1]:font-bold [&>h1]:text-white [&>ul]:list-disc [&>ul]:pl-4" 
+            v-html="selectedPhysicalProduct.description || 'Sin descripción adicional.'"
+          ></div>
         </div>
 
         <!-- Previsualización de Enlace Directo del Producto -->
@@ -2321,8 +2458,8 @@ const submitOrder = async () => {
             <span class="px-3 text-sm font-bold text-white">{{ physicalQuantity }}</span>
             <button @click="physicalQuantity++" class="w-8 h-8 rounded-lg bg-slate-800 text-white font-bold hover:bg-slate-700">+</button>
           </div>
-          <button @click="addPhysicalToCart(selectedPhysicalProduct, physicalQuantity)" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2">
-            <span>Agregar al Pedido ({{ physicalQuantity }} un.)</span>
+          <button @click="addPhysicalToCart(selectedPhysicalProduct, physicalQuantity)" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer">
+            <span>Agregar al Pedido ({{ physicalQuantity }} un.){{ selectedPhysicalVariant && selectedPhysicalVariant.name !== 'Variante 1' ? ' - ' + selectedPhysicalVariant.name : '' }}</span>
           </button>
         </div>
       </div>

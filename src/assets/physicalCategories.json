@@ -1,52 +1,140 @@
 [
   {
-    "cantidad": "2",
-    "id": "809",
-    "name": "Accesorios Vehículos"
+    "id": "dia-de-la-madre",
+    "name": "Dia de la Madre",
+    "slug": "dia-de-la-madre",
+    "cantidad": "28"
   },
   {
-    "cantidad": "7",
-    "id": "786",
-    "name": "BAZAR"
+    "id": "juguetes-entreteniemiento",
+    "name": "Juguetes - Entreteniemiento",
+    "slug": "juguetes-entreteniemiento",
+    "cantidad": "17"
   },
   {
-    "cantidad": "8",
-    "id": "801",
-    "name": "Belleza"
+    "id": "perfumes",
+    "name": "Perfumes",
+    "slug": "perfumes",
+    "cantidad": "16"
   },
   {
-    "cantidad": "4",
-    "id": "806",
-    "name": "Computación"
+    "id": "virales",
+    "name": "Virales",
+    "slug": "virales",
+    "cantidad": "15"
   },
   {
-    "cantidad": "2",
-    "id": "802",
-    "name": "Electrodomésticos"
+    "id": "hogar",
+    "name": "Hogar",
+    "slug": "hogar",
+    "cantidad": "15"
   },
   {
-    "cantidad": "9",
-    "id": "803",
-    "name": "Electrónica y Audio"
+    "id": "dia-del-nino",
+    "name": "dia del niño",
+    "slug": "dia-del-nino",
+    "cantidad": "12"
   },
   {
-    "cantidad": "5",
-    "id": "805",
-    "name": "Herramientas"
+    "id": "accesorios-celulares",
+    "name": "Accesorios Celulares",
+    "slug": "accesorios-celulares",
+    "cantidad": "6"
   },
   {
-    "cantidad": "7",
-    "id": "800",
-    "name": "Hogar y Jardín"
+    "id": "dia-del-padre",
+    "name": "Dia del Padre",
+    "slug": "dia-del-padre",
+    "cantidad": "5"
   },
   {
-    "cantidad": "14",
-    "id": "804",
-    "name": "Juguetes"
+    "id": "herramientas",
+    "name": "Herramientas",
+    "slug": "herramientas",
+    "cantidad": "5"
   },
   {
-    "cantidad": "1",
-    "id": "807",
-    "name": "Librería"
+    "id": "iluminacion",
+    "name": "Iluminacion",
+    "slug": "iluminacion",
+    "cantidad": "5"
+  },
+  {
+    "id": "auriculares",
+    "name": "Auriculares",
+    "slug": "auriculares",
+    "cantidad": "4"
+  },
+  {
+    "id": "belleza",
+    "name": "Belleza",
+    "slug": "belleza",
+    "cantidad": "4"
+  },
+  {
+    "id": "art-auto-moto-bici",
+    "name": "Art. Auto Moto Bici",
+    "slug": "art-auto-moto-bici",
+    "cantidad": "3"
+  },
+  {
+    "id": "navidenos",
+    "name": "Navideños",
+    "slug": "navidenos",
+    "cantidad": "2"
+  },
+  {
+    "id": "mascotas",
+    "name": "Mascotas",
+    "slug": "mascotas",
+    "cantidad": "2"
+  },
+  {
+    "id": "productos",
+    "name": "Productos",
+    "slug": "productos",
+    "cantidad": "2"
+  },
+  {
+    "id": "termos-botellas-vasos",
+    "name": "Termos Botellas Vasos",
+    "slug": "termos-botellas-vasos",
+    "cantidad": "1"
+  },
+  {
+    "id": "computacion-y-consolas-gamer",
+    "name": "Computacion y Consolas Gamer",
+    "slug": "computacion-y-consolas-gamer",
+    "cantidad": "1"
+  },
+  {
+    "id": "smartwatch",
+    "name": "Smartwatch",
+    "slug": "smartwatch",
+    "cantidad": "1"
+  },
+  {
+    "id": "griferia",
+    "name": "Griferia",
+    "slug": "griferia",
+    "cantidad": "1"
+  },
+  {
+    "id": "parlantes",
+    "name": "Parlantes",
+    "slug": "parlantes",
+    "cantidad": "1"
+  },
+  {
+    "id": "humidificadores",
+    "name": "Humidificadores",
+    "slug": "humidificadores",
+    "cantidad": "1"
+  },
+  {
+    "id": "invierno",
+    "name": "invierno",
+    "slug": "invierno",
+    "cantidad": "1"
   }
 ]

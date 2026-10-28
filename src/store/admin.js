@@ -390,20 +390,28 @@ export const useAdminStore = defineStore('admin', {
     // PEDIDOS VIRTUALES: Órdenes de streaming (Limpio en producción)
     orders: loadDb(DB_KEYS.ORDERS, []),
 
-    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Garantizado con recuperación automática)
+    // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar)
     physicalProducts: (() => {
       const stored = loadDb(DB_KEYS.PHYSICAL_PRODUCTS, null)
-      if (Array.isArray(stored) && stored.length > 0) return stored
-      return physicalProductsData.map(p => ({
+      if (Array.isArray(stored) && stored.length > 0 && stored[0]?.source === 'revende.com.ar') {
+        return stored
+      }
+      const initial = physicalProductsData.map(p => ({
         ...p,
-        image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+        image: p.image || '',
         priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
       }))
+      saveDb(DB_KEYS.PHYSICAL_PRODUCTS, initial)
+      return initial
     })(),
     physicalCategories: (() => {
       const stored = loadDb(DB_KEYS.PHYSICAL_CATEGORIES, null)
-      if (Array.isArray(stored) && stored.length > 0) return stored
-      return physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+      if (Array.isArray(stored) && stored.length > 0 && stored.some(c => c.slug)) {
+        return stored
+      }
+      const initial = physicalCategoriesData.filter(c => parseInt(c.cantidad || '0') > 0)
+      saveDb(DB_KEYS.PHYSICAL_CATEGORIES, initial)
+      return initial
     })(),
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
 
@@ -917,10 +925,10 @@ export const useAdminStore = defineStore('admin', {
     },
 
     ensurePhysicalProductsLoaded() {
-      if (!this.physicalProducts || !Array.isArray(this.physicalProducts) || this.physicalProducts.length === 0) {
+      if (!this.physicalProducts || !Array.isArray(this.physicalProducts) || this.physicalProducts.length === 0 || this.physicalProducts[0]?.source !== 'revende.com.ar') {
         this.physicalProducts = physicalProductsData.map(p => ({
           ...p,
-          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+          image: p.image || '',
           priceNumeric: p.priceNumeric || parseArgentinePrice(p.price)
         }))
         this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
@@ -935,9 +943,9 @@ export const useAdminStore = defineStore('admin', {
       if (Array.isArray(productsList) && productsList.length > 0) {
         const formatted = productsList.map(p => ({
           ...p,
-          image: p.image?.startsWith('http') ? p.image : `https://tua.ar/${(p.image || '').replace(/^\//, '')}`,
+          image: p.image || '',
           priceNumeric: p.priceNumeric || parseArgentinePrice(p.price),
-          stock: p.stock || 20
+          stock: typeof p.stock === 'number' ? p.stock : (parseInt(p.stock) || 20)
         }))
         this.physicalProducts = formatted
         this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
@@ -951,10 +959,10 @@ export const useAdminStore = defineStore('admin', {
       return { error: 'El archivo JSON no contiene una lista válida de productos.' }
     },
 
-    // Sincronización en 1 Clic desde la API de tua.ar
+    // Sincronización en 1 Clic desde la API de revende.com.ar (con fallback automático)
     async syncPhysicalFromApi() {
       try {
-        const res = await fetch('/api/sync-tua')
+        const res = await fetch('/api/sync-revende')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
@@ -966,13 +974,13 @@ export const useAdminStore = defineStore('admin', {
           }
           return { success: true, count: data.products.length }
         }
-        throw new Error(data.error || 'Respuesta inválida de la API tua.ar')
+        throw new Error(data.error || 'Respuesta inválida de la API revende.com.ar')
       } catch (err) {
-        console.warn('Sync API falló, aplicando catálogo base actualizado...', err)
+        console.warn('Sync API falló, aplicando catálogo base actualizado de revende.com.ar...', err)
         if (physicalProductsData && physicalProductsData.length > 0) {
           return this.updatePhysicalProductsFromJson(physicalProductsData, physicalCategoriesData)
         }
-        return { error: err.message || 'No se pudo conectar con tua.ar' }
+        return { error: err.message || 'No se pudo conectar con revende.com.ar' }
       }
     },
 
@@ -1743,7 +1751,7 @@ export const useAdminStore = defineStore('admin', {
       const isSharedUrl = !isDirect && source === 'shared_url'
       const commissionRate = isDirect ? 0 : (isSharedUrl ? 0.03 : 0.01)
       
-      const totalAmount = items.reduce((sum, item) => sum + (item.priceNumeric * item.quantity), 0)
+      const totalAmount = items.reduce((sum, item) => sum + ((item.clientPrice || item.priceNumeric || 0) * item.quantity), 0)
       const commissionAmount = isDirect ? 0 : Math.round(totalAmount * commissionRate)
       const orderId = `PED-FIS-${Date.now().toString().slice(-4)}`
 
@@ -1771,8 +1779,11 @@ export const useAdminStore = defineStore('admin', {
         items: items.map(i => ({
           id: i.id,
           name: i.name,
-          price: i.price,
-          priceNumeric: i.priceNumeric,
+          sku: i.sku || '',
+          variantName: i.variantName || '',
+          variantId: i.variantId || null,
+          price: i.priceFormatted || i.price || `$${i.clientPrice || i.priceNumeric}`,
+          priceNumeric: i.clientPrice || i.priceNumeric,
           image: i.image,
           quantity: i.quantity
         }))
