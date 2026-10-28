@@ -1141,6 +1141,108 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.PHYSICAL_CATEGORIES)
     },
 
+    // APLICAR PORCENTAJE (%) MASIVO A PRODUCTOS FÍSICOS (AUMENTO, DESCUENTO U OFERTA)
+    applyBulkPercentageToPhysicalProducts({ action = 'increase', percentage = 10, categoryId = 'All', roundTo = 10 }) {
+      const pct = Math.abs(Number(percentage) || 0)
+      if (action !== 'restore' && pct === 0) {
+        return { error: 'El porcentaje debe ser mayor a 0' }
+      }
+
+      const formatPriceStr = (num) => {
+        if (!num) return '$0,00'
+        return '$' + Number(num).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      }
+
+      const roundNum = (val) => {
+        if (!roundTo || roundTo <= 1) return Math.round(val)
+        return Math.round(val / roundTo) * roundTo
+      }
+
+      let modifiedCount = 0
+
+      this.physicalProducts.forEach(prod => {
+        // Excluir páginas y secciones de solo admin
+        if (prod.adminOnly || prod.categoryId === 'paginas') return
+
+        // Filtro por categoría opcional
+        if (categoryId !== 'All') {
+          const inCat = prod.categoryId === categoryId || (prod.categoryIds && prod.categoryIds.includes(categoryId))
+          if (!inCat) return
+        }
+
+        if (action === 'restore') {
+          const orig = physicalProductsData.find(p => String(p.id).trim() === String(prod.id).trim())
+          if (orig) {
+            prod.price = orig.price
+            prod.priceNumeric = orig.priceNumeric
+            prod.originalPrice = orig.originalPrice
+            prod.originalPriceNumeric = orig.originalPriceNumeric
+            prod.hasDiscount = orig.hasDiscount
+            prod.discountPercentage = orig.discountPercentage
+            if (Array.isArray(orig.variables)) {
+              prod.variables = JSON.parse(JSON.stringify(orig.variables))
+            }
+            modifiedCount++
+          }
+          return
+        }
+
+        const basePrice = prod.priceNumeric || parseArgentinePrice(prod.price)
+        if (!basePrice || basePrice <= 0) return
+
+        if (action === 'increase') {
+          // Aumento de precio (+%): actualiza el precio de venta final
+          const newPrice = roundNum(basePrice * (1 + pct / 100))
+          prod.originalPriceNumeric = basePrice
+          prod.originalPrice = formatPriceStr(basePrice)
+          prod.priceNumeric = newPrice
+          prod.price = formatPriceStr(newPrice)
+          prod.hasDiscount = false
+          prod.discountPercentage = 0
+        } else if (action === 'discount') {
+          // Descuento promocional (-%): el precio actual pasa a ser el precio de lista tachado y el precio oferta se reduce en %
+          const originalPrice = (prod.originalPriceNumeric && prod.originalPriceNumeric > basePrice)
+            ? prod.originalPriceNumeric 
+            : basePrice
+          const newSalePrice = roundNum(originalPrice * (1 - pct / 100))
+          prod.originalPriceNumeric = originalPrice
+          prod.originalPrice = formatPriceStr(originalPrice)
+          prod.priceNumeric = newSalePrice
+          prod.price = formatPriceStr(newSalePrice)
+          prod.hasDiscount = true
+          prod.discountPercentage = Math.round(pct)
+        } else if (action === 'margin') {
+          // Margen directo (+%): sube el precio de venta manteniendo el costo/lista
+          const newPrice = roundNum(basePrice * (1 + pct / 100))
+          prod.priceNumeric = newPrice
+          prod.price = formatPriceStr(newPrice)
+        }
+
+        // Actualizar variantes si existen
+        if (Array.isArray(prod.variables) && prod.variables.length > 0) {
+          prod.variables.forEach(v => {
+            const vBase = v.price || prod.priceNumeric
+            if (action === 'increase') {
+              v.price = roundNum(vBase * (1 + pct / 100))
+              v.priceFormatted = formatPriceStr(v.price)
+            } else if (action === 'discount') {
+              const vOrig = v.comparePrice || vBase
+              v.comparePrice = vOrig
+              v.comparePriceFormatted = formatPriceStr(vOrig)
+              v.price = roundNum(vOrig * (1 - pct / 100))
+              v.priceFormatted = formatPriceStr(v.price)
+            }
+          })
+        }
+
+        prod.updatedAt = new Date().toISOString()
+        modifiedCount++
+      })
+
+      this.persist(DB_KEYS.PHYSICAL_PRODUCTS)
+      return { success: true, count: modifiedCount }
+    },
+
     // Gestión Centralizada de Usuarios Registrados (Clientes & Distribuidores)
     registerOrUpdateUser(userData) {
       if (!userData || !userData.name) return null

@@ -580,6 +580,98 @@ const openPagePreview = (page) => {
   showPagePreviewModal.value = true
 }
 
+// MODAL DE AJUSTE MASIVO POR PORCENTAJE (%) PARA TODOS LOS PRODUCTOS
+const showBulkPercentageModal = ref(false)
+const bulkPercentageForm = ref({
+  action: 'discount', // 'discount' | 'increase' | 'restore'
+  percentage: 10,
+  categoryId: 'All',
+  roundTo: 10
+})
+
+const openBulkPercentageModal = () => {
+  bulkPercentageForm.value = {
+    action: 'discount',
+    percentage: 10,
+    categoryId: adminPhysicalCategoryFilter.value || 'All',
+    roundTo: 10
+  }
+  showBulkPercentageModal.value = true
+}
+
+const applyBulkPercentage = () => {
+  const res = adminStore.applyBulkPercentageToPhysicalProducts(bulkPercentageForm.value)
+  if (res.success) {
+    const actionTxt = bulkPercentageForm.value.action === 'restore'
+      ? 'Precios originales de revende.com.ar restaurados'
+      : (bulkPercentageForm.value.action === 'discount'
+          ? ('Descuento de oferta del ' + bulkPercentageForm.value.percentage + '% aplicado')
+          : ('Aumento / margen del ' + bulkPercentageForm.value.percentage + '% aplicado'))
+    toast.add('¡Éxito! ' + actionTxt + ' en ' + res.count + ' productos.', 'success')
+    showBulkPercentageModal.value = false
+  } else {
+    toast.add(res.error || 'Error al aplicar porcentaje', 'error')
+  }
+}
+
+const bulkPercentagePreviewList = computed(() => {
+  const pct = Math.abs(Number(bulkPercentageForm.value.percentage) || 0)
+  const roundTo = bulkPercentageForm.value.roundTo || 10
+  const action = bulkPercentageForm.value.action
+  const catId = bulkPercentageForm.value.categoryId
+
+  const roundNum = (val) => {
+    if (!roundTo || roundTo <= 1) return Math.round(val)
+    return Math.round(val / roundTo) * roundTo
+  }
+
+  const sampleProducts = (adminStore.physicalProducts || [])
+    .filter(p => !p.adminOnly && p.categoryId !== 'paginas')
+    .filter(p => catId === 'All' || p.categoryId === catId || (p.categoryIds && p.categoryIds.includes(catId)))
+    .slice(0, 3)
+
+  return sampleProducts.map(p => {
+    const current = p.priceNumeric || 0
+    let simulated = current
+    if (action === 'increase') {
+      simulated = roundNum(current * (1 + pct / 100))
+    } else if (action === 'discount') {
+      const orig = (p.originalPriceNumeric && p.originalPriceNumeric > current) ? p.originalPriceNumeric : current
+      simulated = roundNum(orig * (1 - pct / 100))
+    } else if (action === 'restore') {
+      simulated = current
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      currentPrice: current,
+      newPrice: simulated,
+      diff: simulated - current
+    }
+  })
+})
+
+const setFormDiscountPercentage = (pct) => {
+  const p = Math.abs(Number(pct) || 0)
+  if (!p) return
+  const current = physicalProductForm.value.originalPriceNumeric || physicalProductForm.value.priceNumeric || 0
+  if (current > 0) {
+    physicalProductForm.value.originalPriceNumeric = current
+    physicalProductForm.value.priceNumeric = Math.round(current * (1 - p / 100))
+    toast.add('Aplicado ' + p + '% de descuento ($' + physicalProductForm.value.priceNumeric + ')', 'info')
+  }
+}
+
+const setFormMarkupPercentage = (pct) => {
+  const p = Math.abs(Number(pct) || 0)
+  if (!p) return
+  const current = physicalProductForm.value.priceNumeric || 0
+  if (current > 0) {
+    physicalProductForm.value.priceNumeric = Math.round(current * (1 + p / 100))
+    toast.add('Aumento de ' + p + '% aplicado ($' + physicalProductForm.value.priceNumeric + ')', 'info')
+  }
+}
+
 const copyPageContent = (page) => {
   const plainText = (page.description || '').replace(/<[^>]*>/g, '').trim()
   if (navigator?.clipboard?.writeText) {
@@ -4008,6 +4100,14 @@ const deletePackageItem = (pkgId) => {
         <div class="flex flex-wrap items-center gap-2">
           <button 
             type="button"
+            @click="openBulkPercentageModal"
+            class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Aplicar porcentaje (%) de oferta, descuento o aumento masivo a todos los productos"
+          >
+            <span>🏷️ % Masivo (Todos)</span>
+          </button>
+          <button 
+            type="button"
             @click="handleSyncFromRevendeApi" 
             :disabled="isSyncingRevende"
             class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -4083,6 +4183,15 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="flex items-center gap-2">
+          <button 
+            v-if="adminPhysicalSubTab === 'products'"
+            type="button"
+            @click="openBulkPercentageModal"
+            class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-black text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Ajuste masivo de porcentaje para todos los productos"
+          >
+            <span>🏷️ Opción de % (Todos)</span>
+          </button>
           <button 
             v-if="adminPhysicalSubTab === 'products'"
             type="button"
@@ -6378,39 +6487,58 @@ const deletePackageItem = (pkgId) => {
             </div>
           </div>
 
-          <!-- Precios y Stock (si no es página legal) -->
-          <div v-if="!physicalProductForm.adminOnly" class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-            <div>
-              <label class="block text-amber-400 font-bold mb-1">Precio Oferta ($ ARS) *</label>
-              <input 
-                v-model.number="physicalProductForm.priceNumeric" 
-                type="number" 
-                min="0"
-                step="1"
-                placeholder="Ej: 11990" 
-                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
-              >
+          <!-- Precios, Stock y Ajuste por Porcentaje (%) -->
+          <div v-if="!physicalProductForm.adminOnly" class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-amber-400 font-bold mb-1">Precio Oferta (Venta) *</label>
+                <input 
+                  v-model.number="physicalProductForm.priceNumeric" 
+                  type="number" 
+                  min="0"
+                  step="1"
+                  placeholder="Ej: 11990" 
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
+                >
+              </div>
+              <div>
+                <label class="block text-slate-400 font-bold mb-1">Precio Real (Tachado)</label>
+                <input 
+                  v-model.number="physicalProductForm.originalPriceNumeric" 
+                  type="number" 
+                  min="0"
+                  step="1"
+                  placeholder="Ej: 13000" 
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
+                >
+              </div>
+              <div>
+                <label class="block text-emerald-400 font-bold mb-1">Stock Disponible</label>
+                <input 
+                  v-model.number="physicalProductForm.stock" 
+                  type="number" 
+                  min="0" 
+                  placeholder="Ej: 50" 
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-emerald-400 text-xs"
+                >
+              </div>
             </div>
-            <div>
-              <label class="block text-slate-400 font-bold mb-1">Precio Real / Lista ($ ARS)</label>
-              <input 
-                v-model.number="physicalProductForm.originalPriceNumeric" 
-                type="number" 
-                min="0"
-                step="1"
-                placeholder="Tachado Ej: 13000" 
-                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-amber-400 text-xs"
-              >
-            </div>
-            <div>
-              <label class="block text-emerald-400 font-bold mb-1">Stock Disponible</label>
-              <input 
-                v-model.number="physicalProductForm.stock" 
-                type="number" 
-                min="0"
-                placeholder="Ej: 50" 
-                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-emerald-400 text-xs"
-              >
+
+            <!-- Accesos rápidos de porcentaje individual -->
+            <div class="pt-2 border-t border-slate-900 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-slate-400 font-bold">🔥 Aplicar Descuento %:</span>
+                <button type="button" @click="setFormDiscountPercentage(5)" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">-5%</button>
+                <button type="button" @click="setFormDiscountPercentage(10)" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">-10%</button>
+                <button type="button" @click="setFormDiscountPercentage(15)" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">-15%</button>
+                <button type="button" @click="setFormDiscountPercentage(20)" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">-20%</button>
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-slate-400 font-bold">📈 Aumento %:</span>
+                <button type="button" @click="setFormMarkupPercentage(5)" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">+5%</button>
+                <button type="button" @click="setFormMarkupPercentage(10)" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">+10%</button>
+                <button type="button" @click="setFormMarkupPercentage(15)" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded font-bold transition cursor-pointer">+15%</button>
+              </div>
             </div>
           </div>
 
@@ -6552,6 +6680,169 @@ const deletePackageItem = (pkgId) => {
               class="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2.5 rounded-xl transition shadow-lg cursor-pointer"
             >
               {{ isEditingPhysicalProduct ? 'Guardar Cambios' : 'Crear Producto' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: AJUSTE MASIVO POR PORCENTAJE (%) PARA TODOS LOS PRODUCTOS -->
+    <div v-if="showBulkPercentageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
+        <!-- Encabezado Modal -->
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🏷️</span>
+              <h3 class="text-lg font-black text-white">Opción de Porcentaje (%) para Productos</h3>
+            </div>
+            <p class="text-xs text-slate-400">
+              Aplica un porcentaje de oferta/descuento o margen de aumento a todos los productos del catálogo.
+            </p>
+          </div>
+          <button @click="showBulkPercentageModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+        </div>
+
+        <form @submit.prevent="applyBulkPercentage" class="space-y-4 text-xs">
+          <!-- Acción a realizar -->
+          <div class="space-y-2">
+            <label class="block text-slate-300 font-bold">Tipo de Ajuste por Porcentaje:</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button 
+                type="button" 
+                @click="bulkPercentageForm.action = 'discount'"
+                class="p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1 cursor-pointer"
+                :class="bulkPercentageForm.action === 'discount' ? 'bg-red-500/20 border-red-500 text-white shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+              >
+                <span class="font-bold text-xs flex items-center gap-1 text-red-400">
+                  <span>🔥</span> Oferta / Descuento
+                </span>
+                <span class="text-[10px] text-slate-300">Rebaja el precio y muestra precio tachado con % OFF.</span>
+              </button>
+
+              <button 
+                type="button" 
+                @click="bulkPercentageForm.action = 'increase'"
+                class="p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1 cursor-pointer"
+                :class="bulkPercentageForm.action === 'increase' ? 'bg-emerald-500/20 border-emerald-500 text-white shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+              >
+                <span class="font-bold text-xs flex items-center gap-1 text-emerald-400">
+                  <span>📈</span> Aumento / Margen
+                </span>
+                <span class="text-[10px] text-slate-300">Incrementa el precio de venta en un porcentaje.</span>
+              </button>
+
+              <button 
+                type="button" 
+                @click="bulkPercentageForm.action = 'restore'"
+                class="p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1 cursor-pointer"
+                :class="bulkPercentageForm.action === 'restore' ? 'bg-sky-500/20 border-sky-500 text-white shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'"
+              >
+                <span class="font-bold text-xs flex items-center gap-1 text-sky-400">
+                  <span>🔄</span> Restaurar Fábrica
+                </span>
+                <span class="text-[10px] text-slate-300">Vuelve a los precios base oficiales de revende.com.ar.</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de Porcentaje con Botones Rápidos (si no es restore) -->
+          <div v-if="bulkPercentageForm.action !== 'restore'" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="font-bold text-white">Porcentaje a Aplicar (%):</label>
+              <div class="flex items-center gap-1.5">
+                <input 
+                  v-model.number="bulkPercentageForm.percentage" 
+                  type="number" 
+                  min="1" 
+                  max="100" 
+                  required
+                  class="w-20 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-center text-sm font-black font-mono text-amber-400 outline-none focus:border-amber-400"
+                >
+                <span class="text-sm font-bold text-amber-400">%</span>
+              </div>
+            </div>
+
+            <!-- Botones Rápidos -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <span class="text-[10px] text-slate-400 font-bold mr-1">Rápidos:</span>
+              <button 
+                v-for="p in [5, 10, 15, 20, 25, 30, 40, 50]" 
+                :key="p"
+                type="button"
+                @click="bulkPercentageForm.percentage = p"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer"
+                :class="bulkPercentageForm.percentage === p ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-600'"
+              >
+                {{ p }}%
+              </button>
+            </div>
+          </div>
+
+          <!-- Alcance y Redondeo -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Aplicar a:</label>
+              <select v-model="bulkPercentageForm.categoryId" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-400 text-xs cursor-pointer">
+                <option value="All">Todos los Productos Físicos ({{ publicPhysicalProductsCount }})</option>
+                <option v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly)" :key="cat.id" :value="cat.id">
+                  {{ cat.name }} ({{ cat.cantidad }})
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Redondeo en Pesos ($):</label>
+              <select v-model.number="bulkPercentageForm.roundTo" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-400 text-xs cursor-pointer">
+                <option :value="10">Redondear a $10 más cercano (Ej: $11.990)</option>
+                <option :value="50">Redondear a $50 más cercano (Ej: $11.950)</option>
+                <option :value="100">Redondear a $100 más cercano (Ej: $12.000)</option>
+                <option :value="1">Exacto sin redondeo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Simulación / Previsualización de Muestra -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-bold text-slate-400 flex items-center gap-1">
+                <span>👁️</span> Simulación de Precios en Vivo:
+              </span>
+              <span class="text-emerald-400 font-mono font-bold">
+                {{ bulkPercentageForm.action === 'restore' ? 'Restaurar' : (bulkPercentageForm.action === 'discount' ? '-' + bulkPercentageForm.percentage + '% OFF' : '+' + bulkPercentageForm.percentage + '%') }}
+              </span>
+            </div>
+            <div class="space-y-1.5 text-xs">
+              <div 
+                v-for="sample in bulkPercentagePreviewList" 
+                :key="sample.id"
+                class="flex items-center justify-between bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80"
+              >
+                <span class="text-white truncate max-w-[200px]" :title="sample.name">{{ sample.name }}</span>
+                <div class="flex items-center gap-2 font-mono shrink-0">
+                  <span class="text-slate-500 line-through text-[11px]">${{ sample.currentPrice.toLocaleString() }}</span>
+                  <span class="text-amber-400 font-black">${{ sample.newPrice.toLocaleString() }}</span>
+                  <span class="text-[10px] font-bold" :class="sample.diff >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                    {{ sample.diff >= 0 ? '+' : '' }}${{ sample.diff.toLocaleString() }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="flex items-center gap-3 pt-3 border-t border-slate-800">
+            <button 
+              type="button" 
+              @click="showBulkPercentageModal = false" 
+              class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-2.5 rounded-xl transition shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>✅ Aplicar {{ bulkPercentageForm.action === 'restore' ? 'Restauración' : bulkPercentageForm.percentage + '%' }} a Productos</span>
             </button>
           </div>
         </form>
