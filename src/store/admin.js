@@ -1147,6 +1147,12 @@ export const useAdminStore = defineStore('admin', {
       if (action !== 'restore' && pct === 0) {
         return { error: 'El porcentaje debe ser mayor a 0' }
       }
+      if (action === 'increase' && pct > 150) {
+        return { error: 'El aumento máximo permitido es de hasta 150%' }
+      }
+      if (action === 'discount' && pct >= 100) {
+        return { error: 'El descuento no puede ser igual o mayor al 100%' }
+      }
 
       const formatPriceStr = (num) => {
         if (!num) return '$0,00'
@@ -1170,8 +1176,10 @@ export const useAdminStore = defineStore('admin', {
           if (!inCat) return
         }
 
+        // Obtener datos originales base de revende.com.ar (costo base / referencia oficial)
+        const orig = physicalProductsData.find(p => String(p.id).trim() === String(prod.id).trim())
+
         if (action === 'restore') {
-          const orig = physicalProductsData.find(p => String(p.id).trim() === String(prod.id).trim())
           if (orig) {
             prod.price = orig.price
             prod.priceNumeric = orig.priceNumeric
@@ -1187,52 +1195,85 @@ export const useAdminStore = defineStore('admin', {
           return
         }
 
-        const basePrice = prod.priceNumeric || parseArgentinePrice(prod.price)
-        if (!basePrice || basePrice <= 0) return
+        const currentPrice = prod.priceNumeric || parseArgentinePrice(prod.price)
+        if (!currentPrice || currentPrice <= 0) return
+
+        // Costo base mayorista original de revende (precio final mínimo de referencia)
+        const baseFloorPrice = orig ? (orig.priceNumeric || 0) : 0
 
         if (action === 'increase') {
-          // Aumento de precio (+%): actualiza el precio de venta final
-          const newPrice = roundNum(basePrice * (1 + pct / 100))
-          prod.originalPriceNumeric = basePrice
-          prod.originalPrice = formatPriceStr(basePrice)
-          prod.priceNumeric = newPrice
-          prod.price = formatPriceStr(newPrice)
-          prod.hasDiscount = false
-          prod.discountPercentage = 0
-        } else if (action === 'discount') {
-          // Descuento promocional (-%): el precio actual pasa a ser el precio de lista tachado y el precio oferta se reduce en %
-          const originalPrice = (prod.originalPriceNumeric && prod.originalPriceNumeric > basePrice)
-            ? prod.originalPriceNumeric 
-            : basePrice
-          const newSalePrice = roundNum(originalPrice * (1 - pct / 100))
-          prod.originalPriceNumeric = originalPrice
-          prod.originalPrice = formatPriceStr(originalPrice)
-          prod.priceNumeric = newSalePrice
-          prod.price = formatPriceStr(newSalePrice)
-          prod.hasDiscount = true
-          prod.discountPercentage = Math.round(pct)
-        } else if (action === 'margin') {
-          // Margen directo (+%): sube el precio de venta manteniendo el costo/lista
-          const newPrice = roundNum(basePrice * (1 + pct / 100))
-          prod.priceNumeric = newPrice
-          prod.price = formatPriceStr(newPrice)
-        }
+          // AUMENTO / REMARCAR GANANCIAS (hasta 150%):
+          // REGLA: Mantener los descuentos de los productos que ya los tienen en proporciones de remarcar ganancias.
+          const hasExistingDiscount = prod.hasDiscount || (prod.originalPriceNumeric && prod.originalPriceNumeric > currentPrice)
 
-        // Actualizar variantes si existen
-        if (Array.isArray(prod.variables) && prod.variables.length > 0) {
-          prod.variables.forEach(v => {
-            const vBase = v.price || prod.priceNumeric
-            if (action === 'increase') {
-              v.price = roundNum(vBase * (1 + pct / 100))
+          if (hasExistingDiscount) {
+            const currentOriginal = prod.originalPriceNumeric || currentPrice
+            const newPrice = roundNum(currentPrice * (1 + pct / 100))
+            const newOriginal = roundNum(currentOriginal * (1 + pct / 100))
+
+            prod.priceNumeric = newPrice
+            prod.price = formatPriceStr(newPrice)
+            prod.originalPriceNumeric = newOriginal
+            prod.originalPrice = formatPriceStr(newOriginal)
+            prod.hasDiscount = true
+            prod.discountPercentage = Math.round(((newOriginal - newPrice) / newOriginal) * 100)
+          } else {
+            const newPrice = roundNum(currentPrice * (1 + pct / 100))
+            prod.priceNumeric = newPrice
+            prod.price = formatPriceStr(newPrice)
+            prod.originalPriceNumeric = null
+            prod.originalPrice = null
+            prod.hasDiscount = false
+            prod.discountPercentage = 0
+          }
+
+          // Variantes proporcionales
+          if (Array.isArray(prod.variables) && prod.variables.length > 0) {
+            prod.variables.forEach(v => {
+              const vCurrent = v.price || currentPrice
+              v.price = roundNum(vCurrent * (1 + pct / 100))
               v.priceFormatted = formatPriceStr(v.price)
-            } else if (action === 'discount') {
-              const vOrig = v.comparePrice || vBase
-              v.comparePrice = vOrig
-              v.comparePriceFormatted = formatPriceStr(vOrig)
-              v.price = roundNum(vOrig * (1 - pct / 100))
-              v.priceFormatted = formatPriceStr(v.price)
-            }
-          })
+              if (v.comparePrice && v.comparePrice > vCurrent) {
+                v.comparePrice = roundNum(v.comparePrice * (1 + pct / 100))
+                v.comparePriceFormatted = formatPriceStr(v.comparePrice)
+              }
+            })
+          }
+        } else if (action === 'discount') {
+          // REGLA: Descuentos que nunca sean menor al precio final ni descuente sobre descuentos.
+          // 1) "Ni descuente sobre descuentos": tomar siempre el precio de lista completo (originalPriceNumeric si existe), no el precio ya rebajado.
+          const fullReferencePrice = (prod.originalPriceNumeric && prod.originalPriceNumeric > currentPrice)
+            ? prod.originalPriceNumeric
+            : currentPrice
+
+          // 2) "Que nunca sean menor al precio final": el precio con descuento nunca debe ser menor al costo base/piso de revende.
+          const calculatedDiscountPrice = roundNum(fullReferencePrice * (1 - pct / 100))
+          const newSalePrice = Math.max(calculatedDiscountPrice, baseFloorPrice)
+
+          if (newSalePrice < fullReferencePrice) {
+            prod.originalPriceNumeric = fullReferencePrice
+            prod.originalPrice = formatPriceStr(fullReferencePrice)
+            prod.priceNumeric = newSalePrice
+            prod.price = formatPriceStr(newSalePrice)
+            prod.hasDiscount = true
+            prod.discountPercentage = Math.round(((fullReferencePrice - newSalePrice) / fullReferencePrice) * 100)
+          }
+
+          // Variantes con la misma regla de no descontar sobre descuento ni bajar del piso base
+          if (Array.isArray(prod.variables) && prod.variables.length > 0) {
+            prod.variables.forEach(v => {
+              const vFull = (v.comparePrice && v.comparePrice > v.price) ? v.comparePrice : (v.price || currentPrice)
+              const vFloor = orig?.variables?.find(ov => ov.id === v.id)?.price || baseFloorPrice
+              const vCalc = roundNum(vFull * (1 - pct / 100))
+              const vFinal = Math.max(vCalc, vFloor)
+              if (vFinal < vFull) {
+                v.comparePrice = vFull
+                v.comparePriceFormatted = formatPriceStr(vFull)
+                v.price = vFinal
+                v.priceFormatted = formatPriceStr(vFinal)
+              }
+            })
+          }
         }
 
         prod.updatedAt = new Date().toISOString()
