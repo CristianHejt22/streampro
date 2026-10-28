@@ -48,11 +48,37 @@ const publicPhysicalCount = computed(() => {
   return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
 })
 
+const activePackagesCount = computed(() => {
+  return (adminStore.packages || []).filter(p => p.active).length
+})
+
 const navigateSection = (sec) => {
+  const anchorMap = {
+    all: 'hero-banner',
+    digital: 'suscripciones-digitales',
+    packages: 'paquetes-combos',
+    physical: 'catalogo-fisico'
+  }
   if (route.path === '/') {
-    router.push({ path: '/', query: { ...route.query, sec } })
+    const query = { ...route.query }
+    if (sec === 'all') {
+      delete query.sec
+    } else {
+      query.sec = sec
+    }
+    router.replace({ path: '/', query }).catch(() => {})
+
+    const target = anchorMap[sec]
+    if (target && typeof document !== 'undefined') {
+      setTimeout(() => {
+        const el = document.getElementById(target)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 80)
+    }
   } else {
-    router.push({ path: '/', query: { sec } })
+    router.push({ path: '/', query: sec === 'all' ? {} : { sec } })
   }
 }
 
@@ -127,6 +153,23 @@ const handleOpenCart = () => {
             >
               <span>🎬</span>
               <span>Suscripciones</span>
+            </button>
+
+            <button 
+              type="button"
+              @click="navigateSection('packages')" 
+              :class="[
+                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
+                $route.path === '/' && $route.query.sec === 'packages'
+                  ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 shadow-sm font-black' 
+                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+              ]"
+            >
+              <span>🎁</span>
+              <span>Combos</span>
+              <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
+                {{ activePackagesCount }}
+              </span>
             </button>
             
             <button 
@@ -266,6 +309,23 @@ const handleOpenCart = () => {
             <span>🎬</span>
             <span>Suscripciones</span>
           </button>
+
+          <button 
+            type="button"
+            @click="navigateSection('packages')" 
+            :class="[
+              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
+              $route.path === '/' && $route.query.sec === 'packages'
+                ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' 
+                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
+            ]"
+          >
+            <span>🎁</span>
+            <span>Combos</span>
+            <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
+              {{ activePackagesCount }}
+            </span>
+          </button>
           
           <button 
             type="button"
@@ -357,7 +417,7 @@ const handleOpenCart = () => {
               <li>
                 <RouterLink to="/p" class="hover:text-amber-400 transition-colors flex items-center gap-1.5">
                   <span>📦</span>
-                  <span>Catálogo Físico (tua.ar)</span>
+                  <span>Catálogo Físico Oficial</span>
                 </RouterLink>
               </li>
               <li>

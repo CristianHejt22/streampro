@@ -272,7 +272,7 @@ const getCORSImageUrl = (rawUrl) => {
   if (!rawUrl) return null
   let fullUrl = rawUrl
   if (!fullUrl.startsWith('http')) {
-    fullUrl = `https://tua.ar/${rawUrl}`
+    fullUrl = fullUrl.startsWith('/') ? `${typeof window !== 'undefined' ? window.location.origin : 'https://streamepro.me'}${fullUrl}` : `https://www.revende.com.ar/${rawUrl}`
   }
   return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=800&output=jpg`
 }
