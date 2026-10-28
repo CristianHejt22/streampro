@@ -993,7 +993,11 @@ const streamingOrderResellerFilter = ref('All')
 const filteredStreamingOrdersForAdmin = computed(() => {
   let list = adminStore.orders || []
   if (streamingOrderStatusFilter.value !== 'All') {
-    list = list.filter(o => o.status === streamingOrderStatusFilter.value)
+    if (streamingOrderStatusFilter.value === 'Waiting Provider') {
+      list = list.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente')
+    } else {
+      list = list.filter(o => o.status === streamingOrderStatusFilter.value)
+    }
   }
   if (streamingOrderResellerFilter.value !== 'All') {
     if (streamingOrderResellerFilter.value === 'DIRECT') {
@@ -1971,7 +1975,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Módulo de Renovaciones Solicitadas: El Proveedor puede cambiar datos de cuenta -->
-    <div v-if="adminTab === 'renewals'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
+    <div v-if="adminTab === 'renewals' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
         <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
           🔄
@@ -2034,7 +2038,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Centro de Despachos de Pedidos -->
-    <div v-if="adminTab === 'orders'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
+    <div v-if="adminTab === 'orders' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
       
       <!-- HEADER CON TÍTULO Y BOTÓN DE SINCRONIZACIÓN -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
@@ -2190,7 +2194,7 @@ const deletePackageItem = (pkgId) => {
               </div>
 
               <!-- Comprobante adjunto -->
-              <div class="pt-1 flex items-center gap-2">
+              <div class="pt-1 flex flex-wrap items-center gap-2">
                 <button 
                   v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
                   @click="openReceiptViewer(order, false)"
@@ -2202,6 +2206,9 @@ const deletePackageItem = (pkgId) => {
                 </button>
                 <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono">
                   ✓ Comprobante depurado
+                </span>
+                <span v-if="order.bankTransferVerified" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                  <span>💰</span> Acreditada en {{ order.bankTransferDetails?.bankName || 'Banco' }} (${{ (order.bankTransferDetails?.amount || order.clientPrice).toLocaleString() }})
                 </span>
               </div>
             </div>
@@ -2225,11 +2232,20 @@ const deletePackageItem = (pkgId) => {
                   <span>⚙️ Despacho Manual</span>
                 </button>
                 <button 
+                  v-if="order.resellerId === 'DIRECT' || !order.resellerId"
                   @click="contactDirectCustomerWhatsApp(order)" 
                   class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 font-bold text-[11px] rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   title="Contactar al cliente directamente por WhatsApp"
                 >
                   <span>💬 WhatsApp Cliente</span>
+                </button>
+                <button 
+                  v-else
+                  @click="openIncidentModal(order)" 
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 font-bold text-[11px] rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                  title="Avisar novedad de este cliente al revendedor"
+                >
+                  <span>📢 Avisar Revendedor</span>
                 </button>
                 <button 
                   @click="handleCancelStreamingOrder(order)" 

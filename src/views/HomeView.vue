@@ -293,20 +293,13 @@ const isAnyModalOpen = computed(() => {
 
 watch(isAnyModalOpen, (isOpen) => {
   if (typeof document !== 'undefined') {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      document.documentElement.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : ''
   }
 }, { immediate: true })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
-    document.documentElement.style.overflow = ''
   }
 })
 
@@ -1439,7 +1432,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL DE ELECCIÓN DE PLAN -->
-    <div v-if="showConfigModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showConfigModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
@@ -1533,7 +1526,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL CARRITO PREVIO AL ENVÍO -->
-    <div v-if="showCartDrawer" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showCartDrawer" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-center border-b border-slate-800 pb-4">
           <div class="flex items-center gap-2">
@@ -1611,7 +1604,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL CHECKOUT: CON DATOS COMPLETOS DEL REVENDEDOR PARA CONFIRMAR PAGOS -->
-    <div v-if="showCheckoutModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showCheckoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
@@ -1627,179 +1620,151 @@ const submitOrder = async () => {
         </div>
 
         <form @submit.prevent="submitOrder" class="space-y-4 text-xs">
-          <!-- SECCIÓN DE IDENTIFICACIÓN: CLIENTE REGISTRADO VS INVITACIÓN A REGISTRARSE -->
-
-          <!-- CASO 1: CLIENTE YA REGISTRADO (NO PIDE NOMBRE NI WHATSAPP AL COMPRAR) -->
-          <div v-if="hasSavedProfile && !showEditProfileInputs" class="bg-gradient-to-r from-emerald-950/40 via-slate-950 to-indigo-950/40 p-4 rounded-2xl border border-emerald-500/40 space-y-3 shadow-lg">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-slate-950 flex items-center justify-center text-xl font-black shadow-md shadow-emerald-500/20">
-                  ✓
-                </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-black text-white">{{ clientForm.fullName }}</span>
-                    <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Cliente Registrado
-                    </span>
-                  </div>
-                  <p class="text-xs text-slate-300 font-mono mt-0.5">
-                    📱 {{ clientForm.whatsapp }} • N° <strong class="text-amber-300">{{ clientForm.clientNumber }}</strong>
-                  </p>
-                </div>
+          <!-- SECCIÓN DE IDENTIFICACIÓN: SMART CHECKOUT CON REGISTRO O INVITACIÓN -->
+          
+          <!-- BANNER 1: SI EL CLIENTE YA TIENE PERFIL GUARDADO EN SU DISPOSITIVO -->
+          <div v-if="hasSavedProfile" class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/40 p-3.5 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center font-black text-sm shrink-0">
+                ✓
               </div>
-              <div class="flex flex-col items-end gap-1">
-                <button 
-                  type="button" 
-                  @click="showEditProfileInputs = true" 
-                  class="text-xs text-sky-400 hover:text-sky-300 font-bold underline cursor-pointer"
-                >
-                  Modificar
-                </button>
-                <button 
-                  type="button" 
-                  @click="handleLogoutProfile" 
-                  class="text-[10px] text-slate-500 hover:text-rose-400 cursor-pointer"
-                  title="Comprar con otro número"
-                >
-                  Cambiar cuenta
-                </button>
-              </div>
-            </div>
-
-            <!-- PIN Guardado o Configurado para Bóveda -->
-            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div class="flex items-center gap-2 text-xs text-slate-300">
-                <span>🔐</span>
-                <span>PIN de Bóveda:</span>
-                <strong class="font-mono text-amber-300 tracking-widest text-sm">{{ clientForm.pin || '••••' }}</strong>
-              </div>
-              <span class="text-[10px] text-emerald-400 font-bold">✓ Vinculado a tu Bóveda</span>
-            </div>
-          </div>
-
-          <!-- CASO 2: CLIENTE NO REGISTRADO O MODO EDICIÓN -->
-          <div v-else class="space-y-4">
-            
-            <!-- Banner Invitación: Iniciar Sesión si ya compró antes -->
-            <div v-if="!showEditProfileInputs" class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/40 p-3.5 rounded-2xl border border-sky-500/30">
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2.5">
-                  <span class="text-xl">👋</span>
-                  <div>
-                    <strong class="text-white text-xs block">¿Ya compraste antes o tienes cuenta?</strong>
-                    <p class="text-[11px] text-slate-400">Inicia sesión con tu WhatsApp y PIN para no tener que cargar tus datos.</p>
-                  </div>
-                </div>
-                <button 
-                  type="button" 
-                  @click="showQuickLogin = !showQuickLogin" 
-                  class="text-xs bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer shrink-0"
-                >
-                  {{ showQuickLogin ? 'Cerrar' : '🔑 Iniciar Sesión' }}
-                </button>
-              </div>
-
-              <!-- Formulario Desplegable de Login Rápido -->
-              <div v-if="showQuickLogin" class="mt-3 pt-3 border-t border-sky-500/20 space-y-2.5 animate-in fade-in duration-150">
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">WhatsApp de Compra</label>
-                    <input 
-                      v-model="quickLoginPhone" 
-                      type="tel" 
-                      placeholder="Ej: 11 1234-5678" 
-                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-400 font-medium"
-                    >
-                  </div>
-                  <div>
-                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">PIN de 4 dígitos</label>
-                    <input 
-                      v-model="quickLoginPin" 
-                      type="password" 
-                      maxlength="4"
-                      placeholder="••••" 
-                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-center font-mono font-bold tracking-widest text-amber-300 outline-none focus:border-amber-400"
-                    >
-                  </div>
-                </div>
-                <div class="flex justify-between items-center pt-1">
-                  <span class="text-[10px] text-slate-500">O completa tu registro abajo si eres nuevo.</span>
-                  <button 
-                    type="button" 
-                    @click="handleQuickLogin" 
-                    class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs px-4 py-1.5 rounded-xl transition cursor-pointer shadow-md"
-                  >
-                    Cargar Mis Datos →
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Título del Formulario de Registro -->
-            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
               <div>
-                <span class="font-bold text-white text-xs block">
-                  {{ showEditProfileInputs ? 'Modificar Datos de Compra' : 'Registra tus Datos para esta Compra' }}
-                </span>
-                <p class="text-[11px] text-slate-400">
-                  {{ showEditProfileInputs ? 'Actualiza los datos para este pedido.' : 'Te registramos como cliente oficial para que en futuras compras tus datos ya queden listos.' }}
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-white">Datos cargados de tu cuenta</span>
+                  <span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-mono font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">Cliente Frecuente</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  Estás comprando como <strong class="text-white">{{ clientForm.fullName }}</strong> ({{ clientForm.whatsapp }}). Puedes editar los campos abajo si compras para otra persona.
                 </p>
               </div>
+            </div>
+            <button 
+              type="button" 
+              @click="handleLogoutProfile" 
+              class="text-xs text-sky-400 hover:text-rose-400 underline font-medium cursor-pointer shrink-0"
+              title="Borrar datos guardados en este dispositivo para ingresar otros"
+            >
+              Cambiar cuenta
+            </button>
+          </div>
+
+          <!-- BANNER 2: INVITACIÓN A INICIAR SESIÓN SI YA TIENE CUENTA O BÓVEDA -->
+          <div v-else class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/40 p-3.5 rounded-2xl border border-sky-500/30 space-y-2.5">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-base shrink-0">👋</span>
+                <div>
+                  <strong class="text-white text-xs block">¿Ya compraste antes o tienes Bóveda?</strong>
+                  <p class="text-[11px] text-slate-400">Inicia sesión con tu WhatsApp y PIN para autocompletar tus datos en 1 clic.</p>
+                </div>
+              </div>
               <button 
-                v-if="showEditProfileInputs" 
                 type="button" 
-                @click="showEditProfileInputs = false" 
-                class="text-xs text-slate-400 hover:text-white"
+                @click="showQuickLogin = !showQuickLogin" 
+                class="text-xs bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer shrink-0"
               >
-                Cancelar
+                {{ showQuickLogin ? 'Cerrar' : '🔑 Iniciar Sesión' }}
               </button>
             </div>
 
-            <!-- Datos Personales del Cliente -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Completo *</label>
-                <input v-model="clientForm.fullName" type="text" placeholder="Ej: Carlos Lopez" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium" required>
+            <!-- Formulario Desplegable de Login Rápido -->
+            <div v-if="showQuickLogin" class="pt-2 border-t border-sky-500/20 space-y-2.5 animate-in fade-in duration-150">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">WhatsApp de Compra</label>
+                  <input 
+                    v-model="quickLoginPhone" 
+                    type="tel" 
+                    placeholder="Ej: 11 1234-5678" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-sky-400 font-medium"
+                  >
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">PIN de 4 dígitos</label>
+                  <input 
+                    v-model="quickLoginPin" 
+                    type="password" 
+                    maxlength="4"
+                    placeholder="••••" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-center font-mono font-bold tracking-widest text-amber-300 outline-none focus:border-amber-400"
+                  >
+                </div>
               </div>
-              <div>
-                <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Contacto *</label>
-                <input v-model="clientForm.whatsapp" type="tel" placeholder="+54 9 11 1234-5678" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium" required>
+              <div class="flex justify-between items-center pt-0.5">
+                <span class="text-[10px] text-slate-500">O completa tus datos abajo para registrarte.</span>
+                <button 
+                  type="button" 
+                  @click="handleQuickLogin" 
+                  class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl transition cursor-pointer shadow-md"
+                >
+                  Cargar Mis Datos →
+                </button>
               </div>
             </div>
+          </div>
 
-            <!-- PIN de Seguridad para Bóveda Privada (Opción C - Manual Obligatorio) -->
-            <div class="bg-gradient-to-r from-indigo-950/60 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/40 space-y-2.5 shadow-lg">
-              <div class="flex items-center justify-between">
-                <label class="font-black uppercase text-indigo-300 text-xs flex items-center gap-2">
-                  <span>🔐</span>
-                  <span>Crea tu PIN de Acceso a tu Bóveda (4 dígitos) *</span>
-                </label>
-                <span class="text-[10px] bg-amber-400/15 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-400/30">
-                  Obligatorio
-                </span>
-              </div>
-              <p class="text-[11px] text-slate-300 leading-relaxed">
-                Elige 4 dígitos personales (ej: <strong>1234</strong>). Te servirán para ingresar a tu Bóveda en cualquier momento y ver tus pedidos o accesos.
-              </p>
-              <div class="flex items-center gap-3">
-                <input 
-                  v-model="clientForm.pin" 
-                  @input="clientForm.pin = (clientForm.pin || '').replace(/\D/g, '').slice(0, 4)"
-                  type="text" 
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="4"
-                  minlength="4"
-                  class="w-36 bg-slate-900 border-2 border-indigo-500/60 focus:border-amber-400 rounded-xl py-2.5 px-3 text-center text-lg font-black font-mono tracking-[0.3em] text-amber-300 outline-none shadow-inner placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-xs"
-                  placeholder="Ej: 1234"
-                  required
-                />
-                <span class="text-[11px] font-medium text-slate-400">
-                  {{ clientForm.pin && clientForm.pin.length === 4 ? '✓ PIN de 4 dígitos ingresado' : 'Ingresa 4 dígitos numéricos' }}
-                </span>
-              </div>
+          <!-- CAMPOS OBLIGATORIOS Y PERMANENTES DE IDENTIFICACIÓN -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">
+                Nombre Completo <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                v-model="clientForm.fullName" 
+                type="text" 
+                placeholder="Ej: Carlos Lopez" 
+                class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium text-xs" 
+                required
+              >
             </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">
+                WhatsApp de Contacto <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                v-model="clientForm.whatsapp" 
+                type="tel" 
+                placeholder="+54 9 11 1234-5678" 
+                class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white outline-none font-medium text-xs" 
+                required
+              >
+            </div>
+          </div>
+
+          <!-- PIN DE SEGURIDAD PARA BÓVEDA PRIVADA (4 DÍGITOS OBLIGATORIO) -->
+          <div class="bg-gradient-to-r from-indigo-950/60 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/40 space-y-2.5 shadow-lg">
+            <div class="flex items-center justify-between">
+              <label class="font-black uppercase text-indigo-300 text-xs flex items-center gap-2">
+                <span>🔐</span>
+                <span>PIN de Acceso a tu Bóveda (4 dígitos) <span class="text-rose-400">*</span></span>
+              </label>
+              <span class="text-[10px] bg-amber-400/15 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-400/30">
+                Obligatorio
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Elige 4 dígitos personales (ej: <strong>1234</strong>). Te servirán para ingresar a tu Bóveda en cualquier momento y ver tus pedidos o credenciales.
+            </p>
+            <div class="flex items-center gap-3">
+              <input 
+                v-model="clientForm.pin" 
+                @input="clientForm.pin = (clientForm.pin || '').replace(/\D/g, '').slice(0, 4)"
+                type="text" 
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                minlength="4"
+                class="w-36 bg-slate-900 border-2 border-indigo-500/60 focus:border-amber-400 rounded-xl py-2.5 px-3 text-center text-lg font-black font-mono tracking-[0.3em] text-amber-300 outline-none shadow-inner placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-xs"
+                placeholder="Ej: 1234"
+                required
+              />
+              <span class="text-[11px] font-medium text-slate-400">
+                {{ clientForm.pin && clientForm.pin.length === 4 ? '✓ PIN de 4 dígitos ingresado' : 'Ingresa 4 dígitos numéricos' }}
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-400 pt-1 leading-normal">
+              💡 Tus datos y PIN quedarán guardados en este dispositivo para comprar en 1 clic tus próximas veces sin tener que volver a escribirlos.
+            </p>
           </div>
 
           <!-- Canal Oficial de Despacho Verificado -->

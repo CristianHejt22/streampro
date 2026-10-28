@@ -137,26 +137,19 @@ const handleLogout = () => {
 
 watch(() => props.modelValue, (isOpen) => {
   if (typeof document !== 'undefined') {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      document.documentElement.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : ''
   }
 }, { immediate: true })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
-    document.documentElement.style.overflow = ''
   }
 })
 </script>
 
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
       
       <!-- Fondo decorativo -->
