@@ -636,10 +636,13 @@ const bulkPercentagePreviewList = computed(() => {
     if (action === 'increase') {
       simulated = roundNum(current * (1 + pct / 100))
     } else if (action === 'discount') {
-      const fullRef = (p.originalPriceNumeric && p.originalPriceNumeric > current) ? p.originalPriceNumeric : current
-      const baseFloor = p.baseFloor || (p.originalPriceNumeric ? p.priceNumeric : 0)
-      const calc = roundNum(fullRef * (1 - pct / 100))
-      simulated = Math.max(calc, baseFloor)
+      const orig = (adminStore.physicalProducts || []).find(prod => String(prod.id).trim() === String(p.id).trim())
+      const factoryBase = orig ? (orig.priceNumeric || current) : current
+      const factoryList = orig ? (orig.originalPriceNumeric || orig.priceNumeric || current) : current
+      const currentList = (p.originalPriceNumeric && p.originalPriceNumeric > current) ? p.originalPriceNumeric : current
+      const markupRatio = Math.max(1, currentList / factoryList)
+      const baseUndisc = roundNum(factoryBase * markupRatio)
+      simulated = roundNum(baseUndisc * (1 - pct / 100))
     } else if (action === 'restore') {
       simulated = current
     }
@@ -656,16 +659,17 @@ const bulkPercentagePreviewList = computed(() => {
 const setFormDiscountPercentage = (pct) => {
   const p = Math.abs(Number(pct) || 0)
   if (!p) return
-  const fullRef = physicalProductForm.value.originalPriceNumeric || physicalProductForm.value.priceNumeric || 0
-  if (fullRef > 0) {
-    const orig = (adminStore.physicalProducts || []).find(prod => String(prod.id).trim() === String(physicalProductForm.value.id).trim())
-    const baseFloor = orig ? (orig.priceNumeric || 0) : 0
-    const calc = Math.round(fullRef * (1 - p / 100))
-    const finalPrice = Math.max(calc, baseFloor)
+  const current = physicalProductForm.value.priceNumeric || 0
+  const currentOriginal = physicalProductForm.value.originalPriceNumeric || current
 
-    physicalProductForm.value.originalPriceNumeric = fullRef
-    physicalProductForm.value.priceNumeric = finalPrice
-    toast.add('Aplicado ' + p + '% de descuento ($' + finalPrice.toLocaleString() + ')', 'info')
+  if (current > 0) {
+    // Remarca el precio de lista y calcula la oferta con el % de descuento
+    const newPrice = Math.round(current * (1 - p / 100))
+    const finalOriginal = Math.max(currentOriginal, current, Math.round(newPrice / (1 - p / 100)))
+
+    physicalProductForm.value.originalPriceNumeric = finalOriginal
+    physicalProductForm.value.priceNumeric = newPrice
+    toast.add('Descuento de -' + p + '% remarcado ($' + newPrice.toLocaleString() + ' con lista en $' + finalOriginal.toLocaleString() + ')', 'info')
   }
 }
 

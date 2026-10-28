@@ -1,3 +1,5 @@
+import fs from 'fs'
+
 export default async function handler(req, res) {
   const prodId = req.query.prod || req.query.id || req.query.p || ''
   const refCode = req.query.ref || ''
@@ -5,43 +7,72 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400')
 
-  // Producto por defecto si no se encuentra
-  let product = {
-    id: prodId,
-    name: 'Producto Oficial StreamePro',
-    price: '$20.000',
-    description: 'Catálogo oficial de tecnología y productos físicos en StreamePro. Compra directa con garantía y envío seguro.',
-    image: 'https://streamepro.me/og-banner.png'
-  }
+  let product = null
 
   if (prodId) {
     try {
-      // Intentar consultar Tua.ar o sync local
-      const tuaRes = await fetch('https://streamepro.me/api/sync-tua')
-      if (tuaRes.ok) {
-        const data = await tuaRes.json()
-        const found = (data.products || []).find(p => String(p.id).trim() === String(prodId).trim())
-        if (found) {
-          product = found
-        }
+      const productsUrl = new URL('../src/assets/physicalProducts.json', import.meta.url)
+      const products = JSON.parse(fs.readFileSync(productsUrl, 'utf8'))
+      product = products.find(p => 
+        String(p.id).trim() === String(prodId).trim() ||
+        (p.sku && String(p.sku).trim().toLowerCase() === String(prodId).trim().toLowerCase()) ||
+        (p.pageSlug && String(p.pageSlug).trim().toLowerCase() === String(prodId).trim().toLowerCase())
+      )
+    } catch (e) {
+      console.warn('Error reading physicalProducts.json in api/product-preview.js:', e)
+    }
+  }
+
+  if (!product && prodId) {
+    // Fallback a sync-revende API
+    try {
+      const revendeRes = await fetch('https://streamepro.me/api/sync-revende')
+      if (revendeRes.ok) {
+        const data = await revendeRes.json()
+        product = (data.products || []).find(p => String(p.id).trim() === String(prodId).trim())
       }
     } catch (e) {
-      console.warn('Error fetching product for preview:', e)
+      console.warn('Error fetching fallback product from sync-revende:', e)
+    }
+  }
+
+  // Producto por defecto si no se encuentra
+  if (!product) {
+    product = {
+      id: prodId,
+      name: 'Catálogo de Tecnología & Suscripciones StreamePro',
+      price: 'Precios Exclusivos',
+      priceNumeric: 0,
+      description: 'Catálogo oficial de tecnología, accesorios y cuentas de streaming en StreamePro. Compra directa con entrega rápida, garantía oficial y despacho seguro a todo el país.',
+      image: 'https://streamepro.me/og-banner.png'
     }
   }
 
   let rawImg = product.image || 'https://streamepro.me/og-banner.png'
   if (!rawImg.startsWith('http')) {
-    rawImg = `https://tua.ar/${rawImg}`
+    rawImg = `https://streamepro.me/${rawImg.replace(/^\//, '')}`
   }
 
-  // Imagen ajustada en foco para WhatsApp / Redes Sociales (1200x630, centrada con fondo blanco de estudio)
-  const focusedOgImage = `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=ffffff&output=jpg`
+  // Imagen en alta definición 1200x630 para WhatsApp / Facebook / Telegram / Twitter
+  const focusedOgImage = rawImg.startsWith('https://streamepro.me/og-banner')
+    ? 'https://streamepro.me/og-banner.png'
+    : `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=ffffff&output=jpg`
 
-  const targetRedirectUrl = refCode ? `/?prod=${encodeURIComponent(prodId)}&ref=${encodeURIComponent(refCode)}` : `/?prod=${encodeURIComponent(prodId)}`
+  const targetRedirectUrl = refCode 
+    ? `/?prod=${encodeURIComponent(prodId)}&ref=${encodeURIComponent(refCode)}&sec=physical` 
+    : `/?prod=${encodeURIComponent(prodId)}&sec=physical`
+
   const canonicalUrl = `https://streamepro.me/p/${encodeURIComponent(prodId)}`
-  const cleanTitle = `${product.name} | StreamePro Oficial`
-  const cleanDesc = `💰 Precio Oficial: ${product.price}. Envío seguro a todo el país y garantía oficial. Pide online en StreamePro.`
+  const cleanTitle = `${product.name} (${product.price}) | StreamePro Oficial`
+
+  const plainDesc = (product.description || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const cleanDesc = plainDesc
+    ? `💰 Oferta: ${product.price}. ${plainDesc.slice(0, 160)}... Garantía Oficial StreamePro y Envíos a Todo el País.`
+    : `💰 Precio: ${product.price}. Envío seguro a todo el país y garantía oficial. Pide online en StreamePro.`
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -79,8 +110,8 @@ export default async function handler(req, res) {
     "@context": "https://schema.org/",
     "@type": "Product",
     "name": ${JSON.stringify(product.name)},
-    "image": [${JSON.stringify(focusedOgImage)}],
-    "description": ${JSON.stringify(product.description || cleanDesc)},
+    "image": [${JSON.stringify(focusedOgImage)}, ${JSON.stringify(rawImg)}],
+    "description": ${JSON.stringify(plainDesc || cleanDesc)},
     "offers": {
       "@type": "Offer",
       "priceCurrency": "ARS",
@@ -108,7 +139,7 @@ export default async function handler(req, res) {
     <h1 style="font-size:18px;margin:0 0 10px;color:#ffffff;font-weight:900;">${escapeHtml(product.name)}</h1>
     <div style="font-size:22px;color:#fbbf24;font-weight:900;margin-bottom:15px;">${escapeHtml(product.price)}</div>
     <p style="font-size:12px;color:#94a3b8;margin:0 0 20px;">Redirigiendo a la tienda oficial StreamePro...</p>
-    <a href="${targetRedirectUrl}" style="display:inline-block;background:linear-gradient(to right,#38bdf8,#2563eb);color:#020617;text-decoration:none;font-weight:900;font-size:13px;padding:12px 24px;rounded-xl;border-radius:12px;">Ver en StreamePro</a>
+    <a href="${targetRedirectUrl}" style="display:inline-block;background:linear-gradient(to right,#38bdf8,#2563eb);color:#020617;text-decoration:none;font-weight:900;font-size:13px;padding:12px 24px;border-radius:12px;">Ver en StreamePro</a>
   </div>
 </body>
 </html>`

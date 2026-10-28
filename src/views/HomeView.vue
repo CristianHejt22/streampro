@@ -584,9 +584,21 @@ const copyShareProductUrl = (product) => {
 
 const shareProductWhatsApp = (product) => {
   const shareUrl = getProductDirectUrl(product)
-  const msg = `🔥 *MIRA ESTE PRODUCTO EN STREAMEPRO*\n📦 *${product.name}*\n💰 Precio: *${product.price}*\n\n👉 Compra directa aquí:\n${shareUrl}`
+  const discountText = product.hasDiscount ? ` (${product.discountPercentage}% OFF 🔥 Antes: ${product.originalPrice})` : ''
+  const msg = `🔥 *MIRA ESTE PRODUCTO EN STREAMEPRO*\n📦 *${product.name}*\n💰 Precio: *${product.price}*${discountText}\n\n👉 Compra directa y garantía oficial aquí:\n${shareUrl}`
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
+
+// SEO Dinámico y Títulos Optimizados
+watch([storeSection, selectedPhysicalProduct], ([sec, prod]) => {
+  if (prod) {
+    document.title = `${prod.name} (${prod.price}) | StreamePro Oficial`
+  } else if (sec === 'physical') {
+    document.title = 'Tienda de Productos Físicos & Tecnología | StreamePro Oficial'
+  } else {
+    document.title = 'StreamePro | Suscripciones Streaming Oficiales & Combos'
+  }
+}, { immediate: true })
 
 // Búsqueda y Filtros
 const searchQuery = ref('')

@@ -1198,12 +1198,12 @@ export const useAdminStore = defineStore('admin', {
         const currentPrice = prod.priceNumeric || parseArgentinePrice(prod.price)
         if (!currentPrice || currentPrice <= 0) return
 
-        // Costo base mayorista original de revende (precio final mínimo de referencia)
-        const baseFloorPrice = orig ? (orig.priceNumeric || 0) : 0
+        const factoryBase = orig ? (orig.priceNumeric || currentPrice) : currentPrice
+        const factoryList = orig ? (orig.originalPriceNumeric || orig.priceNumeric || currentPrice) : currentPrice
 
         if (action === 'increase') {
           // AUMENTO / REMARCAR GANANCIAS (hasta 150%):
-          // REGLA: Mantener los descuentos de los productos que ya los tienen en proporciones de remarcar ganancias.
+          // Mantener los descuentos de los productos que ya los tienen en proporciones de remarcar ganancias.
           const hasExistingDiscount = prod.hasDiscount || (prod.originalPriceNumeric && prod.originalPriceNumeric > currentPrice)
 
           if (hasExistingDiscount) {
@@ -1240,38 +1240,46 @@ export const useAdminStore = defineStore('admin', {
             })
           }
         } else if (action === 'discount') {
-          // REGLA: Descuentos que nunca sean menor al precio final ni descuente sobre descuentos.
-          // 1) "Ni descuente sobre descuentos": tomar siempre el precio de lista completo (originalPriceNumeric si existe), no el precio ya rebajado.
-          const fullReferencePrice = (prod.originalPriceNumeric && prod.originalPriceNumeric > currentPrice)
+          // REMARCAR DESCUENTOS TAMBIÉN CUANDO SE AJUSTEN DESCUENTOS:
+          // 1) Si el catálogo tiene un margen remarcado previo, calculamos la proporción de markup
+          const currentList = (prod.originalPriceNumeric && prod.originalPriceNumeric > currentPrice)
             ? prod.originalPriceNumeric
             : currentPrice
 
-          // 2) "Que nunca sean menor al precio final": el precio con descuento nunca debe ser menor al costo base/piso de revende.
-          const calculatedDiscountPrice = roundNum(fullReferencePrice * (1 - pct / 100))
-          const newSalePrice = Math.max(calculatedDiscountPrice, baseFloorPrice)
+          const markupRatio = Math.max(1, currentList / factoryList)
+          const baseUndiscountedPrice = roundNum(factoryBase * markupRatio)
+          const fullListPrice = roundNum(factoryList * markupRatio)
 
-          if (newSalePrice < fullReferencePrice) {
-            prod.originalPriceNumeric = fullReferencePrice
-            prod.originalPrice = formatPriceStr(fullReferencePrice)
-            prod.priceNumeric = newSalePrice
-            prod.price = formatPriceStr(newSalePrice)
-            prod.hasDiscount = true
-            prod.discountPercentage = Math.round(((fullReferencePrice - newSalePrice) / fullReferencePrice) * 100)
-          }
+          // 2) Calculamos el nuevo precio de oferta aplicando el descuento sobre la base de venta oficial
+          const newSalePrice = roundNum(baseUndiscountedPrice * (1 - pct / 100))
 
-          // Variantes con la misma regla de no descontar sobre descuento ni bajar del piso base
+          // 3) Remarcamos el precio de lista (tachado) asegurando que sea mayor al precio de oferta
+          const finalOriginalPrice = Math.max(fullListPrice, roundNum(newSalePrice / (1 - pct / 100)))
+
+          prod.originalPriceNumeric = finalOriginalPrice
+          prod.originalPrice = formatPriceStr(finalOriginalPrice)
+          prod.priceNumeric = newSalePrice
+          prod.price = formatPriceStr(newSalePrice)
+          prod.hasDiscount = true
+          prod.discountPercentage = Math.round(((finalOriginalPrice - newSalePrice) / finalOriginalPrice) * 100)
+
+          // Variantes remarcando descuentos en la misma proporción
           if (Array.isArray(prod.variables) && prod.variables.length > 0) {
             prod.variables.forEach(v => {
-              const vFull = (v.comparePrice && v.comparePrice > v.price) ? v.comparePrice : (v.price || currentPrice)
-              const vFloor = orig?.variables?.find(ov => ov.id === v.id)?.price || baseFloorPrice
-              const vCalc = roundNum(vFull * (1 - pct / 100))
-              const vFinal = Math.max(vCalc, vFloor)
-              if (vFinal < vFull) {
-                v.comparePrice = vFull
-                v.comparePriceFormatted = formatPriceStr(vFull)
-                v.price = vFinal
-                v.priceFormatted = formatPriceStr(vFinal)
-              }
+              const origVar = orig?.variables?.find(ov => ov.id === v.id)
+              const vFactoryBase = origVar ? (origVar.price || origVar.comparePrice || factoryBase) : factoryBase
+              const vFactoryList = origVar ? (origVar.comparePrice || origVar.price || factoryList) : factoryList
+              const vMarkupRatio = Math.max(1, (v.comparePrice || v.price || currentPrice) / vFactoryList)
+
+              const vBaseUndisc = roundNum(vFactoryBase * vMarkupRatio)
+              const vFullList = roundNum(vFactoryList * vMarkupRatio)
+              const vNewSale = roundNum(vBaseUndisc * (1 - pct / 100))
+              const vFinalOrig = Math.max(vFullList, roundNum(vNewSale / (1 - pct / 100)))
+
+              v.comparePrice = vFinalOrig
+              v.comparePriceFormatted = formatPriceStr(vFinalOrig)
+              v.price = vNewSale
+              v.priceFormatted = formatPriceStr(vNewSale)
             })
           }
         }
