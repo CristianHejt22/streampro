@@ -15,26 +15,36 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/p',
-      alias: ['/catalogo', '/tienda', '/productos'],
-      redirect: to => ({
-        path: '/',
-        query: { ...to.query, sec: 'physical' }
-      })
+      path: '/suscripciones',
+      alias: ['/streaming', '/digital'],
+      name: 'subscriptions',
+      component: HomeView
+    },
+    {
+      path: '/combos',
+      alias: ['/paquetes', '/ofertas'],
+      name: 'combos',
+      component: HomeView
+    },
+    {
+      path: '/tienda',
+      alias: ['/catalogo', '/productos', '/p'],
+      name: 'physical',
+      component: HomeView
     },
     {
       path: '/producto/:id',
       alias: ['/p/:id', '/item/:id', '/articulo/:id'],
       redirect: to => ({
-        path: '/',
-        query: { ...to.query, prod: to.params.id, sec: 'physical' }
+        path: '/tienda',
+        query: { ...to.query, prod: to.params.id }
       })
     },
     {
       path: '/producto/:id/:ref',
       redirect: to => ({
-        path: '/',
-        query: { ...to.query, prod: to.params.id, ref: to.params.ref, sec: 'physical' }
+        path: '/tienda',
+        query: { ...to.query, prod: to.params.id, ref: to.params.ref }
       })
     },
     {

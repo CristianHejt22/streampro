@@ -187,8 +187,24 @@ const openConfigFromInfo = () => {
   }
 }
 
+// Detección de Sección Activa según Ruta y Parámetros
+const currentPageSection = computed(() => {
+  const p = route.path.toLowerCase()
+  if (['/suscripciones', '/streaming', '/digital'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'digital'
+  if (['/combos', '/paquetes', '/ofertas'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'packages'
+  if (['/tienda', '/catalogo', '/productos', '/p'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'physical'
+  if (route.query.sec === 'digital') return 'digital'
+  if (route.query.sec === 'packages') return 'packages'
+  if (route.query.sec === 'physical') return 'physical'
+  return 'home'
+})
+
 // Sección Activa en Tienda: 'all' (Todo el Catálogo) | 'digital' (Streaming) | 'physical' (Productos Físicos) | 'packages' (Combos)
 const storeSection = ref('all')
+
+watch(currentPageSection, (sec) => {
+  storeSection.value = sec === 'home' ? 'all' : sec
+}, { immediate: true })
 
 // Modal de Detalle de Producto Físico
 const selectedPhysicalProduct = ref(null)
@@ -449,18 +465,23 @@ const applyRouteParams = () => {
     }
   }
 
+  // Sincronizar filtro de categoría si viene en URL (?cat=virales)
+  if (route.query.cat) {
+    physicalCategoryFilter.value = route.query.cat
+  }
+
   // Redirección y activación de sección física, digital, paquetes o todo
-  if (route.query.sec === 'physical') {
+  if (route.query.sec === 'physical' || ['/tienda', '/catalogo', '/productos', '/p'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'physical'
-  } else if (route.query.sec === 'digital') {
+  } else if (route.query.sec === 'digital' || ['/suscripciones', '/streaming', '/digital'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'digital'
-  } else if (route.query.sec === 'packages' || route.query.pkg) {
+  } else if (route.query.sec === 'packages' || route.query.pkg || ['/combos', '/paquetes', '/ofertas'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'packages'
     if (route.query.pkg) {
       clientForm.value.isSharedUrl = true
       toast.add('¡Mostrando paquete promocional seleccionado!', 'info')
     }
-  } else if (route.query.sec === 'all' || !route.query.sec) {
+  } else if (route.query.sec === 'all' || route.path === '/') {
     storeSection.value = 'all'
   }
 
@@ -634,14 +655,18 @@ const shareProductWhatsApp = (product) => {
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
-// SEO Dinámico y Títulos Optimizados
-watch([storeSection, selectedPhysicalProduct], ([sec, prod]) => {
+// SEO Dinámico y Títulos Optimizados según Sección Actual
+watch([currentPageSection, selectedPhysicalProduct], ([sec, prod]) => {
   if (prod) {
     document.title = `${prod.name} (${prod.price}) | StreamePro Oficial`
   } else if (sec === 'physical') {
     document.title = 'Tienda de Productos Físicos & Tecnología | StreamePro Oficial'
+  } else if (sec === 'digital') {
+    document.title = 'Suscripciones Digitales & Pantallas 4K | StreamePro Oficial'
+  } else if (sec === 'packages') {
+    document.title = 'Combos & Paquetes Promocionales con Descuento | StreamePro Oficial'
   } else {
-    document.title = 'StreamePro | Suscripciones Streaming Oficiales & Combos'
+    document.title = 'StreamePro | Tienda Oficial de Streaming & Tecnología'
   }
 }, { immediate: true })
 
@@ -669,6 +694,54 @@ const maxPriceFilter = ref('')
 const physicalSortBy = ref('default') // 'default', 'price_asc', 'price_desc', 'discount_desc', 'stock_desc', 'name_asc'
 const physicalCurrentPage = ref(1)
 const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
+
+// ==================== COLECCIONES DE OFERTAS MÚLTIPLES PARA PÁGINA PRINCIPAL ====================
+// 1. Teaser Curado de 6 Rubros Destacados (NO las 20+ categorías completas en Home)
+const homeFeaturedCategories = computed(() => {
+  const phys = adminStore.physicalProducts || []
+  const countVirales = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'virales' || (p.categoryIds && p.categoryIds.includes('virales')))).length
+  const countPerfumes = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'perfumes' || (p.categoryIds && p.categoryIds.includes('perfumes')))).length
+  const countCelulares = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (String(p.categoryId || '').includes('celular') || (p.categoryIds && p.categoryIds.some(c => c.includes('celular'))))).length
+  const countHerramientas = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'herramientas' || (p.categoryIds && p.categoryIds.includes('herramientas')))).length
+
+  return [
+    { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
+    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' },
+    { id: 'virales', name: 'Virales TikTok', icon: '🔥', count: `${countVirales} Items`, path: '/tienda', query: { cat: 'virales' }, desc: 'Tendencias más pedidas del momento', badge: 'Tendencia', badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+    { id: 'perfumes', name: 'Perfumería', icon: '🌸', count: `${countPerfumes} Fragancias`, path: '/tienda', query: { cat: 'perfumes' }, desc: 'Línea árabe y perfumes importados', badge: 'Importado', badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+    { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+    { id: 'herramientas', name: 'Herramientas', icon: '🔧', count: `${countHerramientas} Equipos`, path: '/tienda', query: { cat: 'herramientas' }, desc: 'Kits multifunción, medición y taller', badge: 'Garantía', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+  ]
+})
+
+// 2. Selección de Ofertas 1: Top 4 Plataformas Digitales
+const homeFeaturedDigital = computed(() => {
+  return products.value.filter(p => ['Netflix', 'Spotify', 'Max', 'Disney+'].includes(p.platform)).slice(0, 4)
+})
+
+// 3. Selección de Ofertas 2: Top 3 Paquetes & Combos con Máximo Ahorro
+const homeFeaturedPackages = computed(() => {
+  return adminStore.packages.filter(p => p.active).slice(0, 3)
+})
+
+// 4. Selección de Ofertas 3: Top 8 Productos Físicos con Descuento / Envío Gratis
+const homeFeaturedPhysicalDeals = computed(() => {
+  const list = adminStore.physicalProducts || []
+  const deals = list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.hasDiscount || (Number(p.priceNumeric) || 0) >= 40000))
+  return deals.sort((a, b) => {
+    const discA = Number(a.discountPercentage) || 0
+    const discB = Number(b.discountPercentage) || 0
+    if (discB !== discA) return discB - discA
+    return (Number(b.stock) || 0) - (Number(a.stock) || 0)
+  }).slice(0, 8)
+})
+
+const goToCategory = (item) => {
+  if (item.query?.cat) {
+    physicalCategoryFilter.value = item.query.cat
+  }
+  router.push({ path: item.path, query: item.query || {} })
+}
 
 // Métricas computadas de filtros rápidos del catálogo físico
 const physicalDiscountsCount = computed(() => {
@@ -710,32 +783,28 @@ const scrollToSection = (sectionId) => {
 
 const selectStoreSection = (sec, targetAnchor = null) => {
   storeSection.value = sec
-  const query = { ...route.query }
-  if (sec === 'all') {
-    delete query.sec
-  } else {
-    query.sec = sec
+  if (sec === 'all' || sec === 'home') {
+    router.push({ path: '/' })
+  } else if (sec === 'digital') {
+    router.push({ path: '/suscripciones' })
+  } else if (sec === 'packages') {
+    router.push({ path: '/combos' })
+  } else if (sec === 'physical') {
+    router.push({ path: '/tienda' })
   }
-  router.replace({ path: '/', query }).catch(() => {})
 
-  const anchor = targetAnchor || (
-    sec === 'digital' ? 'suscripciones-digitales' :
-    sec === 'packages' ? 'paquetes-combos' :
-    sec === 'physical' ? 'catalogo-fisico' : 'hero-banner'
-  )
-
-  if (anchor) {
+  if (targetAnchor && typeof document !== 'undefined') {
     setTimeout(() => {
-      scrollToSection(anchor)
-    }, 100)
+      scrollToSection(targetAnchor)
+    }, 120)
   }
 }
 
 const toggleOnlyDiscounts = () => {
   onlyDiscountsFilter.value = !onlyDiscountsFilter.value
   if (onlyDiscountsFilter.value) {
-    if (storeSection.value === 'digital') {
-      storeSection.value = 'all'
+    if (currentPageSection.value !== 'physical') {
+      router.push({ path: '/tienda' })
     }
     toast.add(`🔥 Mostrando productos con ofertas y descuentos activos`, 'info')
   } else {
@@ -746,8 +815,8 @@ const toggleOnlyDiscounts = () => {
 const toggleFreeShipping = () => {
   freeShippingFilter.value = !freeShippingFilter.value
   if (freeShippingFilter.value) {
-    if (storeSection.value === 'digital') {
-      storeSection.value = 'physical'
+    if (currentPageSection.value !== 'physical') {
+      router.push({ path: '/tienda' })
     }
     toast.add('🚚 Mostrando solo productos con Envío Gratis (+$40.000)', 'info')
   } else {
@@ -1404,8 +1473,29 @@ const submitOrder = async () => {
         </button>
       </div>
     </div>
-    <!-- Hero Banner Promocional Enterprise -->
-    <div id="hero-banner" class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
+    <!-- Breadcrumb de Navegación Profesional (Visible en subpáginas dedicadas) -->
+    <nav v-if="currentPageSection !== 'home'" class="flex items-center gap-2 text-xs font-semibold text-slate-400 py-1 px-1">
+      <RouterLink to="/" class="hover:text-white flex items-center gap-1 transition-colors">
+        <span>🏠</span>
+        <span>Inicio</span>
+      </RouterLink>
+      <span class="text-slate-600">/</span>
+      <span v-if="currentPageSection === 'digital'" class="text-sky-300 font-bold flex items-center gap-1 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/20">
+        <span>🎬</span>
+        <span>Suscripciones Digitales 4K</span>
+      </span>
+      <span v-else-if="currentPageSection === 'packages'" class="text-pink-300 font-bold flex items-center gap-1 bg-pink-500/10 px-2 py-0.5 rounded-lg border border-pink-500/20">
+        <span>🎁</span>
+        <span>Paquetes & Combos en Oferta</span>
+      </span>
+      <span v-else-if="currentPageSection === 'physical'" class="text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+        <span>📦</span>
+        <span>Catálogo de Productos Físicos & Tecnología</span>
+      </span>
+    </nav>
+
+    <!-- Hero Banner Promocional Enterprise (Exclusivo en Portada Principal) -->
+    <div v-if="currentPageSection === 'home'" id="hero-banner" class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
       <div class="absolute right-[-10%] top-[-20%] w-96 h-96 bg-gradient-to-br from-sky-500/25 via-blue-600/15 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute left-[-10%] bottom-[-20%] w-80 h-80 bg-gradient-to-tr from-amber-500/15 via-orange-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       
@@ -1450,63 +1540,31 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Botones de Acción Rápida Dinámicos y Reestructurados -->
+        <!-- Botones de Acción Rápida Dinámicos con Enlaces a Secciones -->
         <div class="mt-6 flex flex-wrap items-center gap-2 sm:gap-2.5">
-          <button 
-            type="button"
-            @click="selectStoreSection('all')"
-            :class="[
-              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
-              storeSection === 'all' && !onlyDiscountsFilter
-                ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sky-500/25 scale-[1.02]' 
-                : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
-            ]"
-          >
-            <span>🌟</span>
-            <span>Explorar Todo</span>
-          </button>
-
-          <button 
-            type="button"
-            @click="selectStoreSection('digital', 'suscripciones-digitales')"
-            :class="[
-              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
-              storeSection === 'digital' 
-                ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-sky-500/25 scale-[1.02]' 
-                : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/suscripciones"
+            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-sky-500/25 hover:scale-[1.02]"
           >
             <span>🎬</span>
-            <span>Suscripciones (8)</span>
-          </button>
+            <span>Ver Suscripciones (8)</span>
+          </RouterLink>
 
-          <button 
-            type="button"
-            @click="selectStoreSection('physical', 'catalogo-fisico')"
-            :class="[
-              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
-              storeSection === 'physical' 
-                ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-amber-500/25 scale-[1.02]' 
-                : 'bg-slate-900/90 text-amber-300 hover:text-white border border-amber-500/30 hover:bg-slate-800'
-            ]"
-          >
-            <span>📦</span>
-            <span>Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
-          </button>
-
-          <button 
-            type="button"
-            @click="selectStoreSection('packages', 'paquetes-combos')"
-            :class="[
-              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
-              storeSection === 'packages' 
-                ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-pink-500/25 scale-[1.02]' 
-                : 'bg-slate-900/90 text-pink-300 hover:text-white border border-pink-500/30 hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/combos"
+            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-pink-500/25 hover:scale-[1.02]"
           >
             <span>🎁</span>
             <span>Combos & Promos</span>
-          </button>
+          </RouterLink>
+
+          <RouterLink 
+            to="/tienda"
+            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-amber-500/25 hover:scale-[1.02]"
+          >
+            <span>📦</span>
+            <span>Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
+          </RouterLink>
 
           <!-- Botón Dinámico: Filtrar Solo Ofertas con Descuento -->
           <button 
@@ -1566,59 +1624,55 @@ const submitOrder = async () => {
     <!-- Selector Principal de Sección: Streaming Digital vs Paquetes vs Productos Físicos -->
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
       <div class="flex flex-wrap p-1.5 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg gap-1">
-        <button 
-          type="button"
-          @click="selectStoreSection('all')"
+        <RouterLink 
+          to="/"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
-            storeSection === 'all' 
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'home' 
               ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 shadow-lg font-black' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🌟</span>
-          <span>Todo el Catálogo</span>
-        </button>
+          <span>Inicio / Ofertas</span>
+        </RouterLink>
 
-        <button 
-          type="button"
-          @click="selectStoreSection('digital', 'suscripciones-digitales')"
+        <RouterLink 
+          to="/suscripciones"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
-            storeSection === 'digital' 
-              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-sky-500/20' 
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'digital' 
+              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-sky-500/20 font-black' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎬</span>
           <span>Suscripciones Digitales</span>
           <span class="bg-slate-950/80 text-sky-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-sky-400/30">8</span>
-        </button>
+        </RouterLink>
 
-        <button 
-          type="button"
-          @click="selectStoreSection('packages', 'paquetes-combos')"
+        <RouterLink 
+          to="/combos"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
-            storeSection === 'packages' 
-              ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-lg shadow-purple-500/20' 
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'packages' 
+              ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-lg shadow-purple-500/20 font-black' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎁</span>
-          <span>Paquetes & Combos en Oferta</span>
+          <span>Paquetes & Combos</span>
           <span class="bg-slate-950/80 text-pink-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-pink-400/30">
             {{ adminStore.packages.filter(p => p.active).length }}
           </span>
-        </button>
+        </RouterLink>
 
-        <button 
-          type="button"
-          @click="selectStoreSection('physical', 'catalogo-fisico')"
+        <RouterLink 
+          to="/tienda"
           :class="[
-            'px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
-            storeSection === 'physical' 
-              ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20' 
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'physical' 
+              ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20 font-black' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
@@ -1627,10 +1681,10 @@ const submitOrder = async () => {
           <span class="bg-slate-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-400/30">
             {{ adminStore.physicalProducts.length }}
           </span>
-        </button>
+        </RouterLink>
       </div>
 
-      <!-- Banner de Afiliación / Reseller Asignado (Sin porcentajes privados para el cliente) -->
+      <!-- Banner de Afiliación / Reseller Asignado -->
       <div class="flex items-center gap-2 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-white/[0.08] text-xs">
         <span class="text-slate-400">Distribuidor Asignado:</span>
         <strong class="text-white font-bold bg-slate-800 px-2.5 py-0.5 rounded">{{ resellerStoreName }}</strong>
@@ -1643,8 +1697,384 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- SECCIÓN 1: SUSCRIPCIONES DIGITALES -->
-    <div v-if="storeSection === 'all' || storeSection === 'digital'" id="suscripciones-digitales" class="space-y-6">
+    <!-- ==================== VISTA 1: PÁGINA PRINCIPAL / SELECCIONES DE OFERTAS MÚLTIPLES ==================== -->
+    <div v-if="currentPageSection === 'home'" id="pagina-principal-ofertas" class="space-y-10">
+      <!-- 1. Teaser de 6 Rubros Curados (en lugar de todas las 20+ categorías) -->
+      <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-xl space-y-5">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🧭</span>
+            <div>
+              <h3 class="text-xl sm:text-2xl font-black text-white">Rubros Destacados</h3>
+              <p class="text-xs sm:text-sm text-slate-300">Explora de forma directa nuestras principales colecciones oficiales</p>
+            </div>
+          </div>
+          <RouterLink 
+            to="/tienda" 
+            class="text-xs font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1.5 transition-colors group cursor-pointer"
+          >
+            <span>Ver todas las categorías en Tienda</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <button
+            v-for="cat in homeFeaturedCategories"
+            :key="cat.id"
+            type="button"
+            @click="goToCategory(cat)"
+            class="p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-white/[0.06] hover:border-white/20 transition-all text-left flex flex-col justify-between group shadow-sm hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-2xl group-hover:scale-110 transition-transform">{{ cat.icon }}</span>
+                <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full border" :class="cat.badgeBg">
+                  {{ cat.badge }}
+                </span>
+              </div>
+              <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+                {{ cat.name }}
+              </h4>
+              <p class="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
+                {{ cat.desc }}
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[11px] font-bold text-slate-300">
+              <span class="text-amber-400 font-mono">{{ cat.count }}</span>
+              <span class="text-slate-500 group-hover:text-white group-hover:translate-x-1 transition-all">→</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Selección de Ofertas 1: 🔥 Streaming Premium 4K Destacado -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-sky-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-500/30 shadow-lg">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🎬</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
+                  Selección Oficial
+                </span>
+                <h3 class="text-lg sm:text-xl font-black text-white">Streaming Premium 4K Destacado</h3>
+              </div>
+              <p class="text-xs text-slate-300 mt-0.5">Top plataformas con perfiles individuales, PIN exclusivo y activación en 10m a 1h.</p>
+            </div>
+          </div>
+          <RouterLink 
+            to="/suscripciones" 
+            class="px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 font-black text-xs border border-sky-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
+          >
+            <span>Ver todas las suscripciones (8)</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div 
+            v-for="product in homeFeaturedDigital" 
+            :key="product.id" 
+            class="glass-panel glass-panel-hover rounded-3xl p-5 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group"
+          >
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div>
+              <div class="flex flex-wrap justify-between items-center gap-1.5 mb-2.5">
+                <span class="text-[9px] font-black text-sky-300 tracking-widest uppercase bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{{ product.category }}</span>
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                  🟢 10-15m
+                </span>
+              </div>
+              <h4 class="text-base font-black text-white mb-1 group-hover:text-sky-300 transition-colors">{{ product.name }}</h4>
+              <p class="text-xs text-slate-400 mb-3 line-clamp-2 leading-relaxed">{{ product.description }}</p>
+
+              <!-- Modalidades Oficiales Mini -->
+              <div class="space-y-1 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 mb-3 text-xs">
+                <div v-for="(plan, pKey) in product.plans" :key="pKey" class="flex items-center justify-between text-slate-300 text-[11px] py-0.5">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-emerald-400 font-bold">✓</span>
+                    <span>{{ plan.label }}</span>
+                  </div>
+                  <span class="text-[9px] text-slate-400 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/80">Oficial</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-white/[0.06]">
+              <button 
+                type="button" 
+                @click="openStreamingInfo(product)"
+                class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+                title="Ver especificaciones"
+              >
+                ℹ️ +info
+              </button>
+              <button 
+                @click="openConfig(product)" 
+                class="flex-1 bg-sky-400 hover:bg-sky-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm text-xs cursor-pointer active:scale-95"
+              >
+                <span>Elegir Plan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Selección de Ofertas 2: 🎁 Super Combos Promocionales -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-pink-500/30 shadow-lg">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🎁</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded border border-pink-500/30">
+                  Máximo Ahorro
+                </span>
+                <h3 class="text-lg sm:text-xl font-black text-white">Super Combos Promocionales</h3>
+              </div>
+              <p class="text-xs text-slate-300 mt-0.5">Combina múltiples plataformas en un solo pago con hasta 35% de descuento directo.</p>
+            </div>
+          </div>
+          <RouterLink 
+            to="/combos" 
+            class="px-4 py-2.5 rounded-xl bg-pink-500/20 hover:bg-pink-500 text-pink-300 hover:text-white font-black text-xs border border-pink-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
+          >
+            <span>Ver todos los combos en oferta</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div 
+            v-for="pkg in homeFeaturedPackages" 
+            :key="pkg.id"
+            class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
+          >
+            <div class="space-y-4">
+              <div class="flex justify-between items-start gap-2">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-sm">
+                  {{ pkg.badge || '🔥 OFERTA' }}
+                </span>
+                <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                  {{ pkg.services.length }} Plataformas
+                </span>
+              </div>
+
+              <div>
+                <h4 class="text-lg font-black text-white group-hover:text-pink-300 transition-colors leading-tight">
+                  {{ pkg.title }}
+                </h4>
+                <p class="text-xs text-slate-400 mt-1.5 leading-relaxed line-clamp-2">
+                  {{ pkg.description }}
+                </p>
+              </div>
+
+              <!-- Servicios incluidos -->
+              <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 space-y-1.5">
+                <div 
+                  v-for="(srv, sIdx) in pkg.services" 
+                  :key="sIdx"
+                  class="flex items-center justify-between text-xs bg-slate-900/60 p-2 rounded-xl border border-slate-800/60"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-base">
+                      {{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}
+                    </span>
+                    <strong class="text-white">{{ srv.platform }}</strong>
+                    <span class="text-[11px] text-slate-400">({{ srv.planLabel }})</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono">1 mes</span>
+                </div>
+              </div>
+
+              <!-- Precio y Descuento -->
+              <div class="bg-gradient-to-r from-slate-950 to-pink-950/20 p-3.5 rounded-2xl border border-pink-500/20 flex justify-between items-center">
+                <div>
+                  <span class="text-[11px] text-slate-400 line-through block">Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS</span>
+                  <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
+                    ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-normal text-slate-400">ARS</span>
+                  </span>
+                </div>
+                <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-xl text-center">
+                  <span>Ahorras</span>
+                  <div class="font-black text-sm">${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-4">
+              <button 
+                @click="addPackageToCart(pkg)" 
+                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-black py-3 px-4 rounded-xl transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <span>+ Agregar Combo al Pedido</span>
+              </button>
+              <div class="flex gap-1.5">
+                <button 
+                  @click="sharePackageLink(pkg)"
+                  class="flex-1 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-slate-800 flex items-center justify-center gap-1 cursor-pointer truncate"
+                  title="Copiar enlace"
+                >
+                  <span>🤝 Compartir</span>
+                </button>
+                <button 
+                  @click="sharePackageWhatsApp(pkg)"
+                  class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-emerald-500/30 transition-colors shrink-0 cursor-pointer"
+                  title="WhatsApp"
+                >
+                  💬
+                </button>
+                <button 
+                  @click="openFlyerForPackage(pkg)"
+                  class="bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-pink-500/30 transition-colors shrink-0 cursor-pointer"
+                  title="Flyer"
+                >
+                  🎨
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Selección de Ofertas 3: ⚡ Ofertas Seleccionadas en Tecnología & Bazar -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-lg">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">⚡</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                  Liquidación & Ofertas Flash
+                </span>
+                <h3 class="text-lg sm:text-xl font-black text-white">Ofertas Seleccionadas en Tecnología & Físicos</h3>
+              </div>
+              <p class="text-xs text-slate-300 mt-0.5">Top 8 productos con descuento o Envío Gratis. Consulta el catálogo completo en Tienda.</p>
+            </div>
+          </div>
+          <RouterLink 
+            to="/tienda" 
+            class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
+          >
+            <span>Explorar catálogo completo ({{ adminStore.physicalProducts.length }} productos)</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
+          <div 
+            v-for="item in homeFeaturedPhysicalDeals" 
+            :key="item.id" 
+            class="bg-slate-900/80 rounded-xl sm:rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col justify-between hover:border-amber-400/40 hover:-translate-y-1 transition-all duration-300 shadow-lg group relative"
+          >
+            <div v-if="item.priceNumeric >= 40000" class="absolute top-2 left-2 sm:top-3 sm:left-3 bg-emerald-500 text-slate-950 text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md z-10">
+              ENVÍO GRATIS
+            </div>
+            <div v-if="item.hasDiscount && item.discountPercentage > 0" class="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600 text-white text-[8px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full shadow-md z-10 flex items-center gap-0.5">
+              <span>🔥</span> {{ item.discountPercentage }}% OFF
+            </div>
+
+            <!-- Imagen -->
+            <div class="w-full h-36 sm:h-52 bg-white flex items-center justify-center p-2 sm:p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
+              <img 
+                :src="item.image" 
+                :alt="item.name" 
+                class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              >
+            </div>
+
+            <!-- Contenido -->
+            <div class="p-2.5 sm:p-4 flex flex-col flex-1 justify-between space-y-2 sm:space-y-3">
+              <div>
+                <div class="flex flex-wrap items-center gap-1 mb-1.5">
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded" :class="(item.stock || 0) > 10 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'">
+                    Stock: {{ item.stock || 0 }} un.
+                  </span>
+                  <span v-if="item.variables && item.variables.length > 1" class="text-[9px] font-semibold text-sky-300 bg-sky-950/60 border border-sky-800/60 px-1.5 py-0.5 rounded">
+                    {{ item.variables.length }} opciones
+                  </span>
+                </div>
+
+                <h4 class="font-bold text-white text-[11px] sm:text-sm line-clamp-2 leading-snug cursor-pointer hover:text-amber-300 transition-colors" @click="openPhysicalModal(item)">
+                  {{ item.name }}
+                </h4>
+                <button 
+                  type="button"
+                  @click.stop="openPhysicalModal(item)"
+                  class="text-[10px] sm:text-[11px] font-semibold text-amber-400/90 hover:text-amber-300 mt-1 flex items-center gap-1 cursor-pointer hover:underline"
+                >
+                  <span>📋</span>
+                  <span>Ver Ficha Técnica</span>
+                </button>
+              </div>
+
+              <div class="pt-1.5 sm:pt-2 border-t border-slate-800">
+                <div class="flex flex-col mb-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[9px] sm:text-xs text-slate-400">Oferta:</span>
+                    <span class="text-xs sm:text-lg font-black text-amber-400 font-mono">{{ item.price }}</span>
+                  </div>
+                  <div v-if="item.hasDiscount && item.originalPrice" class="flex items-center justify-between text-[10px] sm:text-xs text-slate-400">
+                    <span class="text-[9px] text-slate-500">Real de Lista:</span>
+                    <span class="line-through text-slate-400 font-mono">{{ item.originalPrice }}</span>
+                  </div>
+                </div>
+
+                <div class="flex gap-1.5">
+                  <button 
+                    type="button"
+                    @click.stop="addPhysicalToCart(item, 1)" 
+                    class="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2 px-2.5 rounded-xl transition text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-pointer shadow-md active:scale-95"
+                  >
+                    <span>🛒</span>
+                    <span>Añadir</span>
+                  </button>
+                  <button 
+                    type="button"
+                    @click.stop="openPhysicalModal(item)"
+                    class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs transition cursor-pointer"
+                    title="Ver ficha completa"
+                  >
+                    🔍
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Banner de Confianza & SLA Guarantee -->
+      <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-2xl">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+            <div class="text-2xl">⏱️</div>
+            <h4 class="text-sm font-black text-white">Entrega en 10m a 1h</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Cuentas y pantallas con envío directo a tu WhatsApp y activación veloz.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+            <div class="text-2xl">🚚</div>
+            <h4 class="text-sm font-black text-white">Envíos a Todo el País</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Productos físicos con embalaje seguro y despacho con guía oficial.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+            <div class="text-2xl">🛡️</div>
+            <h4 class="text-sm font-black text-white">Garantía SLA 30 Días</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Soporte directo con reposición inmediata ante cualquier inconveniente.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+            <div class="text-2xl">💬</div>
+            <h4 class="text-sm font-black text-white">Atención por WhatsApp</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Asistencia humana antes de transferir y confirmación del pedido.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SECCIÓN 1: SUSCRIPCIONES DIGITALES (PÁGINA DEDICADA) ==================== -->
+    <div v-else-if="currentPageSection === 'digital'" id="suscripciones-digitales" class="space-y-6">
       <!-- Header de Sección Oficial con Filtros por Plataforma -->
       <div class="bg-gradient-to-r from-sky-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-500/30 shadow-xl space-y-3">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1895,10 +2325,41 @@ const submitOrder = async () => {
           </div>
         </div>
       </div>
+
+      <!-- Banner de Navegación Cruzada hacia Combos y Tienda Física -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-white/[0.08]">
+        <RouterLink 
+          to="/combos" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-pink-950/40 border border-pink-500/30 hover:border-pink-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎁</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-pink-300 transition-colors">¿Buscas Combos con Descuento?</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Ahorra hasta un 35% combinando tus plataformas favoritas</p>
+            </div>
+          </div>
+          <span class="text-pink-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Combos →</span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/tienda" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-orange-950/40 border border-amber-500/30 hover:border-amber-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">📦</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">Catálogo de Productos Físicos</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Tecnología, herramientas y bazar con envíos a todo el país</p>
+            </div>
+          </div>
+          <span class="text-amber-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ir a Tienda →</span>
+        </RouterLink>
+      </div>
     </div>
 
-    <!-- SECCIÓN 2: PAQUETES & COMBOS EN OFERTA -->
-    <div v-if="storeSection === 'all' || storeSection === 'packages'" id="paquetes-combos" class="space-y-6">
+    <!-- ==================== SECCIÓN 2: PAQUETES & COMBOS EN OFERTA (PÁGINA DEDICADA) ==================== -->
+    <div v-else-if="currentPageSection === 'packages'" id="paquetes-combos" class="space-y-6">
       <!-- Barra de Filtros y Ver Carrito para Combos -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
@@ -2123,10 +2584,41 @@ const submitOrder = async () => {
           </div>
         </div>
       </div>
+
+      <!-- Banner de Navegación Cruzada hacia Suscripciones y Tienda Física -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-white/[0.08]">
+        <RouterLink 
+          to="/suscripciones" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-sky-950/60 via-slate-900 to-blue-950/40 border border-sky-500/30 hover:border-sky-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Individuales 4K</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con activación inmediata</p>
+            </div>
+          </div>
+          <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Suscripciones →</span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/tienda" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-orange-950/40 border border-amber-500/30 hover:border-amber-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">📦</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">Catálogo de Productos Físicos</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Más de 145 productos con envíos a todo el país</p>
+            </div>
+          </div>
+          <span class="text-amber-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ir a Tienda →</span>
+        </RouterLink>
+      </div>
     </div>
 
-    <!-- SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (C:\Users\yo\catalogo) -->
-    <div v-if="storeSection === 'all' || storeSection === 'physical'" id="catalogo-fisico" class="space-y-6">
+    <!-- ==================== SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (PÁGINA DEDICADA) ==================== -->
+    <div v-else-if="currentPageSection === 'physical'" id="catalogo-fisico" class="space-y-6">
       <!-- Header de Sección Oficial -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-xl">
         <div class="flex items-center gap-3.5">
@@ -2763,6 +3255,37 @@ const submitOrder = async () => {
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Banner de Navegación Cruzada hacia Suscripciones y Combos -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-white/[0.08]">
+        <RouterLink 
+          to="/suscripciones" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-sky-950/60 via-slate-900 to-blue-950/40 border border-sky-500/30 hover:border-sky-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Digitales 4K</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Entrega de 10 min a 1 hora con PIN oficial exclusivo</p>
+            </div>
+          </div>
+          <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Suscripciones →</span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/combos" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-pink-950/40 border border-pink-500/30 hover:border-pink-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎁</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-pink-300 transition-colors">Paquetes & Combos en Oferta</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Combos multimarcas con hasta 35% de descuento</p>
+            </div>
+          </div>
+          <span class="text-pink-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Combos →</span>
+        </RouterLink>
       </div>
     </div>
 

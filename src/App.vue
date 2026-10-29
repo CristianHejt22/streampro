@@ -40,7 +40,16 @@ const handleProfileSaved = (prof) => {
   savedUserName.value = prof.name ? prof.name.split(' ')[0] : ''
 }
 
-const isClientArea = computed(() => route.name === 'home' || route.name === 'portal' || route.name === 'recruitment' || ['/', '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente', '/p', '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'].includes(route.path))
+const isClientArea = computed(() => {
+  const p = route.path.toLowerCase()
+  return [
+    '/', '/suscripciones', '/streaming', '/digital',
+    '/combos', '/paquetes', '/ofertas',
+    '/tienda', '/catalogo', '/productos', '/p',
+    '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente',
+    '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'
+  ].some(allowed => p === allowed || p.startsWith(allowed + '/'))
+})
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
 
@@ -52,42 +61,8 @@ const activePackagesCount = computed(() => {
   return (adminStore.packages || []).filter(p => p.active).length
 })
 
-const navigateSection = (sec) => {
-  const anchorMap = {
-    all: 'hero-banner',
-    digital: 'suscripciones-digitales',
-    packages: 'paquetes-combos',
-    physical: 'catalogo-fisico'
-  }
-  if (route.path === '/') {
-    const query = { ...route.query }
-    if (sec === 'all') {
-      delete query.sec
-    } else {
-      query.sec = sec
-    }
-    router.replace({ path: '/', query }).catch(() => {})
-
-    const target = anchorMap[sec]
-    if (target && typeof document !== 'undefined') {
-      setTimeout(() => {
-        const el = document.getElementById(target)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-      }, 80)
-    }
-  } else {
-    router.push({ path: '/', query: sec === 'all' ? {} : { sec } })
-  }
-}
-
 const handleOpenCart = () => {
-  if (route.name === 'home' || route.path === '/') {
-    cartStore.openDrawer()
-  } else {
-    router.push({ path: '/', query: { openCart: 'true' } })
-  }
+  cartStore.openDrawer()
 }
 </script>
 
@@ -127,67 +102,47 @@ const handleOpenCart = () => {
 
           <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
           <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
-            <button 
-              type="button"
-              @click="navigateSection('all')" 
-              :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
-                $route.path === '/' && (!$route.query.sec || $route.query.sec === 'all')
-                  ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
-              ]"
+            <RouterLink 
+              to="/" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="$route.path === '/' ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🌟</span>
-              <span>Todo</span>
-            </button>
+              <span>Inicio / Ofertas</span>
+            </RouterLink>
             
-            <button 
-              type="button"
-              @click="navigateSection('digital')" 
-              :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
-                $route.path === '/' && $route.query.sec === 'digital'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
-              ]"
+            <RouterLink 
+              to="/suscripciones" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎬</span>
               <span>Suscripciones</span>
-            </button>
+            </RouterLink>
 
-            <button 
-              type="button"
-              @click="navigateSection('packages')" 
-              :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
-                $route.path === '/' && $route.query.sec === 'packages'
-                  ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 shadow-sm font-black' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
-              ]"
+            <RouterLink 
+              to="/combos" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎁</span>
               <span>Combos</span>
               <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
                 {{ activePackagesCount }}
               </span>
-            </button>
+            </RouterLink>
             
-            <button 
-              type="button"
-              @click="navigateSection('physical')" 
-              :class="[
-                'px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
-                $route.path === '/' && $route.query.sec === 'physical'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
-              ]"
+            <RouterLink 
+              to="/tienda" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>📦</span>
-              <span>Físicos</span>
+              <span>Tienda Física</span>
               <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
                 {{ publicPhysicalCount }}
               </span>
-            </button>
+            </RouterLink>
 
             <RouterLink 
               to="/portal" 
@@ -282,67 +237,47 @@ const handleOpenCart = () => {
 
         <!-- Tier 2 para Móviles y Tablets (< lg): Barra de Pestañas con Desplazamiento Horizontal Suave -->
         <div v-if="isClientArea" class="lg:hidden mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-1">
-          <button 
-            type="button"
-            @click="navigateSection('all')" 
-            :class="[
-              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
-              $route.path === '/' && (!$route.query.sec || $route.query.sec === 'all')
-                ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' 
-                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="$route.path === '/' ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🌟</span>
-            <span>Todo</span>
-          </button>
+            <span>Inicio / Ofertas</span>
+          </RouterLink>
           
-          <button 
-            type="button"
-            @click="navigateSection('digital')" 
-            :class="[
-              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
-              $route.path === '/' && $route.query.sec === 'digital'
-                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' 
-                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/suscripciones" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎬</span>
             <span>Suscripciones</span>
-          </button>
+          </RouterLink>
 
-          <button 
-            type="button"
-            @click="navigateSection('packages')" 
-            :class="[
-              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
-              $route.path === '/' && $route.query.sec === 'packages'
-                ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' 
-                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/combos" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎁</span>
             <span>Combos</span>
             <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
               {{ activePackagesCount }}
             </span>
-          </button>
+          </RouterLink>
           
-          <button 
-            type="button"
-            @click="navigateSection('physical')" 
-            :class="[
-              'px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
-              $route.path === '/' && $route.query.sec === 'physical'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' 
-                : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'
-            ]"
+          <RouterLink 
+            to="/tienda" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>📦</span>
             <span>Físicos</span>
             <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
               {{ publicPhysicalCount }}
             </span>
-          </button>
+          </RouterLink>
 
           <RouterLink 
             to="/portal" 
