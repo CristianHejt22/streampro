@@ -1807,6 +1807,16 @@ const toggleStoreVisibility = () => {
   }
 }
 
+// GESTIÓN DE VISIBILIDAD DE TIENDA DE PRODUCTOS FÍSICOS (Mostrar u Ocultar en Navegación y Tienda)
+const togglePhysicalStoreVisibility = () => {
+  const isVisible = adminStore.togglePhysicalStoreVisibility()
+  if (isVisible) {
+    toast.add('✅ Tienda de productos físicos ACTIVADA y visible en la navegación pública.', 'success')
+  } else {
+    toast.add('⚠️ Tienda de productos físicos DESACTIVADA y oculta de la navegación pública.', 'warning')
+  }
+}
+
 // GESTIÓN DE CREDENCIALES MAESTRAS DE ADMINISTRADOR
 const showAdminAuthModal = ref(false)
 const adminAuthForm = ref({
@@ -2216,7 +2226,21 @@ const deletePackageItem = (pkgId) => {
           ]"
           :title="adminStore.isStoreVisible ? 'La tienda está VISIBLE para los clientes. Clic para ocultarla.' : 'La tienda está OCULTA para los clientes (modo mantenimiento). Clic para activarla.'"
         >
-          <span>{{ adminStore.isStoreVisible ? '🟢 Tienda: VISIBLE' : '🔴 Tienda: OCULTA' }}</span>
+          <span>{{ adminStore.isStoreVisible ? '🟢 Tienda Global: VISIBLE' : '🔴 Tienda Global: OCULTA' }}</span>
+        </button>
+        <!-- BOTÓN MOSTRAR U OCULTAR TIENDA DE PRODUCTOS FÍSICOS -->
+        <button 
+          type="button"
+          @click="togglePhysicalStoreVisibility"
+          :class="[
+            'px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border',
+            adminStore.isPhysicalStoreVisible 
+              ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40' 
+              : 'bg-red-500/25 hover:bg-red-500/35 text-red-300 border-red-500/50 animate-pulse'
+          ]"
+          :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está VISIBLE en la navegación. Clic para ocultarla.' : 'La tienda física está DESACTIVADA y oculta en la navegación. Clic para activarla.'"
+        >
+          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos: ACTIVA' : '📦 Físicos: DESACTIVADA' }}</span>
         </button>
         <button 
           @click="openAdminAuthModal"
@@ -2303,18 +2327,31 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
-      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+      <div class="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
         <button 
           type="button" 
           @click="toggleStoreVisibility"
           :class="[
-            'px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer',
+            'px-4 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer',
             adminStore.isStoreVisible 
               ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30' 
               : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
           ]"
         >
-          <span>{{ adminStore.isStoreVisible ? '🔴 Ocultar Tienda al Público' : '🟢 Mostrar y Reactivar Tienda' }}</span>
+          <span>{{ adminStore.isStoreVisible ? '🔴 Ocultar Tienda Global' : '🟢 Mostrar Tienda Global' }}</span>
+        </button>
+        <button 
+          type="button" 
+          @click="togglePhysicalStoreVisibility"
+          :class="[
+            'px-4 py-2.5 rounded-xl text-xs font-black transition-all shadow flex items-center gap-1.5 cursor-pointer border',
+            adminStore.isPhysicalStoreVisible 
+              ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40' 
+              : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/40 animate-pulse'
+          ]"
+          :title="adminStore.isPhysicalStoreVisible ? 'Desactivar tienda de productos físicos en la navegación' : 'Activar tienda de productos físicos en la navegación'"
+        >
+          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos en Menú: ACTIVA' : '📦 Físicos en Menú: DESACTIVADA' }}</span>
         </button>
         <a 
           href="/" 
@@ -4197,6 +4234,20 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+          <!-- BOTÓN ACTIVAR O DESACTIVAR TIENDA FÍSICA EN NAVEGACIÓN -->
+          <button 
+            type="button"
+            @click="togglePhysicalStoreVisibility"
+            :class="[
+              'text-xs font-black px-4 py-2 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer border',
+              adminStore.isPhysicalStoreVisible 
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40' 
+                : 'bg-red-500/25 hover:bg-red-500/35 text-red-300 border-red-500/50 ring-2 ring-red-500/30 animate-pulse'
+            ]"
+            :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está activa y visible en la navegación para clientes. Clic para desactivarla.' : 'La tienda física está desactivada y oculta en la navegación para clientes. Clic para activarla.'"
+          >
+            <span>{{ adminStore.isPhysicalStoreVisible ? '🟢 Tienda Física en Menú: ACTIVA' : '🔴 Tienda Física en Menú: DESACTIVADA' }}</span>
+          </button>
           <button 
             type="button"
             @click="openBulkPercentageModal"

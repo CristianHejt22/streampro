@@ -25,6 +25,11 @@ const isAdminUser = computed(() => {
   return false
 })
 
+// Control de visibilidad pública de la Tienda de Productos Físicos en la navegación
+const isPhysicalNavVisible = computed(() => {
+  return (adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible) || isAdminUser.value
+})
+
 // Mapeo dinámico y enriquecido de íconos para categorías del catálogo físico
 const getCategoryIcon = (catId, catName = '') => {
   const id = String(catId || '').toLowerCase()
@@ -698,20 +703,34 @@ const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 // ==================== COLECCIONES DE OFERTAS MÚLTIPLES PARA PÁGINA PRINCIPAL ====================
 // 1. Teaser Curado de 6 Rubros Destacados (NO las 20+ categorías completas en Home)
 const homeFeaturedCategories = computed(() => {
-  const phys = adminStore.physicalProducts || []
-  const countVirales = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'virales' || (p.categoryIds && p.categoryIds.includes('virales')))).length
-  const countPerfumes = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'perfumes' || (p.categoryIds && p.categoryIds.includes('perfumes')))).length
-  const countCelulares = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (String(p.categoryId || '').includes('celular') || (p.categoryIds && p.categoryIds.some(c => c.includes('celular'))))).length
-  const countHerramientas = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'herramientas' || (p.categoryIds && p.categoryIds.includes('herramientas')))).length
-
-  return [
+  const list = [
     { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
-    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' },
-    { id: 'virales', name: 'Virales TikTok', icon: '🔥', count: `${countVirales} Items`, path: '/tienda', query: { cat: 'virales' }, desc: 'Tendencias más pedidas del momento', badge: 'Tendencia', badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-    { id: 'perfumes', name: 'Perfumería', icon: '🌸', count: `${countPerfumes} Fragancias`, path: '/tienda', query: { cat: 'perfumes' }, desc: 'Línea árabe y perfumes importados', badge: 'Importado', badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-    { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-    { id: 'herramientas', name: 'Herramientas', icon: '🔧', count: `${countHerramientas} Equipos`, path: '/tienda', query: { cat: 'herramientas' }, desc: 'Kits multifunción, medición y taller', badge: 'Garantía', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' }
   ]
+
+  if (isPhysicalNavVisible.value) {
+    const phys = adminStore.physicalProducts || []
+    const countVirales = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'virales' || (p.categoryIds && p.categoryIds.includes('virales')))).length
+    const countPerfumes = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'perfumes' || (p.categoryIds && p.categoryIds.includes('perfumes')))).length
+    const countCelulares = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (String(p.categoryId || '').includes('celular') || (p.categoryIds && p.categoryIds.some(c => c.includes('celular'))))).length
+    const countHerramientas = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'herramientas' || (p.categoryIds && p.categoryIds.includes('herramientas')))).length
+
+    list.push(
+      { id: 'virales', name: 'Virales TikTok', icon: '🔥', count: `${countVirales} Items`, path: '/tienda', query: { cat: 'virales' }, desc: 'Tendencias más pedidas del momento', badge: 'Tendencia', badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+      { id: 'perfumes', name: 'Perfumería', icon: '🌸', count: `${countPerfumes} Fragancias`, path: '/tienda', query: { cat: 'perfumes' }, desc: 'Línea árabe y perfumes importados', badge: 'Importado', badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+      { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+      { id: 'herramientas', name: 'Herramientas', icon: '🔧', count: `${countHerramientas} Equipos`, path: '/tienda', query: { cat: 'herramientas' }, desc: 'Kits multifunción, medición y taller', badge: 'Garantía', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+    )
+  } else {
+    list.push(
+      { id: 'iptv', name: 'IPTV MagisTV Pro', icon: '📺', count: '+1200 Canales', path: '/suscripciones', desc: 'Fútbol en vivo y eventos deportivos', badge: 'FHD 24/7', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+      { id: 'musica', name: 'Spotify Familiar', icon: '🎧', count: 'Sin Anuncios', path: '/suscripciones', desc: 'Música ilimitada y reproducción offline', badge: 'Audio HD', badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/30' },
+      { id: 'youtube', name: 'YouTube Premium', icon: '▶️', count: 'Sin Publicidad', path: '/suscripciones', desc: 'Videos y YouTube Music en segundo plano', badge: 'Oficial', badgeBg: 'bg-red-500/20 text-red-300 border-red-500/30' },
+      { id: 'canva', name: 'Canva Pro', icon: '🎨', count: 'Kit de Marcas', path: '/suscripciones', desc: 'Plantillas y diseño a tu propio correo', badge: 'Diseño', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
+    )
+  }
+
+  return list
 })
 
 // 2. Selección de Ofertas 1: Top 4 Plataformas Digitales
@@ -803,16 +822,22 @@ const selectStoreSection = (sec, targetAnchor = null) => {
 const toggleOnlyDiscounts = () => {
   onlyDiscountsFilter.value = !onlyDiscountsFilter.value
   if (onlyDiscountsFilter.value) {
-    if (currentPageSection.value !== 'physical') {
-      router.push({ path: '/tienda' })
+    if (isPhysicalNavVisible.value) {
+      if (currentPageSection.value !== 'physical') {
+        router.push({ path: '/tienda' })
+      }
+      toast.add(`🔥 Mostrando productos con ofertas y descuentos activos`, 'info')
+    } else {
+      router.push({ path: '/combos' })
+      toast.add(`🎁 Mostrando combos y paquetes con descuento`, 'info')
     }
-    toast.add(`🔥 Mostrando productos con ofertas y descuentos activos`, 'info')
   } else {
     toast.add('Mostrando todos los productos del catálogo', 'info')
   }
 }
 
 const toggleFreeShipping = () => {
+  if (!isPhysicalNavVisible.value) return
   freeShippingFilter.value = !freeShippingFilter.value
   if (freeShippingFilter.value) {
     if (currentPageSection.value !== 'physical') {
@@ -1503,8 +1528,10 @@ const submitOrder = async () => {
         <div class="inline-flex flex-wrap items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>Entrega Oficial en 10 min a 1 hora</span>
-          <span class="text-slate-500">•</span>
-          <span class="text-amber-300">145+ Productos Físicos</span>
+          <template v-if="isPhysicalNavVisible">
+            <span class="text-slate-500">•</span>
+            <span class="text-amber-300">{{ adminStore.physicalProducts.length }}+ Productos Físicos</span>
+          </template>
           <span class="text-slate-500">•</span>
           <span class="text-emerald-300">Garantía SLA 30 Días</span>
         </div>
@@ -1512,12 +1539,14 @@ const submitOrder = async () => {
         <h2 class="text-3xl sm:text-5xl lg:text-6xl font-black mb-3 text-white tracking-tight leading-tight">
           Streaming Premium 4K <br class="hidden sm:inline">
           <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-300">
-            & Catálogo Oficial de Tecnología
+            {{ isPhysicalNavVisible ? '& Catálogo Oficial de Tecnología' : '& Servicios Premium Digitales' }}
           </span>
         </h2>
         
         <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-normal">
-          Acceso garantizado a tus plataformas favoritas con PIN exclusivo y entrega inmediata + Más de 145 productos de tecnología, electrónica, bazar y herramientas con envíos a todo el país y confirmación por WhatsApp antes de transferir.
+          {{ isPhysicalNavVisible 
+            ? 'Acceso garantizado a tus plataformas favoritas con PIN exclusivo y entrega inmediata + Más de ' + adminStore.physicalProducts.length + ' productos de tecnología, electrónica, bazar y herramientas con envíos a todo el país y confirmación por WhatsApp antes de transferir.'
+            : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega inmediata de 10 min a 1 hora garantizada.' }}
         </p>
 
         <!-- Trust Metrics Grid -->
@@ -1526,7 +1555,7 @@ const submitOrder = async () => {
             <span class="text-emerald-400 text-sm">⏱️</span>
             <span class="text-slate-200">Entrega Digital: 10 min a 1h</span>
           </div>
-          <div class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
+          <div v-if="isPhysicalNavVisible" class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
             <span class="text-amber-400 text-sm">🚚</span>
             <span class="text-slate-200">Envíos a Todo el País</span>
           </div>
@@ -1559,6 +1588,7 @@ const submitOrder = async () => {
           </RouterLink>
 
           <RouterLink 
+            v-if="isPhysicalNavVisible"
             to="/tienda"
             class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-amber-500/25 hover:scale-[1.02]"
           >
@@ -1668,6 +1698,7 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
+          v-if="isPhysicalNavVisible"
           to="/tienda"
           :class="[
             'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
@@ -1710,10 +1741,19 @@ const submitOrder = async () => {
             </div>
           </div>
           <RouterLink 
+            v-if="isPhysicalNavVisible"
             to="/tienda" 
             class="text-xs font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1.5 transition-colors group cursor-pointer"
           >
             <span>Ver todas las categorías en Tienda</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+          <RouterLink 
+            v-else
+            to="/suscripciones" 
+            class="text-xs font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1.5 transition-colors group cursor-pointer"
+          >
+            <span>Ver catálogo completo de suscripciones</span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
           </RouterLink>
         </div>
@@ -1939,7 +1979,7 @@ const submitOrder = async () => {
       </div>
 
       <!-- 4. Selección de Ofertas 3: ⚡ Ofertas Seleccionadas en Tecnología & Bazar -->
-      <div class="space-y-4">
+      <div v-if="isPhysicalNavVisible" class="space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-lg">
           <div class="flex items-center gap-3">
             <span class="text-3xl">⚡</span>
@@ -2124,8 +2164,8 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- Banner Destacado para Descubrir Catálogo Físico (Visible si se filtra sólo digital) -->
-      <div v-if="storeSection === 'digital'" class="bg-gradient-to-r from-amber-950/50 via-slate-900 to-orange-950/40 p-4 sm:p-5 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+      <!-- Banner Destacado para Descubrir Catálogo Físico (Visible si se filtra sólo digital y la tienda física está activa) -->
+      <div v-if="storeSection === 'digital' && isPhysicalNavVisible" class="bg-gradient-to-r from-amber-950/50 via-slate-900 to-orange-950/40 p-4 sm:p-5 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
         <div class="flex items-center gap-3.5">
           <div class="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-2xl shrink-0 border border-amber-500/30">
             📦
@@ -2343,6 +2383,7 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
+          v-if="isPhysicalNavVisible"
           to="/tienda" 
           class="p-5 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-orange-950/40 border border-amber-500/30 hover:border-amber-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
         >
@@ -2410,6 +2451,7 @@ const submitOrder = async () => {
             <span>Combo a Medida por WhatsApp</span>
           </a>
           <button 
+            v-if="isPhysicalNavVisible"
             type="button"
             @click="selectStoreSection('physical', 'catalogo-fisico')"
             class="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -2602,6 +2644,7 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
+          v-if="isPhysicalNavVisible"
           to="/tienda" 
           class="p-5 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-orange-950/40 border border-amber-500/30 hover:border-amber-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
         >
@@ -2619,8 +2662,76 @@ const submitOrder = async () => {
 
     <!-- ==================== SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (PÁGINA DEDICADA) ==================== -->
     <div v-else-if="currentPageSection === 'physical'" id="catalogo-fisico" class="space-y-6">
-      <!-- Header de Sección Oficial -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-xl">
+      <!-- Mensaje cuando la Tienda Física está desactivada/pausada para visitantes -->
+      <div v-if="!isPhysicalNavVisible" class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 p-8 sm:p-12 rounded-3xl border border-amber-500/30 text-center space-y-6 shadow-2xl my-6">
+        <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-3xl shadow-lg">
+          📦
+        </div>
+        <div class="max-w-xl mx-auto space-y-2">
+          <span class="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-mono">
+            Catálogo Físico en Mantenimiento
+          </span>
+          <h3 class="text-2xl sm:text-3xl font-black text-white">Tienda de Productos Físicos en Pausa</h3>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Actualmente estamos actualizando el inventario, stock y tarifas de envíos de nuestra línea de productos físicos. Mientras tanto, puedes disfrutar de nuestras suscripciones digitales y combos con entrega garantizada.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <RouterLink 
+            to="/suscripciones" 
+            class="px-5 py-3 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 font-black text-xs transition-all shadow-md shadow-sky-500/20 hover:scale-[1.02] flex items-center gap-2 cursor-pointer"
+          >
+            <span>🎬</span>
+            <span>Ver Suscripciones Digitales (8)</span>
+          </RouterLink>
+          <RouterLink 
+            to="/combos" 
+            class="px-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white font-black text-xs transition-all shadow-md shadow-pink-500/20 hover:scale-[1.02] flex items-center gap-2 cursor-pointer"
+          >
+            <span>🎁</span>
+            <span>Ver Combos con Descuento</span>
+          </RouterLink>
+          <a 
+            :href="getWhatsAppContactUrl('¡Hola! Quisiera consultar por la disponibilidad de productos físicos.')" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="px-5 py-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-bold text-xs border border-emerald-500/30 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <span>💬</span>
+            <span>Consultar por WhatsApp</span>
+          </a>
+        </div>
+      </div>
+
+      <template v-else>
+        <!-- Banner de Aviso de Admin: Tienda Física Oculta al Público -->
+        <div v-if="isAdminUser && !adminStore.isPhysicalStoreVisible" class="bg-amber-950/70 border-2 border-amber-500/60 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-200 shadow-xl">
+          <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
+              ⚠️
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-black text-white text-sm">Vista Previa de Administrador</span>
+                <span class="text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded border border-amber-400/30">TIENDA FÍSICA DESACTIVADA EN EL MENÚ</span>
+              </div>
+              <p class="text-xs text-amber-200/90 mt-0.5">
+                Los visitantes y clientes regulares no ven la tienda física ni sus accesos en el menú de navegación. Estás visualizando el catálogo en modo previo de edición.
+              </p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            @click="adminStore.setPhysicalStoreVisibility(true); toast.add('✓ Tienda Física activada y visible en la navegación pública', 'success')"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs transition shadow-lg shrink-0 flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🟢</span>
+            <span>Activar Tienda Física en el Menú</span>
+          </button>
+        </div>
+
+        <!-- Header de Sección Oficial -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-xl">
         <div class="flex items-center gap-3.5">
           <span class="text-3xl">📦</span>
           <div>
@@ -3287,6 +3398,7 @@ const submitOrder = async () => {
           <span class="text-pink-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Combos →</span>
         </RouterLink>
       </div>
+      </template>
     </div>
 
     <!-- MODAL DE ELECCIÓN DE PLAN -->

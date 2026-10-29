@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useAdminStore, useResellerStore } from './store/admin'
 import { useCartStore } from './store/cart'
+import { getRememberedSession } from './services/biometrics'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import UserProfileModal from './components/UserProfileModal.vue'
 
@@ -52,6 +53,19 @@ const isClientArea = computed(() => {
 })
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
+
+const isAdminUser = computed(() => {
+  try {
+    const saved = getRememberedSession('admin')
+    if (saved && (saved.username || saved.id === 'admin')) return true
+    if (route.query.preview === 'admin') return true
+  } catch (e) {}
+  return false
+})
+
+const isPhysicalNavVisible = computed(() => {
+  return (adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible) || isAdminUser.value
+})
 
 const publicPhysicalCount = computed(() => {
   return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
@@ -133,6 +147,7 @@ const handleOpenCart = () => {
             </RouterLink>
             
             <RouterLink 
+              v-if="isPhysicalNavVisible"
               to="/tienda" 
               class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
               :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
@@ -268,6 +283,7 @@ const handleOpenCart = () => {
           </RouterLink>
           
           <RouterLink 
+            v-if="isPhysicalNavVisible"
             to="/tienda" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
             :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"

@@ -479,11 +479,18 @@ export const useAdminStore = defineStore('admin', {
       }
     ]),
 
-    // Visibilidad de la tienda pública (Mostrar u Ocultar tienda desde el Panel Admin)
+    // Visibilidad de la tienda pública y del catálogo físico (Mostrar u Ocultar tienda desde el Panel Admin)
     isStoreVisible: (() => {
       const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
       if (stored && typeof stored.isStoreVisible === 'boolean') {
         return stored.isStoreVisible
+      }
+      return true
+    })(),
+    isPhysicalStoreVisible: (() => {
+      const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (stored && typeof stored.isPhysicalStoreVisible === 'boolean') {
+        return stored.isPhysicalStoreVisible
       }
       return true
     })()
@@ -721,15 +728,32 @@ export const useAdminStore = defineStore('admin', {
       })
     },
 
-    // Gestión de Visibilidad de la Tienda Pública
+    // Gestión de Visibilidad de la Tienda Pública y Tienda de Productos Físicos
     toggleStoreVisibility() {
       this.isStoreVisible = !this.isStoreVisible
-      saveDb(DB_KEYS.STORE_SETTINGS, { isStoreVisible: this.isStoreVisible })
+      this.persistStoreSettings()
       return this.isStoreVisible
     },
     setStoreVisibility(visible) {
       this.isStoreVisible = Boolean(visible)
-      saveDb(DB_KEYS.STORE_SETTINGS, { isStoreVisible: this.isStoreVisible })
+      this.persistStoreSettings()
+      return this.isStoreVisible
+    },
+    togglePhysicalStoreVisibility() {
+      this.isPhysicalStoreVisible = !this.isPhysicalStoreVisible
+      this.persistStoreSettings()
+      return this.isPhysicalStoreVisible
+    },
+    setPhysicalStoreVisibility(visible) {
+      this.isPhysicalStoreVisible = Boolean(visible)
+      this.persistStoreSettings()
+      return this.isPhysicalStoreVisible
+    },
+    persistStoreSettings() {
+      saveDb(DB_KEYS.STORE_SETTINGS, {
+        isStoreVisible: this.isStoreVisible,
+        isPhysicalStoreVisible: this.isPhysicalStoreVisible
+      })
     },
 
     // Gestión de Credenciales Maestras del Administrador
