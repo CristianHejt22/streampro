@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import CustomerPortal from '../views/CustomerPortal.vue'
-import ResellerDashboard from '../views/ResellerDashboard.vue'
-import AdminDashboard from '../views/AdminDashboard.vue'
-import ResellerRecruitmentView from '../views/ResellerRecruitmentView.vue'
+
+const HomeView = () => import('../views/HomeView.vue')
+const CustomerPortal = () => import('../views/CustomerPortal.vue')
+const ResellerDashboard = () => import('../views/ResellerDashboard.vue')
+const AdminDashboard = () => import('../views/AdminDashboard.vue')
+const ResellerRecruitmentView = () => import('../views/ResellerRecruitmentView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

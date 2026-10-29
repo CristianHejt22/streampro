@@ -7,12 +7,44 @@ import { useToastStore } from '../store/toast'
 import { sendLocalNotification } from '../services/notifications'
 import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
+import { getRememberedSession } from '../services/biometrics'
 
 const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+// Detección de sesión activa de Administrador para previsualización cuando la tienda está oculta
+const isAdminUser = computed(() => {
+  try {
+    const saved = getRememberedSession('admin')
+    if (saved && (saved.username || saved.id === 'admin')) return true
+    if (route.query.preview === 'admin') return true
+  } catch (e) {}
+  return false
+})
+
+// Mapeo dinámico y enriquecido de íconos para categorías del catálogo físico
+const getCategoryIcon = (catId, catName = '') => {
+  const id = String(catId || '').toLowerCase()
+  const name = String(catName || '').toLowerCase()
+  if (id === 'virales' || name.includes('viral')) return '🔥'
+  if (id === 'perfumes' || name.includes('perfum')) return '🌸'
+  if (id === 'hogar' || name.includes('hogar') || name.includes('deco')) return '🏠'
+  if (id.includes('juguet') || name.includes('juguet')) return '🎮'
+  if (id.includes('celular') || name.includes('celular') || name.includes('telef')) return '📱'
+  if (id === 'herramientas' || name.includes('herramienta')) return '🔧'
+  if (id === 'auriculares' || name.includes('audio') || name.includes('auricular')) return '🎧'
+  if (id === 'belleza' || name.includes('belleza') || name.includes('cuidado')) return '✨'
+  if (id === 'smartwatch' || name.includes('reloj') || name.includes('watch')) return '⌚'
+  if (id.includes('madre') || name.includes('madre') || name.includes('regalo')) return '🎁'
+  if (id === 'bazar' || name.includes('bazar') || name.includes('cocina')) return '🍳'
+  if (id === 'electronica' || name.includes('electr')) return '⚡'
+  if (id === 'luces' || name.includes('iluminac') || name.includes('lampara')) return '💡'
+  if (id === 'auto' || name.includes('vehicul') || name.includes('auto')) return '🚗'
+  return '📦'
+}
 
 const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
@@ -613,16 +645,32 @@ watch([storeSection, selectedPhysicalProduct], ([sec, prod]) => {
   }
 }, { immediate: true })
 
-// Búsqueda y Filtros
+// ==================== BÚSQUEDA, FILTROS Y ORDENAMIENTO ====================
+// Filtros y Paginación de Suscripciones Digitales
 const searchQuery = ref('')
-const physicalSearchQuery = ref('')
 const selectedCategory = ref('All')
+const digitalPlatformFilter = ref('All')
+const digitalCurrentPage = ref(1)
+const digitalItemsPerPage = ref(8) // 4, 6, 8, 'all'
+
+// Paginación de Paquetes y Combos
+const packagesCurrentPage = ref(1)
+const packagesItemsPerPage = ref(6) // 4, 6, 8, 'all'
+
+// Filtros, Ordenamiento y Paginación de Productos Físicos
+const physicalSearchQuery = ref('')
 const physicalCategoryFilter = ref('All')
 const onlyDiscountsFilter = ref(false)
 const freeShippingFilter = ref(false)
-const digitalPlatformFilter = ref('All')
+const inStockOnlyFilter = ref(false)
+const physicalPriceRange = ref('all') // 'all', 'under_15k', '15k_to_30k', '30k_to_60k', 'over_60k'
+const minPriceFilter = ref('')
+const maxPriceFilter = ref('')
+const physicalSortBy = ref('default') // 'default', 'price_asc', 'price_desc', 'discount_desc', 'stock_desc', 'name_asc'
+const physicalCurrentPage = ref(1)
+const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 
-// Métricas computadas de filtros rápidos
+// Métricas computadas de filtros rápidos del catálogo físico
 const physicalDiscountsCount = computed(() => {
   const list = adminStore.physicalProducts || []
   return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && p.hasDiscount && p.discountPercentage > 0).length
@@ -630,7 +678,25 @@ const physicalDiscountsCount = computed(() => {
 
 const physicalFreeShippingCount = computed(() => {
   const list = adminStore.physicalProducts || []
-  return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && p.priceNumeric >= 40000).length
+  return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (Number(p.priceNumeric) || 0) >= 40000).length
+})
+
+const physicalInStockCount = computed(() => {
+  const list = adminStore.physicalProducts || []
+  return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (Number(p.stock) || 0) > 0).length
+})
+
+const activePhysicalFiltersCount = computed(() => {
+  let count = 0
+  if (physicalSearchQuery.value) count++
+  if (physicalCategoryFilter.value !== 'All') count++
+  if (onlyDiscountsFilter.value) count++
+  if (freeShippingFilter.value) count++
+  if (inStockOnlyFilter.value) count++
+  if (physicalPriceRange.value !== 'all') count++
+  if (minPriceFilter.value !== '' || maxPriceFilter.value !== '') count++
+  if (physicalSortBy.value !== 'default') count++
+  return count
 })
 
 const scrollToSection = (sectionId) => {
@@ -704,6 +770,7 @@ const getWhatsAppContactUrl = (customMsg = '') => {
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
 }
 
+// ----------------- SECCIÓN 1: SUSCRIPCIONES DIGITALES -----------------
 const filteredProducts = computed(() => {
   return products.value.filter(p => {
     const matchCat = selectedCategory.value === 'All' || p.category === selectedCategory.value
@@ -716,28 +783,33 @@ const filteredProducts = computed(() => {
   })
 })
 
-const filteredPhysicalProducts = computed(() => {
-  const list = adminStore.physicalProducts || []
-  return list.filter(p => {
-    if (!p) return false
-    // Excluir contenido o páginas marcadas como visibles solo en admin
-    if (p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) {
-      return false
-    }
-    const matchesCat = physicalCategoryFilter.value === 'All' || 
-      (p.categoryIds && p.categoryIds.includes(physicalCategoryFilter.value))
-    const matchesDiscount = !onlyDiscountsFilter.value || Boolean(p.hasDiscount && p.discountPercentage > 0)
-    const matchesShipping = !freeShippingFilter.value || (p.priceNumeric >= 40000)
-
-    const q = (physicalSearchQuery.value || '').toLowerCase().trim()
-    const name = String(p.name || '').toLowerCase()
-    const desc = String(p.description || '').toLowerCase()
-    const id = String(p.id || '')
-    const matchesQuery = !q || name.includes(q) || desc.includes(q) || id.includes(q)
-    return matchesCat && matchesDiscount && matchesShipping && matchesQuery
-  })
+const digitalTotalPages = computed(() => {
+  if (digitalItemsPerPage.value === 'all') return 1
+  const perPage = Number(digitalItemsPerPage.value) || 8
+  return Math.max(1, Math.ceil(filteredProducts.value.length / perPage))
 })
 
+const paginatedDigitalProducts = computed(() => {
+  if (digitalItemsPerPage.value === 'all') {
+    return filteredProducts.value
+  }
+  const perPage = Number(digitalItemsPerPage.value) || 8
+  const start = (digitalCurrentPage.value - 1) * perPage
+  return filteredProducts.value.slice(start, start + perPage)
+})
+
+const changeDigitalPage = (page) => {
+  if (page < 1) page = 1
+  if (page > digitalTotalPages.value) page = digitalTotalPages.value
+  digitalCurrentPage.value = page
+  scrollToSection('suscripciones-digitales')
+}
+
+watch([searchQuery, selectedCategory, digitalPlatformFilter, digitalItemsPerPage], () => {
+  digitalCurrentPage.value = 1
+})
+
+// ----------------- SECCIÓN 2: PAQUETES & COMBOS -----------------
 const filteredPackages = computed(() => {
   return adminStore.packages.filter(p => {
     if (!p.active) return false
@@ -747,6 +819,182 @@ const filteredPackages = computed(() => {
     return matchSearch && matchDiscount
   })
 })
+
+const packagesTotalPages = computed(() => {
+  if (packagesItemsPerPage.value === 'all') return 1
+  const perPage = Number(packagesItemsPerPage.value) || 6
+  return Math.max(1, Math.ceil(filteredPackages.value.length / perPage))
+})
+
+const paginatedPackages = computed(() => {
+  if (packagesItemsPerPage.value === 'all') {
+    return filteredPackages.value
+  }
+  const perPage = Number(packagesItemsPerPage.value) || 6
+  const start = (packagesCurrentPage.value - 1) * perPage
+  return filteredPackages.value.slice(start, start + perPage)
+})
+
+const changePackagesPage = (page) => {
+  if (page < 1) page = 1
+  if (page > packagesTotalPages.value) page = packagesTotalPages.value
+  packagesCurrentPage.value = page
+  scrollToSection('paquetes-combos')
+}
+
+watch([searchQuery, onlyDiscountsFilter, packagesItemsPerPage], () => {
+  packagesCurrentPage.value = 1
+})
+
+// ----------------- SECCIÓN 3: CATÁLOGO FÍSICO -----------------
+const filteredPhysicalProducts = computed(() => {
+  const list = adminStore.physicalProducts || []
+  const result = list.filter(p => {
+    if (!p) return false
+    // Excluir contenido o páginas marcadas como visibles solo en admin
+    if (p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) {
+      return false
+    }
+
+    // Filtro Categoría
+    if (physicalCategoryFilter.value !== 'All') {
+      const matchArray = Array.isArray(p.categoryIds) && p.categoryIds.includes(physicalCategoryFilter.value)
+      const matchDirect = p.categoryId === physicalCategoryFilter.value
+      if (!matchArray && !matchDirect) return false
+    }
+
+    // Filtro Descuento
+    if (onlyDiscountsFilter.value && !(p.hasDiscount && p.discountPercentage > 0)) {
+      return false
+    }
+
+    // Filtro Envío Gratis (+$40k)
+    if (freeShippingFilter.value && (Number(p.priceNumeric) || 0) < 40000) {
+      return false
+    }
+
+    // Filtro Solo en Stock
+    if (inStockOnlyFilter.value && (Number(p.stock) || 0) <= 0) {
+      return false
+    }
+
+    // Filtro Rango de Precios
+    const price = Number(p.priceNumeric) || 0
+    if (physicalPriceRange.value === 'under_15k' && price > 15000) return false
+    if (physicalPriceRange.value === '15k_to_30k' && (price < 15000 || price > 30000)) return false
+    if (physicalPriceRange.value === '30k_to_60k' && (price < 30000 || price > 60000)) return false
+    if (physicalPriceRange.value === 'over_60k' && price < 60000) return false
+
+    // Filtro Manual Min/Max
+    if (minPriceFilter.value !== '' && minPriceFilter.value !== null) {
+      const min = Number(minPriceFilter.value)
+      if (!isNaN(min) && price < min) return false
+    }
+    if (maxPriceFilter.value !== '' && maxPriceFilter.value !== null) {
+      const max = Number(maxPriceFilter.value)
+      if (!isNaN(max) && price > max) return false
+    }
+
+    // Filtro de Búsqueda de Texto
+    const q = (physicalSearchQuery.value || '').toLowerCase().trim()
+    if (q) {
+      const name = String(p.name || '').toLowerCase()
+      const desc = String(p.description || '').toLowerCase()
+      const id = String(p.id || '')
+      const sku = String(p.sku || '').toLowerCase()
+      if (!name.includes(q) && !desc.includes(q) && !id.includes(q) && !sku.includes(q)) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  // Ordenamiento
+  if (physicalSortBy.value === 'price_asc') {
+    result.sort((a, b) => (Number(a.priceNumeric) || 0) - (Number(b.priceNumeric) || 0))
+  } else if (physicalSortBy.value === 'price_desc') {
+    result.sort((a, b) => (Number(b.priceNumeric) || 0) - (Number(a.priceNumeric) || 0))
+  } else if (physicalSortBy.value === 'discount_desc') {
+    result.sort((a, b) => (Number(b.discountPercentage) || 0) - (Number(a.discountPercentage) || 0))
+  } else if (physicalSortBy.value === 'stock_desc') {
+    result.sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0))
+  } else if (physicalSortBy.value === 'name_asc') {
+    result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+  }
+
+  return result
+})
+
+const physicalTotalPages = computed(() => {
+  if (physicalItemsPerPage.value === 'all') return 1
+  const perPage = Number(physicalItemsPerPage.value) || 16
+  return Math.max(1, Math.ceil(filteredPhysicalProducts.value.length / perPage))
+})
+
+const paginatedPhysicalProducts = computed(() => {
+  if (physicalItemsPerPage.value === 'all') {
+    return filteredPhysicalProducts.value
+  }
+  const perPage = Number(physicalItemsPerPage.value) || 16
+  const start = (physicalCurrentPage.value - 1) * perPage
+  return filteredPhysicalProducts.value.slice(start, start + perPage)
+})
+
+const changePhysicalPage = (page) => {
+  if (page < 1) page = 1
+  if (page > physicalTotalPages.value) page = physicalTotalPages.value
+  physicalCurrentPage.value = page
+  scrollToSection('catalogo-fisico-grid')
+}
+
+const visiblePhysicalPages = computed(() => {
+  const total = physicalTotalPages.value
+  const current = physicalCurrentPage.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages = []
+  if (current <= 4) {
+    for (let i = 1; i <= 5; i++) pages.push(i)
+    pages.push('...')
+    pages.push(total)
+  } else if (current >= total - 3) {
+    pages.push(1)
+    pages.push('...')
+    for (let i = total - 4; i <= total; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    pages.push('...')
+    pages.push(current - 1)
+    pages.push(current)
+    pages.push(current + 1)
+    pages.push('...')
+    pages.push(total)
+  }
+  return pages
+})
+
+const resetPhysicalFilters = () => {
+  physicalSearchQuery.value = ''
+  physicalCategoryFilter.value = 'All'
+  onlyDiscountsFilter.value = false
+  freeShippingFilter.value = false
+  inStockOnlyFilter.value = false
+  physicalPriceRange.value = 'all'
+  minPriceFilter.value = ''
+  maxPriceFilter.value = ''
+  physicalSortBy.value = 'default'
+  physicalCurrentPage.value = 1
+  toast.add('Filtros del catálogo físico restablecidos', 'info')
+}
+
+watch(
+  [physicalSearchQuery, physicalCategoryFilter, onlyDiscountsFilter, freeShippingFilter, inStockOnlyFilter, physicalPriceRange, minPriceFilter, maxPriceFilter, physicalSortBy, physicalItemsPerPage],
+  () => {
+    physicalCurrentPage.value = 1
+  }
+)
 
 const addPackageToCart = (pkg) => {
   cartStore.addPackageItem(pkg)
@@ -1067,7 +1315,95 @@ const submitOrder = async () => {
 </script>
 
 <template>
-  <div class="space-y-8">
+  <!-- PANTALLA DE MANTENIMIENTO SI LA TIENDA ESTÁ OCULTA (SOLO VISITANTES REGULARES) -->
+  <div v-if="!adminStore.isStoreVisible && !isAdminUser" class="min-h-[80vh] flex items-center justify-center py-12 px-4">
+    <div class="max-w-2xl w-full bg-slate-900/95 border border-amber-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6 relative overflow-hidden backdrop-blur-xl">
+      <div class="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-sky-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 space-y-5">
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-4xl shadow-inner animate-pulse">
+          🛠️
+        </div>
+
+        <div class="space-y-2">
+          <span class="inline-block px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black uppercase tracking-wider">
+            Mantenimiento & Actualización de Catálogo
+          </span>
+          <h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            Tienda Temporalmente Cerrada
+          </h1>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-lg mx-auto">
+            Estamos actualizando nuestro catálogo oficial, sincronizando nuevo stock y configurando promociones exclusivas para brindarte la mejor experiencia.
+          </p>
+        </div>
+
+        <div class="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl text-xs text-slate-400 space-y-1.5 max-w-md mx-auto text-left sm:text-center">
+          <div class="flex items-center sm:justify-center gap-2 text-emerald-400 font-bold">
+            <span>✓</span>
+            <span>Atención y entregas activas por WhatsApp</span>
+          </div>
+          <div>Si tienes un pedido pendiente o deseas consultar por servicios disponibles, comunícate directo con nuestro equipo oficial.</div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <a 
+            :href="getWhatsAppContactUrl('¡Hola! Me comunico porque la web se encuentra en pausa temporal y quisiera consultar por suscripciones y productos.')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <span>💬</span>
+            <span>Consultar por WhatsApp</span>
+          </a>
+
+          <router-link
+            to="/vault"
+            class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-sm flex items-center justify-center gap-2 transition-all"
+          >
+            <span>🔐</span>
+            <span>Mi Bóveda de Cliente</span>
+          </router-link>
+
+          <router-link
+            to="/admin"
+            class="w-full sm:w-auto px-4 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <span>⚙️</span>
+            <span>Acceso Admin</span>
+          </router-link>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIENDA PÚBLICA NORMAL (O VISTA PREVIA PARA ADMINISTRADOR) -->
+  <div v-else class="space-y-8">
+    <!-- BANNER DE ADVERTENCIA PARA ADMINISTRADOR SI LA TIENDA ESTÁ OCULTA -->
+    <div v-if="!adminStore.isStoreVisible && isAdminUser" class="bg-gradient-to-r from-amber-950/90 via-red-950/90 to-amber-950/90 border-2 border-amber-500/70 p-4 sm:p-5 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-xl shrink-0 border border-amber-500/40">
+          ⚠️
+        </div>
+        <div>
+          <h4 class="text-white font-black text-sm sm:text-base flex items-center gap-2">
+            <span>MODO ADMINISTRADOR: Tienda Oculta al Público</span>
+            <span class="text-[10px] bg-red-500 text-white font-mono px-2 py-0.5 rounded-full uppercase font-bold">Pausada</span>
+          </h4>
+          <p class="text-xs text-amber-200/80">Los visitantes normales ven la pantalla de mantenimiento. Tú estás navegando en modo edición/previa.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+        <button 
+          type="button"
+          @click="adminStore.setStoreVisibility(true); toast.add('¡Tienda visible al público!', 'success')"
+          class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition shadow flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>🟢</span>
+          <span>Hacer Tienda Visible Ahora</span>
+        </button>
+      </div>
+    </div>
     <!-- Hero Banner Promocional Enterprise -->
     <div id="hero-banner" class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
       <div class="absolute right-[-10%] top-[-20%] w-96 h-96 bg-gradient-to-br from-sky-500/25 via-blue-600/15 to-transparent rounded-full blur-3xl pointer-events-none"></div>
@@ -1437,7 +1773,7 @@ const submitOrder = async () => {
 
       <!-- Catálogo de Suscripciones -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="product in filteredProducts" :key="product.id" class="glass-panel glass-panel-hover rounded-3xl p-6 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group">
+        <div v-for="product in paginatedDigitalProducts" :key="product.id" class="glass-panel glass-panel-hover rounded-3xl p-6 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group">
           <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div>
             <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
@@ -1499,6 +1835,62 @@ const submitOrder = async () => {
             <button @click="openConfig(product)" class="flex-1 bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm text-xs sm:text-sm cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
               <span>Elegir Plan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paginación de Suscripciones Digitales -->
+      <div v-if="filteredProducts.length > 0" class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Mostrando</span>
+          <span class="font-bold text-white font-mono">{{ ((digitalCurrentPage - 1) * (digitalItemsPerPage === 'all' ? filteredProducts.length : digitalItemsPerPage)) + 1 }} - {{ Math.min(digitalCurrentPage * (digitalItemsPerPage === 'all' ? filteredProducts.length : digitalItemsPerPage), filteredProducts.length) }}</span>
+          <span>de</span>
+          <span class="font-bold text-sky-400 font-mono">{{ filteredProducts.length }}</span>
+          <span>plataformas</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Por pág:</span>
+            <select v-model="digitalItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none cursor-pointer">
+              <option :value="4">4</option>
+              <option :value="6">6</option>
+              <option :value="8">8</option>
+              <option value="all">Todas</option>
+            </select>
+          </div>
+
+          <div v-if="digitalTotalPages > 1" class="flex items-center gap-1">
+            <button 
+              type="button"
+              @click="changeDigitalPage(digitalCurrentPage - 1)" 
+              :disabled="digitalCurrentPage <= 1"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+            >
+              ‹
+            </button>
+            <button 
+              v-for="p in digitalTotalPages" 
+              :key="p"
+              type="button"
+              @click="changeDigitalPage(p)"
+              :class="[
+                'px-3 py-1 rounded-lg font-bold text-xs font-mono transition-all cursor-pointer',
+                digitalCurrentPage === p 
+                  ? 'bg-sky-400 text-slate-950 shadow-md font-black' 
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+              ]"
+            >
+              {{ p }}
+            </button>
+            <button 
+              type="button"
+              @click="changeDigitalPage(digitalCurrentPage + 1)" 
+              :disabled="digitalCurrentPage >= digitalTotalPages"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+            >
+              ›
             </button>
           </div>
         </div>
@@ -1576,7 +1968,7 @@ const submitOrder = async () => {
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div 
-          v-for="pkg in filteredPackages" 
+          v-for="pkg in paginatedPackages" 
           :key="pkg.id"
           class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
         >
@@ -1675,6 +2067,62 @@ const submitOrder = async () => {
           </div>
         </div>
       </div>
+
+      <!-- Paginación de Combos y Paquetes -->
+      <div v-if="filteredPackages.length > 0" class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Mostrando</span>
+          <span class="font-bold text-white font-mono">{{ ((packagesCurrentPage - 1) * (packagesItemsPerPage === 'all' ? filteredPackages.length : packagesItemsPerPage)) + 1 }} - {{ Math.min(packagesCurrentPage * (packagesItemsPerPage === 'all' ? filteredPackages.length : packagesItemsPerPage), filteredPackages.length) }}</span>
+          <span>de</span>
+          <span class="font-bold text-pink-400 font-mono">{{ filteredPackages.length }}</span>
+          <span>combos</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Por pág:</span>
+            <select v-model="packagesItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none cursor-pointer">
+              <option :value="4">4</option>
+              <option :value="6">6</option>
+              <option :value="8">8</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+
+          <div v-if="packagesTotalPages > 1" class="flex items-center gap-1">
+            <button 
+              type="button"
+              @click="changePackagesPage(packagesCurrentPage - 1)" 
+              :disabled="packagesCurrentPage <= 1"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+            >
+              ‹
+            </button>
+            <button 
+              v-for="p in packagesTotalPages" 
+              :key="p"
+              type="button"
+              @click="changePackagesPage(p)"
+              :class="[
+                'px-3 py-1 rounded-lg font-bold text-xs font-mono transition-all cursor-pointer',
+                packagesCurrentPage === p 
+                  ? 'bg-pink-500 text-white shadow-md font-black' 
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+              ]"
+            >
+              {{ p }}
+            </button>
+            <button 
+              type="button"
+              @click="changePackagesPage(packagesCurrentPage + 1)" 
+              :disabled="packagesCurrentPage >= packagesTotalPages"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- SECCIÓN 3: CATÁLOGO DE PRODUCTOS FÍSICOS (C:\Users\yo\catalogo) -->
@@ -1716,7 +2164,7 @@ const submitOrder = async () => {
         </button>
       </div>
 
-      <!-- Filtros del Catálogo Físico -->
+      <!-- Filtros Principales del Catálogo Físico -->
       <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
           <div class="relative flex-1">
@@ -1726,9 +2174,9 @@ const submitOrder = async () => {
           </div>
           <div class="w-px bg-white/10 my-2"></div>
           <select v-model="physicalCategoryFilter" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
-            <option value="All" class="bg-slate-900">Todas las categorías ({{ adminStore.physicalProducts.filter(p => !p.adminOnly).length }})</option>
-            <option v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly)" :key="cat.id" :value="cat.id" class="bg-slate-900">
-              {{ cat.name }} ({{ cat.cantidad }})
+            <option value="All" class="bg-slate-900">Todas las categorías ({{ adminStore.physicalProducts.filter(p => !p.adminOnly && p.categoryId !== 'paginas').length }})</option>
+            <option v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly && c.id !== 'paginas')" :key="cat.id" :value="cat.id" class="bg-slate-900">
+              {{ getCategoryIcon(cat.id, cat.name) }} {{ cat.name }} ({{ cat.cantidad }})
             </option>
           </select>
         </div>
@@ -1758,7 +2206,7 @@ const submitOrder = async () => {
               <span>📦 TIENDA OFICIAL STREAMEPRO • DESPACHOS A TODO EL PAÍS</span>
             </div>
             <div class="text-xs font-mono text-amber-400 bg-slate-950/90 px-3 py-1 rounded-xl border border-amber-500/30 font-bold">
-              {{ adminStore.physicalProducts.length }} Productos Sincronizados
+              {{ adminStore.physicalProducts.filter(p => !p.adminOnly && p.categoryId !== 'paginas').length }} Productos Sincronizados
             </div>
           </div>
 
@@ -1786,22 +2234,215 @@ const submitOrder = async () => {
               <span class="text-rose-400">🔥</span> Descuentos Marcados
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Botones de Acción Rápida del Banner Físico -->
-          <div class="flex flex-wrap items-center gap-2.5 pt-2">
+      <!-- SELECCIÓN AVANZADA DE CATEGORÍAS (RIBBON CAROUSEL VISUAL) -->
+      <div class="glass-panel rounded-3xl p-4 sm:p-5 border border-amber-500/25 bg-slate-950/70 shadow-xl space-y-3">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🏷️</span>
+            <div>
+              <h4 class="text-white font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                <span>Categorías del Catálogo</span>
+                <span class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                  {{ adminStore.physicalCategories.filter(c => !c.adminOnly && c.id !== 'paginas' && parseInt(c.cantidad || '0') > 0).length }} Rubros
+                </span>
+              </h4>
+              <p class="text-[11px] text-slate-400">Selecciona un rubro para filtrar productos al instante:</p>
+            </div>
+          </div>
+
+          <div v-if="physicalCategoryFilter !== 'All'" class="flex items-center gap-2">
+            <span class="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+              <span>Filtro activo:</span>
+              <strong class="text-white">{{ adminStore.physicalCategories.find(c => c.id === physicalCategoryFilter)?.name || physicalCategoryFilter }}</strong>
+            </span>
+            <button 
+              type="button"
+              @click="physicalCategoryFilter = 'All'" 
+              class="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-xl font-bold cursor-pointer transition-colors"
+            >
+              ✕ Quitar
+            </button>
+          </div>
+        </div>
+
+        <!-- Carousel / Ribbon Scrollable de Categorías -->
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <!-- Todas las categorías -->
+          <button 
+            type="button"
+            @click="physicalCategoryFilter = 'All'"
+            :class="[
+              'px-4 py-2.5 rounded-2xl transition-all shrink-0 cursor-pointer text-xs font-bold flex items-center gap-2 shadow-sm',
+              physicalCategoryFilter === 'All' 
+                ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-black shadow-amber-500/25 ring-2 ring-amber-300 scale-[1.02]' 
+                : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800 hover:border-amber-500/30'
+            ]"
+          >
+            <span class="text-base">🌟</span>
+            <span>Todas</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono bg-black/40 text-amber-200 border border-white/10">
+              {{ adminStore.physicalProducts.filter(p => !p.adminOnly && p.categoryId !== 'paginas').length }}
+            </span>
+          </button>
+
+          <!-- Categorías Dinámicas -->
+          <button 
+            v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly && c.id !== 'paginas' && parseInt(c.cantidad || '0') > 0)"
+            :key="cat.id"
+            type="button"
+            @click="physicalCategoryFilter = physicalCategoryFilter === cat.id ? 'All' : cat.id"
+            :class="[
+              'px-3.5 py-2.5 rounded-2xl transition-all shrink-0 cursor-pointer text-xs font-bold flex items-center gap-2 shadow-sm',
+              physicalCategoryFilter === cat.id 
+                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-amber-500/25 ring-2 ring-amber-300 scale-[1.02]' 
+                : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800 hover:border-amber-500/30'
+            ]"
+          >
+            <span class="text-base">{{ getCategoryIcon(cat.id, cat.name) }}</span>
+            <span>{{ cat.name }}</span>
+            <span 
+              :class="[
+                'text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold',
+                physicalCategoryFilter === cat.id ? 'bg-slate-950 text-amber-300' : 'bg-slate-800 text-slate-400 border border-slate-700'
+              ]"
+            >
+              {{ cat.cantidad }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTRACIÓN POR PRECIOS, ORDENAMIENTO Y ACCIONES RÁPIDAS ("entre otros") -->
+      <div class="glass-panel rounded-3xl p-4 sm:p-5 border border-white/[0.08] bg-slate-900/70 shadow-xl space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+          <!-- Ordenar Por -->
+          <div class="md:col-span-4 flex items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
+            <span class="text-xs font-bold text-slate-400 pl-2 shrink-0">Ordenar:</span>
+            <select 
+              v-model="physicalSortBy" 
+              class="w-full bg-transparent border-none text-white text-xs font-semibold focus:outline-none cursor-pointer py-1 pr-3"
+            >
+              <option value="default" class="bg-slate-900">✨ Destacados / Relevancia</option>
+              <option value="price_asc" class="bg-slate-900">💲 Menor Precio ($ → $$$)</option>
+              <option value="price_desc" class="bg-slate-900">💰 Mayor Precio ($$$ → $)</option>
+              <option value="discount_desc" class="bg-slate-900">🔥 Mayor Descuento (% OFF)</option>
+              <option value="stock_desc" class="bg-slate-900">📦 Mayor Stock Disponible</option>
+              <option value="name_asc" class="bg-slate-900">🔤 Nombre Alfabético (A - Z)</option>
+            </select>
+          </div>
+
+          <!-- Rango Rápido de Precios -->
+          <div class="md:col-span-5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button 
+              type="button"
+              @click="physicalPriceRange = 'all'; minPriceFilter = ''; maxPriceFilter = ''"
+              :class="[
+                'px-2.5 py-2 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer',
+                physicalPriceRange === 'all' && !minPriceFilter && !maxPriceFilter
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              Todos Precios
+            </button>
+            <button 
+              type="button"
+              @click="physicalPriceRange = 'under_15k'; minPriceFilter = ''; maxPriceFilter = ''"
+              :class="[
+                'px-2.5 py-2 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer',
+                physicalPriceRange === 'under_15k'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              Hasta $15k
+            </button>
+            <button 
+              type="button"
+              @click="physicalPriceRange = '15k_to_30k'; minPriceFilter = ''; maxPriceFilter = ''"
+              :class="[
+                'px-2.5 py-2 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer',
+                physicalPriceRange === '15k_to_30k'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              $15k - $30k
+            </button>
+            <button 
+              type="button"
+              @click="physicalPriceRange = '30k_to_60k'; minPriceFilter = ''; maxPriceFilter = ''"
+              :class="[
+                'px-2.5 py-2 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer',
+                physicalPriceRange === '30k_to_60k'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              $30k - $60k
+            </button>
+            <button 
+              type="button"
+              @click="physicalPriceRange = 'over_60k'; minPriceFilter = ''; maxPriceFilter = ''"
+              :class="[
+                'px-2.5 py-2 rounded-xl text-[11px] font-bold shrink-0 transition-all cursor-pointer',
+                physicalPriceRange === 'over_60k'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              + $60k
+            </button>
+          </div>
+
+          <!-- Filtro Manual Min / Max -->
+          <div class="md:col-span-3 flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 text-xs">
+            <span class="text-slate-500 font-bold pl-1">$</span>
+            <input 
+              v-model="minPriceFilter" 
+              type="number" 
+              placeholder="Mín" 
+              class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+              @input="physicalPriceRange = 'custom'"
+            >
+            <span class="text-slate-600">-</span>
+            <input 
+              v-model="maxPriceFilter" 
+              type="number" 
+              placeholder="Máx" 
+              class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+              @input="physicalPriceRange = 'custom'"
+            >
+            <button 
+              v-if="minPriceFilter || maxPriceFilter" 
+              @click="minPriceFilter = ''; maxPriceFilter = ''; physicalPriceRange = 'all'" 
+              class="text-slate-500 hover:text-white px-1 font-bold cursor-pointer"
+              title="Borrar rango de precios"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Chips de Filtros Rápidos (Descuentos, Envío Gratis, Stock, Limpiar) -->
+        <div class="pt-2 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
             <button 
               type="button" 
               @click="toggleOnlyDiscounts"
               :class="[
-                'px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md',
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm',
                 onlyDiscountsFilter 
-                  ? 'bg-gradient-to-r from-red-500 to-amber-500 text-white shadow-red-500/25 ring-2 ring-amber-400' 
-                  : 'bg-red-950/70 text-red-300 hover:text-white border border-red-500/40 hover:bg-red-900/60'
+                  ? 'bg-gradient-to-r from-red-500 to-amber-500 text-white font-black shadow-red-500/25 ring-2 ring-amber-400' 
+                  : 'bg-slate-950 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800'
               ]"
             >
               <span>🔥</span>
-              <span>{{ onlyDiscountsFilter ? 'Mostrando Ofertas' : 'Solo Ofertas % OFF' }}</span>
-              <span v-if="physicalDiscountsCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-amber-300 border border-amber-400/40">
+              <span>Solo Ofertas % OFF</span>
+              <span v-if="physicalDiscountsCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-amber-300 border border-amber-400/30">
                 {{ physicalDiscountsCount }}
               </span>
             </button>
@@ -1810,85 +2451,99 @@ const submitOrder = async () => {
               type="button" 
               @click="toggleFreeShipping"
               :class="[
-                'px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md',
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm',
                 freeShippingFilter 
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-emerald-500/25 ring-2 ring-emerald-300' 
-                  : 'bg-emerald-950/70 text-emerald-300 hover:text-white border border-emerald-500/40 hover:bg-emerald-900/60'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black shadow-emerald-500/25 ring-2 ring-emerald-300' 
+                  : 'bg-slate-950 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800'
               ]"
             >
               <span>🚚</span>
-              <span>{{ freeShippingFilter ? 'Con Envío Gratis' : 'Envío Gratis (+$40k)' }}</span>
-              <span v-if="physicalFreeShippingCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-emerald-300 border border-emerald-400/40">
+              <span>Envío Gratis (+$40k)</span>
+              <span v-if="physicalFreeShippingCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-emerald-300 border border-emerald-400/30">
                 {{ physicalFreeShippingCount }}
               </span>
             </button>
 
-            <a 
-              :href="getWhatsAppContactUrl('¡Hola! Me gustaría consultar por la disponibilidad de productos físicos y costo de envío.')"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <span>💬</span>
-              <span>Consultar Stock WhatsApp</span>
-            </a>
-
             <button 
-              type="button"
-              @click="selectStoreSection('digital', 'suscripciones-digitales')"
-              class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 transition-all flex items-center gap-1.5 cursor-pointer ml-auto"
+              type="button" 
+              @click="inStockOnlyFilter = !inStockOnlyFilter"
+              :class="[
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm',
+                inStockOnlyFilter 
+                  ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white font-black shadow-sky-500/25 ring-2 ring-sky-300' 
+                  : 'bg-slate-950 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800'
+              ]"
             >
-              <span>🎬</span>
-              <span>Ver Suscripciones Streaming →</span>
+              <span>🟢</span>
+              <span>Solo con Stock</span>
+              <span v-if="physicalInStockCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-sky-300 border border-sky-400/30">
+                {{ physicalInStockCount }}
+              </span>
             </button>
           </div>
 
-          <!-- Categorías Destacadas (Chips de 1 Clic para Filtrado Rápido) -->
-          <div class="pt-3 border-t border-white/[0.08] space-y-2">
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-amber-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <span>🏷️</span> Accesos Rápidos por Rubro
-              </span>
-              <button 
-                v-if="physicalCategoryFilter !== 'All'" 
-                @click="physicalCategoryFilter = 'All'" 
-                class="text-xs text-slate-400 hover:text-amber-300 font-semibold cursor-pointer underline"
-              >
-                Ver Todas las Categorías
-              </button>
-            </div>
-            
-            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-              <button 
-                type="button"
-                @click="physicalCategoryFilter = 'All'"
-                :class="[
-                  'px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer text-xs font-bold',
-                  physicalCategoryFilter === 'All' 
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/25' 
-                    : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
-                ]"
-              >
-                🌟 Todos ({{ adminStore.physicalProducts.filter(p => !p.adminOnly).length }})
-              </button>
+          <!-- Botón Limpiar Todos los Filtros si hay alguno activo -->
+          <button 
+            v-if="activePhysicalFiltersCount > 0"
+            type="button"
+            @click="resetPhysicalFilters"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-950/60 hover:bg-red-900 text-red-300 hover:text-white border border-red-500/40 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto"
+          >
+            <span>↺</span>
+            <span>Limpiar Filtros ({{ activePhysicalFiltersCount }})</span>
+          </button>
+        </div>
+      </div>
 
-              <button 
-                v-for="cat in adminStore.physicalCategories.filter(c => !c.adminOnly && parseInt(c.cantidad || '0') > 0).slice(0, 10)"
-                :key="cat.id"
-                type="button"
-                @click="physicalCategoryFilter = cat.id"
-                :class="[
-                  'px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer text-xs flex items-center gap-1.5 font-bold',
-                  physicalCategoryFilter === cat.id 
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/25' 
-                    : 'bg-slate-900/90 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
-                ]"
-              >
-                <span>{{ cat.id === 'perfumes' ? '🌸' : cat.id === 'hogar' ? '🏠' : cat.id === 'virales' ? '🔥' : cat.id.includes('juguetes') ? '🎮' : cat.id.includes('celulares') ? '📱' : cat.id === 'herramientas' ? '🔧' : cat.id === 'auriculares' ? '🎧' : cat.id === 'belleza' ? '✨' : cat.id === 'smartwatch' ? '⌚' : cat.id.includes('madre') ? '🎁' : '📦' }}</span>
-                <span>{{ cat.name }}</span>
-                <span class="text-[10px] opacity-75 font-mono">({{ cat.cantidad }})</span>
-              </button>
-            </div>
+      <!-- Barra de Resumen y Paginación Superior del Catálogo Físico -->
+      <div id="catalogo-fisico-grid" class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span>Mostrando</span>
+          <span class="font-bold text-white font-mono">{{ filteredPhysicalProducts.length === 0 ? 0 : (((physicalCurrentPage - 1) * (physicalItemsPerPage === 'all' ? filteredPhysicalProducts.length : physicalItemsPerPage)) + 1) }} - {{ Math.min(physicalCurrentPage * (physicalItemsPerPage === 'all' ? filteredPhysicalProducts.length : physicalItemsPerPage), filteredPhysicalProducts.length) }}</span>
+          <span>de</span>
+          <span class="font-bold text-amber-400 font-mono">{{ filteredPhysicalProducts.length }}</span>
+          <span>productos</span>
+          <span v-if="physicalTotalPages > 1" class="text-slate-500 font-mono">
+            (Pág. {{ physicalCurrentPage }} de {{ physicalTotalPages }})
+          </span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Por página:</span>
+            <select v-model="physicalItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:outline-none cursor-pointer">
+              <option :value="12">12</option>
+              <option :value="16">16</option>
+              <option :value="24">24</option>
+              <option :value="32">32</option>
+              <option :value="48">48</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+
+          <div v-if="physicalTotalPages > 1" class="flex items-center gap-1">
+            <button 
+              type="button"
+              @click="changePhysicalPage(physicalCurrentPage - 1)" 
+              :disabled="physicalCurrentPage <= 1"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página anterior"
+            >
+              ‹ Ant
+            </button>
+            <span class="px-2 py-1 bg-slate-950 font-mono text-amber-400 font-bold border border-slate-800 rounded-lg">
+              {{ physicalCurrentPage }} / {{ physicalTotalPages }}
+            </span>
+            <button 
+              type="button"
+              @click="changePhysicalPage(physicalCurrentPage + 1)" 
+              :disabled="physicalCurrentPage >= physicalTotalPages"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página siguiente"
+            >
+              Sig ›
+            </button>
           </div>
         </div>
       </div>
@@ -1897,20 +2552,20 @@ const submitOrder = async () => {
       <div v-if="filteredPhysicalProducts.length === 0" class="text-center py-12 bg-slate-900/40 rounded-3xl border border-slate-800 border-dashed space-y-3">
         <span class="text-4xl block">📦</span>
         <h4 class="text-white font-black text-base">No se encontraron productos físicos</h4>
-        <p class="text-xs text-slate-400 max-w-md mx-auto">No hay resultados para los filtros actuales. Prueba limpiando la búsqueda o los filtros aplicados.</p>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">No hay resultados para los filtros actuales. Prueba limpiando la búsqueda o los filtros de precio aplicados.</p>
         <button 
           type="button"
-          @click="physicalSearchQuery = ''; physicalCategoryFilter = 'All'; onlyDiscountsFilter = false; freeShippingFilter = false" 
+          @click="resetPhysicalFilters" 
           class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition cursor-pointer shadow-md inline-flex items-center gap-1.5"
         >
-          <span>Restablecer Filtros y Ver Todos ({{ adminStore.physicalProducts.filter(p => !p.adminOnly).length }})</span>
+          <span>Restablecer Filtros y Ver Todos ({{ adminStore.physicalProducts.filter(p => !p.adminOnly && p.categoryId !== 'paginas').length }})</span>
         </button>
       </div>
 
       <!-- Grid de Productos Físicos (2 columnas en móviles, 4 en desktop) -->
       <div v-else class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
         <div 
-          v-for="item in filteredPhysicalProducts" 
+          v-for="item in paginatedPhysicalProducts" 
           :key="item.id" 
           class="bg-slate-900/80 rounded-xl sm:rounded-2xl border border-white/[0.08] overflow-hidden flex flex-col justify-between hover:border-amber-400/40 hover:-translate-y-1 transition-all duration-300 shadow-lg group relative"
         >
@@ -2020,6 +2675,92 @@ const submitOrder = async () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paginación Inferior del Catálogo Físico -->
+      <div v-if="filteredPhysicalProducts.length > 0" class="pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Mostrando</span>
+          <span class="font-bold text-white font-mono">{{ ((physicalCurrentPage - 1) * (physicalItemsPerPage === 'all' ? filteredPhysicalProducts.length : physicalItemsPerPage)) + 1 }} - {{ Math.min(physicalCurrentPage * (physicalItemsPerPage === 'all' ? filteredPhysicalProducts.length : physicalItemsPerPage), filteredPhysicalProducts.length) }}</span>
+          <span>de</span>
+          <span class="font-bold text-amber-400 font-mono">{{ filteredPhysicalProducts.length }}</span>
+          <span>productos</span>
+          <span v-if="activePhysicalFiltersCount > 0" class="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold ml-1">
+            Filtrados ({{ activePhysicalFiltersCount }})
+          </span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Por pág:</span>
+            <select v-model="physicalItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none cursor-pointer">
+              <option :value="12">12</option>
+              <option :value="16">16</option>
+              <option :value="24">24</option>
+              <option :value="32">32</option>
+              <option :value="48">48</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+
+          <div v-if="physicalTotalPages > 1" class="flex items-center gap-1">
+            <button 
+              type="button"
+              @click="changePhysicalPage(1)" 
+              :disabled="physicalCurrentPage <= 1"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Primera página"
+            >
+              ««
+            </button>
+            <button 
+              type="button"
+              @click="changePhysicalPage(physicalCurrentPage - 1)" 
+              :disabled="physicalCurrentPage <= 1"
+              class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página anterior"
+            >
+              ‹ Anterior
+            </button>
+
+            <!-- Números de Página con Elipsis -->
+            <template v-for="(p, idx) in visiblePhysicalPages" :key="idx">
+              <span v-if="p === '...'" class="px-2 py-1 text-slate-500 font-mono">...</span>
+              <button 
+                v-else
+                type="button"
+                @click="changePhysicalPage(p)"
+                :class="[
+                  'px-3.5 py-1.5 rounded-lg font-bold text-xs font-mono transition-all cursor-pointer',
+                  physicalCurrentPage === p 
+                    ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25 font-black ring-2 ring-amber-300' 
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                ]"
+              >
+                {{ p }}
+              </button>
+            </template>
+
+            <button 
+              type="button"
+              @click="changePhysicalPage(physicalCurrentPage + 1)" 
+              :disabled="physicalCurrentPage >= physicalTotalPages"
+              class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página siguiente"
+            >
+              Siguiente ›
+            </button>
+            <button 
+              type="button"
+              @click="changePhysicalPage(physicalTotalPages)" 
+              :disabled="physicalCurrentPage >= physicalTotalPages"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Última página"
+            >
+              »»
+            </button>
           </div>
         </div>
       </div>

@@ -1797,6 +1797,16 @@ const handleAdminLogout = () => {
   toast.add('Sesión de Administrador cerrada correctamente.', 'info')
 }
 
+// GESTIÓN DE VISIBILIDAD DE LA TIENDA PÚBLICA (Mostrar u Ocultar Tienda)
+const toggleStoreVisibility = () => {
+  const isVisible = adminStore.toggleStoreVisibility()
+  if (isVisible) {
+    toast.add('✅ La tienda ahora es PÚBLICA y visible para todos los clientes.', 'success')
+  } else {
+    toast.add('⚠️ La tienda ahora está OCULTA. Los clientes verán aviso de mantenimiento.', 'warning')
+  }
+}
+
 // GESTIÓN DE CREDENCIALES MAESTRAS DE ADMINISTRADOR
 const showAdminAuthModal = ref(false)
 const adminAuthForm = ref({
@@ -2194,6 +2204,20 @@ const deletePackageItem = (pkgId) => {
         >
           <span>🎨 Generar Flyer</span>
         </button>
+        <!-- BOTÓN MOSTRAR U OCULTAR TIENDA PÚBLICA -->
+        <button 
+          type="button"
+          @click="toggleStoreVisibility"
+          :class="[
+            'px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border',
+            adminStore.isStoreVisible 
+              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40' 
+              : 'bg-red-500/25 hover:bg-red-500/35 text-red-300 border-red-500/50 animate-pulse'
+          ]"
+          :title="adminStore.isStoreVisible ? 'La tienda está VISIBLE para los clientes. Clic para ocultarla.' : 'La tienda está OCULTA para los clientes (modo mantenimiento). Clic para activarla.'"
+        >
+          <span>{{ adminStore.isStoreVisible ? '🟢 Tienda: VISIBLE' : '🔴 Tienda: OCULTA' }}</span>
+        </button>
         <button 
           @click="openAdminAuthModal"
           class="bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
@@ -2242,6 +2266,64 @@ const deletePackageItem = (pkgId) => {
         <div class="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors"></div>
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Despachos Pendientes</h3>
         <p class="text-4xl font-black text-amber-400 relative z-10">{{ adminStore.pendingOrders.length }} <span class="text-sm font-medium text-amber-600/50">Por Entregar</span></p>
+      </div>
+    </div>
+
+    <!-- BANNER DE CONTROL DE ESTADO DE LA TIENDA PÚBLICA -->
+    <div :class="[
+      'p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg backdrop-blur-sm',
+      adminStore.isStoreVisible 
+        ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200' 
+        : 'bg-red-950/40 border-red-500/50 text-red-200 ring-2 ring-red-500/30'
+    ]">
+      <div class="flex items-center gap-3.5">
+        <div :class="[
+          'w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shrink-0 font-bold border shadow-inner',
+          adminStore.isStoreVisible ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-red-500/25 text-red-300 border-red-500/50'
+        ]">
+          {{ adminStore.isStoreVisible ? '🏪' : '🔒' }}
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <strong class="font-black text-sm text-white">
+              Visibilidad de la Tienda: {{ adminStore.isStoreVisible ? 'PÚBLICA Y ABIERTA' : 'OCULTA (MODO MANTENIMIENTO)' }}
+            </strong>
+            <span :class="[
+              'text-[10px] font-mono px-2 py-0.5 rounded-full font-black uppercase tracking-wider',
+              adminStore.isStoreVisible ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/40 animate-pulse'
+            ]">
+              {{ adminStore.isStoreVisible ? '✓ Clientes Comprando' : '⚠️ Clientes en Mantenimiento' }}
+            </span>
+          </div>
+          <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
+            {{ adminStore.isStoreVisible 
+              ? 'La tienda pública está abierta. Los clientes pueden explorar catálogos, combos y registrar pedidos normalmente.' 
+              : 'La tienda pública está oculta al público general (muestra aviso de mantenimiento y botón de WhatsApp). Solo el Administrador puede ingresar a ver y editar.' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+        <button 
+          type="button" 
+          @click="toggleStoreVisibility"
+          :class="[
+            'px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer',
+            adminStore.isStoreVisible 
+              ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30' 
+              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
+          ]"
+        >
+          <span>{{ adminStore.isStoreVisible ? '🔴 Ocultar Tienda al Público' : '🟢 Mostrar y Reactivar Tienda' }}</span>
+        </button>
+        <a 
+          href="/" 
+          target="_blank" 
+          class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+          title="Ver cómo se ve la tienda pública en una nueva pestaña"
+        >
+          <span>👁️ Ver Tienda ↗</span>
+        </a>
       </div>
     </div>
 

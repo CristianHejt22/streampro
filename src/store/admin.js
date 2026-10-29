@@ -477,7 +477,16 @@ export const useAdminStore = defineStore('admin', {
         active: true,
         createdAt: '2026-10-14'
       }
-    ])
+    ]),
+
+    // Visibilidad de la tienda pública (Mostrar u Ocultar tienda desde el Panel Admin)
+    isStoreVisible: (() => {
+      const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (stored && typeof stored.isStoreVisible === 'boolean') {
+        return stored.isStoreVisible
+      }
+      return true
+    })()
   }},
   getters: {
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
@@ -710,6 +719,17 @@ export const useAdminStore = defineStore('admin', {
           this.persist(DB_KEYS.REGISTERED_USERS)
         }
       })
+    },
+
+    // Gestión de Visibilidad de la Tienda Pública
+    toggleStoreVisibility() {
+      this.isStoreVisible = !this.isStoreVisible
+      saveDb(DB_KEYS.STORE_SETTINGS, { isStoreVisible: this.isStoreVisible })
+      return this.isStoreVisible
+    },
+    setStoreVisibility(visible) {
+      this.isStoreVisible = Boolean(visible)
+      saveDb(DB_KEYS.STORE_SETTINGS, { isStoreVisible: this.isStoreVisible })
     },
 
     // Gestión de Credenciales Maestras del Administrador

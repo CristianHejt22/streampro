@@ -1,3 +1,6 @@
+// Limitar threads de Rayon/Rolldown para garantizar compilación estable y libre de errores de memoria en sistemas de 8GB
+process.env.RAYON_NUM_THREADS = process.env.RAYON_NUM_THREADS || '1'
+
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'

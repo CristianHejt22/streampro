@@ -43,7 +43,8 @@ export const DB_KEYS = {
   RESELLER_APPLICATIONS: 'reseller_applications',
   REGISTERED_USERS: 'registered_users',
   TELEGRAM_CONFIG: 'telegram_config',
-  FIREBASE_CONFIG: 'firebase_config'
+  FIREBASE_CONFIG: 'firebase_config',
+  STORE_SETTINGS: 'store_settings'
 }
 
 export function loadDb(key, defaultValue) {
