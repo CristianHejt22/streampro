@@ -46,6 +46,7 @@ export const DB_KEYS = {
   FIREBASE_CONFIG: 'firebase_config',
   STORE_SETTINGS: 'store_settings',
   GAMING_PRODUCTS: 'gaming_products',
+  GAMING_CATEGORIES: 'gaming_categories',
   GAMING_ORDERS: 'gaming_orders'
 }
 

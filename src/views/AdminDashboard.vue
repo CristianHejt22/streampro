@@ -1016,6 +1016,55 @@ const sendWhatsAppGameDelivery = (order) => {
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
+// ==========================================
+// IMPORTACIÓN Y SINCRONIZACIÓN GAMING (ARGPLAY & JDA)
+// ==========================================
+const isSyncingGaming = ref(false)
+const gamingCatalogFileInput = ref(null)
+
+const triggerGamingCatalogUpload = () => {
+  if (gamingCatalogFileInput.value) gamingCatalogFileInput.value.click()
+}
+
+const handleImportGamingCatalog = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const raw = String(e.target.result).replace(/^\uFEFF/, '')
+      const json = JSON.parse(raw)
+      const res = adminStore.updateGamingProductsFromJson(json)
+      if (res.success) {
+        toast.add(`¡Catálogo gaming actualizado! ${res.count} videojuegos sincronizados en la base de datos.`, 'success')
+      } else {
+        toast.add(res.error || 'Error al procesar el archivo JSON de videojuegos', 'error')
+      }
+    } catch (err) {
+      toast.add('El archivo seleccionado no es un JSON válido', 'error')
+    }
+    if (event.target) event.target.value = ''
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
+const handleSyncGamingCatalog = async () => {
+  isSyncingGaming.value = true
+  try {
+    const res = await adminStore.syncGamingFromApi()
+    if (res.success) {
+      toast.add(`¡Catálogo Gaming sincronizado! ${res.count} videojuegos extraídos en vivo desde Argentina Play y JDA.`, 'success')
+    } else {
+      toast.add(res.error || 'Error al conectar con los proveedores gaming', 'error')
+    }
+  } catch (err) {
+    toast.add('Error al sincronizar proveedores gaming', 'error')
+  } finally {
+    isSyncingGaming.value = false
+  }
+}
+
 // RECORDATORIOS PERSUASIVOS DE RENOVACIÓN POR WHATSAPP
 const getClientExpiryDays = (expiryStr) => {
   if (!expiryStr) return 999
@@ -1881,8 +1930,9 @@ const manualCloudSync = async () => {
 }
 
 onMounted(async () => {
-  // Asegurar catálogo de productos físicos disponible
+  // Asegurar catálogo de productos físicos y gaming disponible
   adminStore.ensurePhysicalProductsLoaded()
+  adminStore.ensureGamingProductsLoaded()
 
   // Sincronización automática de órdenes en la nube
   adminStore.initCloudSync()
@@ -5502,6 +5552,37 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <!-- Input oculto para importación de gamingProducts.json -->
+          <input 
+            type="file" 
+            ref="gamingCatalogFileInput" 
+            accept=".json" 
+            @change="handleImportGamingCatalog" 
+            class="hidden"
+          >
+
+          <!-- Sincronización en 1 Clic desde Scraper en Vivo de Argentina Play & JDA -->
+          <button 
+            type="button"
+            @click="handleSyncGamingCatalog"
+            :disabled="isSyncingGaming"
+            class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Sincronizar en vivo catálogos y precios desde Argentina Play y Juegos Digitales Argentina"
+          >
+            <span :class="{'animate-spin inline-block': isSyncingGaming}">🔄</span>
+            <span>{{ isSyncingGaming ? 'Sincronizando Gaming...' : 'Sincronizar Proveedores Gaming' }}</span>
+          </button>
+
+          <!-- Importar JSON -->
+          <button 
+            type="button"
+            @click="triggerGamingCatalogUpload" 
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+            title="Importar gamingProducts.json generado por scraper"
+          >
+            <span>📥 Importar JSON</span>
+          </button>
+
           <button 
             type="button"
             @click="showGamingNewModal = true"

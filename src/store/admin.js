@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
+import gamingCategoriesData from '../assets/gamingCategories.json'
+import gamingProductsData from '../assets/gamingProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
@@ -502,33 +504,24 @@ export const useAdminStore = defineStore('admin', {
     // CATÁLOGO DE VIDEOJUEGOS DIGITALES PS4 / PS5 (Argentina Play y Juegos Digitales Argentina)
     gamingProducts: (() => {
       const stored = loadDb(DB_KEYS.GAMING_PRODUCTS, null)
-      if (Array.isArray(stored) && stored.length > 0) {
-        // Migración transparente: actualizar imágenes oficiales y títulos nuevos de INITIAL_GAMING_PRODUCTS
-        const merged = stored.map(s => {
-          const init = INITIAL_GAMING_PRODUCTS.find(i => i.id === s.id)
-          if (!init) return s
-          const isOldUnsplash = !s.image || (s.image.includes('unsplash.com') && !init.image.includes('unsplash.com'))
-          return {
-            ...init,
-            ...s,
-            image: isOldUnsplash ? init.image : s.image,
-            description: (s.description && s.description.length > 30) ? s.description : init.description,
-            features: (Array.isArray(s.features) && s.features.length > 0) ? s.features : init.features
-          }
-        })
-        // Añadir títulos nuevos de INITIAL_GAMING_PRODUCTS que no existan aún en stored (ej: ASTRO BOT)
-        INITIAL_GAMING_PRODUCTS.forEach(init => {
-          if (!merged.some(m => m.id === init.id)) {
-            merged.push(init)
-          }
-        })
-        saveDb(DB_KEYS.GAMING_PRODUCTS, merged)
-        return merged
+      if (Array.isArray(stored) && stored.length >= (gamingProductsData?.length || 23)) {
+        return stored
       }
-      saveDb(DB_KEYS.GAMING_PRODUCTS, INITIAL_GAMING_PRODUCTS)
-      return INITIAL_GAMING_PRODUCTS
+      const initial = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
+      saveDb(DB_KEYS.GAMING_PRODUCTS, initial)
+      return initial
     })(),
-    gamingCategories: ['Todas', 'PS5', 'PS4', 'Acción & Aventura', 'Deportes', 'Lanzamientos', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Membresías'],
+    gamingCategories: (() => {
+      const stored = loadDb(DB_KEYS.GAMING_CATEGORIES, null)
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored
+      }
+      const initial = (gamingCategoriesData && gamingCategoriesData.length > 0) 
+        ? gamingCategoriesData 
+        : ['Todas', 'PS5', 'PS4', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
+      saveDb(DB_KEYS.GAMING_CATEGORIES, initial)
+      return initial
+    })(),
     gamingProviders: GAMING_PROVIDERS
   }},
   getters: {
@@ -607,6 +600,9 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
+        saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
+      } else if (key === DB_KEYS.GAMING_CATEGORIES) {
+        saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -631,6 +627,7 @@ export const useAdminStore = defineStore('admin', {
           isPhysicalStoreVisible: this.isPhysicalStoreVisible
         })
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
+        saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
       }
     },
 
@@ -2682,6 +2679,57 @@ export const useAdminStore = defineStore('admin', {
         return true
       }
       return false
+    },
+
+    ensureGamingProductsLoaded() {
+      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23)) {
+        this.gamingProducts = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
+        this.persist(DB_KEYS.GAMING_PRODUCTS)
+      }
+      if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0) {
+        this.gamingCategories = (gamingCategoriesData && gamingCategoriesData.length > 0) 
+          ? gamingCategoriesData 
+          : ['Todas', 'PS5', 'PS4', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
+        this.persist(DB_KEYS.GAMING_CATEGORIES)
+      }
+    },
+
+    updateGamingProductsFromJson(productsList, categoriesList = null) {
+      if (Array.isArray(productsList) && productsList.length > 0) {
+        this.gamingProducts = productsList
+        this.persist(DB_KEYS.GAMING_PRODUCTS)
+
+        if (categoriesList && Array.isArray(categoriesList) && categoriesList.length > 0) {
+          this.gamingCategories = categoriesList
+          this.persist(DB_KEYS.GAMING_CATEGORIES)
+        }
+        return { success: true, count: productsList.length }
+      }
+      return { error: 'El archivo JSON no contiene una lista válida de videojuegos.' }
+    },
+
+    async syncGamingFromApi() {
+      try {
+        const res = await fetch('/api/sync-gaming')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          this.gamingProducts = data.products
+          this.persist(DB_KEYS.GAMING_PRODUCTS)
+          if (Array.isArray(data.categories) && data.categories.length > 0) {
+            this.gamingCategories = data.categories
+            this.persist(DB_KEYS.GAMING_CATEGORIES)
+          }
+          return { success: true, count: data.products.length }
+        }
+        throw new Error(data.error || 'Respuesta inválida de la API de videojuegos')
+      } catch (err) {
+        console.warn('Sync API gaming falló o entorno estático, aplicando catálogo base sincronizado...', err)
+        if (gamingProductsData && gamingProductsData.length > 0) {
+          return this.updateGamingProductsFromJson(gamingProductsData, gamingCategoriesData)
+        }
+        return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
+      }
     }
   }
 })

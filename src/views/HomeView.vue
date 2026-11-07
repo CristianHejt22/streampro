@@ -635,6 +635,7 @@ const applyRouteParams = () => {
 
 onMounted(() => {
   adminStore.ensurePhysicalProductsLoaded()
+  adminStore.ensureGamingProductsLoaded()
   adminStore.initStoreSettingsSync().catch(() => {})
   applyRouteParams()
 })

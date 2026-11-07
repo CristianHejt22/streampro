@@ -7,10 +7,35 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
+function devSyncGamingPlugin() {
+  return {
+    name: 'dev-sync-gaming',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url === '/api/sync-gaming') {
+          try {
+            const { scrapeAndSyncGamingCatalog } = await import('./scripts/sync-gaming-catalog.js')
+            const result = await scrapeAndSyncGamingCatalog()
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(result))
+          } catch (e) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: e.message }))
+          }
+          return
+        }
+        next()
+      })
+    }
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    devSyncGamingPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
