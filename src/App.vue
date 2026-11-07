@@ -35,6 +35,23 @@ const checkSavedUser = () => {
 onMounted(() => {
   checkSavedUser()
   adminStore.ensurePhysicalProductsLoaded()
+
+  // Sincronización en tiempo real entre pestañas para la visibilidad de la tienda
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key && e.key.includes('store_settings')) {
+        try {
+          const stored = JSON.parse(e.newValue || '{}')
+          if (typeof stored.isStoreVisible === 'boolean') {
+            adminStore.isStoreVisible = stored.isStoreVisible
+          }
+          if (typeof stored.isPhysicalStoreVisible === 'boolean') {
+            adminStore.isPhysicalStoreVisible = stored.isPhysicalStoreVisible
+          }
+        } catch (err) {}
+      }
+    })
+  }
 })
 
 const handleProfileSaved = (prof) => {
@@ -64,10 +81,11 @@ const isAdminUser = computed(() => {
 })
 
 const isPhysicalNavVisible = computed(() => {
-  return (adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible) || isAdminUser.value
+  return Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
 })
 
 const publicPhysicalCount = computed(() => {
+  if (!isPhysicalNavVisible.value) return 0
   return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
 })
 

@@ -1807,13 +1807,13 @@ const toggleStoreVisibility = () => {
   }
 }
 
-// GESTIÓN DE VISIBILIDAD DE TIENDA DE PRODUCTOS FÍSICOS (Mostrar u Ocultar en Navegación y Tienda)
+// GESTIÓN DE VISIBILIDAD DE TIENDA DE PRODUCTOS FÍSICOS (Mostrar u Ocultar en Navegación y Catálogo)
 const togglePhysicalStoreVisibility = () => {
   const isVisible = adminStore.togglePhysicalStoreVisibility()
   if (isVisible) {
-    toast.add('✅ Tienda de productos físicos ACTIVADA y visible en la navegación pública.', 'success')
+    toast.add('✅ Tienda de productos físicos ACTIVADA y visible en catálogo y menú público.', 'success')
   } else {
-    toast.add('⚠️ Tienda de productos físicos DESACTIVADA y oculta de la navegación pública.', 'warning')
+    toast.add('⚠️ Tienda de productos físicos DESACTIVADA y oculta del catálogo y menú público.', 'warning')
   }
 }
 
@@ -2238,9 +2238,9 @@ const deletePackageItem = (pkgId) => {
               ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40' 
               : 'bg-red-500/25 hover:bg-red-500/35 text-red-300 border-red-500/50 animate-pulse'
           ]"
-          :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está VISIBLE en la navegación. Clic para ocultarla.' : 'La tienda física está DESACTIVADA y oculta en la navegación. Clic para activarla.'"
+          :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está VISIBLE en el catálogo y menú. Clic para ocultarla.' : 'La tienda física está DESACTIVADA y oculta del catálogo y menú. Clic para activarla.'"
         >
-          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos: ACTIVA' : '📦 Físicos: DESACTIVADA' }}</span>
+          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos: ACTIVA (VISIBLE)' : '📦 Físicos: DESACTIVADA (OCULTA)' }}</span>
         </button>
         <button 
           @click="openAdminAuthModal"
@@ -2349,9 +2349,9 @@ const deletePackageItem = (pkgId) => {
               ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40' 
               : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/40 animate-pulse'
           ]"
-          :title="adminStore.isPhysicalStoreVisible ? 'Desactivar tienda de productos físicos en la navegación' : 'Activar tienda de productos físicos en la navegación'"
+          :title="adminStore.isPhysicalStoreVisible ? 'Desactivar tienda de productos físicos en el catálogo y menú' : 'Activar tienda de productos físicos en el catálogo y menú'"
         >
-          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos en Menú: ACTIVA' : '📦 Físicos en Menú: DESACTIVADA' }}</span>
+          <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos en Catálogo: ACTIVA' : '📦 Físicos en Catálogo: DESACTIVADA' }}</span>
         </button>
         <a 
           href="/" 
@@ -4244,9 +4244,9 @@ const deletePackageItem = (pkgId) => {
                 ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40' 
                 : 'bg-red-500/25 hover:bg-red-500/35 text-red-300 border-red-500/50 ring-2 ring-red-500/30 animate-pulse'
             ]"
-            :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está activa y visible en la navegación para clientes. Clic para desactivarla.' : 'La tienda física está desactivada y oculta en la navegación para clientes. Clic para activarla.'"
+            :title="adminStore.isPhysicalStoreVisible ? 'La tienda física está activa y visible en el catálogo y menú. Clic para desactivarla.' : 'La tienda física está desactivada y oculta del catálogo y menú. Clic para activarla.'"
           >
-            <span>{{ adminStore.isPhysicalStoreVisible ? '🟢 Tienda Física en Menú: ACTIVA' : '🔴 Tienda Física en Menú: DESACTIVADA' }}</span>
+            <span>{{ adminStore.isPhysicalStoreVisible ? '🟢 Tienda Física en Catálogo: ACTIVA' : '🔴 Tienda Física en Catálogo: DESACTIVADA' }}</span>
           </button>
           <button 
             type="button"

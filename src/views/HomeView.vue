@@ -25,9 +25,9 @@ const isAdminUser = computed(() => {
   return false
 })
 
-// Control de visibilidad pública de la Tienda de Productos Físicos en la navegación
+// Control de visibilidad pública de la Tienda de Productos Físicos en la navegación y catálogo
 const isPhysicalNavVisible = computed(() => {
-  return (adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible) || isAdminUser.value
+  return Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
 })
 
 // Mapeo dinámico y enriquecido de íconos para categorías del catálogo físico
@@ -496,9 +496,9 @@ const applyRouteParams = () => {
     cartStore.openDrawer()
   }
 
-  // Previsualización y apertura automática de producto físico compartido
+  // Previsualización y apertura automática de producto físico compartido (solo si tienda física está visible)
   const sharedProdId = route.query.prod || route.query.p
-  if (sharedProdId) {
+  if (sharedProdId && isPhysicalNavVisible.value) {
     clientForm.value.isSharedUrl = true
     storeSection.value = 'physical'
     const cleanId = String(sharedProdId).trim()
@@ -575,6 +575,10 @@ const confirmAddToCart = () => {
 
 // GESTIÓN DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar)
 const openPhysicalModal = (product) => {
+  if (!isPhysicalNavVisible.value) {
+    toast.add('La tienda de productos físicos se encuentra actualmente en pausa o mantenimiento.', 'warning')
+    return
+  }
   selectedPhysicalProduct.value = product
   physicalQuantity.value = 1
   if (product.variables && product.variables.length > 0) {
@@ -600,6 +604,10 @@ const selectPhysicalImage = (imgUrl) => {
 }
 
 const addPhysicalToCart = (product, qty = 1) => {
+  if (!isPhysicalNavVisible.value) {
+    toast.add('La tienda de productos físicos se encuentra actualmente en pausa o mantenimiento.', 'warning')
+    return
+  }
   if (!selectedPhysicalProduct.value && product.variables && product.variables.length > 1) {
     openPhysicalModal(product)
     return
@@ -745,6 +753,7 @@ const homeFeaturedPackages = computed(() => {
 
 // 4. Selección de Ofertas 3: Top 8 Productos Físicos con Descuento / Envío Gratis
 const homeFeaturedPhysicalDeals = computed(() => {
+  if (!isPhysicalNavVisible.value) return []
   const list = adminStore.physicalProducts || []
   const deals = list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.hasDiscount || (Number(p.priceNumeric) || 0) >= 40000))
   return deals.sort((a, b) => {
@@ -764,16 +773,19 @@ const goToCategory = (item) => {
 
 // Métricas computadas de filtros rápidos del catálogo físico
 const physicalDiscountsCount = computed(() => {
+  if (!isPhysicalNavVisible.value) return 0
   const list = adminStore.physicalProducts || []
   return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && p.hasDiscount && p.discountPercentage > 0).length
 })
 
 const physicalFreeShippingCount = computed(() => {
+  if (!isPhysicalNavVisible.value) return 0
   const list = adminStore.physicalProducts || []
   return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (Number(p.priceNumeric) || 0) >= 40000).length
 })
 
 const physicalInStockCount = computed(() => {
+  if (!isPhysicalNavVisible.value) return 0
   const list = adminStore.physicalProducts || []
   return list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (Number(p.stock) || 0) > 0).length
 })
@@ -942,6 +954,7 @@ watch([searchQuery, onlyDiscountsFilter, packagesItemsPerPage], () => {
 
 // ----------------- SECCIÓN 3: CATÁLOGO FÍSICO -----------------
 const filteredPhysicalProducts = computed(() => {
+  if (!isPhysicalNavVisible.value) return []
   const list = adminStore.physicalProducts || []
   const result = list.filter(p => {
     if (!p) return false
@@ -2094,10 +2107,15 @@ const submitOrder = async () => {
             <h4 class="text-sm font-black text-white">Entrega en 10m a 1h</h4>
             <p class="text-xs text-slate-400 leading-relaxed">Cuentas y pantallas con envío directo a tu WhatsApp y activación veloz.</p>
           </div>
-          <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+          <div v-if="isPhysicalNavVisible" class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
             <div class="text-2xl">🚚</div>
             <h4 class="text-sm font-black text-white">Envíos a Todo el País</h4>
             <p class="text-xs text-slate-400 leading-relaxed">Productos físicos con embalaje seguro y despacho con guía oficial.</p>
+          </div>
+          <div v-else class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
+            <div class="text-2xl">⚡</div>
+            <h4 class="text-sm font-black text-white">Activación Oficial</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Perfiles originales, PIN personal y soporte técnico garantizado.</p>
           </div>
           <div class="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.06] space-y-2">
             <div class="text-2xl">🛡️</div>
@@ -2669,9 +2687,9 @@ const submitOrder = async () => {
         </div>
         <div class="max-w-xl mx-auto space-y-2">
           <span class="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-mono">
-            Catálogo Físico en Mantenimiento
+            Catálogo Físico en Pausa
           </span>
-          <h3 class="text-2xl sm:text-3xl font-black text-white">Tienda de Productos Físicos en Pausa</h3>
+          <h3 class="text-2xl sm:text-3xl font-black text-white">Tienda de Productos Físicos Desactivada</h3>
           <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
             Actualmente estamos actualizando el inventario, stock y tarifas de envíos de nuestra línea de productos físicos. Mientras tanto, puedes disfrutar de nuestras suscripciones digitales y combos con entrega garantizada.
           </p>
@@ -2701,35 +2719,21 @@ const submitOrder = async () => {
             <span>Consultar por WhatsApp</span>
           </a>
         </div>
+        <!-- Si es administrador, botón de 1 clic para reactivarla -->
+        <div v-if="isAdminUser" class="pt-5 border-t border-amber-500/20 max-w-md mx-auto space-y-2">
+          <p class="text-xs text-amber-200/80 font-mono">Modo Administrador: La tienda física está oculta al público.</p>
+          <button 
+            type="button"
+            @click="adminStore.setPhysicalStoreVisibility(true); toast.add('✓ Tienda Física activada y visible en el catálogo y menú', 'success')"
+            class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>🟢</span>
+            <span>Activar Tienda Física en el Catálogo Visible</span>
+          </button>
+        </div>
       </div>
 
       <template v-else>
-        <!-- Banner de Aviso de Admin: Tienda Física Oculta al Público -->
-        <div v-if="isAdminUser && !adminStore.isPhysicalStoreVisible" class="bg-amber-950/70 border-2 border-amber-500/60 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-200 shadow-xl">
-          <div class="flex items-center gap-3.5">
-            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">
-              ⚠️
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-black text-white text-sm">Vista Previa de Administrador</span>
-                <span class="text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded border border-amber-400/30">TIENDA FÍSICA DESACTIVADA EN EL MENÚ</span>
-              </div>
-              <p class="text-xs text-amber-200/90 mt-0.5">
-                Los visitantes y clientes regulares no ven la tienda física ni sus accesos en el menú de navegación. Estás visualizando el catálogo en modo previo de edición.
-              </p>
-            </div>
-          </div>
-          <button 
-            type="button"
-            @click="adminStore.setPhysicalStoreVisibility(true); toast.add('✓ Tienda Física activada y visible en la navegación pública', 'success')"
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs transition shadow-lg shrink-0 flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>🟢</span>
-            <span>Activar Tienda Física en el Menú</span>
-          </button>
-        </div>
-
         <!-- Header de Sección Oficial -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-xl">
         <div class="flex items-center gap-3.5">

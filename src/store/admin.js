@@ -586,6 +586,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
+        saveDb(DB_KEYS.STORE_SETTINGS, {
+          isStoreVisible: this.isStoreVisible,
+          isPhysicalStoreVisible: this.isPhysicalStoreVisible
+        })
       }
     },
 
