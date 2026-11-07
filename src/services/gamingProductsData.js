@@ -785,7 +785,7 @@ export const INITIAL_GAMING_PRODUCTS = [
 
 // Función de procesamiento y arbitraje:
 // Calcula el MAYOR PRECIO entre ambos proveedores para Primaria y Secundaria,
-// e identifica el proveedor que fija el precio y el proveedor con mayor margen.
+// e identifica el proveedor que fija el precio y el proveedor con mayor costo ("Colocar solo el de un proveedor visible, los mas altos en costo").
 export function processGamingProduct(product) {
   const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0 }
   const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0 }
@@ -799,21 +799,38 @@ export function processGamingProduct(product) {
   const primaryPriceLeaderKey = (Number(pArg.primaryPrice) >= Number(pJda.primaryPrice)) ? 'argentinaplay' : 'juegosdigitalesargentina'
   const secondaryPriceLeaderKey = (Number(pArg.secondaryPrice) >= Number(pJda.secondaryPrice)) ? 'argentinaplay' : 'juegosdigitalesargentina'
 
+  // Costos de adquisición
+  const costPrimaryArg = Number(pArg.costPrimary) || (Number(pArg.primaryPrice) * 0.7) || 0
+  const costPrimaryJda = Number(pJda.costPrimary) || (Number(pJda.primaryPrice) * 0.7) || 0
+  const costSecondaryArg = Number(pArg.costSecondary) || (Number(pArg.secondaryPrice) * 0.7) || 0
+  const costSecondaryJda = Number(pJda.costSecondary) || (Number(pJda.secondaryPrice) * 0.7) || 0
+
+  // REGLA SOLICITADA POR EL USUARIO:
+  // "Colocar solo el de un proveedor visible, los mas altos en costo."
+  // Se identifica el proveedor con mayor costo entre ambos para que sea el único visible
+  const totalCostArg = costPrimaryArg + costSecondaryArg
+  const totalCostJda = costPrimaryJda + costSecondaryJda
+  const visibleProviderKey = (totalCostArg >= totalCostJda) ? 'argentinaplay' : 'juegosdigitalesargentina'
+  const visibleProvider = visibleProviderKey === 'argentinaplay' ? pArg : pJda
+  const visibleProviderMeta = GAMING_PROVIDERS[visibleProviderKey] || {
+    id: visibleProviderKey,
+    name: visibleProviderKey === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina',
+    shortName: visibleProviderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA',
+    badge: visibleProviderKey === 'argentinaplay' ? '🇦🇷 Argentina Play Oficial' : '🎮 Juegos Digitales Arg (JDA)',
+    tagColor: visibleProviderKey === 'argentinaplay' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+  }
+
   // Proveedor óptimo de compra (menor costo para mayor ganancia neta para StreamePro)
-  const costPrimaryArg = Number(pArg.costPrimary) || Infinity
-  const costPrimaryJda = Number(pJda.costPrimary) || Infinity
   const bestFulfillmentPrimary = costPrimaryArg <= costPrimaryJda ? 'argentinaplay' : 'juegosdigitalesargentina'
   const bestMarginPrimary = effectivePrimaryPrice - Math.min(costPrimaryArg, costPrimaryJda)
 
-  const costSecondaryArg = Number(pArg.costSecondary) || Infinity
-  const costSecondaryJda = Number(pJda.costSecondary) || Infinity
   const bestFulfillmentSecondary = costSecondaryArg <= costSecondaryJda ? 'argentinaplay' : 'juegosdigitalesargentina'
   const bestMarginSecondary = effectiveSecondaryPrice - Math.min(costSecondaryArg, costSecondaryJda)
 
   // Similitud entre catálogos:
   // Diferencia de precio en $ y %
-  const diffPrimary = Math.abs(pArg.primaryPrice - pJda.primaryPrice)
-  const diffSecondary = Math.abs(pArg.secondaryPrice - pJda.secondaryPrice)
+  const diffPrimary = Math.abs((Number(pArg.primaryPrice) || 0) - (Number(pJda.primaryPrice) || 0))
+  const diffSecondary = Math.abs((Number(pArg.secondaryPrice) || 0) - (Number(pJda.secondaryPrice) || 0))
 
   return {
     ...product,
@@ -823,11 +840,23 @@ export function processGamingProduct(product) {
     primaryPriceLeaderName: 'StreamePro',
     secondaryPriceLeaderKey,
     secondaryPriceLeaderName: 'StreamePro',
+    // Proveedor visible único (el de mayor costo):
+    visibleProviderKey,
+    visibleProviderName: visibleProviderMeta.name,
+    visibleProviderShortName: visibleProviderMeta.shortName,
+    visibleProviderBadge: visibleProviderMeta.badge,
+    visibleProviderTagColor: visibleProviderMeta.tagColor,
+    visibleProvider,
+    visibleCostPrimary: visibleProvider.costPrimary,
+    visibleCostSecondary: visibleProvider.costSecondary,
+    visiblePrimaryPrice: visibleProvider.primaryPrice,
+    visibleSecondaryPrice: visibleProvider.secondaryPrice,
+    visibleProviderUrl: visibleProvider.providerUrl,
     bestFulfillmentPrimary,
-    bestFulfillmentPrimaryName: GAMING_PROVIDERS[bestFulfillmentPrimary].name,
+    bestFulfillmentPrimaryName: GAMING_PROVIDERS[bestFulfillmentPrimary]?.name || bestFulfillmentPrimary,
     bestMarginPrimary: Math.max(0, bestMarginPrimary),
     bestFulfillmentSecondary,
-    bestFulfillmentSecondaryName: GAMING_PROVIDERS[bestFulfillmentSecondary].name,
+    bestFulfillmentSecondaryName: GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
     bestMarginSecondary: Math.max(0, bestMarginSecondary),
     diffPrimary,
     diffSecondary,

@@ -430,7 +430,7 @@ watch(selectedPackageId, (newId) => {
         bullet2.value = `✓ ${pkg.services[1].platform} (${pkg.services[1].planLabel})`
         bullet3.value = pkg.services[2] 
           ? `✓ ${pkg.services[2].platform} (${pkg.services[2].planLabel})`
-          : 'Garantía Total 24/7 & Entrega Inmediata'
+          : 'Garantía Total 24/7 & Entrega 60/90min'
       }
     }
   }
@@ -542,7 +542,7 @@ const syncGamingFlyer = () => {
   customPrice.value = isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice
   customOriginalPrice.value = Math.round((isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice) * 1.35)
   bullet2.value = `Descarga directa desde ${storeName}`
-  bullet3.value = 'Garantía oficial y entrega inmediata 24/7'
+  bullet3.value = 'Garantía oficial y entrega en 60 a 90 min 24/7'
 }
 
 watch([selectedGamingId, selectedGamingLicense, selectedGamingPlatform], () => {
@@ -566,7 +566,7 @@ watch(flyerProductType, (newType) => {
         bullet2.value = `✓ ${pkg.services[1].platform} (${pkg.services[1].planLabel})`
         bullet3.value = pkg.services[2] 
           ? `✓ ${pkg.services[2].platform} (${pkg.services[2].planLabel})`
-          : 'Garantía Total 24/7 & Entrega Inmediata'
+          : 'Garantía Total 24/7 & Entrega 60/90min'
       }
     }
   } else if (newType === 'physical') {
@@ -1188,13 +1188,13 @@ function renderCanvasFlyerBlob() {
           ? '🚚 Envío a Todo el País · Garantía Oficial 100%'
           : flyerProductType.value === 'gaming'
           ? (selectedGamingPlatform.value.includes('PC') || selectedGamingPlatform.value.includes('Steam')
-              ? '🔑 Clave Oficial Steam · Activación Inmediata · Garantía 100%'
+              ? '🔑 Clave Oficial Steam · Entrega 60/90min · Garantía 100%'
               : selectedGamingPlatform.value.includes('Switch')
-              ? '🎮 Licencia Oficial Nintendo · Entrega Inmediata · Garantía 100%'
+              ? '🎮 Licencia Oficial Nintendo · Entrega 60/90min · Garantía 100%'
               : selectedGamingPlatform.value.includes('Xbox')
-              ? '🎮 Licencia Oficial Xbox · Entrega Inmediata · Garantía 100%'
-              : '🎮 Licencia Oficial PlayStation · Entrega Inmediata · Garantía 100%')
-          : '⚡ Entrega Inmediata · Garantía Oficial 100%'
+              ? '🎮 Licencia Oficial Xbox · Entrega 60/90min · Garantía 100%'
+              : '🎮 Licencia Oficial PlayStation · Entrega 60/90min · Garantía 100%')
+          : '⚡ Entrega 60/90min · Garantía Oficial 100%'
 
         if (hasOrig) {
           ctx.font = `bold ${isSquare ? 15 : 21}px sans-serif`
@@ -2324,7 +2324,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[7px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
@@ -2394,7 +2394,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
@@ -2463,7 +2463,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
@@ -2531,7 +2531,7 @@ const shareToWhatsAppStatus = () => {
                       </div>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="space-y-0.5 text-[8px] text-slate-200">

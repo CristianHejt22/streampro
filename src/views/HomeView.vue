@@ -349,7 +349,7 @@ const buyGamingViaWhatsApp = (game, licenseType = null) => {
     `🎮 *Juego:* ${game.title} (${game.platform})\n` +
     `🔑 *Modalidad:* ${modalityText}\n` +
     `💰 *Precio:* $${price?.toLocaleString()} ARS\n\n` +
-    `¿Tienen entrega inmediata para ${networkName}?`
+    `¿Tienen entrega en 60/90min para ${networkName}?`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
@@ -3114,7 +3114,7 @@ const submitOrder = async () => {
                   </div>
                   <div class="text-right">
                     <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 block mb-0.5">
-                      ✓ Entrega Inmediata
+                      ✓ Entrega 60/90min
                     </span>
                     <span class="text-[9px] text-slate-400 font-mono">{{ getGameStoreLabel(game) }}</span>
                   </div>
@@ -3123,7 +3123,7 @@ const submitOrder = async () => {
                 <!-- Garantía Oficial StreamePro -->
                 <div class="flex items-center justify-between text-[9px] bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-400">
                   <span class="text-emerald-400 font-bold flex items-center gap-1">
-                    <span>✓</span> Garantía de Entrega Inmediata
+                    <span>✓</span> Garantía de Entrega 60/90min
                   </span>
                   <span class="text-indigo-300 font-bold">Líder: StreamePro</span>
                 </div>
@@ -5080,7 +5080,7 @@ const submitOrder = async () => {
               <span class="font-black text-white text-xs">Garantía StreamePro Oficial</span>
               <span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">Líder: StreamePro</span>
             </div>
-            <span class="text-emerald-400 font-mono font-bold text-[11px]">✓ Garantía de Entrega Inmediata</span>
+            <span class="text-emerald-400 font-mono font-bold text-[11px]">✓ Entrega 60/90min</span>
           </div>
           <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/80 text-[11px] text-slate-300 space-y-1.5">
             <div class="flex items-center gap-2">

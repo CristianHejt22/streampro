@@ -581,11 +581,11 @@ export async function scrapeAndSyncGamingCatalog() {
       subcategory: ap.subcategory || 'Aventura Cinematográfica',
       badge: ap.badge || inferBadge(ap.title, ap.title),
       image: ap.image || (jdaMatch ? jdaMatch.image : 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg'),
-      description: `Disfruta de ${ap.title} en formato digital oficial. Descarga directa desde PlayStation Store con entrega instantánea de credenciales y soporte garantizado 24/7 de StreamePro.`,
+      description: `Disfruta de ${ap.title} en formato digital oficial. Descarga directa desde PlayStation Store con entrega de credenciales en 60 a 90 min y soporte garantizado 24/7 de StreamePro.`,
       features: [
         'Audio y Textos en Español Latino',
         'Licencia 100% Oficial PlayStation Store',
-        'Entrega inmediata de credenciales',
+        'Entrega de credenciales en 60 a 90 min',
         'Garantía total de activación y soporte 24/7'
       ],
       providers: {
@@ -666,11 +666,11 @@ export async function scrapeAndSyncGamingCatalog() {
       subcategory: jda.subcategory || 'Aventura Cinematográfica',
       badge: jda.badge || inferBadge(jda.title, jda.title),
       image: jda.image || 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
-      description: `Disfruta de ${jda.title} en formato digital oficial. Descarga directa desde PlayStation Store con entrega instantánea de credenciales y soporte garantizado.`,
+      description: `Disfruta de ${jda.title} en formato digital oficial. Descarga directa desde PlayStation Store con entrega de credenciales en 60 a 90 min y soporte garantizado.`,
       features: [
         'Audio y Textos en Español Latino',
         'Licencia 100% Oficial PlayStation Store',
-        'Entrega inmediata de credenciales',
+        'Entrega de credenciales en 60 a 90 min',
         'Garantía total de activación y soporte 24/7'
       ],
       providers: {

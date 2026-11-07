@@ -169,10 +169,11 @@ export const useCartStore = defineStore('cart', {
       const effectivePrice = isPrimary ? (game.effectivePrimaryPrice || 25000) : (game.effectiveSecondaryPrice || 12000)
       const priceLeaderKey = 'streamepro'
       const priceLeaderName = 'StreamePro'
-      const bestFulfillmentKey = isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary
-      const bestFulfillmentName = isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName
+      // REGLA: Usar el proveedor visible (el de mayor costo asignado)
+      const assignedProviderKey = game.visibleProviderKey || (isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary)
+      const assignedProviderName = game.visibleProviderName || (isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName)
       
-      const providerData = game.providers?.[bestFulfillmentKey] || {}
+      const providerData = game.providers?.[assignedProviderKey] || {}
       const providerCost = isPrimary ? (providerData.costPrimary || Math.round(effectivePrice * 0.7)) : (providerData.costSecondary || Math.round(effectivePrice * 0.7))
 
       const cartItemKey = `gaming_${game.id}_${licenseType}`
@@ -203,8 +204,8 @@ export const useCartStore = defineStore('cart', {
           resellerProfit: Math.max(0, effectivePrice - providerCost),
           image: game.image,
           priceFormatted: `$${effectivePrice.toLocaleString()} ARS`,
-          providerKey: bestFulfillmentKey,
-          providerName: bestFulfillmentName,
+          providerKey: assignedProviderKey,
+          providerName: assignedProviderName,
           priceLeaderKey: priceLeaderKey,
           priceLeaderName: priceLeaderName,
           providerUrl: providerData.providerUrl || '',

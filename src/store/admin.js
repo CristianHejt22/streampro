@@ -2698,7 +2698,8 @@ export const useAdminStore = defineStore('admin', {
     ensureGamingProductsLoaded() {
       const hasCorruptData = Array.isArray(this.gamingProducts) && this.gamingProducts.some(g => 
         (typeof g.title === 'string' && (g.title.includes('&#') || g.title.includes('&amp;') || g.title.includes('…') || g.title.endsWith('...'))) ||
-        (typeof g.description === 'string' && g.description.includes('&#'))
+        (typeof g.description === 'string' && (g.description.includes('&#') || g.description.includes('inmediata'))) ||
+        !g.visibleProviderKey
       )
 
       if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {

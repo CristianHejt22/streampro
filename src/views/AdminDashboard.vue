@@ -842,6 +842,7 @@ const gamingAdminSearch = ref('')
 const gamingAdminCategoryFilter = ref('Todas')
 const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
+const onlyHighestCostProvider = ref(true)
 
 watch(gamingAdminCategoryFilter, () => {
   gamingAdminSubcategoryFilter.value = 'Todas'
@@ -985,7 +986,7 @@ const saveNewGamingProduct = () => {
     badge: gamingNewForm.value.badge || '🔥 NUEVO',
     image: gamingNewForm.value.image || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
     description: gamingNewForm.value.description || 'Juego digital oficial para consolas PlayStation Network.',
-    features: ['Audio Español Latino', 'Entrega Inmediata', 'Garantía Total'],
+    features: ['Audio Español Latino', 'Entrega 60/90min', 'Garantía Total'],
     providers: {
       argentinaplay: {
         providerName: 'Argentina Play',
@@ -5713,7 +5714,17 @@ const deletePackageItem = (pkgId) => {
             <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
           </div>
 
-          <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+          <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+            <!-- Toggle: Proveedor Único Visible (Mayor Costo) -->
+            <button 
+              type="button" 
+              @click="onlyHighestCostProvider = !onlyHighestCostProvider"
+              :class="['px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer', onlyHighestCostProvider ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white']"
+              title="Alternar entre mostrar únicamente el proveedor con mayor costo o ambos proveedores"
+            >
+              <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único Visible (Mayor Costo)' : '👁️ Ver Ambos Proveedores' }}</span>
+            </button>
+
             <select v-model="gamingAdminCategoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
               <option v-for="cat in adminStore.gamingCategories" :key="cat" :value="cat">{{ cat }}</option>
             </select>
@@ -5736,12 +5747,17 @@ const deletePackageItem = (pkgId) => {
             <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th class="p-3.5">Videojuego & Plataforma</th>
-                <th class="p-3.5 text-blue-300 bg-blue-950/20 border-x border-slate-800">🇦🇷 Argentina Play</th>
-                <th class="p-3.5 text-amber-300 bg-amber-950/20 border-r border-slate-800">🎮 Juegos Digitales Arg</th>
+                <th v-if="onlyHighestCostProvider" class="p-3.5 text-indigo-300 bg-indigo-950/20 border-x border-slate-800">
+                  🏢 Proveedor Visible (Mayor Costo)
+                </th>
+                <template v-else>
+                  <th class="p-3.5 text-blue-300 bg-blue-950/20 border-x border-slate-800">🇦🇷 Argentina Play</th>
+                  <th class="p-3.5 text-amber-300 bg-amber-950/20 border-r border-slate-800">🎮 Juegos Digitales Arg</th>
+                </template>
                 <th class="p-3.5 text-emerald-400 bg-emerald-950/30 border-r border-slate-800">
                   ⭐️ Precio Plataforma (Mayor Precio)
                 </th>
-                <th class="p-3.5 text-purple-300">Margen & Proveedor Recomendado</th>
+                <th class="p-3.5 text-purple-300">Margen & Ganancia</th>
                 <th class="p-3.5 text-right">Acciones</th>
               </tr>
             </thead>
@@ -5762,41 +5778,72 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </td>
 
-                <!-- Columna Argentina Play -->
-                <td class="p-3.5 bg-blue-950/10 border-x border-slate-800 font-mono">
-                  <div class="space-y-0.5">
-                    <div class="flex items-center justify-between gap-2">
+                <!-- Columna Proveedor Único Visible (El de Mayor Costo) -->
+                <td v-if="onlyHighestCostProvider" class="p-3.5 bg-slate-900/60 border-x border-slate-800 font-mono">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-1">
+                      <span :class="['text-[9px] font-bold px-2 py-0.5 rounded-full border', game.visibleProviderTagColor]">
+                        {{ game.visibleProviderBadge }}
+                      </span>
+                      <span class="text-[8px] bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.2 rounded border border-indigo-500/30">
+                        Mayor Costo
+                      </span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-1">
                       <span class="text-slate-400 text-[10px]">Primaria:</span>
-                      <strong class="text-white font-black">${game.providers?.argentinaplay?.primaryPrice?.toLocaleString()}</strong>
+                      <div class="text-right">
+                        <strong class="text-white font-black">${{ (game.visibleProvider?.primaryPrice || game.visiblePrimaryPrice)?.toLocaleString() }}</strong>
+                        <span class="text-[9px] text-slate-400 block">Costo: ${{ (game.visibleProvider?.costPrimary || game.visibleCostPrimary)?.toLocaleString() }}</span>
+                      </div>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-800/80">
                       <span class="text-slate-400 text-[10px]">Secundaria:</span>
-                      <span class="text-blue-300">${game.providers?.argentinaplay?.secondaryPrice?.toLocaleString()}</span>
-                    </div>
-                    <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
-                      <span>Costo Prim:</span>
-                      <span>${game.providers?.argentinaplay?.costPrimary?.toLocaleString()}</span>
+                      <div class="text-right">
+                        <span class="text-indigo-300 font-bold">${{ (game.visibleProvider?.secondaryPrice || game.visibleSecondaryPrice)?.toLocaleString() }}</span>
+                        <span class="text-[9px] text-slate-400 block">Costo: ${{ (game.visibleProvider?.costSecondary || game.visibleCostSecondary)?.toLocaleString() }}</span>
+                      </div>
                     </div>
                   </div>
                 </td>
 
-                <!-- Columna Juegos Digitales Argentina -->
-                <td class="p-3.5 bg-amber-950/10 border-r border-slate-800 font-mono">
-                  <div class="space-y-0.5">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="text-slate-400 text-[10px]">Primaria:</span>
-                      <strong class="text-white font-black">${game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString()}</strong>
+                <!-- Columnas Separadas Si Alterna a "Ver Ambos" -->
+                <template v-else>
+                  <!-- Columna Argentina Play -->
+                  <td class="p-3.5 bg-blue-950/10 border-x border-slate-800 font-mono">
+                    <div class="space-y-0.5">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 text-[10px]">Primaria:</span>
+                        <strong class="text-white font-black">${{ game.providers?.argentinaplay?.primaryPrice?.toLocaleString() }}</strong>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                        <span class="text-blue-300">${{ game.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</span>
+                      </div>
+                      <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
+                        <span>Costo Prim:</span>
+                        <span>${{ game.providers?.argentinaplay?.costPrimary?.toLocaleString() }}</span>
+                      </div>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="text-slate-400 text-[10px]">Secundaria:</span>
-                      <span class="text-amber-300">${game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString()}</span>
+                  </td>
+
+                  <!-- Columna Juegos Digitales Argentina -->
+                  <td class="p-3.5 bg-amber-950/10 border-r border-slate-800 font-mono">
+                    <div class="space-y-0.5">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 text-[10px]">Primaria:</span>
+                        <strong class="text-white font-black">${{ game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }}</strong>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                        <span class="text-amber-300">${{ game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</span>
+                      </div>
+                      <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
+                        <span>Costo Prim:</span>
+                        <span>${{ game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString() }}</span>
+                      </div>
                     </div>
-                    <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
-                      <span>Costo Prim:</span>
-                      <span>${game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </td>
+                  </td>
+                </template>
 
                 <!-- PRECIO EN PLATAFORMA (MAYOR PRECIO) -->
                 <td class="p-3.5 bg-emerald-950/20 border-r border-slate-800 font-mono">
@@ -5804,18 +5851,18 @@ const deletePackageItem = (pkgId) => {
                     <div class="flex items-center justify-between gap-2">
                       <span class="text-slate-400 text-[10px]">Primaria:</span>
                       <div class="text-right">
-                        <strong class="text-emerald-400 text-sm font-black">${game.effectivePrimaryPrice?.toLocaleString()}</strong>
+                        <strong class="text-emerald-400 text-sm font-black">${{ game.effectivePrimaryPrice?.toLocaleString() }}</strong>
                         <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
-                          Líder: {{ game.primaryPriceLeaderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA' }}
+                          Líder: StreamePro
                         </span>
                       </div>
                     </div>
                     <div class="flex items-center justify-between gap-2">
                       <span class="text-slate-400 text-[10px]">Secundaria:</span>
                       <div class="text-right">
-                        <strong class="text-emerald-300 text-xs font-bold">${game.effectiveSecondaryPrice?.toLocaleString()}</strong>
+                        <strong class="text-emerald-300 text-xs font-bold">${{ game.effectiveSecondaryPrice?.toLocaleString() }}</strong>
                         <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
-                          Líder: {{ game.secondaryPriceLeaderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA' }}
+                          Líder: StreamePro
                         </span>
                       </div>
                     </div>
@@ -5828,7 +5875,7 @@ const deletePackageItem = (pkgId) => {
                     <div>
                       <span class="text-[9px] text-slate-400 block">Comprar Primaria en:</span>
                       <span class="font-bold text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</span>
-                      <span class="text-[10px] text-emerald-400 block font-black">+${game.bestMarginPrimary?.toLocaleString()} ganancia</span>
+                      <span class="text-[10px] text-emerald-400 block font-black">+${{ game.bestMarginPrimary?.toLocaleString() }} ganancia</span>
                     </div>
                     <div class="pt-0.5 border-t border-slate-800/80">
                       <span class="text-[9px] text-slate-400 block">Comprar Secundaria en:</span>
@@ -5847,18 +5894,11 @@ const deletePackageItem = (pkgId) => {
                     ✏️ Editar
                   </button>
                   <a 
-                    :href="game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/'" 
+                    :href="game.visibleProviderUrl || (game.visibleProviderKey === 'argentinaplay' ? (game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/') : (game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'))" 
                     target="_blank"
-                    class="block text-[10px] text-blue-400 hover:underline"
+                    class="block text-[10px] text-indigo-400 hover:underline"
                   >
-                    ArgPlay ↗
-                  </a>
-                  <a 
-                    :href="game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'" 
-                    target="_blank"
-                    class="block text-[10px] text-amber-400 hover:underline"
-                  >
-                    JDA ↗
+                    Comprar en {{ game.visibleProviderShortName || 'Proveedor' }} ↗
                   </a>
                 </td>
               </tr>
@@ -5902,13 +5942,13 @@ const deletePackageItem = (pkgId) => {
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
               <div>
                 <span class="text-[10px] text-slate-400 block">Primaria:</span>
-                <strong class="text-white">${game.providers?.argentinaplay?.primaryPrice?.toLocaleString()}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.argentinaplay?.costPrimary?.toLocaleString()}</span>
+                <strong class="text-white">${{ game.providers?.argentinaplay?.primaryPrice?.toLocaleString() }}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.argentinaplay?.costPrimary?.toLocaleString() }}</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-400 block">Secundaria:</span>
-                <strong class="text-blue-300">${game.providers?.argentinaplay?.secondaryPrice?.toLocaleString()}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.argentinaplay?.costSecondary?.toLocaleString()}</span>
+                <strong class="text-blue-300">${{ game.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.argentinaplay?.costSecondary?.toLocaleString() }}</span>
               </div>
             </div>
             <div class="flex gap-2">
@@ -5958,13 +5998,13 @@ const deletePackageItem = (pkgId) => {
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
               <div>
                 <span class="text-[10px] text-slate-400 block">Primaria:</span>
-                <strong class="text-white">${game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString()}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString()}</span>
+                <strong class="text-white">${{ game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString() }}</span>
               </div>
               <div>
                 <span class="text-[10px] text-slate-400 block">Secundaria:</span>
-                <strong class="text-amber-300">${game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString()}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.juegosdigitalesargentina?.costSecondary?.toLocaleString()}</span>
+                <strong class="text-amber-300">${{ game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.juegosdigitalesargentina?.costSecondary?.toLocaleString() }}</span>
               </div>
             </div>
             <div class="flex gap-2">
