@@ -44,7 +44,9 @@ export const DB_KEYS = {
   REGISTERED_USERS: 'registered_users',
   TELEGRAM_CONFIG: 'telegram_config',
   FIREBASE_CONFIG: 'firebase_config',
-  STORE_SETTINGS: 'store_settings'
+  STORE_SETTINGS: 'store_settings',
+  GAMING_PRODUCTS: 'gaming_products',
+  GAMING_ORDERS: 'gaming_orders'
 }
 
 export function loadDb(key, defaultValue) {

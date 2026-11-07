@@ -27,6 +27,12 @@ const router = createRouter({
       component: HomeView
     },
     {
+      path: '/juegos',
+      alias: ['/gaming', '/videojuegos', '/ps5', '/ps4', '/playstation'],
+      name: 'gaming',
+      component: HomeView
+    },
+    {
       path: '/tienda',
       alias: ['/catalogo', '/productos', '/p'],
       name: 'physical',

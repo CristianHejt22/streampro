@@ -834,6 +834,177 @@ const openUserVault = (user) => {
 
 const showFlyerModal = ref(false)
 
+// ==========================================
+// GESTIÓN DE PROVEEDORES GAMING (ARGENTINA PLAY & JDA)
+// ==========================================
+const gamingAdminSubTab = ref('comparison') // 'comparison' | 'argentinaplay' | 'juegosdigitalesargentina' | 'orders'
+const gamingAdminSearch = ref('')
+const gamingAdminCategoryFilter = ref('Todas')
+const gamingAdminPlatformFilter = ref('ALL')
+
+const showGamingPriceEditModal = ref(false)
+const showGamingNewModal = ref(false)
+const editingGamingProduct = ref(null)
+const gamingEditForm = ref({
+  id: '',
+  title: '',
+  platform: 'PS4 / PS5',
+  category: 'Acción & Aventura',
+  arg_primaryPrice: 0,
+  arg_secondaryPrice: 0,
+  arg_costPrimary: 0,
+  arg_costSecondary: 0,
+  jda_primaryPrice: 0,
+  jda_secondaryPrice: 0,
+  jda_costPrimary: 0,
+  jda_costSecondary: 0
+})
+
+const gamingNewForm = ref({
+  title: '',
+  platform: 'PS4 / PS5',
+  category: 'Acción & Aventura',
+  badge: '🔥 LANZAMIENTO',
+  image: '',
+  description: '',
+  arg_primaryPrice: 28000,
+  arg_secondaryPrice: 14000,
+  arg_costPrimary: 20000,
+  arg_costSecondary: 10000,
+  jda_primaryPrice: 29900,
+  jda_secondaryPrice: 13500,
+  jda_costPrimary: 21000,
+  jda_costSecondary: 9500
+})
+
+const filteredGamingForAdmin = computed(() => {
+  const list = adminStore.processedGamingProducts || []
+  return list.filter(game => {
+    const matchesCat = gamingAdminCategoryFilter.value === 'Todas' || game.category === gamingAdminCategoryFilter.value
+    const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || game.platform.includes(gamingAdminPlatformFilter.value)
+    const q = gamingAdminSearch.value.toLowerCase().trim()
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q)
+    return matchesCat && matchesPlatform && matchesQ
+  })
+})
+
+const openGamingPriceEdit = (game) => {
+  editingGamingProduct.value = game
+  const pArg = game.providers?.argentinaplay || {}
+  const pJda = game.providers?.juegosdigitalesargentina || {}
+  gamingEditForm.value = {
+    id: game.id,
+    title: game.title,
+    platform: game.platform,
+    category: game.category,
+    arg_primaryPrice: pArg.primaryPrice || 0,
+    arg_secondaryPrice: pArg.secondaryPrice || 0,
+    arg_costPrimary: pArg.costPrimary || 0,
+    arg_costSecondary: pArg.costSecondary || 0,
+    jda_primaryPrice: pJda.primaryPrice || 0,
+    jda_secondaryPrice: pJda.secondaryPrice || 0,
+    jda_costPrimary: pJda.costPrimary || 0,
+    jda_costSecondary: pJda.costSecondary || 0
+  }
+  showGamingPriceEditModal.value = true
+}
+
+const saveGamingPriceEdit = () => {
+  if (!editingGamingProduct.value) return
+  const game = adminStore.gamingProducts.find(g => g.id === editingGamingProduct.value.id)
+  if (game) {
+    if (!game.providers) game.providers = {}
+    if (!game.providers.argentinaplay) game.providers.argentinaplay = { providerName: 'Argentina Play', providerUrl: 'https://www.argentinaplay.com.ar/' }
+    if (!game.providers.juegosdigitalesargentina) game.providers.juegosdigitalesargentina = { providerName: 'Juegos Digitales Argentina', providerUrl: 'https://juegosdigitalesargentina.com/' }
+
+    game.providers.argentinaplay.primaryPrice = Number(gamingEditForm.value.arg_primaryPrice) || 0
+    game.providers.argentinaplay.secondaryPrice = Number(gamingEditForm.value.arg_secondaryPrice) || 0
+    game.providers.argentinaplay.costPrimary = Number(gamingEditForm.value.arg_costPrimary) || 0
+    game.providers.argentinaplay.costSecondary = Number(gamingEditForm.value.arg_costSecondary) || 0
+
+    game.providers.juegosdigitalesargentina.primaryPrice = Number(gamingEditForm.value.jda_primaryPrice) || 0
+    game.providers.juegosdigitalesargentina.secondaryPrice = Number(gamingEditForm.value.jda_secondaryPrice) || 0
+    game.providers.juegosdigitalesargentina.costPrimary = Number(gamingEditForm.value.jda_costPrimary) || 0
+    game.providers.juegosdigitalesargentina.costSecondary = Number(gamingEditForm.value.jda_costSecondary) || 0
+
+    adminStore.persist('gaming_products')
+    toast.add(`✓ Precios actualizados para "${game.title}". La plataforma ajustó automáticamente el mayor precio.`, 'success')
+  }
+  showGamingPriceEditModal.value = false
+}
+
+const saveNewGamingProduct = () => {
+  if (!gamingNewForm.value.title.trim()) {
+    toast.add('Ingresa el título del videojuego', 'error')
+    return
+  }
+  const newGame = {
+    id: `GAME-${Date.now().toString().slice(-4)}`,
+    title: gamingNewForm.value.title.trim(),
+    slug: gamingNewForm.value.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+    platform: gamingNewForm.value.platform,
+    category: gamingNewForm.value.category,
+    badge: gamingNewForm.value.badge || '🔥 NUEVO',
+    image: gamingNewForm.value.image || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
+    description: gamingNewForm.value.description || 'Juego digital oficial para consolas PlayStation Network.',
+    features: ['Audio Español Latino', 'Entrega Inmediata', 'Garantía Total'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: Number(gamingNewForm.value.arg_primaryPrice) || 0,
+        secondaryPrice: Number(gamingNewForm.value.arg_secondaryPrice) || 0,
+        costPrimary: Number(gamingNewForm.value.arg_costPrimary) || 0,
+        costSecondary: Number(gamingNewForm.value.arg_costSecondary) || 0,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: Number(gamingNewForm.value.jda_primaryPrice) || 0,
+        secondaryPrice: Number(gamingNewForm.value.jda_secondaryPrice) || 0,
+        costPrimary: Number(gamingNewForm.value.jda_costPrimary) || 0,
+        costSecondary: Number(gamingNewForm.value.jda_costSecondary) || 0,
+        stock: 'Inmediato'
+      }
+    }
+  }
+
+  adminStore.addGamingProduct(newGame)
+  toast.add(`✓ Videojuego "${newGame.title}" agregado exitosamente a ambos proveedores`, 'success')
+  showGamingNewModal.value = false
+  gamingNewForm.value.title = ''
+}
+
+const sendWhatsAppGameDelivery = (order) => {
+  const phone = formatWaPhone(order.customerPhone)
+  const isPrim = order.licenseType === 'primary' || (order.planLabel && order.planLabel.includes('Primaria'))
+  const provName = order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina')
+  const msg = `¡Hola ${order.customerName || 'Gamer'}! 🎮 Tu juego digital está listo para jugar en *StreamePro*:
+
+` +
+    `🎯 *Juego:* ${order.gameTitle || order.platform || 'Juego PlayStation'}
+` +
+    `🔑 *Modalidad:* ${isPrim ? '⭐️ Cuenta Primaria (Juegas con tu usuario)' : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)'}
+` +
+    `🏢 *Proveedor Asignado:* ${provName}
+
+` +
+    `📋 *Instrucciones de Instalación:*
+` +
+    `1. Enciende tu consola PS4/PS5 y crea un Nuevo Usuario.
+` +
+    `2. Inicia sesión con el correo y contraseña que te enviamos a continuación.
+` +
+    `3. ${isPrim ? 'Activa la consola como Consola Principal y descarga el juego desde la biblioteca. ¡Luego cámbiate a tu usuario personal y juega con tus propios trofeos!' : 'Descarga el juego y disfrútalo desde este usuario con conexión a internet.'}
+
+` +
+    `¿Confirmas recepción para enviarte credenciales?`
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 // RECORDATORIOS PERSUASIVOS DE RENOVACIÓN POR WHATSAPP
 const getClientExpiryDays = (expiryStr) => {
   if (!expiryStr) return 999
@@ -2426,6 +2597,15 @@ const deletePackageItem = (pkgId) => {
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'packages' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
           🎁 Paquetes & Ofertas ({{ adminStore.packages.length }})
+        </button>
+        <button 
+          @click="adminTab = 'gaming'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+        >
+          🎮 Proveedores Gaming ({{ adminStore.gamingProducts.length }})
+          <span v-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
+            {{ adminStore.gamingOrders.length }}
+          </span>
         </button>
         <button 
           @click="adminTab = 'bank'"
@@ -5286,6 +5466,590 @@ const deletePackageItem = (pkgId) => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ==================== PESTAÑA: GESTIÓN DE PROVEEDORES GAMING (ARGENTINA PLAY & JDA) ==================== -->
+    <div v-if="adminTab === 'gaming'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-8">
+      <!-- Encabezado de Sección Oficial de Proveedores Gaming -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-800">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/20 font-black">
+            🎮
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-2xl font-black text-white">Proveedores Gaming: Argentina Play & JDA</h2>
+              <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full uppercase">
+                Arbitraje de Precios Activo
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Similitudes de catálogo entre ambos proveedores. La plataforma exhibe automáticamente el <strong>MAYOR PRECIO</strong> entre ambos para garantizar el margen máximo.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button 
+            type="button"
+            @click="showGamingNewModal = true"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>➕ Agregar Videojuego</span>
+          </button>
+          <button 
+            type="button"
+            @click="showFlyerModal = true"
+            class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-black text-xs px-3.5 py-2.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🎨 Flyer Gamer</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas Métricas de Proveedores Gaming -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
+          <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Títulos en Catálogo</span>
+          <div class="text-2xl font-black text-white font-mono">{{ adminStore.gamingProducts.length }} Juegos</div>
+          <span class="text-[10px] text-indigo-400 font-bold">PS4 & PlayStation 5</span>
+        </div>
+
+        <div class="bg-[#020617] border border-blue-500/30 p-4 rounded-2xl space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-blue-300 uppercase tracking-wider">🇦🇷 Argentina Play</span>
+            <a href="https://www.argentinaplay.com.ar/" target="_blank" class="text-[10px] text-blue-400 hover:underline">Sitio Oficial ↗</a>
+          </div>
+          <div class="text-2xl font-black text-blue-300 font-mono">argentinaplay.com.ar</div>
+          <span class="text-[10px] text-slate-400">Slots Primarios y Secundarios</span>
+        </div>
+
+        <div class="bg-[#020617] border border-amber-500/30 p-4 rounded-2xl space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-amber-300 uppercase tracking-wider">🎮 Juegos Digitales Arg</span>
+            <a href="https://juegosdigitalesargentina.com/" target="_blank" class="text-[10px] text-amber-400 hover:underline">Sitio Oficial ↗</a>
+          </div>
+          <div class="text-2xl font-black text-amber-300 font-mono">juegosdigitalesargentina.com</div>
+          <span class="text-[10px] text-slate-400">Slots Primarios y Secundarios</span>
+        </div>
+
+        <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
+          <span class="text-[11px] font-bold text-emerald-400 block uppercase tracking-wider">Pedidos Gamer Registrados</span>
+          <div class="text-2xl font-black text-emerald-400 font-mono">{{ adminStore.gamingOrders.length }} Ventas</div>
+          <span class="text-[10px] text-slate-400">Con proveedor asignado</span>
+        </div>
+      </div>
+
+      <!-- Navegación de Sub-Pestañas -->
+      <div class="flex flex-wrap gap-2 p-1.5 bg-[#020617] rounded-2xl border border-slate-800">
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'comparison'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'comparison' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+        >
+          <span>⚖️</span>
+          <span>Comparador de Similitudes & Mayor Precio</span>
+        </button>
+
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'argentinaplay'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'argentinaplay' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+        >
+          <span>🇦🇷</span>
+          <span>Catálogo Argentina Play</span>
+        </button>
+
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'juegosdigitalesargentina'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'juegosdigitalesargentina' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+        >
+          <span>🎮</span>
+          <span>Catálogo Juegos Digitales Argentina (JDA)</span>
+        </button>
+
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'orders'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+        >
+          <span>📦</span>
+          <span>Pedidos Gamer & Proveedor Elegido ({{ adminStore.gamingOrders.length }})</span>
+        </button>
+      </div>
+
+      <!-- ==================== SUB-VISTA 1: COMPARADOR DE SIMILITUDES & ARBITRAJE DE PRECIOS ==================== -->
+      <div v-if="gamingAdminSubTab === 'comparison'" class="space-y-4">
+        <!-- Barra de Búsqueda y Filtros de Comparación -->
+        <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-[#020617] p-3.5 rounded-2xl border border-slate-800">
+          <div class="relative flex-1 w-full">
+            <input 
+              v-model="gamingAdminSearch"
+              type="text" 
+              placeholder="Buscar título para comparar similitud entre Argentina Play y JDA..."
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 pl-9 text-xs text-white outline-none focus:border-indigo-400"
+            >
+            <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+          </div>
+
+          <div class="flex gap-2 w-full sm:w-auto">
+            <select v-model="gamingAdminCategoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
+              <option v-for="cat in adminStore.gamingCategories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <select v-model="gamingAdminPlatformFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
+              <option value="ALL">Todas las Consolas</option>
+              <option value="PS5">PlayStation 5</option>
+              <option value="PS4">PlayStation 4</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tabla Comparativa de Similitudes -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">Videojuego & Plataforma</th>
+                <th class="p-3.5 text-blue-300 bg-blue-950/20 border-x border-slate-800">🇦🇷 Argentina Play</th>
+                <th class="p-3.5 text-amber-300 bg-amber-950/20 border-r border-slate-800">🎮 Juegos Digitales Arg</th>
+                <th class="p-3.5 text-emerald-400 bg-emerald-950/30 border-r border-slate-800">
+                  ⭐️ Precio Plataforma (Mayor Precio)
+                </th>
+                <th class="p-3.5 text-purple-300">Margen & Proveedor Recomendado</th>
+                <th class="p-3.5 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-850">
+              <tr v-for="game in filteredGamingForAdmin" :key="game.id" class="hover:bg-slate-900/60 transition-colors">
+                <!-- Título e Imagen -->
+                <td class="p-3.5">
+                  <div class="flex items-center gap-3">
+                    <img :src="game.image" :alt="game.title" class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0">
+                    <div>
+                      <h4 class="font-black text-white text-xs line-clamp-1">{{ game.title }}</h4>
+                      <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="text-[9px] bg-indigo-500/20 text-indigo-300 font-mono font-bold px-1.5 py-0.2 rounded">{{ game.platform }}</span>
+                        <span class="text-[9px] text-slate-500">{{ game.category }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Columna Argentina Play -->
+                <td class="p-3.5 bg-blue-950/10 border-x border-slate-800 font-mono">
+                  <div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Primaria:</span>
+                      <strong class="text-white font-black">${game.providers?.argentinaplay?.primaryPrice?.toLocaleString()}</strong>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                      <span class="text-blue-300">${game.providers?.argentinaplay?.secondaryPrice?.toLocaleString()}</span>
+                    </div>
+                    <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
+                      <span>Costo Prim:</span>
+                      <span>${game.providers?.argentinaplay?.costPrimary?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Columna Juegos Digitales Argentina -->
+                <td class="p-3.5 bg-amber-950/10 border-r border-slate-800 font-mono">
+                  <div class="space-y-0.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Primaria:</span>
+                      <strong class="text-white font-black">${game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString()}</strong>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                      <span class="text-amber-300">${game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString()}</span>
+                    </div>
+                    <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
+                      <span>Costo Prim:</span>
+                      <span>${game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- PRECIO EN PLATAFORMA (MAYOR PRECIO) -->
+                <td class="p-3.5 bg-emerald-950/20 border-r border-slate-800 font-mono">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Primaria:</span>
+                      <div class="text-right">
+                        <strong class="text-emerald-400 text-sm font-black">${game.effectivePrimaryPrice?.toLocaleString()}</strong>
+                        <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
+                          Líder: {{ game.primaryPriceLeaderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                      <div class="text-right">
+                        <strong class="text-emerald-300 text-xs font-bold">${game.effectiveSecondaryPrice?.toLocaleString()}</strong>
+                        <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
+                          Líder: {{ game.secondaryPriceLeaderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Margen & Proveedor Recomendado -->
+                <td class="p-3.5 font-mono text-[11px]">
+                  <div class="space-y-1">
+                    <div>
+                      <span class="text-[9px] text-slate-400 block">Comprar Primaria en:</span>
+                      <span class="font-bold text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</span>
+                      <span class="text-[10px] text-emerald-400 block font-black">+${game.bestMarginPrimary?.toLocaleString()} ganancia</span>
+                    </div>
+                    <div class="pt-0.5 border-t border-slate-800/80">
+                      <span class="text-[9px] text-slate-400 block">Comprar Secundaria en:</span>
+                      <span class="font-bold text-amber-300">{{ game.bestFulfillmentSecondaryName }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Acciones -->
+                <td class="p-3.5 text-right space-y-1">
+                  <button 
+                    type="button" 
+                    @click="openGamingPriceEdit(game)"
+                    class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <a 
+                    :href="game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/'" 
+                    target="_blank"
+                    class="block text-[10px] text-blue-400 hover:underline"
+                  >
+                    ArgPlay ↗
+                  </a>
+                  <a 
+                    :href="game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'" 
+                    target="_blank"
+                    class="block text-[10px] text-amber-400 hover:underline"
+                  >
+                    JDA ↗
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA 2: CATÁLOGO ARGENTINA PLAY ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'argentinaplay'" class="space-y-4">
+        <div class="p-4 bg-blue-950/30 border border-blue-500/30 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🇦🇷</span>
+            <div>
+              <h3 class="text-base font-black text-white">Catálogo de Argentina Play (argentinaplay.com.ar)</h3>
+              <p class="text-xs text-slate-400">Proveedor especializado en cuentas de PlayStation Network para Argentina con entrega digital.</p>
+            </div>
+          </div>
+          <a 
+            href="https://www.argentinaplay.com.ar/" 
+            target="_blank" 
+            class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition flex items-center gap-1.5 shadow"
+          >
+            <span>🌐 Abrir argentinaplay.com.ar ↗</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-blue-500/20 rounded-2xl p-4 space-y-3">
+            <div class="flex gap-3 items-center">
+              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0">
+              <div class="min-w-0 flex-1">
+                <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
+                <span class="text-[10px] text-blue-400 font-mono">{{ game.platform }}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Primaria:</span>
+                <strong class="text-white">${game.providers?.argentinaplay?.primaryPrice?.toLocaleString()}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.argentinaplay?.costPrimary?.toLocaleString()}</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Secundaria:</span>
+                <strong class="text-blue-300">${game.providers?.argentinaplay?.secondaryPrice?.toLocaleString()}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.argentinaplay?.costSecondary?.toLocaleString()}</span>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" @click="openGamingPriceEdit(game)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition">
+                ✏️ Editar
+              </button>
+              <a href="https://www.argentinaplay.com.ar/" target="_blank" class="py-1.5 px-3 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-bold transition flex items-center justify-center">
+                Comprar ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA 3: CATÁLOGO JUEGOS DIGITALES ARGENTINA (JDA) ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'juegosdigitalesargentina'" class="space-y-4">
+        <div class="p-4 bg-amber-950/30 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🎮</span>
+            <div>
+              <h3 class="text-base font-black text-white">Catálogo de Juegos Digitales Argentina (juegosdigitalesargentina.com)</h3>
+              <p class="text-xs text-slate-400">Proveedor líder en slots primarios y secundarios para PS4 y PlayStation 5.</p>
+            </div>
+          </div>
+          <a 
+            href="https://juegosdigitalesargentina.com/" 
+            target="_blank" 
+            class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition flex items-center gap-1.5 shadow"
+          >
+            <span>🌐 Abrir juegosdigitalesargentina.com ↗</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-amber-500/20 rounded-2xl p-4 space-y-3">
+            <div class="flex gap-3 items-center">
+              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0">
+              <div class="min-w-0 flex-1">
+                <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
+                <span class="text-[10px] text-amber-400 font-mono">{{ game.platform }}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Primaria:</span>
+                <strong class="text-white">${game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString()}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString()}</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Secundaria:</span>
+                <strong class="text-amber-300">${game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString()}</strong>
+                <span class="text-[9px] text-slate-500 block">Costo ${game.providers?.juegosdigitalesargentina?.costSecondary?.toLocaleString()}</span>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" @click="openGamingPriceEdit(game)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition">
+                ✏️ Editar
+              </button>
+              <a href="https://juegosdigitalesargentina.com/" target="_blank" class="py-1.5 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-xs font-bold transition flex items-center justify-center">
+                Comprar ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA 4: PEDIDOS GAMER & PROVEEDOR ELEGIDO ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'orders'" class="space-y-4">
+        <div v-if="adminStore.gamingOrders.length === 0" class="p-12 bg-[#020617] border border-slate-800 rounded-2xl text-center space-y-3">
+          <span class="text-4xl block">🎮📦</span>
+          <h4 class="text-base font-bold text-white">No hay pedidos de videojuegos registrados aún</h4>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">
+            Cuando los clientes agreguen juegos digitales desde la tienda web o WhatsApp, aquí aparecerá el pedido con el proveedor asignado (Argentina Play o JDA) y el botón de compra y entrega en 1 clic.
+          </p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div 
+            v-for="order in adminStore.gamingOrders" 
+            :key="order.id"
+            class="bg-[#020617] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+          >
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-xs text-indigo-400">#{{ order.id }}</span>
+                <span class="text-xs font-black text-white">{{ order.customerName }}</span>
+                <span class="text-[10px] text-slate-400">({{ order.customerPhone }})</span>
+                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', order.status === 'Dispatched' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
+                  {{ order.status === 'Dispatched' ? 'Entregado' : 'Pendiente' }}
+                </span>
+              </div>
+              <div class="text-xs text-slate-300">
+                <strong>Juego:</strong> {{ order.gameTitle || order.platform }} • 
+                <span class="font-bold text-amber-300">{{ order.licenseLabel || (order.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria') }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-slate-400">Proveedor asignado:</span>
+                <strong :class="order.fulfillmentProvider === 'argentinaplay' ? 'text-blue-300' : 'text-amber-300'">
+                  {{ order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina') }}
+                </strong>
+                <span class="text-emerald-400 font-mono font-bold">| Cobrado: ${order.clientPrice?.toLocaleString()} ARS</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <a 
+                :href="order.providerUrl || (order.fulfillmentProvider === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : 'https://juegosdigitalesargentina.com/')" 
+                target="_blank"
+                class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+              >
+                <span>🔗 Comprar en Proveedor ↗</span>
+              </a>
+              <button 
+                type="button" 
+                @click="sendWhatsAppGameDelivery(order)"
+                class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+              >
+                <span>💬 Entregar por WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN DE PRECIOS GAMING (AMBOS PROVEEDORES) -->
+    <div v-if="showGamingPriceEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-lg font-black text-white">Editar Precios de Proveedores: {{ gamingEditForm.title }}</h3>
+            <p class="text-xs text-slate-400">Actualiza los precios de Argentina Play y JDA. La tienda exhibirá automáticamente el mayor precio.</p>
+          </div>
+          <button @click="showGamingPriceEditModal = false" class="text-slate-400 hover:text-white font-bold">✕</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Columna Argentina Play -->
+          <div class="p-3.5 bg-blue-950/20 border border-blue-500/30 rounded-2xl space-y-2.5">
+            <h4 class="font-black text-blue-300 text-xs flex items-center gap-1">
+              <span>🇦🇷</span> Argentina Play
+            </h4>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Primaria (ARS)</label>
+              <input v-model="gamingEditForm.arg_primaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Secundaria (ARS)</label>
+              <input v-model="gamingEditForm.arg_secondaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Primaria</label>
+              <input v-model="gamingEditForm.arg_costPrimary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Secundaria</label>
+              <input v-model="gamingEditForm.arg_costSecondary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
+            </div>
+          </div>
+
+          <!-- Columna Juegos Digitales Argentina -->
+          <div class="p-3.5 bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2.5">
+            <h4 class="font-black text-amber-300 text-xs flex items-center gap-1">
+              <span>🎮</span> Juegos Digitales Arg (JDA)
+            </h4>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Primaria (ARS)</label>
+              <input v-model="gamingEditForm.jda_primaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Secundaria (ARS)</label>
+              <input v-model="gamingEditForm.jda_secondaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Primaria</label>
+              <input v-model="gamingEditForm.jda_costPrimary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Secundaria</label>
+              <input v-model="gamingEditForm.jda_costSecondary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
+          <div class="flex justify-between font-bold">
+            <span>Mayor Precio Primaria en Tienda:</span>
+            <span class="text-emerald-400 font-mono">${Math.max(Number(gamingEditForm.arg_primaryPrice) || 0, Number(gamingEditForm.jda_primaryPrice) || 0).toLocaleString()} ARS</span>
+          </div>
+          <div class="flex justify-between font-bold">
+            <span>Mayor Precio Secundaria en Tienda:</span>
+            <span class="text-emerald-400 font-mono">${Math.max(Number(gamingEditForm.arg_secondaryPrice) || 0, Number(gamingEditForm.jda_secondaryPrice) || 0).toLocaleString()} ARS</span>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showGamingPriceEditModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">
+            Cancelar
+          </button>
+          <button type="button" @click="saveGamingPriceEdit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow">
+            Guardar y Aplicar Precios
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PARA AGREGAR NUEVO VIDEOJUEGO -->
+    <div v-if="showGamingNewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-4 shadow-2xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+          <h3 class="text-lg font-black text-white">➕ Agregar Nuevo Videojuego Digital</h3>
+          <button @click="showGamingNewModal = false" class="text-slate-400 hover:text-white font-bold">✕</button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">Título del Videojuego *</label>
+            <input v-model="gamingNewForm.title" type="text" placeholder="Ej: Dragon Ball: Sparking! ZERO" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-bold text-xs">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 mb-1">Consola / Plataforma</label>
+              <select v-model="gamingNewForm.platform" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+                <option value="PS4 / PS5">PS4 / PS5</option>
+                <option value="PS5">PlayStation 5</option>
+                <option value="PS4">PlayStation 4</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 mb-1">Categoría</label>
+              <select v-model="gamingNewForm.category" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
+                <option v-for="cat in adminStore.gamingCategories.filter(c => c !== 'Todas')" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">URL de Portada (Imagen)</label>
+            <input v-model="gamingNewForm.image" type="text" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">Descripción Breve</label>
+            <textarea v-model="gamingNewForm.description" rows="2" placeholder="Sinopsis del juego..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div class="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2">
+              <span class="text-xs font-black text-blue-300 block">Precios Argentina Play</span>
+              <input v-model="gamingNewForm.arg_primaryPrice" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+              <input v-model="gamingNewForm.arg_secondaryPrice" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+            </div>
+
+            <div class="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2">
+              <span class="text-xs font-black text-amber-300 block">Precios Juegos Digitales Arg</span>
+              <input v-model="gamingNewForm.jda_primaryPrice" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+              <input v-model="gamingNewForm.jda_secondaryPrice" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" @click="showGamingNewModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">
+            Cancelar
+          </button>
+          <button type="button" @click="saveNewGamingProduct" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow">
+            Guardar Videojuego
+          </button>
+        </div>
       </div>
     </div>
 

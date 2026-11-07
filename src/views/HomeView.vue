@@ -71,6 +71,21 @@ const openFlyerForPhysical = (prod) => {
   showFlyerModal.value = true
 }
 
+const openFlyerForGaming = (game, licenseType = null) => {
+  const lic = licenseType || getGameSelectedLicense(game.id)
+  flyerInitialProduct.value = {
+    itemType: 'gaming',
+    gameId: game.id,
+    id: game.id,
+    title: game.title,
+    category: 'Videojuegos Digitales',
+    licenseType: lic,
+    platform: game.platform,
+    priceNumeric: lic === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
+  }
+  showFlyerModal.value = true
+}
+
 // Comprobante de Pago en Mini Nube (JPG, PNG, WEBP, PDF)
 const receiptFile = ref(null) // { fileName, fileType, fileSize, dataUrl }
 const isProcessingReceipt = ref(false)
@@ -201,9 +216,11 @@ const currentPageSection = computed(() => {
   const p = route.path.toLowerCase()
   if (['/suscripciones', '/streaming', '/digital'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'digital'
   if (['/combos', '/paquetes', '/ofertas'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'packages'
+  if (['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'gaming'
   if (['/tienda', '/catalogo', '/productos', '/p'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'physical'
   if (route.query.sec === 'digital') return 'digital'
   if (route.query.sec === 'packages') return 'packages'
+  if (route.query.sec === 'gaming') return 'gaming'
   if (route.query.sec === 'physical') return 'physical'
   return 'home'
 })
@@ -214,6 +231,75 @@ const storeSection = ref('all')
 watch(currentPageSection, (sec) => {
   storeSection.value = sec === 'home' ? 'all' : sec
 }, { immediate: true })
+
+// ==========================================
+// SECCIÓN: VIDEOJUEGOS DIGITALES PS4 / PS5 (ARGENTINA PLAY & JDA)
+// ==========================================
+const selectedGamingCat = ref('Todas')
+const gamingSearch = ref('')
+const gamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4'
+const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
+const selectedGamingProduct = ref(null)
+const showGamingDetailModal = ref(false)
+
+const getGameSelectedLicense = (gameId) => {
+  return gamingLicenseSelections.value[gameId] || 'primary'
+}
+
+const setGameLicense = (gameId, licenseType) => {
+  gamingLicenseSelections.value[gameId] = licenseType
+}
+
+const filteredGamingProducts = computed(() => {
+  const list = adminStore.processedGamingProducts || []
+  return list.filter(game => {
+    const matchesCat = selectedGamingCat.value === 'Todas' || game.category === selectedGamingCat.value
+    const matchesPlatform = gamingPlatformFilter.value === 'ALL' || game.platform.includes(gamingPlatformFilter.value)
+    const q = gamingSearch.value.toLowerCase().trim()
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || game.description.toLowerCase().includes(q)
+    return matchesCat && matchesPlatform && matchesQ
+  })
+})
+
+const openGamingDetail = (game) => {
+  selectedGamingProduct.value = game
+  showGamingDetailModal.value = true
+}
+
+const addGameToCartFromCard = (game) => {
+  const licenseType = getGameSelectedLicense(game.id)
+  cartStore.addGamingItem(game, licenseType, 1)
+  toast.add(`✓ "${game.title}" (${licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria'}) agregado al carrito`, 'success')
+  cartStore.openDrawer()
+}
+
+const addGameToCartFromModal = () => {
+  if (!selectedGamingProduct.value) return
+  const licenseType = getGameSelectedLicense(selectedGamingProduct.value.id)
+  cartStore.addGamingItem(selectedGamingProduct.value, licenseType, 1)
+  toast.add(`✓ "${selectedGamingProduct.value.title}" (${licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria'}) agregado al carrito`, 'success')
+  showGamingDetailModal.value = false
+  cartStore.openDrawer()
+}
+
+const buyGamingViaWhatsApp = (game, licenseType = null) => {
+  const lic = licenseType || getGameSelectedLicense(game.id)
+  const isPrim = lic === 'primary'
+  const price = isPrim ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
+  const cleanPhone = (adminStore.providerBankInfo.whatsapp || '5492915659321').replace(/\D/g, '')
+  const msg = `¡Hola! Me interesa comprar el videojuego digital en *StreamePro*:
+
+` +
+    `🎮 *Juego:* ${game.title} (${game.platform})
+` +
+    `🔑 *Modalidad:* ${isPrim ? '⭐️ Cuenta Primaria (Juego con mi usuario)' : '⚡️ Cuenta Secundaria (Ahorro, requiere conexión)'}
+` +
+    `💰 *Precio:* ${price.toLocaleString()} ARS
+
+` +
+    `¿Tienen entrega inmediata para PlayStation Network?`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
 
 // Modal de Detalle de Producto Físico
 const selectedPhysicalProduct = ref(null)
@@ -1344,6 +1430,13 @@ const submitOrder = async () => {
       receiptFileType: receiptMeta.fileType || null,
       receiptFileSize: receiptMeta.fileSize || 0,
       paymentMethod: clientForm.value.paymentMethod,
+      orderType: item.itemType === 'gaming' ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
+      gameTitle: item.title || item.baseName || item.name || null,
+      licenseType: item.licenseType || null,
+      licenseLabel: item.licenseLabel || null,
+      fulfillmentProvider: item.providerKey || null,
+      fulfillmentProviderName: item.providerName || null,
+      providerUrl: item.providerUrl || null,
       profileSelections: (item.profiles || []).map(p => ({
         name: p.name
       }))
@@ -1531,6 +1624,10 @@ const submitOrder = async () => {
         <span>🎁</span>
         <span>Paquetes & Combos en Oferta</span>
       </span>
+      <span v-else-if="currentPageSection === 'gaming'" class="text-indigo-300 font-bold flex items-center gap-1 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+        <span>🎮</span>
+        <span>Videojuegos Digitales PS4 / PS5</span>
+      </span>
       <span v-else-if="currentPageSection === 'physical'" class="text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
         <span>📦</span>
         <span>Catálogo de Productos Físicos & Tecnología</span>
@@ -1712,6 +1809,22 @@ const submitOrder = async () => {
           <span>Paquetes & Combos</span>
           <span class="bg-slate-950/80 text-pink-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-pink-400/30">
             {{ adminStore.packages.filter(p => p.active).length }}
+          </span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/juegos"
+          :class="[
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'gaming' 
+              ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white shadow-lg shadow-indigo-500/20 font-black' 
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+          ]"
+        >
+          <span>🎮</span>
+          <span>Juegos PS4/PS5</span>
+          <span class="bg-slate-950/80 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-indigo-400/30">
+            {{ adminStore.gamingProducts?.length || 12 }}
           </span>
         </RouterLink>
 
@@ -2679,6 +2792,272 @@ const submitOrder = async () => {
             </div>
           </div>
           <span class="text-amber-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ir a Tienda →</span>
+        </RouterLink>
+      </div>
+    </div>
+
+    <!-- ==================== SECCIÓN 2.5: VIDEOJUEGOS DIGITALES PS4 / PS5 (PÁGINA DEDICADA) ==================== -->
+    <div v-else-if="currentPageSection === 'gaming'" id="videojuegos-digitales" class="space-y-6">
+      <!-- Header de Sección Oficial con Filtros por Plataforma y Categoría -->
+      <div class="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-purple-950/50 p-5 sm:p-6 rounded-3xl border border-indigo-500/30 shadow-2xl space-y-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-center gap-3.5">
+            <span class="text-4xl filter drop-shadow-md">🎮</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl sm:text-2xl font-black text-white">Catálogo de Videojuegos Digitales PS4 & PS5</h3>
+                <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase">
+                  ArgPlay & JDA
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+                Cuentas Primarias y Secundarias 100% Originales. Precios optimizados en pesos argentinos sin impuestos sorpresas.
+              </p>
+            </div>
+          </div>
+
+          <!-- Filtro de Consola / Plataforma -->
+          <div class="flex gap-1.5 p-1 bg-slate-950 rounded-2xl border border-indigo-500/30 shrink-0">
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'ALL'"
+              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all', gamingPlatformFilter === 'ALL' ? 'bg-indigo-500 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              Todas
+            </button>
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'PS5'"
+              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS5' ? 'bg-blue-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>⚡</span> PS5
+            </button>
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'PS4'"
+              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS4' ? 'bg-sky-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>🎮</span> PS4
+            </button>
+          </div>
+        </div>
+
+        <!-- Buscador y Categorías -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-indigo-500/20">
+          <div class="relative flex-1">
+            <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input 
+              v-model="gamingSearch" 
+              type="text" 
+              placeholder="Buscar por juego (FC 25, GTA V, Spider-Man, Mortal Kombat, God of War)..." 
+              class="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl py-2.5 pl-10 pr-4 text-white placeholder:text-slate-500 text-xs sm:text-sm focus:border-indigo-400 outline-none"
+            >
+          </div>
+
+          <!-- Selector de Categoría Horizontal -->
+          <div class="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar shrink-0">
+            <button 
+              v-for="cat in adminStore.gamingCategories" 
+              :key="cat"
+              type="button"
+              @click="selectedGamingCat = cat"
+              :class="[
+                'px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border',
+                selectedGamingCat === cat 
+                  ? 'bg-indigo-500 text-white border-indigo-400 font-black shadow' 
+                  : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+              ]"
+            >
+              {{ cat }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cuadrícula de Juegos -->
+      <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div 
+          v-for="game in filteredGamingProducts" 
+          :key="game.id"
+          class="bg-slate-900/70 border border-white/[0.08] rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 shadow-xl flex flex-col justify-between group"
+        >
+          <div>
+            <!-- Portada con Badge de Plataforma -->
+            <div class="relative w-full h-48 overflow-hidden bg-black flex items-center justify-center">
+              <img 
+                :src="game.image" 
+                :alt="game.title" 
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+              >
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60"></div>
+              
+              <!-- Badges Superiores -->
+              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                <span class="bg-indigo-600/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow font-mono">
+                  {{ game.platform }}
+                </span>
+                <span v-if="game.badge" class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                  {{ game.badge }}
+                </span>
+              </div>
+
+              <!-- Categoría -->
+              <span class="absolute bottom-2.5 left-2.5 text-[10px] bg-slate-900/80 backdrop-blur text-slate-300 px-2 py-0.5 rounded-lg border border-white/10 font-bold">
+                {{ game.category }}
+              </span>
+            </div>
+
+            <!-- Contenido de la Tarjeta -->
+            <div class="p-4 space-y-3">
+              <h4 class="font-black text-white text-base leading-snug group-hover:text-indigo-300 transition-colors line-clamp-1" :title="game.title">
+                {{ game.title }}
+              </h4>
+              <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                {{ game.description }}
+              </p>
+
+              <!-- SELECTOR DE LICENCIA: PRIMARIA vs SECUNDARIA -->
+              <div class="bg-slate-950/90 p-1.5 rounded-2xl border border-slate-800 space-y-1.5">
+                <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 px-1">
+                  <span>Modalidad de Cuenta:</span>
+                  <span class="text-indigo-400 font-mono">100% Original</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button 
+                    type="button" 
+                    @click="setGameLicense(game.id, 'primary')"
+                    :class="[
+                      'py-1.5 px-2 rounded-xl text-center transition-all flex flex-col items-center justify-center border',
+                      getGameSelectedLicense(game.id) === 'primary' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-400 shadow-md font-black' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                    ]"
+                  >
+                    <span class="text-[11px] font-bold">⭐️ Primaria</span>
+                    <span class="text-[10px] font-mono">${game.effectivePrimaryPrice?.toLocaleString()}</span>
+                  </button>
+
+                  <button 
+                    type="button" 
+                    @click="setGameLicense(game.id, 'secondary')"
+                    :class="[
+                      'py-1.5 px-2 rounded-xl text-center transition-all flex flex-col items-center justify-center border',
+                      getGameSelectedLicense(game.id) === 'secondary' 
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-400 shadow-md font-black' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                    ]"
+                  >
+                    <span class="text-[11px] font-bold">⚡️ Secundaria</span>
+                    <span class="text-[10px] font-mono">${game.effectiveSecondaryPrice?.toLocaleString()}</span>
+                  </button>
+                </div>
+                <!-- Explicación de la modalidad seleccionada -->
+                <p class="text-[10px] text-slate-400 text-center px-1 pt-0.5">
+                  {{ getGameSelectedLicense(game.id) === 'primary' ? '✓ Juegas con tu propio usuario personal (online y offline)' : '✓ Juegas con el usuario provisto (requiere internet)' }}
+                </p>
+              </div>
+
+              <!-- PRECIO FINAL EN PLATAFORMA (MAYOR PRECIO) -->
+              <div class="flex items-center justify-between pt-1">
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Precio en Plataforma</span>
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-xl font-black text-white font-mono">
+                      ${(getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString()}
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-bold">ARS</span>
+                  </div>
+                </div>
+                <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  Entrega Inmediata
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOTONES DE ACCIÓN DE LA TARJETA -->
+          <div class="p-4 pt-0 space-y-2">
+            <button 
+              type="button"
+              @click="addGameToCartFromCard(game)"
+              class="w-full bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-2.5 px-3 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+              <span>Agregar al Pedido</span>
+            </button>
+
+            <div class="flex gap-1.5">
+              <button 
+                type="button"
+                @click="openGamingDetail(game)"
+                class="flex-1 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs py-2 px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                title="Ver sinopsis y características completas"
+              >
+                <span>👁️ Detalle</span>
+              </button>
+              <button 
+                type="button"
+                @click="openFlyerForGaming(game)"
+                class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-indigo-500/30 transition-colors shrink-0 cursor-pointer"
+                title="Generar flyer publicitario para redes y estados"
+              >
+                <span>🎨 Flyer</span>
+              </button>
+              <button 
+                type="button"
+                @click="buyGamingViaWhatsApp(game)"
+                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-emerald-500/30 transition-colors shrink-0 cursor-pointer"
+                title="Comprar directo por WhatsApp"
+              >
+                <span>📲</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado Vacío si no hay resultados -->
+      <div v-else class="text-center py-12 bg-slate-900/40 rounded-3xl border border-slate-800 space-y-3">
+        <span class="text-4xl block">🎮🔍</span>
+        <h4 class="text-base font-bold text-white">No se encontraron juegos con esos criterios</h4>
+        <p class="text-xs text-slate-400">Prueba cambiando la categoría o término de búsqueda.</p>
+        <button 
+          type="button" 
+          @click="selectedGamingCat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'"
+          class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs"
+        >
+          Restablecer Filtros
+        </button>
+      </div>
+
+      <!-- Banner de Navegación Cruzada hacia Suscripciones y Combos -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-white/[0.08]">
+        <RouterLink 
+          to="/suscripciones" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-sky-950/60 via-slate-900 to-blue-950/40 border border-sky-500/30 hover:border-sky-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Digitales 4K</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega inmediata</p>
+            </div>
+          </div>
+          <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Streaming →</span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/combos" 
+          class="p-5 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-pink-950/40 border border-pink-500/30 hover:border-pink-500/60 transition-all flex items-center justify-between group shadow-lg cursor-pointer"
+        >
+          <div class="flex items-center gap-3.5">
+            <span class="text-3xl group-hover:scale-110 transition-transform">🎁</span>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-pink-300 transition-colors">Combos con Descuento</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Combina plataformas y ahorra hasta un 35% mensual</p>
+            </div>
+          </div>
+          <span class="text-pink-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Combos →</span>
         </RouterLink>
       </div>
     </div>
@@ -4437,6 +4816,112 @@ const submitOrder = async () => {
             <span>✓</span> Imagen Oficial en Foco Ultra HD
           </span>
           <button @click="showImageZoomModal = false" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-1.5 rounded-xl font-bold transition">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: DETALLE DEL VIDEOJUEGO DIGITAL (PS4 / PS5) -->
+    <div v-if="showGamingDetailModal && selectedGamingProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-5 shadow-2xl relative">
+        <button 
+          @click="showGamingDetailModal = false"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+        >
+          ✕
+        </button>
+
+        <!-- Portada e Info Principal -->
+        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div class="w-24 h-32 rounded-2xl overflow-hidden shrink-0 bg-black border border-indigo-500/30 shadow-lg">
+            <img :src="selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-full h-full object-cover">
+          </div>
+          <div class="space-y-1.5 flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+                {{ selectedGamingProduct.platform }}
+              </span>
+              <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">
+                {{ selectedGamingProduct.category }}
+              </span>
+            </div>
+            <h3 class="text-xl font-black text-white">{{ selectedGamingProduct.title }}</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">{{ selectedGamingProduct.description }}</p>
+          </div>
+        </div>
+
+        <!-- Características destacadas -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800">
+          <div v-for="(feat, idx) in selectedGamingProduct.features" :key="idx" class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="text-emerald-400 font-bold">✓</span>
+            <span class="truncate">{{ feat }}</span>
+          </div>
+        </div>
+
+        <!-- Selector de Cuenta Primaria vs Cuenta Secundaria en Modal -->
+        <div class="space-y-2 bg-slate-950 p-4 rounded-2xl border border-indigo-500/30">
+          <label class="block font-black uppercase text-indigo-300 text-xs">
+            Selecciona la Modalidad Deseada:
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <div 
+              @click="setGameLicense(selectedGamingProduct.id, 'primary')"
+              :class="[
+                'p-3 rounded-2xl border cursor-pointer transition-all space-y-1',
+                getGameSelectedLicense(selectedGamingProduct.id) === 'primary' 
+                  ? 'bg-blue-950/60 border-blue-500 shadow-md ring-2 ring-blue-500/30' 
+                  : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
+              ]"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-blue-300">⭐️ Cuenta Primaria</span>
+                <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'primary'" class="text-[10px] bg-blue-500 text-slate-950 font-black px-1.5 rounded">Elegido</span>
+              </div>
+              <div class="text-lg font-black text-white font-mono">${selectedGamingProduct.effectivePrimaryPrice?.toLocaleString()} ARS</div>
+              <p class="text-[10px] text-slate-400">Juegas con tu usuario personal, acumulas trofeos y juegas con o sin internet.</p>
+            </div>
+
+            <div 
+              @click="setGameLicense(selectedGamingProduct.id, 'secondary')"
+              :class="[
+                'p-3 rounded-2xl border cursor-pointer transition-all space-y-1',
+                getGameSelectedLicense(selectedGamingProduct.id) === 'secondary' 
+                  ? 'bg-amber-950/60 border-amber-500 shadow-md ring-2 ring-amber-500/30' 
+                  : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
+              ]"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-amber-300">⚡️ Cuenta Secundaria</span>
+                <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'secondary'" class="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 rounded">Elegido</span>
+              </div>
+              <div class="text-lg font-black text-white font-mono">${selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString()} ARS</div>
+              <p class="text-[10px] text-slate-400">Juegas con el usuario asignado, requiere conexión constante a internet.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de Acción del Modal -->
+        <div class="flex flex-col sm:flex-row gap-2.5 pt-2">
+          <button 
+            type="button" 
+            @click="addGameToCartFromModal"
+            class="flex-1 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer"
+          >
+            <span>🛒 Agregar al Pedido (${(getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString()} ARS)</span>
+          </button>
+          <button 
+            type="button" 
+            @click="openFlyerForGaming(selectedGamingProduct); showGamingDetailModal = false"
+            class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold py-3 px-4 rounded-xl border border-indigo-500/30 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>🎨 Flyer</span>
+          </button>
+          <button 
+            type="button" 
+            @click="buyGamingViaWhatsApp(selectedGamingProduct); showGamingDetailModal = false"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>📲 WhatsApp</span>
+          </button>
         </div>
       </div>
     </div>

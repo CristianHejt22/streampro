@@ -18,7 +18,7 @@ export const useCartStore = defineStore('cart', {
     discountPercentage(state) {
       // Aplica solo a productos digitales de streaming por volumen
       const streamingUnits = state.items
-        .filter(i => i.itemType !== 'physical')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming')
         .reduce((acc, item) => acc + ((item.units || 1) * item.quantity), 0)
       if (streamingUnits >= 8) return 15
       if (streamingUnits >= 4) return 7
@@ -27,16 +27,20 @@ export const useCartStore = defineStore('cart', {
     },
     total(state) {
       const streamingSubtotal = state.items
-        .filter(i => i.itemType !== 'physical')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming')
+        .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
+      const gamingSubtotal = state.items
+        .filter(i => i.itemType === 'gaming')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       const physicalSubtotal = state.items
         .filter(i => i.itemType === 'physical')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       
       const discount = streamingSubtotal * (this.discountPercentage / 100)
-      return (streamingSubtotal - discount) + physicalSubtotal
+      return (streamingSubtotal - discount) + gamingSubtotal + physicalSubtotal
     },
     hasPhysicalItems: (state) => state.items.some(i => i.itemType === 'physical'),
+    hasGamingItems: (state) => state.items.some(i => i.itemType === 'gaming'),
     hasDigitalItems: (state) => state.items.some(i => i.itemType !== 'physical')
   },
   actions: {
@@ -156,6 +160,56 @@ export const useCartStore = defineStore('cart', {
           quantity: 1,
           itemType: 'package',
           packageDetails: pkg
+        })
+      }
+    },
+    // AGREGAR VIDEOJUEGO DIGITAL (PS4 / PS5 - Primaria o Secundaria con Mayor Precio)
+    addGamingItem(game, licenseType = 'primary', quantity = 1) {
+      const isPrimary = licenseType === 'primary'
+      const effectivePrice = isPrimary ? (game.effectivePrimaryPrice || 25000) : (game.effectiveSecondaryPrice || 12000)
+      const priceLeaderKey = isPrimary ? game.primaryPriceLeaderKey : game.secondaryPriceLeaderKey
+      const priceLeaderName = isPrimary ? game.primaryPriceLeaderName : game.secondaryPriceLeaderName
+      const bestFulfillmentKey = isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary
+      const bestFulfillmentName = isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName
+      
+      const providerData = game.providers?.[bestFulfillmentKey] || {}
+      const providerCost = isPrimary ? (providerData.costPrimary || Math.round(effectivePrice * 0.7)) : (providerData.costSecondary || Math.round(effectivePrice * 0.7))
+
+      const cartItemKey = `gaming_${game.id}_${licenseType}`
+      const existingItem = this.items.find(i => i.cartItemKey === cartItemKey)
+
+      if (existingItem) {
+        existingItem.quantity += quantity
+      } else {
+        this.items.push({
+          cartItemKey,
+          id: game.id,
+          gameId: game.id,
+          name: `${game.title} (${game.platform})`,
+          baseName: game.title,
+          title: game.title,
+          platform: game.platform,
+          category: 'Videojuegos Digitales',
+          planKey: `gaming_${licenseType}`,
+          planLabel: isPrimary 
+            ? '⭐️ Cuenta Primaria (Juegas con tu usuario personal)' 
+            : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)',
+          licenseType: licenseType, // 'primary' | 'secondary'
+          licenseLabel: isPrimary ? 'Cuenta Primaria' : 'Cuenta Secundaria',
+          units: 1,
+          clientPrice: effectivePrice,
+          originalPrice: Math.round(effectivePrice * 1.25),
+          providerCost: providerCost,
+          resellerProfit: Math.max(0, effectivePrice - providerCost),
+          image: game.image,
+          priceFormatted: `$${effectivePrice.toLocaleString()} ARS`,
+          providerKey: bestFulfillmentKey,
+          providerName: bestFulfillmentName,
+          priceLeaderKey: priceLeaderKey,
+          priceLeaderName: priceLeaderName,
+          providerUrl: providerData.providerUrl || '',
+          quantity: quantity,
+          itemType: 'gaming'
         })
       }
     },

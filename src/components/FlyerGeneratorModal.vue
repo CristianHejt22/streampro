@@ -44,6 +44,31 @@ const selectedPhysicalId = ref('')
 const physicalSearch = ref('')
 const selectedPhysicalCat = ref('All')
 
+// 4. Videojuegos Digitales PS4 / PS5 (Argentina Play & JDA)
+const selectedGamingId = ref('game-fc25')
+const selectedGamingLicense = ref('primary') // 'primary' | 'secondary'
+const selectedGamingPlatform = ref('PS5') // 'PS5' | 'PS4'
+const gamingSearch = ref('')
+const selectedGamingCat = ref('All')
+
+const gamingProductsList = computed(() => adminStore.processedGamingProducts || [])
+
+const filteredGamingProducts = computed(() => {
+  return gamingProductsList.value.filter(g => {
+    const matchesCat = selectedGamingCat.value === 'All' || g.category === selectedGamingCat.value
+    const q = gamingSearch.value.toLowerCase().trim()
+    const matchesQ = !q || g.title.toLowerCase().includes(q) || (g.platforms && g.platforms.some(p => p.toLowerCase().includes(q)))
+    return matchesCat && matchesQ
+  })
+})
+
+const selectedGamingProduct = computed(() => {
+  const list = gamingProductsList.value
+  if (!list.length) return null
+  if (!selectedGamingId.value) return list[0]
+  return list.find(g => g.id === selectedGamingId.value) || list[0]
+})
+
 // Personalización del flyer (Solo dominio principal)
 const storeName = ref(props.defaultStoreName)
 const websiteUrl = ref('streamepro.me')
@@ -334,10 +359,13 @@ const selectedPhysicalProduct = computed(() => {
   return list.find(p => String(p.id) === String(selectedPhysicalId.value)) || list[0]
 })
 
-// Imagen con CORS para físicos
+// Imagen con CORS para físicos y videojuegos
 const productImageCORS = computed(() => {
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.image) {
     return getCORSImageUrl(selectedPhysicalProduct.value.image)
+  }
+  if (flyerProductType.value === 'gaming' && selectedGamingProduct.value?.image) {
+    return getCORSImageUrl(selectedGamingProduct.value.image)
   }
   return null
 })
@@ -411,6 +439,30 @@ watch(selectedPhysicalId, (newId) => {
   }
 })
 
+// Sincronización oficial para videojuegos PS4/PS5
+const syncGamingFlyer = () => {
+  if (flyerProductType.value !== 'gaming') return
+  const g = selectedGamingProduct.value
+  if (!g) return
+  const isPrim = selectedGamingLicense.value === 'primary'
+  customTitle.value = g.title
+  customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${selectedGamingPlatform.value} Digital Oficial`
+  headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO 100% GARANTIZADO'
+  customPrice.value = isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice
+  customOriginalPrice.value = Math.round((isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice) * 1.35)
+  bullet1.value = isPrim 
+    ? 'Juega con tu Perfil Personal (Trofeos en tu cuenta)' 
+    : 'Juega desde el usuario asignado 100% oficial'
+  bullet2.value = 'Descarga directa desde PlayStation Store'
+  bullet3.value = 'Garantía oficial y entrega inmediata'
+}
+
+watch([selectedGamingId, selectedGamingLicense, selectedGamingPlatform], () => {
+  if (flyerProductType.value === 'gaming') {
+    syncGamingFlyer()
+  }
+})
+
 // Alternar entre los 3 modos de flyer
 watch(flyerProductType, (newType) => {
   if (newType === 'combo') {
@@ -449,6 +501,11 @@ watch(flyerProductType, (newType) => {
       bullet2.value = 'Envío Rápido y Seguro a Todo el País'
       bullet3.value = 'Compra 100% Segura con Asesoría Oficial'
     }
+  } else if (newType === 'gaming') {
+    if (!selectedGamingId.value && gamingProductsList.value.length > 0) {
+      selectedGamingId.value = gamingProductsList.value[0].id
+    }
+    syncGamingFlyer()
   } else {
     // Individual
     headlineBadge.value = '🔥 ¡OFERTA EXCLUSIVA!'
@@ -465,7 +522,15 @@ watch(flyerProductType, (newType) => {
 // Manejar producto inicial pasado por prop
 watch(() => props.initialProduct, (prod) => {
   if (!prod) return
-  if (prod.itemType === 'package' || prod.services || prod.promoPrice) {
+  if (prod.itemType === 'gaming' || prod.isGaming || prod.effectivePrimaryPrice) {
+    flyerProductType.value = 'gaming'
+    if (prod.id || prod.gameId) selectedGamingId.value = prod.id || prod.gameId
+    if (prod.licenseType) selectedGamingLicense.value = prod.licenseType
+    if (prod.platform && (prod.platform.includes('PS4') || prod.platform.includes('PS5'))) {
+      selectedGamingPlatform.value = prod.platform.includes('PS4') ? 'PS4' : 'PS5'
+    }
+    syncGamingFlyer()
+  } else if (prod.itemType === 'package' || prod.services || prod.promoPrice) {
     flyerProductType.value = 'combo'
     if (prod.id) selectedPackageId.value = prod.id
     customTitle.value = prod.title || ''
@@ -504,6 +569,11 @@ const displayPriceNumeric = computed(() => {
   }
   if (flyerProductType.value === 'combo') {
     return selectedPackage.value?.promoPrice || 15900
+  }
+  if (flyerProductType.value === 'gaming') {
+    const g = selectedGamingProduct.value
+    if (!g) return 25000
+    return selectedGamingLicense.value === 'primary' ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice
   }
   if (flyerProductType.value === 'individual') {
     return currentPlanData.value.clientPrice || 5000
@@ -604,6 +674,9 @@ const applyCalculatedBadge = (customFormat = 'recomendado') => {
 // Título principal
 const displayTitle = computed(() => {
   if (customTitle.value?.trim()) return customTitle.value.trim()
+  if (flyerProductType.value === 'gaming') {
+    return selectedGamingProduct.value?.title || 'Videojuego PS4/PS5'
+  }
   if (flyerProductType.value === 'combo') {
     return selectedPackage.value?.title || 'Combo Especial Streaming'
   }
@@ -616,6 +689,10 @@ const displayTitle = computed(() => {
 // Subtítulo
 const displaySubtitle = computed(() => {
   if (customSubtitle.value?.trim()) return customSubtitle.value.trim()
+  if (flyerProductType.value === 'gaming') {
+    const isPrim = selectedGamingLicense.value === 'primary'
+    return `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${selectedGamingPlatform.value} Digital Oficial`
+  }
   if (flyerProductType.value === 'combo') {
     return selectedPackage.value?.description || 'Las mejores plataformas combinadas con descuento especial'
   }
@@ -630,6 +707,16 @@ const fullProductReferralUrl = computed(() => {
   const domain = displayDomain.value || 'streamepro.me'
   const base = `https://${domain}`
   const refCode = props.resellerRef && props.resellerRef !== 'DIRECT' ? props.resellerRef : null
+
+  if (flyerProductType.value === 'gaming' && selectedGamingProduct.value?.id) {
+    const params = new URLSearchParams()
+    params.set('sec', 'gaming')
+    params.set('game', selectedGamingProduct.value.id)
+    if (selectedGamingLicense.value) params.set('lic', selectedGamingLicense.value)
+    if (selectedGamingPlatform.value) params.set('plat', selectedGamingPlatform.value)
+    if (refCode) params.set('ref', refCode)
+    return `${base}/?${params.toString()}`
+  }
 
   if (flyerProductType.value === 'combo' && selectedPackage.value?.id) {
     const params = new URLSearchParams()
@@ -780,7 +867,8 @@ function renderCanvasFlyerBlob() {
         ctx.fillStyle = pedGlow
         ctx.fillRect(visorX, visorY, visorW, visorH)
 
-        if (flyerProductType.value === 'physical') {
+        if (flyerProductType.value === 'physical' || flyerProductType.value === 'gaming') {
+          const isGamer = flyerProductType.value === 'gaming'
           // Encajar la imagen del producto perfectamente en el rectángulo
           const imgEl = await loadFlyerImageElement(productImageCORS.value)
 
@@ -796,13 +884,13 @@ function renderCanvasFlyerBlob() {
           roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, false)
           ctx.clip()
 
-          // Fondo blanco inmaculado de vitrina
-          ctx.fillStyle = '#ffffff'
+          // Fondo
+          ctx.fillStyle = isGamer ? '#0f172a' : '#ffffff'
           ctx.fillRect(innerX, innerY, innerW, innerH)
 
           if (imgEl) {
             // La imagen aprovecha el rectángulo al máximo (object-fit: contain)
-            const imgPad = 14
+            const imgPad = isGamer ? 8 : 14
             const maxW = innerW - imgPad * 2
             const maxH = innerH - imgPad * 2
             const imgAspect = (imgEl.width || 1) / (imgEl.height || 1)
@@ -816,11 +904,22 @@ function renderCanvasFlyerBlob() {
             const dx = innerX + (innerW - dw) / 2
             const dy = innerY + (innerH - dh) / 2
             ctx.drawImage(imgEl, dx, dy, dw, dh)
+
+            if (isGamer) {
+              const licText = selectedGamingLicense.value === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'
+              const platText = selectedGamingPlatform.value
+              ctx.font = 'bold 12px monospace'
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+              roundRect(ctx, innerX + 8, innerY + 8, 86, 22, 6, true, true, '#38bdf8', 1)
+              ctx.fillStyle = '#38bdf8'
+              ctx.textAlign = 'center'
+              ctx.fillText(`${platText} · ${licText}`, innerX + 51, innerY + 23)
+            }
           } else {
             const iconSize = Math.min(130, innerH * 0.38)
             ctx.font = `${iconSize}px sans-serif`
             ctx.textAlign = 'center'
-            ctx.fillText('📦', centerX, centerY + iconSize * 0.25)
+            ctx.fillText(isGamer ? '🎮' : '📦', centerX, centerY + iconSize * 0.25)
           }
 
           ctx.restore()
@@ -959,6 +1058,8 @@ function renderCanvasFlyerBlob() {
         const hasOrig = displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)
         const guaranteeText = flyerProductType.value === 'physical'
           ? '🚚 Envío a Todo el País · Garantía Oficial 100%'
+          : flyerProductType.value === 'gaming'
+          ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%'
           : '⚡ Entrega Inmediata · Garantía Oficial 100%'
 
         if (hasOrig) {
@@ -1370,13 +1471,12 @@ const shareToWhatsAppStatus = () => {
         <!-- COLUMNA IZQUIERDA: CONTROLES DE GENERACIÓN (7 cols) -->
         <div class="lg:col-span-7 space-y-4">
           
-          <!-- SELECTOR DE TIPO DE FLYER: 3 MODOS OFICIALES -->
-          <!-- SELECTOR DE TIPO DE FLYER (Solo para revendedores/admins, simplificado para clientes en productos físicos) -->
+          <!-- SELECTOR DE TIPO DE FLYER: MODOS OFICIALES -->
           <div v-if="!clientOnlyPhysical || !isPhysicalFlyerAvailable" class="space-y-1.5">
             <label class="block font-bold uppercase text-slate-400 text-[11px]">
               🎯 Modo de Flyer a Promocionar
             </label>
-            <div :class="['grid gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800', isPhysicalFlyerAvailable ? 'grid-cols-3' : 'grid-cols-2']">
+            <div :class="['grid gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800', isPhysicalFlyerAvailable ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3']">
               <button 
                 type="button"
                 @click="flyerProductType = 'individual'"
@@ -1396,6 +1496,15 @@ const shareToWhatsAppStatus = () => {
                 <span class="text-[8px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
                   Recomendado
                 </span>
+              </button>
+
+              <button 
+                type="button"
+                @click="flyerProductType = 'gaming'"
+                :class="['py-2 px-2 rounded-xl font-black text-xs transition-all flex flex-col items-center justify-center gap-1 text-center', flyerProductType === 'gaming' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
+              >
+                <span class="text-base">🎮</span>
+                <span class="leading-tight">Juegos PS4/PS5</span>
               </button>
 
               <button 
@@ -1528,6 +1637,105 @@ const shareToWhatsAppStatus = () => {
                   <span>{{ srv.platform }}</span>
                   <span class="text-[10px] text-pink-300 font-normal">({{ srv.planLabel }})</span>
                 </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODO 4: VIDEOJUEGOS DIGITALES PS4 / PS5 -->
+          <div v-else-if="flyerProductType === 'gaming'" class="space-y-3 bg-[#020617] p-3.5 rounded-2xl border border-indigo-500/30">
+            <div class="flex items-center justify-between">
+              <label class="block font-black uppercase text-indigo-300 text-xs flex items-center gap-1.5">
+                <span>🎮</span> Catálogo de Videojuegos PS4 & PS5 ({{ gamingProductsList.length }})
+              </label>
+              <span class="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                PlayStation Oficial
+              </span>
+            </div>
+
+            <!-- Buscador y filtro de categoría -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <input 
+                  v-model="gamingSearch" 
+                  type="text" 
+                  placeholder="Buscar juego (FC 25, GTA, Spider-Man)..."
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white outline-none focus:border-indigo-400 text-xs"
+                >
+              </div>
+              <div>
+                <select v-model="selectedGamingCat" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white outline-none focus:border-indigo-400 font-bold text-xs">
+                  <option value="All">Todas las Categorías ({{ gamingProductsList.length }})</option>
+                  <option v-for="cat in adminStore.gamingCategories" :key="cat" :value="cat">
+                    {{ cat }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Selector de Juego -->
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Seleccionar Videojuego</label>
+              <select v-model="selectedGamingId" class="w-full bg-slate-900 border border-indigo-500/40 rounded-xl p-2.5 text-white font-bold outline-none focus:border-indigo-400 text-xs">
+                <option v-for="g in filteredGamingProducts" :key="g.id" :value="g.id">
+                  {{ g.title }} — Primaria: ${{ g.effectivePrimaryPrice?.toLocaleString() }} | Secundaria: ${{ g.effectiveSecondaryPrice?.toLocaleString() }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Selector de Licencia (Primaria / Secundaria) & Plataforma (PS5 / PS4) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Tipo de Licencia</label>
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                  <button 
+                    type="button" 
+                    @click="selectedGamingLicense = 'primary'" 
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingLicense === 'primary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                  >
+                    ⭐️ Primaria
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="selectedGamingLicense = 'secondary'" 
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingLicense === 'secondary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                  >
+                    ⚡️ Secundaria
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Consola / Plataforma</label>
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                  <button 
+                    type="button" 
+                    @click="selectedGamingPlatform = 'PS5'" 
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingPlatform === 'PS5' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                  >
+                    PS5
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="selectedGamingPlatform = 'PS4'" 
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingPlatform === 'PS4' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                  >
+                    PS4
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview Card del Juego Seleccionado -->
+            <div v-if="selectedGamingProduct" class="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-indigo-500/20">
+              <img :src="selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-12 h-14 object-cover rounded-lg border border-slate-700 shrink-0">
+              <div class="flex-1 min-w-0">
+                <h5 class="text-xs font-bold text-white truncate">{{ selectedGamingProduct.title }}</h5>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-indigo-400 font-mono font-bold text-xs">
+                    {{ selectedGamingLicense === 'primary' ? '⭐️ Primaria' : '⚡️ Secundaria' }}: ${{ (selectedGamingLicense === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS
+                  </span>
+                  <span class="text-[10px] text-slate-400">({{ selectedGamingPlatform }})</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1875,8 +2083,11 @@ const shareToWhatsAppStatus = () => {
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
+                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1.5 right-1.5 bg-indigo-600/90 text-white font-black text-[7px] px-1.5 py-0.5 rounded-md shadow border border-indigo-400/50">
+                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
+                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-xl bg-slate-950/90 border flex flex-col items-center justify-center p-1 shadow-md', currentTheme.cssBorder]">
@@ -1916,7 +2127,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[7px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
@@ -1931,8 +2142,11 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[28.5%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
+                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                      {{ selectedGamingPlatform }}
+                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -1971,7 +2185,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
@@ -1986,8 +2200,11 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.7%] left-[32.7%] w-[34.6%] h-[34.8%] flex items-center justify-center p-1 z-10">
-                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
+                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                      {{ selectedGamingPlatform }}
+                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -2025,7 +2242,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
@@ -2040,8 +2257,11 @@ const shareToWhatsAppStatus = () => {
               <div v-else class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[24.1%] left-[7.8%] w-[27.1%] h-[51.9%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full bg-white rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || selectedPhysicalProduct?.image" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
+                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
+                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" :class="['rounded bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -2078,7 +2298,7 @@ const shareToWhatsAppStatus = () => {
                       </div>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%' : '⚡ Entrega Inmediata · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="space-y-0.5 text-[8px] text-slate-200">

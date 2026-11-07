@@ -166,6 +166,18 @@ const handleOpenCart = () => {
                 {{ activePackagesCount }}
               </span>
             </RouterLink>
+
+            <RouterLink 
+              to="/juegos" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+            >
+              <span>🎮</span>
+              <span>Juegos PS4/PS5</span>
+              <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
+                {{ adminStore.gamingProducts?.length || 12 }}
+              </span>
+            </RouterLink>
             
             <RouterLink 
               v-if="isPhysicalNavVisible"
@@ -300,6 +312,18 @@ const handleOpenCart = () => {
             <span>Combos</span>
             <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
               {{ activePackagesCount }}
+            </span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/juegos" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+          >
+            <span>🎮</span>
+            <span>Juegos PS4/PS5</span>
+            <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
+              {{ adminStore.gamingProducts?.length || 12 }}
             </span>
           </RouterLink>
           

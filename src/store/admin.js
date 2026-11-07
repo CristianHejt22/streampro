@@ -5,6 +5,7 @@ import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
+import { GAMING_PROVIDERS, INITIAL_GAMING_PRODUCTS, processGamingProduct } from '../services/gamingProductsData'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { 
   initFirebase, 
@@ -496,7 +497,19 @@ export const useAdminStore = defineStore('admin', {
         return stored.isPhysicalStoreVisible
       }
       return false
-    })()
+    })(),
+
+    // CATÁLOGO DE VIDEOJUEGOS DIGITALES PS4 / PS5 (Argentina Play y Juegos Digitales Argentina)
+    gamingProducts: (() => {
+      const stored = loadDb(DB_KEYS.GAMING_PRODUCTS, null)
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored
+      }
+      saveDb(DB_KEYS.GAMING_PRODUCTS, INITIAL_GAMING_PRODUCTS)
+      return INITIAL_GAMING_PRODUCTS
+    })(),
+    gamingCategories: ['Todas', 'PS5', 'PS4', 'Acción & Aventura', 'Deportes', 'Lanzamientos', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Membresías'],
+    gamingProviders: GAMING_PROVIDERS
   }},
   getters: {
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
@@ -513,6 +526,8 @@ export const useAdminStore = defineStore('admin', {
     approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
     directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
+    processedGamingProducts: (state) => (state.gamingProducts || []).map(p => processGamingProduct(p)),
+    gamingOrders: (state) => (state.orders || []).filter(o => o.orderType === 'gaming' || o.category === 'Videojuegos Digitales'),
 
     // Métricas Dinámicas de Stock por Plataforma y Pantallas
     getPlatformStock: (state) => (platform) => {
@@ -570,6 +585,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
       } else if (key === DB_KEYS.FIREBASE_CONFIG) {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
+      } else if (key === DB_KEYS.GAMING_PRODUCTS) {
+        saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -593,6 +610,7 @@ export const useAdminStore = defineStore('admin', {
           isStoreVisible: this.isStoreVisible,
           isPhysicalStoreVisible: this.isPhysicalStoreVisible
         })
+        saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
       }
     },
 
@@ -2606,6 +2624,44 @@ export const useAdminStore = defineStore('admin', {
 
       this.persist()
       return true
+    },
+
+    // ==========================================
+    // MÉTODOS PARA PROVEEDORES GAMING (Argentina Play & JDA)
+    // ==========================================
+    updateGamingProductPrice(gameId, providerKey, field, newPrice) {
+      const game = this.gamingProducts.find(g => g.id === gameId)
+      if (!game || !game.providers?.[providerKey]) return false
+      game.providers[providerKey][field] = Number(newPrice) || 0
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return true
+    },
+    addGamingProduct(newGame) {
+      if (!newGame.id) {
+        newGame.id = 'GAME-' + String(Date.now()).slice(-4)
+      }
+      this.gamingProducts.unshift(newGame)
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return newGame
+    },
+    deleteGamingProduct(gameId) {
+      const idx = this.gamingProducts.findIndex(g => g.id === gameId)
+      if (idx !== -1) {
+        this.gamingProducts.splice(idx, 1)
+        this.persist(DB_KEYS.GAMING_PRODUCTS)
+        return true
+      }
+      return false
+    },
+    setGamingFulfillmentProvider(orderId, providerKey) {
+      const order = this.orders.find(o => o.id === orderId)
+      if (order) {
+        order.fulfillmentProvider = providerKey
+        order.fulfillmentProviderName = GAMING_PROVIDERS[providerKey]?.name || providerKey
+        this.persist(DB_KEYS.ORDERS)
+        return true
+      }
+      return false
     }
   }
 })
