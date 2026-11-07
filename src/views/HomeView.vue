@@ -63,6 +63,10 @@ const openFlyerForPackage = (pkg) => {
 }
 
 const openFlyerForPhysical = (prod) => {
+  if (!isPhysicalNavVisible.value) {
+    toast.add('La tienda física y sus flyers están temporalmente desactivados.', 'warning')
+    return
+  }
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
 }
@@ -4216,7 +4220,12 @@ const submitOrder = async () => {
             <button @click="shareProductWhatsApp(selectedPhysicalProduct)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-all text-xs">
               <span>WhatsApp</span>
             </button>
-            <button @click="openFlyerForPhysical(selectedPhysicalProduct)" class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 text-amber-300 font-black px-3.5 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs" title="Crear Flyer publicitario para WhatsApp e Instagram de este producto">
+            <button 
+              v-if="isPhysicalNavVisible"
+              @click="openFlyerForPhysical(selectedPhysicalProduct)" 
+              class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 text-amber-300 font-black px-3.5 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs cursor-pointer" 
+              title="Crear Flyer publicitario para WhatsApp e Instagram de este producto"
+            >
               <span>🎨 Flyer</span>
             </button>
           </div>

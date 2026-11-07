@@ -63,6 +63,11 @@ const handleReceiptPurgedReseller = async (orderId) => {
 }
 
 const openFlyerForProduct = (prod) => {
+  const isPhysical = prod && (prod.itemType === 'physical' || prod.priceNumeric !== undefined || prod.categoryIds)
+  if (isPhysical && (!adminStore.isStoreVisible || !adminStore.isPhysicalStoreVisible)) {
+    toast.add('La generación de flyers físicos está en pausa porque la tienda física está inactiva.', 'warning')
+    return
+  }
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
 }
@@ -1933,6 +1938,7 @@ const openProductInNewTab = (product) => {
               <span class="text-xs font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
                 Solo Visible para Distribuidores
               </span>
+              <span :class="['text-xs font-mono font-bold px-2 py-0.5 rounded border', adminStore.isPhysicalStoreVisible ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30']">{{ adminStore.isPhysicalStoreVisible ? '🟢 Tienda & Flyers Físicos: Activa' : '🟡 Tienda & Flyers Físicos: Pausada por Proveedor' }}</span>
               <span class="text-xs font-mono text-slate-400">Total: {{ adminStore.physicalProducts.length }} productos</span>
             </div>
             <h3 class="text-xl font-black text-white mt-1">Calculadora de Ganancias & Generador de Links Directos</h3>
@@ -2023,6 +2029,7 @@ const openProductInNewTab = (product) => {
                 <span>👁️ Ver</span>
               </button>
               <button 
+                v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
                 @click="openFlyerForProduct(prod)"
                 class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-1 shadow"
                 title="Crear Flyer publicitario para redes con streamepro.me"
@@ -3130,6 +3137,7 @@ const openProductInNewTab = (product) => {
             <span>🌐 Probar en Vivo (Abrir Tienda) ↗</span>
           </button>
           <button 
+            v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
             @click="showPhysicalUrlModal = false; openFlyerForProduct(previewingPhysicalProduct)" 
             class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold py-2.5 px-4 rounded-xl border border-amber-500/30 transition flex items-center justify-center gap-1.5 text-xs shadow"
           >

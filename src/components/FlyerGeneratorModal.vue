@@ -10,7 +10,8 @@ const props = defineProps({
   initialProduct: { type: Object, default: null },
   resellerRef: { type: String, default: 'DIRECT' },
   websiteDomain: { type: String, default: 'streamepro.me' },
-  clientOnlyPhysical: { type: Boolean, default: false }
+  clientOnlyPhysical: { type: Boolean, default: false },
+  defaultPhone: { type: String, default: '' }
 })
 
 const emit = defineEmits(['close'])
@@ -20,6 +21,16 @@ const toast = useToastStore()
 
 // Modo de flyer: 'individual' | 'combo' | 'physical'
 const flyerProductType = ref('individual')
+
+// Disponibilidad de flyers de productos físicos (condicionado a que la tienda física esté activa)
+const isPhysicalFlyerAvailable = computed(() => {
+  return Boolean(
+    adminStore.isStoreVisible && 
+    adminStore.isPhysicalStoreVisible && 
+    adminStore.physicalProducts && 
+    adminStore.physicalProducts.length > 0
+  )
+})
 
 // 1. Servicio Individual
 const selectedPlatform = ref('Netflix')
@@ -254,10 +265,19 @@ watch(() => props.defaultStoreName, (val) => {
 }, { immediate: true })
 
 watch(() => props.clientOnlyPhysical, (val) => {
-  if (val) {
+  if (val && isPhysicalFlyerAvailable.value) {
     flyerProductType.value = 'physical'
+  } else if (!isPhysicalFlyerAvailable.value && flyerProductType.value === 'physical') {
+    flyerProductType.value = 'individual'
   }
 }, { immediate: true })
+
+// Si la tienda física se desactiva en tiempo real y el flyer estaba en modo físico, volver a individual
+watch(isPhysicalFlyerAvailable, (available) => {
+  if (!available && flyerProductType.value === 'physical') {
+    flyerProductType.value = 'individual'
+  }
+})
 
 watch(() => props.websiteDomain, (val) => {
   if (val && !val.includes('spro.li')) {
@@ -295,8 +315,9 @@ const selectedPackage = computed(() => {
   return list.find(p => p.id === selectedPackageId.value) || list[0]
 })
 
-// Filtrado de productos físicos
+// Filtrado de productos físicos (solo si la tienda física y sus flyers están activos)
 const filteredPhysicalProducts = computed(() => {
+  if (!isPhysicalFlyerAvailable.value) return []
   return adminStore.physicalProducts.filter(p => {
     const matchesCat = selectedPhysicalCat.value === 'All' || (p.categoryIds && p.categoryIds.includes(selectedPhysicalCat.value))
     const q = physicalSearch.value.toLowerCase().trim()
@@ -306,6 +327,7 @@ const filteredPhysicalProducts = computed(() => {
 })
 
 const selectedPhysicalProduct = computed(() => {
+  if (!isPhysicalFlyerAvailable.value) return null
   const list = adminStore.physicalProducts || []
   if (list.length === 0) return null
   if (!selectedPhysicalId.value) return list[0]
@@ -408,6 +430,11 @@ watch(flyerProductType, (newType) => {
       }
     }
   } else if (newType === 'physical') {
+    if (!isPhysicalFlyerAvailable.value) {
+      flyerProductType.value = 'individual'
+      toast.add('La tienda física está desactivada. Cambiado a catálogo digital.', 'warning')
+      return
+    }
     if (!selectedPhysicalId.value && adminStore.physicalProducts.length > 0) {
       selectedPhysicalId.value = String(adminStore.physicalProducts[0].id)
     }
@@ -447,13 +474,18 @@ watch(() => props.initialProduct, (prod) => {
     customPrice.value = prod.promoPrice || null
     customOriginalPrice.value = prod.originalPrice || null
   } else if (prod.itemType === 'physical' || prod.platform === 'Producto Físico' || prod.categoryIds || prod.price?.includes('$')) {
-    flyerProductType.value = 'physical'
-    selectedPhysicalId.value = String(prod.id)
-    customTitle.value = prod.name || ''
-    customSubtitle.value = 'Tecnología & Accesorios de Alta Calidad'
-    customPrice.value = prod.priceNumeric || (parseInt(prod.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || null)
-    customOriginalPrice.value = null
-    headlineBadge.value = '📦 ENVÍO A TODO EL PAÍS'
+    if (isPhysicalFlyerAvailable.value) {
+      flyerProductType.value = 'physical'
+      selectedPhysicalId.value = String(prod.id)
+      customTitle.value = prod.name || ''
+      customSubtitle.value = 'Tecnología & Accesorios de Alta Calidad'
+      customPrice.value = prod.priceNumeric || (parseInt(prod.price?.replace(/[$. ]/g, '').replace(',', '') || '0') / 100 || null)
+      customOriginalPrice.value = null
+      headlineBadge.value = '📦 ENVÍO A TODO EL PAÍS'
+    } else {
+      flyerProductType.value = 'individual'
+      toast.add('La tienda física está desactivada. Se muestra el catálogo digital.', 'warning')
+    }
   } else if (prod.platform) {
     flyerProductType.value = 'individual'
     selectedPlatform.value = prod.platform
@@ -1205,6 +1237,10 @@ const exportWithHtmlToImage = (node) => {
 // Prioriza Canvas 2D Studio (HD Nativo 1080p sin recortes)
 // ==========================================
 const downloadFlyerImage = async () => {
+  if (flyerProductType.value === 'physical' && !isPhysicalFlyerAvailable.value) {
+    toast.add('La tienda física está desactivada. No se pueden generar flyers para productos físicos.', 'warning')
+    return
+  }
   if (!flyerPreviewRef.value) return
   isExporting.value = true
   toast.add(`Generando flyer en formato ${flyerFormatLabels[flyerFormat.value]}...`, 'info')
@@ -1278,6 +1314,10 @@ const copySocialCopy = () => {
 
 // Compartir a WhatsApp
 const shareToWhatsAppStatus = () => {
+  if (flyerProductType.value === 'physical' && !isPhysicalFlyerAvailable.value) {
+    toast.add('La tienda física está desactivada. No se puede compartir la oferta física.', 'warning')
+    return
+  }
   let text = `🔥 *${headlineBadge.value}* 🔥\n\n` +
     `🎁 *${displayTitle.value}*\n`
 
@@ -1332,11 +1372,11 @@ const shareToWhatsAppStatus = () => {
           
           <!-- SELECTOR DE TIPO DE FLYER: 3 MODOS OFICIALES -->
           <!-- SELECTOR DE TIPO DE FLYER (Solo para revendedores/admins, simplificado para clientes en productos físicos) -->
-          <div v-if="!clientOnlyPhysical" class="space-y-1.5">
+          <div v-if="!clientOnlyPhysical || !isPhysicalFlyerAvailable" class="space-y-1.5">
             <label class="block font-bold uppercase text-slate-400 text-[11px]">
               🎯 Modo de Flyer a Promocionar
             </label>
-            <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+            <div :class="['grid gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800', isPhysicalFlyerAvailable ? 'grid-cols-3' : 'grid-cols-2']">
               <button 
                 type="button"
                 @click="flyerProductType = 'individual'"
@@ -1359,6 +1399,7 @@ const shareToWhatsAppStatus = () => {
               </button>
 
               <button 
+                v-if="isPhysicalFlyerAvailable"
                 type="button"
                 @click="flyerProductType = 'physical'"
                 :class="['py-2 px-2 rounded-xl font-black text-xs transition-all flex flex-col items-center justify-center gap-1 text-center', flyerProductType === 'physical' ? 'bg-sky-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
@@ -1369,8 +1410,8 @@ const shareToWhatsAppStatus = () => {
             </div>
           </div>
 
-          <!-- ENCABEZADO SIMPLIFICADO PARA CLIENTES (SOLO PRODUCTOS FÍSICOS) -->
-          <div v-else class="flex items-center justify-between p-3 bg-[#020617] rounded-2xl border border-amber-500/30">
+          <!-- ENCABEZADO SIMPLIFICADO PARA CLIENTES (SOLO PRODUCTOS FÍSICOS CUANDO ESTÁN ACTIVOS) -->
+          <div v-else-if="clientOnlyPhysical && isPhysicalFlyerAvailable" class="flex items-center justify-between p-3 bg-[#020617] rounded-2xl border border-amber-500/30">
             <div class="flex items-center gap-2.5">
               <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-lg border border-amber-500/30">
                 📦
@@ -1491,8 +1532,8 @@ const shareToWhatsAppStatus = () => {
             </div>
           </div>
 
-          <!-- MODO 3: PRODUCTOS FÍSICOS -->
-          <div v-else class="space-y-3 bg-[#020617] p-3.5 rounded-2xl border border-slate-800">
+          <!-- MODO 3: PRODUCTOS FÍSICOS (CUANDO LA TIENDA FÍSICA ESTÁ ACTIVA) -->
+          <div v-else-if="flyerProductType === 'physical' && isPhysicalFlyerAvailable" class="space-y-3 bg-[#020617] p-3.5 rounded-2xl border border-slate-800">
             <div class="flex flex-col sm:flex-row gap-2">
               <div class="flex-1">
                 <label class="block font-bold uppercase text-slate-400 mb-1">Buscar Producto Físico</label>
@@ -1536,6 +1577,22 @@ const shareToWhatsAppStatus = () => {
                 <span class="text-emerald-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
               </div>
             </div>
+          </div>
+
+          <!-- AVISO CUANDO LA TIENDA FÍSICA ESTÁ DESACTIVADA -->
+          <div v-else-if="flyerProductType === 'physical' && !isPhysicalFlyerAvailable" class="p-5 bg-amber-950/40 border border-amber-500/30 rounded-2xl text-center space-y-3">
+            <span class="text-3xl block">📦⚠️</span>
+            <h4 class="text-amber-300 font-black text-sm">Catálogo y Flyers Físicos Desactivados</h4>
+            <p class="text-slate-300 text-xs max-w-md mx-auto">
+              La tienda de productos físicos se encuentra desactivada actualmente por el administrador. Los flyers para estos artículos están en pausa.
+            </p>
+            <button 
+              type="button" 
+              @click="flyerProductType = 'individual'"
+              class="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition cursor-pointer"
+            >
+              🎬 Cambiar a Servicio Individual
+            </button>
           </div>
 
           <!-- PERSONALIZACIÓN DE TÍTULO Y SUBTÍTULO -->
