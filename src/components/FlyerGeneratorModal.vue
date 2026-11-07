@@ -2314,8 +2314,8 @@ const shareToWhatsAppStatus = () => {
                   </div>
                   <div :class="['w-full rounded-2xl py-1.5 px-3', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
-                      <span class="text-slate-400 line-through text-[9px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
-                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-${calculatedDiscountPct}%</span>
+                      <span class="text-slate-400 line-through text-[9px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-{{ calculatedDiscountPct }}%</span>
                     </div>
                     <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
@@ -2384,8 +2384,8 @@ const shareToWhatsAppStatus = () => {
                   </div>
                   <div :class="['w-full rounded-xl py-1 px-2.5 shadow', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
-                      <span class="text-slate-400 line-through text-[8px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
-                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-${calculatedDiscountPct}%</span>
+                      <span class="text-slate-400 line-through text-[8px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-{{ calculatedDiscountPct }}%</span>
                     </div>
                     <div v-else class="text-[7px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
@@ -2453,8 +2453,8 @@ const shareToWhatsAppStatus = () => {
                   </div>
                   <div :class="['w-full rounded-xl py-1 px-2.5 shadow', currentTheme.cssPriceBox]">
                     <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
-                      <span class="text-slate-400 line-through text-[7px]">Antes: $${Number(displayOriginalPrice).toLocaleString()}</span>
-                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-${calculatedDiscountPct}%</span>
+                      <span class="text-slate-400 line-through text-[7px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6px] px-0.5 rounded">-{{ calculatedDiscountPct }}%</span>
                     </div>
                     <div v-else class="text-[6px] uppercase font-bold text-slate-400">PRECIO EXCLUSIVO</div>
                     <div class="flex items-baseline justify-center gap-0.5">
@@ -2522,8 +2522,8 @@ const shareToWhatsAppStatus = () => {
                   </div>
                   <div :class="['w-full rounded-xl py-1 px-3', currentTheme.cssPriceBox]">
                     <div class="flex items-baseline gap-1.5">
-                      <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">$${Number(displayOriginalPrice).toLocaleString()}</span>
-                      <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-${calculatedDiscountPct}%</span>
+                      <span v-if="displayOriginalPrice" class="text-[8px] text-slate-400 line-through">${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                      <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-{{ calculatedDiscountPct }}%</span>
                       <div class="flex items-baseline gap-0.5">
                         <span :class="['font-bold text-[9px]', currentTheme.cssCurrency]">$</span>
                         <span class="font-black text-xs text-white font-mono">{{ displayPrice }}</span>

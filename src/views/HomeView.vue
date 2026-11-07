@@ -3077,7 +3077,7 @@ const submitOrder = async () => {
                     ]"
                   >
                     <span class="text-[11px] font-bold">⭐️ Primaria</span>
-                    <span class="text-[10px] font-mono">${game.effectivePrimaryPrice?.toLocaleString()}</span>
+                    <span class="text-[10px] font-mono">${{ game.effectivePrimaryPrice?.toLocaleString() }}</span>
                   </button>
 
                   <button 
@@ -3091,7 +3091,7 @@ const submitOrder = async () => {
                     ]"
                   >
                     <span class="text-[11px] font-bold">⚡️ Secundaria</span>
-                    <span class="text-[10px] font-mono">${game.effectiveSecondaryPrice?.toLocaleString()}</span>
+                    <span class="text-[10px] font-mono">${{ game.effectiveSecondaryPrice?.toLocaleString() }}</span>
                   </button>
                 </div>
                 <!-- Explicación de la modalidad seleccionada -->
@@ -3107,7 +3107,7 @@ const submitOrder = async () => {
                     <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Precio Oficial StreamePro</span>
                     <div class="flex items-baseline gap-1.5">
                       <span class="text-xl font-black text-white font-mono">
-                        ${(getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString()}
+                        ${{ (getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString() }}
                       </span>
                       <span class="text-[10px] text-slate-400 font-bold">ARS</span>
                     </div>
@@ -5027,7 +5027,7 @@ const submitOrder = async () => {
             <span class="text-xs font-black text-purple-300">🔑 Clave Digital Oficial Steam</span>
             <span class="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-mono font-bold">100% Permanente</span>
           </div>
-          <div class="text-xl font-black text-white font-mono">${selectedGamingProduct.effectivePrimaryPrice?.toLocaleString()} ARS</div>
+          <div class="text-xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
           <p class="text-xs text-slate-300">Recibes una clave oficial de activación directa para canjear en la aplicación Steam en tu computadora. El juego queda asociado de por vida a tu cuenta personal.</p>
         </div>
 
@@ -5049,7 +5049,7 @@ const submitOrder = async () => {
                 <span class="text-xs font-black text-blue-300">⭐️ Cuenta Primaria</span>
                 <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'primary'" class="text-[10px] bg-blue-500 text-slate-950 font-black px-1.5 rounded">Elegido</span>
               </div>
-              <div class="text-lg font-black text-white font-mono">${selectedGamingProduct.effectivePrimaryPrice?.toLocaleString()} ARS</div>
+              <div class="text-lg font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
               <p class="text-[10px] text-slate-400">Juegas con tu usuario personal, acumulas trofeos y juegas con o sin internet.</p>
             </div>
 
@@ -5066,7 +5066,7 @@ const submitOrder = async () => {
                 <span class="text-xs font-black text-amber-300">⚡️ Cuenta Secundaria</span>
                 <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'secondary'" class="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 rounded">Elegido</span>
               </div>
-              <div class="text-lg font-black text-white font-mono">${selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString()} ARS</div>
+              <div class="text-lg font-black text-white font-mono">${{ selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString() }} ARS</div>
               <p class="text-[10px] text-slate-400">Juegas con el usuario asignado, requiere conexión constante a internet.</p>
             </div>
           </div>
@@ -5115,7 +5115,7 @@ const submitOrder = async () => {
             title="Agregar al carrito de compras"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            <span>+ Carrito (${(getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString()} ARS)</span>
+            <span>+ Carrito (${{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
           </button>
           <button 
             type="button" 
