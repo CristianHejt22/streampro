@@ -45,7 +45,7 @@ const physicalSearch = ref('')
 const selectedPhysicalCat = ref('All')
 
 // 4. Videojuegos Digitales PS4 / PS5 (Argentina Play & JDA)
-const selectedGamingId = ref('game-fc25')
+const selectedGamingId = ref('GAME-001')
 const selectedGamingLicense = ref('primary') // 'primary' | 'secondary'
 const selectedGamingPlatform = ref('PS5') // 'PS5' | 'PS4'
 const gamingSearch = ref('')
@@ -57,7 +57,7 @@ const filteredGamingProducts = computed(() => {
   return gamingProductsList.value.filter(g => {
     const matchesCat = selectedGamingCat.value === 'All' || g.category === selectedGamingCat.value
     const q = gamingSearch.value.toLowerCase().trim()
-    const matchesQ = !q || g.title.toLowerCase().includes(q) || (g.platforms && g.platforms.some(p => p.toLowerCase().includes(q)))
+    const matchesQ = !q || g.title.toLowerCase().includes(q) || (g.platform && g.platform.toLowerCase().includes(q)) || (g.category && g.category.toLowerCase().includes(q))
     return matchesCat && matchesQ
   })
 })
@@ -444,6 +444,14 @@ const syncGamingFlyer = () => {
   if (flyerProductType.value !== 'gaming') return
   const g = selectedGamingProduct.value
   if (!g) return
+
+  // Si el título es exclusivo de una plataforma, sincronizar automáticamente
+  if (g.platform === 'PS5') {
+    selectedGamingPlatform.value = 'PS5'
+  } else if (g.platform === 'PS4') {
+    selectedGamingPlatform.value = 'PS4'
+  }
+
   const isPrim = selectedGamingLicense.value === 'primary'
   customTitle.value = g.title
   customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${selectedGamingPlatform.value} Digital Oficial`
@@ -908,12 +916,14 @@ function renderCanvasFlyerBlob() {
             if (isGamer) {
               const licText = selectedGamingLicense.value === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'
               const platText = selectedGamingPlatform.value
+              const licBadgeText = `${platText} · ${licText}`
               ctx.font = 'bold 12px monospace'
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-              roundRect(ctx, innerX + 8, innerY + 8, 86, 22, 6, true, true, '#38bdf8', 1)
+              const bw = Math.max(86, ctx.measureText(licBadgeText).width + 16)
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+              roundRect(ctx, innerX + 8, innerY + 8, bw, 22, 6, true, true, '#38bdf8', 1)
               ctx.fillStyle = '#38bdf8'
               ctx.textAlign = 'center'
-              ctx.fillText(`${platText} · ${licText}`, innerX + 51, innerY + 23)
+              ctx.fillText(licBadgeText, innerX + 8 + bw / 2, innerY + 23)
             }
           } else {
             const iconSize = Math.min(130, innerH * 0.38)
@@ -2145,7 +2155,7 @@ const shareToWhatsAppStatus = () => {
                   <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
                     <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                     <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
-                      {{ selectedGamingPlatform }}
+                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
@@ -2203,7 +2213,7 @@ const shareToWhatsAppStatus = () => {
                   <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
                     <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
                     <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
-                      {{ selectedGamingPlatform }}
+                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">

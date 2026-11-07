@@ -565,11 +565,13 @@ const applyRouteParams = () => {
     physicalCategoryFilter.value = route.query.cat
   }
 
-  // Redirección y activación de sección física, digital, paquetes o todo
+  // Redirección y activación de sección física, digital, gaming, paquetes o todo
   if (route.query.sec === 'physical' || ['/tienda', '/catalogo', '/productos', '/p'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'physical'
   } else if (route.query.sec === 'digital' || ['/suscripciones', '/streaming', '/digital'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'digital'
+  } else if (route.query.sec === 'gaming' || route.query.game || ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/playstation'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'gaming'
   } else if (route.query.sec === 'packages' || route.query.pkg || ['/combos', '/paquetes', '/ofertas'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'packages'
     if (route.query.pkg) {
@@ -596,6 +598,25 @@ const applyRouteParams = () => {
     if (foundProd) {
       openPhysicalModal(foundProd)
       toast.add(`¡Bienvenido! Mostrando: ${foundProd.name.slice(0, 32)}...`, 'info')
+    }
+  }
+
+  // Previsualización y apertura automática de videojuego digital compartido (ej: desde flyers)
+  const sharedGameId = route.query.game || route.query.g
+  if (sharedGameId) {
+    clientForm.value.isSharedUrl = true
+    storeSection.value = 'gaming'
+    const cleanGameId = String(sharedGameId).trim()
+    const foundGame = (adminStore.processedGamingProducts || []).find(g => String(g.id).trim() === cleanGameId || String(g.slug).trim() === cleanGameId)
+    if (foundGame) {
+      if (route.query.lic && (route.query.lic === 'primary' || route.query.lic === 'secondary')) {
+        setGameLicense(foundGame.id, route.query.lic)
+      }
+      if (route.query.plat && (route.query.plat === 'PS5' || route.query.plat === 'PS4')) {
+        gamingPlatformFilter.value = route.query.plat
+      }
+      openGamingDetail(foundGame)
+      toast.add(`🎮 ¡Bienvenido! Mostrando: ${foundGame.title}`, 'info')
     }
   }
 }
@@ -2888,6 +2909,7 @@ const submitOrder = async () => {
                 :src="game.image" 
                 :alt="game.title" 
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
               >
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60"></div>
               
@@ -4833,7 +4855,7 @@ const submitOrder = async () => {
         <!-- Portada e Info Principal -->
         <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <div class="w-24 h-32 rounded-2xl overflow-hidden shrink-0 bg-black border border-indigo-500/30 shadow-lg">
-            <img :src="selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-full h-full object-cover">
+            <img :src="selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-full h-full object-cover" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
           </div>
           <div class="space-y-1.5 flex-1 min-w-0">
             <div class="flex items-center gap-2">

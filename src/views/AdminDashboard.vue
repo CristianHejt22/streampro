@@ -5626,7 +5626,7 @@ const deletePackageItem = (pkgId) => {
                 <!-- Título e Imagen -->
                 <td class="p-3.5">
                   <div class="flex items-center gap-3">
-                    <img :src="game.image" :alt="game.title" class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0">
+                    <img :src="game.image" :alt="game.title" class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
                     <div>
                       <h4 class="font-black text-white text-xs line-clamp-1">{{ game.title }}</h4>
                       <div class="flex items-center gap-1.5 mt-0.5">
@@ -5764,7 +5764,7 @@ const deletePackageItem = (pkgId) => {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-blue-500/20 rounded-2xl p-4 space-y-3">
             <div class="flex gap-3 items-center">
-              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0">
+              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">
                 <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
                 <span class="text-[10px] text-blue-400 font-mono">{{ game.platform }}</span>
@@ -5816,7 +5816,7 @@ const deletePackageItem = (pkgId) => {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-amber-500/20 rounded-2xl p-4 space-y-3">
             <div class="flex gap-3 items-center">
-              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0">
+              <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">
                 <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
                 <span class="text-[10px] text-amber-400 font-mono">{{ game.platform }}</span>

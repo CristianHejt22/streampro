@@ -503,7 +503,27 @@ export const useAdminStore = defineStore('admin', {
     gamingProducts: (() => {
       const stored = loadDb(DB_KEYS.GAMING_PRODUCTS, null)
       if (Array.isArray(stored) && stored.length > 0) {
-        return stored
+        // Migración transparente: actualizar imágenes oficiales y títulos nuevos de INITIAL_GAMING_PRODUCTS
+        const merged = stored.map(s => {
+          const init = INITIAL_GAMING_PRODUCTS.find(i => i.id === s.id)
+          if (!init) return s
+          const isOldUnsplash = !s.image || (s.image.includes('unsplash.com') && !init.image.includes('unsplash.com'))
+          return {
+            ...init,
+            ...s,
+            image: isOldUnsplash ? init.image : s.image,
+            description: (s.description && s.description.length > 30) ? s.description : init.description,
+            features: (Array.isArray(s.features) && s.features.length > 0) ? s.features : init.features
+          }
+        })
+        // Añadir títulos nuevos de INITIAL_GAMING_PRODUCTS que no existan aún en stored (ej: ASTRO BOT)
+        INITIAL_GAMING_PRODUCTS.forEach(init => {
+          if (!merged.some(m => m.id === init.id)) {
+            merged.push(init)
+          }
+        })
+        saveDb(DB_KEYS.GAMING_PRODUCTS, merged)
+        return merged
       }
       saveDb(DB_KEYS.GAMING_PRODUCTS, INITIAL_GAMING_PRODUCTS)
       return INITIAL_GAMING_PRODUCTS

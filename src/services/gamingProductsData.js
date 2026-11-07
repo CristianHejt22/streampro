@@ -29,9 +29,9 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS4 / PS5',
     category: 'Deportes',
     badge: '⚽ MÁS VENDIDO 2026',
-    image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&auto=format&fit=crop&q=80',
-    description: 'La experiencia futbolística definitiva con FC IQ, tácticas renovadas, modo Carrera y Ultimate Team con leyendas actualizadas.',
-    features: ['Audio Español Latino', 'Ultimate Team Online', 'Gráficos 4K 60FPS', 'Multijugador local y online'],
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202503/2520/09767c0f0551c8a3edf9ab4727eb084c7cae88fecef16a09.png',
+    description: 'La experiencia futbolística definitiva de EA SPORTS con tecnología FC IQ, tácticas renovadas, modo Carrera de mánager y jugador, y Ultimate Team con leyendas actualizadas para PS4 y PS5.',
+    features: ['Audio Español Latino', 'Ultimate Team & Rivals Online', 'Gráficos 4K 60FPS', 'Multijugador local y online'],
     providers: {
       argentinaplay: {
         providerName: 'Argentina Play',
@@ -62,8 +62,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS4 / PS5',
     category: 'Acción & Aventura',
     badge: '🔥 CLÁSICO IMPERDIBLE',
-    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-    description: 'Explora Los Santos y el condado de Blaine en la historia de Michael, Franklin y Trevor. Incluye acceso a GTA Online con contenido actualizado.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
+    description: 'Explora el gigantesco mundo abierto de Los Santos y el condado de Blaine en la historia entrelazada de Michael, Franklin y Trevor. Incluye acceso completo a GTA Online con contenido actualizado.',
     features: ['GTA Online Incluido', 'Modo Historia Completo', 'Resolución 4K Ultra HD', 'Tiempos de carga reducidos'],
     providers: {
       argentinaplay: {
@@ -95,8 +95,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS5',
     category: 'Acción & Aventura',
     badge: '🕸️ EXCLUSIVO PS5',
-    image: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=600&auto=format&fit=crop&q=80',
-    description: 'Los Spider-Men Peter Parker y Miles Morales regresan en una aventura aclamada para PS5. Balancéate, salta y usa las nuevas alas de telaraña.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202306/1219/60eca3ac155247e21850c7d075d01ebf0f3f5dbf19ccd2a1.jpg',
+    description: 'Los Spider-Men Peter Parker y Miles Morales regresan en una aventura aclamada para PS5. Balancéate, salta y usa las nuevas alas de telaraña para recorrer la Nueva York de Marvel frente a Venom y Kraven.',
     features: ['Exclusivo PlayStation 5', 'Gráficos Ray Tracing', 'Gatillos Adaptativos DualSense', 'Sin tiempos de carga'],
     providers: {
       argentinaplay: {
@@ -128,8 +128,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS4 / PS5',
     category: 'Acción & Aventura',
     badge: '⚡ OBRA MAESTRA',
-    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
-    description: 'Kratos y Atreus emprenden un viaje mítico en busca de respuestas antes de que llegue el Ragnarök por los Nueve Reinos nórdicos.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202207/1210/4xJ8XB3bi888QTLZYdl7Oi0s.png',
+    description: 'Kratos y Atreus emprenden un viaje mítico en busca de respuestas antes de que llegue el profetizado Ragnarök a través de los Nueve Reinos nórdicos con combate visceral y gráficos deslumbrantes.',
     features: ['Incluye DLC Valhalla Gratis', 'Combate visceral nórdico', 'Voces en Español Latino', 'Audio 3D Tempest'],
     providers: {
       argentinaplay: {
@@ -161,8 +161,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS5',
     category: 'Lucha',
     badge: '🩸 FATALITY BRUTAL',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-    description: 'Descubre un universo de Mortal Kombat renacido por Liu Kang, Dios del Fuego. Nuevos personajes Kameo, Fatalities cinematográficas y modo Invasiones.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202305/1515/c8388641302e1fd8f8f1044f13b398027f188eb695a0d652.jpg',
+    description: 'Descubre un universo de Mortal Kombat renacido por Liu Kang, Dios del Fuego. Nuevos personajes Kameo asistentes, Fatalities cinematográficas brutales y modo Invasiones RPG.',
     features: ['Luchadores Kameo Asistentes', 'Modo Invasiones RPG', 'Multijugador Competitivo', 'Gráficos Next-Gen 60FPS'],
     providers: {
       argentinaplay: {
@@ -192,10 +192,10 @@ export const INITIAL_GAMING_PRODUCTS = [
     title: 'Call of Duty: Black Ops 6',
     slug: 'call-of-duty-black-ops-6',
     platform: 'PS4 / PS5',
-    category: 'Acción & Disparos',
+    category: 'Acción & Aventura',
     badge: '💥 LANZAMIENTO TOP',
-    image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
-    description: 'Guerra de espionaje en los años 90 con movimiento omnidireccional revolucionario, campaña épica y el regreso del mítico modo Zombis por rondas.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202405/2921/05a08ddb076656e71324f6d578bdbaa16c8925ab01dc3046.png',
+    description: 'Guerra de espionaje en los años 90 con movimiento omnidireccional revolucionario, campaña épica y el regreso del mítico modo Zombis por rondas clásico.',
     features: ['Movimiento Omnidireccional', 'Zombis por Rondas Clásico', 'Multijugador Frenético', 'Campaña Cinematográfica'],
     providers: {
       argentinaplay: {
@@ -225,10 +225,10 @@ export const INITIAL_GAMING_PRODUCTS = [
     title: 'Dragon Ball: Sparking! ZERO',
     slug: 'dragon-ball-sparking-zero',
     platform: 'PS5',
-    category: 'Lucha & Anime',
+    category: 'Lucha',
     badge: '🐉 FUROR BUDOKAI',
-    image: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80',
-    description: 'El legendario sucesor de la serie Budokai Tenkaichi lleva el combate 3D a nuevos niveles con más de 180 personajes y transformaciones.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202405/2306/f0b11d4e9198adcf80d7dc0ec61bc2bdfb31c6c7afc3a366.jpg',
+    description: 'El legendario sucesor de la serie Budokai Tenkaichi lleva el combate 3D a nuevos niveles con más de 180 personajes y transformaciones del universo Dragon Ball Z, Super y GT.',
     features: ['Más de 182 Luchadores', 'Batallas de Episodios What-If', 'Destrucción de Escenarios', 'Combate aéreo en 3D'],
     providers: {
       argentinaplay: {
@@ -260,8 +260,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS5',
     category: 'Acción & Aventura',
     badge: '🏆 HISTORIA ÉPICA',
-    image: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
-    description: 'Revive la emotiva historia y los inolvidables personajes de Joel y Ellie reconstruidos desde cero para la consola PlayStation 5.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202206/0720/JKqkaz5Sy6AvH2fZAVdjTxR8.png',
+    description: 'Revive la emotiva e inolvidable historia de supervivencia de Joel y Ellie reconstruida fielmente desde cero para la consola PlayStation 5 con tecnologías modernas de Naughty Dog.',
     features: ['Reconstruido para PS5', 'Audio 3D Inmersivo', 'Físicas y animaciones realistas', 'Incluye precuela Left Behind'],
     providers: {
       argentinaplay: {
@@ -293,8 +293,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS4 / PS5',
     category: 'Survival Horror',
     badge: '🧟 TERROR & ACCIÓN',
-    image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
-    description: 'La supervivencia es solo el comienzo. Seis años después del desastre de Raccoon City, Leon S. Kennedy es enviado a rescatar a la hija del presidente.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202302/2409/1f465484e5e930c5a7b55ee28effb150f900c86a8f1eb50d.png',
+    description: 'La obra maestra del survival horror reinventada con gráficos fotorrealistas RE Engine, atmósfera aterradora y jugabilidad modernizada en la misión de Leon en España.',
     features: ['RE Engine Gráficos 4K', 'Jugabilidad modernizada', 'Modo Mercenarios Gratis', 'Modo PS VR2 Compatible'],
     providers: {
       argentinaplay: {
@@ -326,8 +326,8 @@ export const INITIAL_GAMING_PRODUCTS = [
     platform: 'PS4 / PS5',
     category: 'Rol & Aventura',
     badge: '🧙 MUNDO MÁGICO',
-    image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
-    description: 'Un RPG de acción inmersivo en mundo abierto ambientado en el siglo XIX del universo de Harry Potter. Vive tu propia historia mágica.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202208/0921/3XopdGAJGRy3xNQKnQDvaCRs.png',
+    description: 'Un RPG de acción inmersivo en mundo abierto ambientado en el siglo XIX del universo de Harry Potter. Forja tu legado, domina hechizos, elabora pociones y explora Hogwarts libremente.',
     features: ['Mundo Abierto Masivo', 'Combate con varita y pociones', 'Criaturas Mágicas y Escobas', 'Vuela libre por Hogwarts'],
     providers: {
       argentinaplay: {
@@ -357,10 +357,10 @@ export const INITIAL_GAMING_PRODUCTS = [
     title: 'Elden Ring: Shadow of the Erdtree',
     slug: 'elden-ring-shadow-of-the-erdtree',
     platform: 'PS4 / PS5',
-    category: 'Rol & Souls',
+    category: 'Rol & Aventura',
     badge: '👑 JUEGO DEL AÑO',
-    image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80',
-    description: 'El aclamado RPG de acción y mundo abierto de FromSoftware. Explora las Tierras Intermedias y la misteriosa Tierra Sombría con nuevas armas y jefes.',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202402/0817/48330e9df5755a91ae1ff7626e07c398ffd9e0afce393e34.png',
+    description: 'El aclamado RPG de acción y mundo abierto de FromSoftware. Explora las Tierras Intermedias y la misteriosa Tierra Sombría con decenas de nuevas armas, jefes y magia.',
     features: ['Incluye Juego Base + Expansión', 'Cientos de armas y hechizos', 'Multijugador Cooperativo/PvP', 'Dificultad legendaria'],
     providers: {
       argentinaplay: {
@@ -387,12 +387,45 @@ export const INITIAL_GAMING_PRODUCTS = [
   },
   {
     id: 'GAME-012',
+    title: 'ASTRO BOT',
+    slug: 'astro-bot-ps5',
+    platform: 'PS5',
+    category: 'Acción & Aventura',
+    badge: '🏆 JUEGO DEL AÑO 2024',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202406/0500/8f15268257b878597757fcc5f2c9545840867bc71fc863b1.png',
+    description: 'Acompaña a Astro en una aventura espacial épica para rescatar a la tripulación perdida de PlayStation. Más de 50 planetas, homenajes nostálgicos y aprovechamiento total del mando DualSense.',
+    features: ['Exclusivo PlayStation 5', 'Aprovechamiento 100% DualSense', '+50 Planetas con Cameos VIP', 'Juego del Año (GOTY)'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 34500,
+        secondaryPrice: 18500,
+        costPrimary: 24000,
+        costSecondary: 12500,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 36000,
+        secondaryPrice: 17900,
+        costPrimary: 25000,
+        costSecondary: 12000,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-013',
     title: 'PlayStation Plus Deluxe 12 Meses',
     slug: 'ps-plus-deluxe-12-meses',
     platform: 'PS4 / PS5',
     category: 'Membresías',
     badge: '💎 MEMBRESÍA VIP',
-    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80',
     description: 'Suscripción anual con cientos de juegos de PS4 y PS5, catálogo de clásicos (PS1, PS2, PSP), pruebas de juegos y multijugador online sin límites.',
     features: ['Multijugador Online Completo', 'Catálogo +400 Juegos Gratis', 'Clásicos PS1, PS2, PSP', 'Descuentos exclusivos PS Store'],
     providers: {
