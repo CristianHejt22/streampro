@@ -167,8 +167,8 @@ export const useCartStore = defineStore('cart', {
     addGamingItem(game, licenseType = 'primary', quantity = 1) {
       const isPrimary = licenseType === 'primary'
       const effectivePrice = isPrimary ? (game.effectivePrimaryPrice || 25000) : (game.effectiveSecondaryPrice || 12000)
-      const priceLeaderKey = isPrimary ? game.primaryPriceLeaderKey : game.secondaryPriceLeaderKey
-      const priceLeaderName = isPrimary ? game.primaryPriceLeaderName : game.secondaryPriceLeaderName
+      const priceLeaderKey = 'streamepro'
+      const priceLeaderName = 'StreamePro'
       const bestFulfillmentKey = isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary
       const bestFulfillmentName = isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName
       

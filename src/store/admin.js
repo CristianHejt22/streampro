@@ -2699,6 +2699,16 @@ export const useAdminStore = defineStore('admin', {
       if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23)) {
         this.gamingProducts = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
         this.persist(DB_KEYS.GAMING_PRODUCTS)
+      } else if (Array.isArray(this.gamingProducts)) {
+        let changed = false
+        this.gamingProducts.forEach(g => {
+          if (g.primaryPriceLeaderName !== 'StreamePro' || g.secondaryPriceLeaderName !== 'StreamePro') {
+            g.primaryPriceLeaderName = 'StreamePro'
+            g.secondaryPriceLeaderName = 'StreamePro'
+            changed = true
+          }
+        })
+        if (changed) this.persist(DB_KEYS.GAMING_PRODUCTS)
       }
       if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0) {
         this.gamingCategories = (gamingCategoriesData && gamingCategoriesData.length > 0) 

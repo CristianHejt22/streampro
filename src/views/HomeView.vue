@@ -233,7 +233,7 @@ watch(currentPageSection, (sec) => {
 }, { immediate: true })
 
 // ==========================================
-// SECCIÓN: VIDEOJUEGOS DIGITALES PS4 / PS5 (ARGENTINA PLAY & JDA)
+// SECCIÓN: VIDEOJUEGOS DIGITALES PS4 / PS5
 // ==========================================
 const selectedGamingCat = ref('Todas')
 const selectedGamingSubcat = ref('Todas')
@@ -2867,8 +2867,8 @@ const submitOrder = async () => {
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-xl sm:text-2xl font-black text-white">Catálogo de Videojuegos Digitales PS4 & PS5</h3>
-                <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase">
-                  ArgPlay & JDA
+                <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full uppercase">
+                  StreamePro Oficial
                 </span>
               </div>
               <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
@@ -3046,11 +3046,11 @@ const submitOrder = async () => {
                 </p>
               </div>
 
-              <!-- PRECIO FINAL EN PLATAFORMA (MAYOR PRECIO) -->
+              <!-- PRECIO FINAL EN PLATAFORMA -->
               <div class="space-y-1.5 pt-1">
                 <div class="flex items-center justify-between">
                   <div>
-                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Mayor Precio Garantizado</span>
+                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Precio Oficial StreamePro</span>
                     <div class="flex items-baseline gap-1.5">
                       <span class="text-xl font-black text-white font-mono">
                         ${(getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString()}
@@ -3066,10 +3066,12 @@ const submitOrder = async () => {
                   </div>
                 </div>
 
-                <!-- Comparación Transparente de Proveedores -->
-                <div class="flex items-center justify-between text-[9px] bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800 text-slate-400">
-                  <span>ArgPlay vs JDA</span>
-                  <span class="text-indigo-300 font-bold">Líder: {{ getGameSelectedLicense(game.id) === 'primary' ? game.primaryPriceLeaderName : game.secondaryPriceLeaderName }}</span>
+                <!-- Garantía Oficial StreamePro -->
+                <div class="flex items-center justify-between text-[9px] bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-400">
+                  <span class="text-emerald-400 font-bold flex items-center gap-1">
+                    <span>✓</span> Garantía de Entrega Inmediata
+                  </span>
+                  <span class="text-indigo-300 font-bold">Líder: StreamePro</span>
                 </div>
               </div>
             </div>
@@ -4014,7 +4016,7 @@ const submitOrder = async () => {
                 </div>
                 
                 <div v-if="item.itemType !== 'physical'" class="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
-                  <span class="text-emerald-400 font-bold">✓</span> Perfil y PIN oficial asignados al entregar
+                  <span class="text-emerald-400 font-bold">✓</span> {{ item.itemType === 'gaming' ? 'Licencia oficial y garantía StreamePro' : 'Perfil y PIN oficial asignados al entregar' }}
                 </div>
 
                 <div class="text-xs text-slate-400 pt-1">
@@ -5002,24 +5004,29 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Comparativa de Proveedores & Regla de Arbitraje -->
-        <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1.5 text-xs">
-          <div class="flex items-center justify-between text-slate-400 font-bold">
-            <span>Arbitraje Oficial de Proveedores:</span>
-            <span class="text-emerald-400 font-mono text-[11px]">✓ Garantía de Entrega Inmediata</span>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
-            <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span class="text-blue-300 font-bold">🇦🇷 Argentina Play:</span>
-              <span class="font-mono text-white">Prim: ${{ selectedGamingProduct.providers?.argentinaplay?.primaryPrice?.toLocaleString() }} | Sec: ${{ selectedGamingProduct.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</span>
+        <!-- Garantía Oficial StreamePro (Sin exposición de proveedores externos) -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-indigo-500/30 space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🛡️</span>
+              <span class="font-black text-white text-xs">Garantía StreamePro Oficial</span>
+              <span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold">Líder: StreamePro</span>
             </div>
-            <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span class="text-amber-300 font-bold">🎮 JDA:</span>
-              <span class="font-mono text-white">Prim: ${{ selectedGamingProduct.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }} | Sec: ${{ selectedGamingProduct.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</span>
-            </div>
+            <span class="text-emerald-400 font-mono font-bold text-[11px]">✓ Garantía de Entrega Inmediata</span>
           </div>
-          <div class="text-[10px] text-slate-400 text-center pt-0.5">
-            * En tienda compras con el mayor precio garantizado y el servicio de soporte oficial StreamePro 24/7.
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/80 text-[11px] text-slate-300 space-y-1.5">
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Descarga Oficial Directa:</strong> Desde PlayStation Store oficial para PS4 / PS5.</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Licencias 100% Originales:</strong> Cuentas verificadas, seguras y permanentes con garantía total.</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Soporte Técnico 24/7:</strong> Guía de activación y asistencia personalizada en minutos.</span>
+            </div>
           </div>
         </div>
 
