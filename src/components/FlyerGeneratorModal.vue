@@ -44,14 +44,46 @@ const selectedPhysicalId = ref('')
 const physicalSearch = ref('')
 const selectedPhysicalCat = ref('All')
 
-// 4. Videojuegos Digitales PS4 / PS5 (Argentina Play & JDA)
-const selectedGamingId = ref('GAME-001')
+// Decodificador seguro de entidades HTML para textos de flyer y canvas
+const decodeHtmlEntities = (str) => {
+  if (!str || typeof str !== 'string') return ''
+  return str
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#8230;|&hellip;/g, '...')
+    .replace(/&#8217;|&#8216;/g, "'")
+    .replace(/&#8220;|&#8221;/g, '"')
+    .replace(/&ntilde;/gi, 'ñ')
+    .replace(/&Ntilde;/g, 'Ñ')
+    .replace(/&aacute;/gi, 'á')
+    .replace(/&eacute;/gi, 'é')
+    .replace(/&iacute;/gi, 'í')
+    .replace(/&oacute;/gi, 'ó')
+    .replace(/&uacute;/gi, 'ú')
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+}
+
+// 4. Videojuegos Digitales Multiplataforma (Argentina Play & JDA)
+const selectedGamingId = ref('GAME-182')
 const selectedGamingLicense = ref('primary') // 'primary' | 'secondary'
-const selectedGamingPlatform = ref('PS5') // 'PS5' | 'PS4'
+const selectedGamingPlatform = ref('PS5')
 const gamingSearch = ref('')
 const selectedGamingCat = ref('All')
 
 const gamingProductsList = computed(() => adminStore.processedGamingProducts || [])
+
+const availableGamePlatforms = computed(() => {
+  const g = selectedGamingProduct.value
+  if (!g) return ['PS5', 'PS4']
+  if (g.platform === 'PS4 / PS5') return ['PS5', 'PS4']
+  if (g.platform.includes('Switch')) return ['Nintendo Switch']
+  if (g.platform.includes('Xbox')) return ['Xbox Series X|S', 'Xbox One']
+  if (g.platform.includes('PC') || g.platform.includes('Steam')) return ['PC (Steam)']
+  return [g.platform || 'PS5']
+})
 
 const filteredGamingProducts = computed(() => {
   return gamingProductsList.value.filter(g => {
@@ -451,7 +483,7 @@ watch(selectedPhysicalId, (newId) => {
   }
 })
 
-// Sincronización oficial para videojuegos PS4/PS5
+// Sincronización oficial para videojuegos multiplataforma
 const syncGamingFlyer = () => {
   if (flyerProductType.value !== 'gaming') return
   const g = selectedGamingProduct.value
@@ -462,19 +494,55 @@ const syncGamingFlyer = () => {
     selectedGamingPlatform.value = 'PS5'
   } else if (g.platform === 'PS4') {
     selectedGamingPlatform.value = 'PS4'
+  } else if (g.platform.includes('Switch')) {
+    selectedGamingPlatform.value = 'Nintendo Switch'
+  } else if (g.platform.includes('Xbox')) {
+    selectedGamingPlatform.value = g.platform.includes('One') ? 'Xbox One' : 'Xbox Series X|S'
+  } else if (g.platform.includes('PC') || g.platform.includes('Steam')) {
+    selectedGamingPlatform.value = 'PC (Steam)'
+  } else if (!availableGamePlatforms.value.includes(selectedGamingPlatform.value)) {
+    selectedGamingPlatform.value = availableGamePlatforms.value[0] || 'PS5'
   }
 
   const isPrim = selectedGamingLicense.value === 'primary'
-  customTitle.value = g.title
-  customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${selectedGamingPlatform.value} Digital Oficial`
-  headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO 100% GARANTIZADO'
+  customTitle.value = decodeHtmlEntities(g.title)
+
+  // Subtítulo y tienda adaptada a la consola/plataforma
+  let storeName = 'PlayStation Store'
+  const plat = selectedGamingPlatform.value
+  if (plat.includes('Switch')) {
+    storeName = 'Nintendo eShop'
+  } else if (plat.includes('Xbox')) {
+    storeName = 'Xbox Store'
+  } else if (plat.includes('PC') || plat.includes('Steam')) {
+    storeName = 'Steam'
+  }
+
+  if (plat.includes('PC') || plat.includes('Steam')) {
+    customSubtitle.value = `🔑 Clave Digital Oficial · ${storeName}`
+    headlineBadge.value = '🔥 ACTIVACIÓN INMEDIATA & PERMANENTE'
+    bullet1.value = 'Código original para canjear en tu cuenta de Steam'
+  } else if (plat.includes('Switch')) {
+    customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
+    headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO GARANTIZADO'
+    bullet1.value = isPrim ? 'Juega con tu Perfil Personal en Nintendo Switch' : 'Juega desde el usuario asignado 100% oficial'
+  } else if (plat.includes('Xbox')) {
+    customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
+    headlineBadge.value = isPrim ? '🔥 JUEGA CON TU PERFIL PERSONAL' : '⚡️ ACCESO ECONÓMICO GARANTIZADO'
+    bullet1.value = isPrim ? 'Juega con tu Gamertag Personal (Logros en tu cuenta)' : 'Juega desde el usuario asignado 100% oficial'
+  } else {
+    // PlayStation 5 / 4
+    customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Digital Oficial`
+    headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO 100% GARANTIZADO'
+    bullet1.value = isPrim 
+      ? 'Juega con tu Perfil Personal (Trofeos en tu cuenta)' 
+      : 'Juega desde el usuario asignado 100% oficial'
+  }
+
   customPrice.value = isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice
   customOriginalPrice.value = Math.round((isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice) * 1.35)
-  bullet1.value = isPrim 
-    ? 'Juega con tu Perfil Personal (Trofeos en tu cuenta)' 
-    : 'Juega desde el usuario asignado 100% oficial'
-  bullet2.value = 'Descarga directa desde PlayStation Store'
-  bullet3.value = 'Garantía oficial y entrega inmediata'
+  bullet2.value = `Descarga directa desde ${storeName}`
+  bullet3.value = 'Garantía oficial y entrega inmediata 24/7'
 }
 
 watch([selectedGamingId, selectedGamingLicense, selectedGamingPlatform], () => {
@@ -693,31 +761,35 @@ const applyCalculatedBadge = (customFormat = 'recomendado') => {
 
 // Título principal
 const displayTitle = computed(() => {
-  if (customTitle.value?.trim()) return customTitle.value.trim()
+  if (customTitle.value?.trim()) return decodeHtmlEntities(customTitle.value.trim())
   if (flyerProductType.value === 'gaming') {
-    return selectedGamingProduct.value?.title || 'Videojuego PS4/PS5'
+    return decodeHtmlEntities(selectedGamingProduct.value?.title || 'Videojuego Digital Oficial')
   }
   if (flyerProductType.value === 'combo') {
-    return selectedPackage.value?.title || 'Combo Especial Streaming'
+    return decodeHtmlEntities(selectedPackage.value?.title || 'Combo Especial Streaming')
   }
   if (flyerProductType.value === 'individual') {
-    return currentPlatformData.value?.name || selectedPlatform.value || 'Streaming'
+    return decodeHtmlEntities(currentPlatformData.value?.name || selectedPlatform.value || 'Streaming')
   }
-  return selectedPhysicalProduct.value?.name || 'Producto Tecnológico'
+  return decodeHtmlEntities(selectedPhysicalProduct.value?.name || 'Producto Tecnológico')
 })
 
 // Subtítulo
 const displaySubtitle = computed(() => {
-  if (customSubtitle.value?.trim()) return customSubtitle.value.trim()
+  if (customSubtitle.value?.trim()) return decodeHtmlEntities(customSubtitle.value.trim())
   if (flyerProductType.value === 'gaming') {
     const isPrim = selectedGamingLicense.value === 'primary'
-    return `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${selectedGamingPlatform.value} Digital Oficial`
+    const plat = selectedGamingPlatform.value
+    if (plat.includes('PC') || plat.includes('Steam')) {
+      return '🔑 Clave Digital Oficial · Steam'
+    }
+    return `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Digital Oficial`
   }
   if (flyerProductType.value === 'combo') {
-    return selectedPackage.value?.description || 'Las mejores plataformas combinadas con descuento especial'
+    return decodeHtmlEntities(selectedPackage.value?.description || 'Las mejores plataformas combinadas con descuento especial')
   }
   if (flyerProductType.value === 'individual') {
-    return currentPlanData.value?.label || 'Suscripción Oficial'
+    return decodeHtmlEntities(currentPlanData.value?.label || 'Suscripción Oficial')
   }
   return 'Tecnología & Accesorios de Alta Calidad'
 })
@@ -1076,7 +1148,7 @@ function renderCanvasFlyerBlob() {
       function drawCyberBadge(ctx, centerX, y, h, maxW = 860, isSmall = false) {
         ctx.save()
         const th = currentTheme.value
-        const badgeText = headlineBadge.value.toUpperCase()
+        const badgeText = decodeHtmlEntities(headlineBadge.value.toUpperCase())
         ctx.font = `900 ${isSmall ? 18 : 24}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
         const bW = Math.min(ctx.measureText(badgeText).width + (isSmall ? 36 : 52), maxW)
         const bX = centerX - bW / 2
@@ -1115,7 +1187,13 @@ function renderCanvasFlyerBlob() {
         const guaranteeText = flyerProductType.value === 'physical'
           ? '🚚 Envío a Todo el País · Garantía Oficial 100%'
           : flyerProductType.value === 'gaming'
-          ? '🎮 Cuenta Oficial PSN · Entrega Inmediata · Garantía 100%'
+          ? (selectedGamingPlatform.value.includes('PC') || selectedGamingPlatform.value.includes('Steam')
+              ? '🔑 Clave Oficial Steam · Activación Inmediata · Garantía 100%'
+              : selectedGamingPlatform.value.includes('Switch')
+              ? '🎮 Licencia Oficial Nintendo · Entrega Inmediata · Garantía 100%'
+              : selectedGamingPlatform.value.includes('Xbox')
+              ? '🎮 Licencia Oficial Xbox · Entrega Inmediata · Garantía 100%'
+              : '🎮 Licencia Oficial PlayStation · Entrega Inmediata · Garantía 100%')
           : '⚡ Entrega Inmediata · Garantía Oficial 100%'
 
         if (hasOrig) {
@@ -1182,7 +1260,7 @@ function renderCanvasFlyerBlob() {
       function drawCyberBullets(ctx, startX, startY, lineSpacing, maxBullets = 3, isSmall = false) {
         ctx.save()
         const th = currentTheme.value
-        const bullets = [bullet1.value, bullet2.value, bullet3.value].slice(0, maxBullets)
+        const bullets = [bullet1.value, bullet2.value, bullet3.value].slice(0, maxBullets).map(b => decodeHtmlEntities(b))
         ctx.textAlign = 'left'
         bullets.forEach((b, idx) => {
           const by = startY + idx * lineSpacing
@@ -1697,14 +1775,14 @@ const shareToWhatsAppStatus = () => {
             </div>
           </div>
 
-          <!-- MODO 4: VIDEOJUEGOS DIGITALES PS4 / PS5 -->
+          <!-- MODO 4: VIDEOJUEGOS DIGITALES -->
           <div v-else-if="flyerProductType === 'gaming'" class="space-y-3 bg-[#020617] p-3.5 rounded-2xl border border-indigo-500/30">
             <div class="flex items-center justify-between">
               <label class="block font-black uppercase text-indigo-300 text-xs flex items-center gap-1.5">
-                <span>🎮</span> Catálogo de Videojuegos PS4 & PS5 ({{ gamingProductsList.length }})
+                <span>🎮</span> Catálogo de Videojuegos Multiplataforma ({{ gamingProductsList.length }})
               </label>
               <span class="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                PlayStation Oficial
+                StreamePro Oficial
               </span>
             </div>
 
@@ -1762,20 +1840,15 @@ const shareToWhatsAppStatus = () => {
 
               <div>
                 <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Consola / Plataforma</label>
-                <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                <div class="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
                   <button 
+                    v-for="plat in availableGamePlatforms"
+                    :key="plat"
                     type="button" 
-                    @click="selectedGamingPlatform = 'PS5'" 
-                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingPlatform === 'PS5' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                    @click="selectedGamingPlatform = plat" 
+                    :class="['flex-1 py-1.5 px-2 rounded-lg font-bold text-xs transition text-center whitespace-nowrap', selectedGamingPlatform === plat ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
                   >
-                    PS5
-                  </button>
-                  <button 
-                    type="button" 
-                    @click="selectedGamingPlatform = 'PS4'" 
-                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingPlatform === 'PS4' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
-                  >
-                    PS4
+                    {{ plat }}
                   </button>
                 </div>
               </div>

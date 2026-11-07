@@ -2696,7 +2696,12 @@ export const useAdminStore = defineStore('admin', {
     },
 
     ensureGamingProductsLoaded() {
-      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23)) {
+      const hasCorruptData = Array.isArray(this.gamingProducts) && this.gamingProducts.some(g => 
+        (typeof g.title === 'string' && (g.title.includes('&#') || g.title.includes('&amp;') || g.title.includes('…') || g.title.endsWith('...'))) ||
+        (typeof g.description === 'string' && g.description.includes('&#'))
+      )
+
+      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {
         this.gamingProducts = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
         this.persist(DB_KEYS.GAMING_PRODUCTS)
       } else if (Array.isArray(this.gamingProducts)) {

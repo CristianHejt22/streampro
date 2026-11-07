@@ -251,6 +251,15 @@ const setGameLicense = (gameId, licenseType) => {
   gamingLicenseSelections.value[gameId] = licenseType
 }
 
+const getGameStoreLabel = (game) => {
+  if (!game || !game.platform) return 'Tienda Oficial'
+  const p = String(game.platform).toLowerCase()
+  if (p.includes('switch')) return 'Nintendo eShop Oficial'
+  if (p.includes('xbox')) return 'Xbox Store Oficial'
+  if (p.includes('pc') || p.includes('steam')) return 'Steam Oficial'
+  return 'PS Store Oficial'
+}
+
 watch(selectedGamingCat, () => {
   selectedGamingSubcat.value = 'Todas'
 })
@@ -2866,39 +2875,60 @@ const submitOrder = async () => {
             <span class="text-4xl filter drop-shadow-md">🎮</span>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-xl sm:text-2xl font-black text-white">Catálogo de Videojuegos Digitales PS4 & PS5</h3>
+                <h3 class="text-xl sm:text-2xl font-black text-white">Catálogo de Videojuegos Digitales Multiplataforma</h3>
                 <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full uppercase">
                   StreamePro Oficial
                 </span>
               </div>
               <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
-                Cuentas Primarias y Secundarias 100% Originales. Precios optimizados en pesos argentinos sin impuestos sorpresas.
+                PS5, PS4, Nintendo Switch, Xbox & PC. Cuentas Primarias, Secundarias y Claves Originales en pesos argentinos sin impuestos sorpresas.
               </p>
             </div>
           </div>
 
           <!-- Filtro de Consola / Plataforma -->
-          <div class="flex gap-1.5 p-1 bg-slate-950 rounded-2xl border border-indigo-500/30 shrink-0">
+          <div class="flex flex-wrap gap-1.5 p-1 bg-slate-950 rounded-2xl border border-indigo-500/30 shrink-0">
             <button 
               type="button"
               @click="gamingPlatformFilter = 'ALL'"
-              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all', gamingPlatformFilter === 'ALL' ? 'bg-indigo-500 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all', gamingPlatformFilter === 'ALL' ? 'bg-indigo-500 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
             >
               Todas
             </button>
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PS5'"
-              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS5' ? 'bg-blue-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS5' ? 'bg-blue-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
             >
               <span>⚡</span> PS5
             </button>
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PS4'"
-              :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS4' ? 'bg-sky-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS4' ? 'bg-sky-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
             >
               <span>🎮</span> PS4
+            </button>
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'Xbox'"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>💚</span> Xbox
+            </button>
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'Switch'"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'Switch' ? 'bg-red-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>🔴</span> Switch
+            </button>
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'PC'"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PC' ? 'bg-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>💻</span> PC
             </button>
           </div>
         </div>
@@ -3062,7 +3092,7 @@ const submitOrder = async () => {
                     <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 block mb-0.5">
                       ✓ Entrega Inmediata
                     </span>
-                    <span class="text-[9px] text-slate-400 font-mono">PS Store Oficial</span>
+                    <span class="text-[9px] text-slate-400 font-mono">{{ getGameStoreLabel(game) }}</span>
                   </div>
                 </div>
 
@@ -5017,7 +5047,7 @@ const submitOrder = async () => {
           <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/80 text-[11px] text-slate-300 space-y-1.5">
             <div class="flex items-center gap-2">
               <span class="text-emerald-400 font-bold">✓</span>
-              <span><strong>Descarga Oficial Directa:</strong> Desde PlayStation Store oficial para PS4 / PS5.</span>
+              <span><strong>Descarga Oficial Directa:</strong> Desde {{ getGameStoreLabel(selectedGamingProduct) }} para {{ selectedGamingProduct.platform }}.</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-emerald-400 font-bold">✓</span>

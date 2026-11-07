@@ -43,9 +43,39 @@ function normalizeTitle(raw) {
     .trim()
 }
 
-function cleanDisplayTitle(raw) {
+function decodeHtmlEntities(str) {
+  if (!str) return ''
+  return str
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#8211;/g, '-')
+    .replace(/&#8212;/g, '-')
+    .replace(/&#8230;/g, '...')
+    .replace(/&hellip;/g, '...')
+    .replace(/&ntilde;/g, 'ñ')
+    .replace(/&Ntilde;/g, 'Ñ')
+    .replace(/&aacute;/g, 'á')
+    .replace(/&eacute;/g, 'é')
+    .replace(/&iacute;/g, 'í')
+    .replace(/&oacute;/g, 'ó')
+    .replace(/&uacute;/g, 'ú')
+    .replace(/&Aacute;/g, 'Á')
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&Iacute;/g, 'Í')
+    .replace(/&Oacute;/g, 'Ó')
+    .replace(/&Uacute;/g, 'Ú')
+}
+
+function cleanDisplayTitle(raw, slugOrUrl = '') {
   if (!raw) return ''
-  let t = raw
+  let t = decodeHtmlEntities(raw)
     .replace(/<[^>]+>/g, '')
     .replace(/\s*-\s*fifa\s*\d+/gi, '')
     .replace(/\s*digital\s*original/gi, '')
@@ -57,9 +87,39 @@ function cleanDisplayTitle(raw) {
     .replace(/\s+version\s+ps5/gi, '')
     .replace(/\s+ps4\s+digital/gi, '')
     .replace(/\s+ps5\s+digital/gi, '')
+    .replace(/\s*-\s*NINTENDO\s+SWITCH(\s*2)?(\s*Exclusivo)?/gi, '')
+    .replace(/\s*-\s*Nintendo(\s*Switch)?/gi, '')
+    .replace(/\s*-\s*XBOX\s+SERIES\s*[X\/|S]+/gi, '')
+    .replace(/\s*-\s*Xbox\s+One(\s*ESPAÑOL)?/gi, '')
+    .replace(/\s*-\s*Xbox\s+Series\s*[X\/|S]+(\s*ESPAÑOL)?/gi, '')
+    .replace(/\s+Xbox\s+Series\s*[X\/|S]+/gi, '')
+    .replace(/\s+Xbox\s+One/gi, '')
+    .replace(/\s*PC\s*\(Steam\s*Key\)/gi, '')
+    .replace(/\s*\(Steam\s*Key\)/gi, '')
+    .replace(/\s*-\s*PS[45]/gi, '')
+    .replace(/\s+PS[45](\s+Digital)?/gi, '')
+    .replace(/\s*Grand Theft Auto V GTA V/gi, 'Grand Theft Auto V')
+    .replace(/\s*Grand Theft Auto\(GTA\)/gi, 'Grand Theft Auto')
+    .replace(/\s*Grand Theft Auto GTA/gi, 'Grand Theft Auto')
+    .replace(/\s*\+\s*\+/g, '+')
     .replace(/[\s\-_]+$/, '')
     .replace(/^[\s\-_]+/, '')
     .trim()
+
+  // Si el título viene recortado con puntos suspensivos en el texto de origen, recuperarlo del slug
+  if ((t.includes('…') || t.endsWith('...')) && slugOrUrl) {
+    const m = slugOrUrl.match(/\/productos\/([^/?#]+)/) || [null, slugOrUrl]
+    if (m && m[1]) {
+      let s = m[1]
+        .replace(/-ps[45]$/i, '')
+        .replace(/-(nintendo-switch(-2)?|xbox(-series(-[xs])?|-one)?|pc(-steam(-key)?)?)$/i, '')
+      t = s.split('-').map(w => {
+        if (['ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'gta', 'fc', 'wwe', 'cod', 'ufc', 'f1', 'nba', 'dvd', 'dlc'].includes(w.toLowerCase())) return w.toUpperCase()
+        if (['de', 'el', 'la', 'los', 'las', 'del', 'en', 'y', 'o', 'a', 'para', 'con', 'por', 'of', 'the', 'and', 'in', 'on', 'at', 'to', 'for', 'with'].includes(w.toLowerCase())) return w.toLowerCase()
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      }).join(' ')
+    }
+  }
 
   // Capitalización agradable si viene en todo mayúsculas
   if (t === t.toUpperCase() && t.length > 5) {
@@ -69,6 +129,10 @@ function cleanDisplayTitle(raw) {
       }
       return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
     }).join(' ')
+  }
+
+  if (t.startsWith('Aca Neogeo ')) {
+    t = t.replace('Aca Neogeo ', 'ACA NEOGEO: ')
   }
 
   return t
