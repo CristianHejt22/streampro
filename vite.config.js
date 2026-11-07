@@ -7,12 +7,14 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
-function devSyncGamingPlugin() {
+function devApiPlugin() {
   return {
-    name: 'dev-sync-gaming',
+    name: 'dev-api-middleware',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/api/sync-gaming') {
+        const url = req.url?.split('?')[0]
+
+        if (url === '/api/sync-gaming') {
           try {
             const { scrapeAndSyncGamingCatalog } = await import('./scripts/sync-gaming-catalog.js')
             const result = await scrapeAndSyncGamingCatalog()
@@ -25,6 +27,53 @@ function devSyncGamingPlugin() {
           }
           return
         }
+
+        if (url === '/api/sync-revende' || url === '/api/sync-tua') {
+          try {
+            const { syncPhysicalCatalog } = await import('./scripts/sync-catalog.js')
+            const result = await syncPhysicalCatalog()
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(result))
+          } catch (e) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: e.message }))
+          }
+          return
+        }
+
+        if (url === '/api/notify-order') {
+          try {
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                req.body = body ? JSON.parse(body) : {}
+                const { default: handler } = await import('./api/notify-order.js')
+                const fakeRes = {
+                  setHeader(k, v) { res.setHeader(k, v) },
+                  status(code) { res.statusCode = code; return this },
+                  json(data) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify(data))
+                  },
+                  end(data) { res.end(data) }
+                }
+                await handler(req, fakeRes)
+              } catch (e) {
+                res.statusCode = 500
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({ error: e.message }))
+              }
+            })
+          } catch (e) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: e.message }))
+          }
+          return
+        }
+
         next()
       })
     }
@@ -35,7 +84,7 @@ function devSyncGamingPlugin() {
 export default defineConfig({
   plugins: [
     vue(),
-    devSyncGamingPlugin(),
+    devApiPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {

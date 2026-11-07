@@ -90,6 +90,7 @@ const customTitle = ref('')
 const customSubtitle = ref('')
 const flyerTheme = ref('cyber') // 'cinema' | 'cyber' | 'emerald' | 'blue'
 const flyerFormat = ref('story') // 'story' (9:16) | 'feed' (4:5) | 'square' (1:1) | 'banner' (16:9)
+const flyerImageFit = ref('cover') // 'cover' (rellenar espacios enfocado) | 'contain' (completo con fondo ambiental)
 
 const flyerFormatLabels = {
   story: '9:16 Historias / Estados',
@@ -891,50 +892,84 @@ function renderCanvasFlyerBlob() {
           // Encajar la imagen del producto perfectamente en el rectángulo
           const imgEl = await loadFlyerImageElement(productImageCORS.value)
 
-          // Marco interno exacto del rectángulo
-          const pad = (visorW < 450) ? 14 : 8
+          // Marco interno exacto del visor
+          const pad = (visorW < 450) ? 6 : 4
           const innerX = visorX + pad
           const innerY = visorY + pad
           const innerW = visorW - pad * 2
           const innerH = visorH - pad * 2
-          const cornerR = Math.min(26, innerW * 0.065)
+          const cornerR = Math.min(28, innerW * 0.065)
 
           ctx.save()
           roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, false)
           ctx.clip()
 
-          // Fondo
-          ctx.fillStyle = isGamer ? '#0f172a' : '#ffffff'
+          // Fondo base estilizado
+          ctx.fillStyle = isGamer ? '#090d16' : '#0f172a'
           ctx.fillRect(innerX, innerY, innerW, innerH)
 
           if (imgEl) {
-            // La imagen aprovecha el rectángulo al máximo (object-fit: contain)
-            const imgPad = isGamer ? 8 : 14
-            const maxW = innerW - imgPad * 2
-            const maxH = innerH - imgPad * 2
             const imgAspect = (imgEl.width || 1) / (imgEl.height || 1)
-            let dw = maxW
-            let dh = maxH
-            if (dw / dh > imgAspect) {
-              dw = dh * imgAspect
+            const visorAspect = innerW / innerH
+
+            // 1. Capa ambiental que rellena el 100% del visor sin dejar ningún espacio vacío
+            const bgScale = Math.max(innerW / imgEl.width, innerH / imgEl.height) * 1.18
+            const bgW = imgEl.width * bgScale
+            const bgH = imgEl.height * bgScale
+            const bgX = innerX + (innerW - bgW) / 2
+            const bgY = innerY + (innerH - bgH) / 2
+
+            ctx.save()
+            ctx.filter = 'blur(18px) brightness(0.42)'
+            ctx.drawImage(imgEl, bgX, bgY, bgW, bgH)
+            ctx.restore()
+
+            if (flyerImageFit.value === 'contain') {
+              // Modo completo: imagen completa en primer plano sobre fondo ambiental
+              let dw, dh
+              if (visorAspect > imgAspect) {
+                dh = innerH - 16
+                dw = dh * imgAspect
+              } else {
+                dw = innerW - 16
+                dh = dw / imgAspect
+              }
+              const dx = innerX + (innerW - dw) / 2
+              const dy = innerY + (innerH - dh) / 2
+              ctx.save()
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
+              ctx.shadowBlur = 20
+              ctx.drawImage(imgEl, dx, dy, dw, dh)
+              ctx.restore()
             } else {
-              dh = dw / imgAspect
+              // Modo enfocado rellenando espacios (Cover 100%):
+              // Rellena la totalidad del visor con la imagen nítida enfocada en el centro
+              let dw, dh, dx, dy
+              if (visorAspect > imgAspect) {
+                dw = innerW
+                dh = innerW / imgAspect
+                dx = innerX
+                dy = innerY + (innerH - dh) / 2
+              } else {
+                dh = innerH
+                dw = innerH * imgAspect
+                dx = innerX + (innerW - dw) / 2
+                dy = innerY
+              }
+              ctx.drawImage(imgEl, dx, dy, dw, dh)
             }
-            const dx = innerX + (innerW - dw) / 2
-            const dy = innerY + (innerH - dh) / 2
-            ctx.drawImage(imgEl, dx, dy, dw, dh)
 
             if (isGamer) {
               const licText = selectedGamingLicense.value === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'
               const platText = selectedGamingPlatform.value
               const licBadgeText = `${platText} · ${licText}`
-              ctx.font = 'bold 12px monospace'
-              const bw = Math.max(86, ctx.measureText(licBadgeText).width + 16)
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
-              roundRect(ctx, innerX + 8, innerY + 8, bw, 22, 6, true, true, '#38bdf8', 1)
-              ctx.fillStyle = '#38bdf8'
+              ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+              const bw = Math.max(90, ctx.measureText(licBadgeText).width + 20)
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'
+              roundRect(ctx, innerX + 12, innerY + 12, bw, 26, 8, true, true, '#6366f1', 1.5)
+              ctx.fillStyle = '#818cf8'
               ctx.textAlign = 'center'
-              ctx.fillText(licBadgeText, innerX + 8 + bw / 2, innerY + 23)
+              ctx.fillText(licBadgeText, innerX + 12 + bw / 2, innerY + 29)
             }
           } else {
             const iconSize = Math.min(130, innerH * 0.38)
@@ -1759,6 +1794,34 @@ const shareToWhatsAppStatus = () => {
                 </div>
               </div>
             </div>
+
+            <!-- Modo de Enfoque y Relleno de Imagen -->
+            <div class="space-y-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-indigo-500/30">
+              <div class="flex items-center justify-between text-[11px] font-bold">
+                <span class="text-indigo-300 flex items-center gap-1.5">
+                  <span>🖼️</span> Enfoque y Relleno de Imagen
+                </span>
+                <span class="text-[9px] text-emerald-400 font-mono font-bold">100% Sin Espacios Vacíos</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'cover'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'cover' ? 'bg-indigo-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                  title="La imagen rellena completamente el visor enfocada en el centro sin bordes vacíos"
+                >
+                  <span>🎯</span> Enfocado (Rellenar)
+                </button>
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'contain'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'contain' ? 'bg-indigo-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                  title="La imagen se muestra completa sobre un fondo ambiental difuminado que cubre todo el espacio"
+                >
+                  <span>📐</span> Completo + Fondo
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- MODO 3: PRODUCTOS FÍSICOS (CUANDO LA TIENDA FÍSICA ESTÁ ACTIVA) -->
@@ -1804,6 +1867,34 @@ const shareToWhatsAppStatus = () => {
               <div class="flex-1 min-w-0">
                 <h5 class="text-xs font-bold text-white truncate">{{ selectedPhysicalProduct.name }}</h5>
                 <span class="text-emerald-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
+              </div>
+            </div>
+
+            <!-- Modo de Enfoque y Relleno de Imagen Físico -->
+            <div class="space-y-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/30">
+              <div class="flex items-center justify-between text-[11px] font-bold">
+                <span class="text-amber-300 flex items-center gap-1.5">
+                  <span>🖼️</span> Enfoque y Relleno de Imagen
+                </span>
+                <span class="text-[9px] text-emerald-400 font-mono font-bold">100% Sin Espacios Vacíos</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'cover'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'cover' ? 'bg-amber-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                  title="La imagen rellena completamente el visor enfocada en el centro"
+                >
+                  <span>🎯</span> Enfocado (Rellenar)
+                </button>
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'contain'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'contain' ? 'bg-amber-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                  title="La imagen se muestra completa sobre un fondo ambiental que cubre todo el espacio"
+                >
+                  <span>📐</span> Completo + Fondo
+                </button>
               </div>
             </div>
           </div>
@@ -2104,9 +2195,21 @@ const shareToWhatsAppStatus = () => {
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1.5 right-1.5 bg-indigo-600/90 text-white font-black text-[7px] px-1.5 py-0.5 rounded-md shadow border border-indigo-400/50">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-all duration-300',
+                        flyerImageFit === 'contain' ? 'object-contain p-2' : 'object-cover object-center'
+                      ]"
+                    >
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1.5 right-1.5 z-20 bg-indigo-600/95 text-white font-black text-[7px] px-1.5 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
                       {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>
@@ -2163,9 +2266,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[28.5%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-all duration-300',
+                        flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
+                      ]"
+                    >
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
                       {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>
@@ -2221,9 +2336,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.7%] left-[32.7%] w-[34.6%] h-[34.8%] flex items-center justify-center p-1 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center p-2 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-all duration-300',
+                        flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
+                      ]"
+                    >
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
                       {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>
@@ -2278,9 +2405,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[24.1%] left-[7.8%] w-[27.1%] h-[51.9%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center p-2.5 shadow-lg border overflow-hidden relative', flyerProductType === 'gaming' ? 'bg-slate-950/90' : 'bg-white', currentTheme.cssBorder]">
-                    <img :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" :alt="displayTitle" class="w-full h-full object-contain filter drop-shadow-md">
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 bg-indigo-600/90 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50">
+                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :alt="displayTitle" 
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-all duration-300',
+                        flyerImageFit === 'contain' ? 'object-contain p-2' : 'object-cover object-center'
+                      ]"
+                    >
+                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
                       {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
                     </span>
                   </div>

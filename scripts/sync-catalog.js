@@ -190,18 +190,45 @@ function copyFromExternalProject() {
   return false
 }
 
-async function main() {
-  const args = process.argv.slice(2)
-  const forceFetch = args.includes('--fetch')
-
+export async function syncPhysicalCatalog(forceFetch = false) {
+  let success = false
   if (forceFetch || !fs.existsSync(SOURCE_PRODUCTS_FILE)) {
     log("Descargando actualización directamente desde el servidor mayorista tua.ar...")
     await fetchFromApi()
-    log("¡Sincronización completada con éxito!")
+    success = true
   } else {
-    log("Copiando y normalizando catálogo local desde C:\\Users\\yo\\catalogo...")
-    copyFromExternalProject()
-    log("¡Sincronización completada con éxito!")
+    log("Copiando y normalizando catálogo local...")
+    success = copyFromExternalProject()
+    if (!success) {
+      await fetchFromApi()
+      success = true
+    }
+  }
+
+  try {
+    const products = JSON.parse(fs.readFileSync(TARGET_PRODUCTS_FILE, 'utf-8'))
+    const categories = fs.existsSync(TARGET_CATEGORIES_FILE)
+      ? JSON.parse(fs.readFileSync(TARGET_CATEGORIES_FILE, 'utf-8'))
+      : []
+    return {
+      success: true,
+      count: products.length,
+      products,
+      categories
+    }
+  } catch (err) {
+    return { success, error: err.message }
+  }
+}
+
+async function main() {
+  const args = process.argv.slice(2)
+  const forceFetch = args.includes('--fetch')
+  const res = await syncPhysicalCatalog(forceFetch)
+  if (res.success) {
+    log(`¡Sincronización completada con éxito! (${res.count || 0} productos)`)
+  } else {
+    log(`Error en sincronización: ${res.error}`)
   }
 }
 
