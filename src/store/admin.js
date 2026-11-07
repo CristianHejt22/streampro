@@ -17,6 +17,9 @@ import {
   listenToStreamingOrders, 
   listenToPhysicalOrders,
   listenToRegisteredUsers,
+  saveStoreSettingsToFirebase,
+  fetchStoreSettingsFromFirebase,
+  listenToStoreSettings,
   testFirebaseConnection 
 } from '../services/firebase'
 
@@ -492,7 +495,7 @@ export const useAdminStore = defineStore('admin', {
       if (stored && typeof stored.isPhysicalStoreVisible === 'boolean') {
         return stored.isPhysicalStoreVisible
       }
-      return true
+      return false
     })()
   }},
   getters: {
@@ -674,6 +677,9 @@ export const useAdminStore = defineStore('admin', {
     initCloudSync() {
       initFirebase(this.firebaseConfig)
 
+      // Sincronización en tiempo real de visibilidad de tienda
+      this.initStoreSettingsSync().catch(() => {})
+
       // Carga inicial directa de la nube
       this.syncFromCloud().catch(() => {})
 
@@ -754,9 +760,49 @@ export const useAdminStore = defineStore('admin', {
       return this.isPhysicalStoreVisible
     },
     persistStoreSettings() {
-      saveDb(DB_KEYS.STORE_SETTINGS, {
+      const settings = {
         isStoreVisible: this.isStoreVisible,
         isPhysicalStoreVisible: this.isPhysicalStoreVisible
+      }
+      saveDb(DB_KEYS.STORE_SETTINGS, settings)
+      // Sincronización en la nube Firebase Firestore para todos los clientes en tiempo real
+      saveStoreSettingsToFirebase(settings).catch(() => {})
+    },
+
+    // Sincronización en la nube de la visibilidad de tienda para clientes y admin
+    async initStoreSettingsSync() {
+      initFirebase(this.firebaseConfig)
+
+      // Carga inicial directa desde Firestore
+      try {
+        const cloudSettings = await fetchStoreSettingsFromFirebase()
+        if (cloudSettings) {
+          if (typeof cloudSettings.isStoreVisible === 'boolean') {
+            this.isStoreVisible = cloudSettings.isStoreVisible
+          }
+          if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
+            this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
+          }
+          saveDb(DB_KEYS.STORE_SETTINGS, {
+            isStoreVisible: this.isStoreVisible,
+            isPhysicalStoreVisible: this.isPhysicalStoreVisible
+          })
+        }
+      } catch (e) {}
+
+      // Escucha en tiempo real de cambios en la configuración (activa/desactiva para todos en vivo)
+      listenToStoreSettings((cloudSettings) => {
+        if (!cloudSettings) return
+        if (typeof cloudSettings.isStoreVisible === 'boolean') {
+          this.isStoreVisible = cloudSettings.isStoreVisible
+        }
+        if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
+          this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
+        }
+        saveDb(DB_KEYS.STORE_SETTINGS, {
+          isStoreVisible: this.isStoreVisible,
+          isPhysicalStoreVisible: this.isPhysicalStoreVisible
+        })
       })
     },
 

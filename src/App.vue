@@ -36,6 +36,9 @@ onMounted(() => {
   checkSavedUser()
   adminStore.ensurePhysicalProductsLoaded()
 
+  // Sincronización en la nube con Firebase Firestore para todos los clientes en tiempo real
+  adminStore.initStoreSettingsSync().catch(() => {})
+
   // Sincronización en tiempo real entre pestañas para la visibilidad de la tienda
   if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {

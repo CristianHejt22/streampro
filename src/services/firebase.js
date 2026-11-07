@@ -5,6 +5,7 @@ import {
   collection, 
   addDoc, 
   setDoc,
+  getDoc,
   doc, 
   query, 
   orderBy, 
@@ -272,6 +273,73 @@ export function listenToRegisteredUsers(callback) {
     })
   } catch (err) {
     console.warn('[Firebase] Listener error:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Guarda la configuración de visibilidad de la tienda en Firestore para sincronización global
+ */
+export async function saveStoreSettingsToFirebase(settings) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const data = {
+      isStoreVisible: typeof settings.isStoreVisible === 'boolean' ? settings.isStoreVisible : true,
+      isPhysicalStoreVisible: typeof settings.isPhysicalStoreVisible === 'boolean' ? settings.isPhysicalStoreVisible : false,
+      updatedAt: new Date().toISOString()
+    }
+    await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })
+    return { success: true, settings: data }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando store_settings en la nube:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Consulta la configuración de la tienda en Firestore
+ */
+export async function fetchStoreSettingsFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return null
+
+  try {
+    const snap = await getDoc(doc(dbInstance, 'settings', 'store_settings'))
+    if (snap.exists()) {
+      return snap.data()
+    }
+    return null
+  } catch (error) {
+    console.warn('[Firebase] Error consultando store_settings en la nube:', error)
+    return null
+  }
+}
+
+/**
+ * Escucha cambios en tiempo real en la configuración de la tienda para reflejar activaciones/desactivaciones al instante
+ */
+export function listenToStoreSettings(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return () => {}
+
+  try {
+    return onSnapshot(doc(dbInstance, 'settings', 'store_settings'), (snap) => {
+      if (snap.exists()) {
+        callback(snap.data())
+      }
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error en store_settings:', err)
+    })
+  } catch (err) {
+    console.warn('[Firebase] Listener error store_settings:', err)
     return () => {}
   }
 }
