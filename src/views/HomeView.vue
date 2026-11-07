@@ -236,6 +236,7 @@ watch(currentPageSection, (sec) => {
 // SECCIÓN: VIDEOJUEGOS DIGITALES PS4 / PS5 (ARGENTINA PLAY & JDA)
 // ==========================================
 const selectedGamingCat = ref('Todas')
+const selectedGamingSubcat = ref('Todas')
 const gamingSearch = ref('')
 const gamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4'
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
@@ -250,6 +251,31 @@ const setGameLicense = (gameId, licenseType) => {
   gamingLicenseSelections.value[gameId] = licenseType
 }
 
+watch(selectedGamingCat, () => {
+  selectedGamingSubcat.value = 'Todas'
+})
+
+const availableGamingSubcategories = computed(() => {
+  const currentCat = selectedGamingCat.value || 'Todas'
+  const map = adminStore.gamingSubcategories || {}
+  if (map[currentCat] && Array.isArray(map[currentCat]) && map[currentCat].length > 1) {
+    return map[currentCat]
+  }
+  const set = new Set(['Todas'])
+  const list = adminStore.processedGamingProducts || []
+  list.forEach(game => {
+    let matchesCat = false
+    if (currentCat === 'Todas' || !currentCat) matchesCat = true
+    else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
+    else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
+    else matchesCat = game.category === currentCat
+
+    if (matchesCat && game.subcategory) set.add(game.subcategory)
+  })
+  return Array.from(set)
+})
+
 const filteredGamingProducts = computed(() => {
   const list = adminStore.processedGamingProducts || []
   return list.filter(game => {
@@ -261,15 +287,16 @@ const filteredGamingProducts = computed(() => {
     } else if (selectedGamingCat.value === 'PS4') {
       matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
     } else if (selectedGamingCat.value === 'Lanzamientos') {
-      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
     } else {
       matchesCat = game.category === selectedGamingCat.value
     }
 
+    const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
     const matchesPlatform = gamingPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingPlatformFilter.value))
     const q = gamingSearch.value.toLowerCase().trim()
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q))
-    return matchesCat && matchesPlatform && matchesQ
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
+    return matchesCat && matchesSubcat && matchesPlatform && matchesQ
   })
 })
 
@@ -2896,13 +2923,35 @@ const submitOrder = async () => {
               type="button"
               @click="selectedGamingCat = cat"
               :class="[
-                'px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border',
+                'px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer',
                 selectedGamingCat === cat 
                   ? 'bg-indigo-500 text-white border-indigo-400 font-black shadow' 
                   : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
               ]"
             >
               {{ cat }}
+            </button>
+          </div>
+
+          <!-- Selector de Subcategorías Dinámico -->
+          <div v-if="availableGamingSubcategories.length > 1" class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar shrink-0 pt-1.5 border-t border-slate-800/60">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+              <span>🏷️</span>
+              <span>Subcategoría:</span>
+            </span>
+            <button 
+              v-for="subcat in availableGamingSubcategories" 
+              :key="subcat"
+              type="button"
+              @click="selectedGamingSubcat = subcat"
+              :class="[
+                'px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border cursor-pointer',
+                selectedGamingSubcat === subcat 
+                  ? 'bg-amber-400 text-slate-950 border-amber-400 font-black shadow-sm' 
+                  : 'bg-slate-950/60 text-slate-400 border-slate-800/80 hover:text-white hover:border-slate-700'
+              ]"
+            >
+              {{ subcat }}
             </button>
           </div>
         </div>
@@ -2927,7 +2976,7 @@ const submitOrder = async () => {
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60"></div>
               
               <!-- Badges Superiores -->
-              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
                 <span class="bg-indigo-600/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow font-mono">
                   {{ game.platform }}
                 </span>
@@ -2936,10 +2985,15 @@ const submitOrder = async () => {
                 </span>
               </div>
 
-              <!-- Categoría -->
-              <span class="absolute bottom-2.5 left-2.5 text-[10px] bg-slate-900/80 backdrop-blur text-slate-300 px-2 py-0.5 rounded-lg border border-white/10 font-bold">
-                {{ game.category }}
-              </span>
+              <!-- Categoría y Subcategoría en Portada -->
+              <div class="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] bg-slate-900/85 backdrop-blur text-slate-200 px-2 py-0.5 rounded-lg border border-white/10 font-bold">
+                  {{ game.category }}
+                </span>
+                <span v-if="game.subcategory" class="text-[10px] bg-indigo-950/85 backdrop-blur text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-500/30 font-bold">
+                  {{ game.subcategory }}
+                </span>
+              </div>
             </div>
 
             <!-- Contenido de la Tarjeta -->
@@ -4888,6 +4942,9 @@ const submitOrder = async () => {
               </span>
               <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">
                 {{ selectedGamingProduct.category }}
+              </span>
+              <span v-if="selectedGamingProduct.subcategory" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                {{ selectedGamingProduct.subcategory }}
               </span>
             </div>
             <h3 class="text-xl font-black text-white">{{ selectedGamingProduct.title }}</h3>

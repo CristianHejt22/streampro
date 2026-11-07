@@ -840,7 +840,33 @@ const showFlyerModal = ref(false)
 const gamingAdminSubTab = ref('comparison') // 'comparison' | 'argentinaplay' | 'juegosdigitalesargentina' | 'orders'
 const gamingAdminSearch = ref('')
 const gamingAdminCategoryFilter = ref('Todas')
+const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
+
+watch(gamingAdminCategoryFilter, () => {
+  gamingAdminSubcategoryFilter.value = 'Todas'
+})
+
+const availableAdminGamingSubcategories = computed(() => {
+  const currentCat = gamingAdminCategoryFilter.value || 'Todas'
+  const map = adminStore.gamingSubcategories || {}
+  if (map[currentCat] && Array.isArray(map[currentCat]) && map[currentCat].length > 1) {
+    return map[currentCat]
+  }
+  const set = new Set(['Todas'])
+  const list = adminStore.processedGamingProducts || []
+  list.forEach(game => {
+    let matchesCat = false
+    if (currentCat === 'Todas' || !currentCat) matchesCat = true
+    else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
+    else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
+    else matchesCat = game.category === currentCat
+
+    if (matchesCat && game.subcategory) set.add(game.subcategory)
+  })
+  return Array.from(set)
+})
 
 const showGamingPriceEditModal = ref(false)
 const showGamingNewModal = ref(false)
@@ -888,14 +914,15 @@ const filteredGamingForAdmin = computed(() => {
     } else if (gamingAdminCategoryFilter.value === 'PS4') {
       matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
     } else if (gamingAdminCategoryFilter.value === 'Lanzamientos') {
-      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
     } else {
       matchesCat = game.category === gamingAdminCategoryFilter.value
     }
+    const matchesSubcat = gamingAdminSubcategoryFilter.value === 'Todas' || !gamingAdminSubcategoryFilter.value || game.subcategory === gamingAdminSubcategoryFilter.value
     const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || game.platform.includes(gamingAdminPlatformFilter.value)
     const q = gamingAdminSearch.value.toLowerCase().trim()
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q))
-    return matchesCat && matchesPlatform && matchesQ
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
+    return matchesCat && matchesSubcat && matchesPlatform && matchesQ
   })
 })
 
@@ -5686,9 +5713,14 @@ const deletePackageItem = (pkgId) => {
             <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
           </div>
 
-          <div class="flex gap-2 w-full sm:w-auto">
+          <div class="flex flex-wrap gap-2 w-full sm:w-auto">
             <select v-model="gamingAdminCategoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
               <option v-for="cat in adminStore.gamingCategories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <select v-if="availableAdminGamingSubcategories.length > 1" v-model="gamingAdminSubcategoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
+              <option v-for="sub in availableAdminGamingSubcategories" :key="sub" :value="sub">
+                {{ sub === 'Todas' ? 'Todas las Subcategorías' : sub }}
+              </option>
             </select>
             <select v-model="gamingAdminPlatformFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
               <option value="ALL">Todas las Consolas</option>
@@ -5721,9 +5753,10 @@ const deletePackageItem = (pkgId) => {
                     <img :src="game.image" :alt="game.title" class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
                     <div>
                       <h4 class="font-black text-white text-xs line-clamp-1">{{ game.title }}</h4>
-                      <div class="flex items-center gap-1.5 mt-0.5">
+                      <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span class="text-[9px] bg-indigo-500/20 text-indigo-300 font-mono font-bold px-1.5 py-0.2 rounded">{{ game.platform }}</span>
-                        <span class="text-[9px] text-slate-500">{{ game.category }}</span>
+                        <span class="text-[9px] text-slate-400 font-semibold">{{ game.category }}</span>
+                        <span v-if="game.subcategory" class="text-[9px] text-amber-400/90 font-medium bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">{{ game.subcategory }}</span>
                       </div>
                     </div>
                   </div>
@@ -5859,7 +5892,11 @@ const deletePackageItem = (pkgId) => {
               <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">
                 <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
-                <span class="text-[10px] text-blue-400 font-mono">{{ game.platform }}</span>
+                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span class="text-[10px] text-blue-400 font-mono font-bold">{{ game.platform }}</span>
+                  <span class="text-[10px] text-slate-400 font-semibold">{{ game.category }}</span>
+                  <span v-if="game.subcategory" class="text-[9px] text-blue-300 font-medium">({{ game.subcategory }})</span>
+                </div>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
@@ -5911,7 +5948,11 @@ const deletePackageItem = (pkgId) => {
               <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">
                 <h4 class="font-black text-white text-xs truncate">{{ game.title }}</h4>
-                <span class="text-[10px] text-amber-400 font-mono">{{ game.platform }}</span>
+                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span class="text-[10px] text-amber-400 font-mono font-bold">{{ game.platform }}</span>
+                  <span class="text-[10px] text-slate-400 font-semibold">{{ game.category }}</span>
+                  <span v-if="game.subcategory" class="text-[9px] text-amber-300 font-medium">({{ game.subcategory }})</span>
+                </div>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">

@@ -47,6 +47,7 @@ export const DB_KEYS = {
   STORE_SETTINGS: 'store_settings',
   GAMING_PRODUCTS: 'gaming_products',
   GAMING_CATEGORIES: 'gaming_categories',
+  GAMING_SUBCATEGORIES: 'gaming_subcategories',
   GAMING_ORDERS: 'gaming_orders'
 }
 

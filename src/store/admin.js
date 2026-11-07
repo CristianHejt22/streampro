@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import gamingCategoriesData from '../assets/gamingCategories.json'
+import gamingSubcategoriesData from '../assets/gamingSubcategories.json'
 import gamingProductsData from '../assets/gamingProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
@@ -522,6 +523,15 @@ export const useAdminStore = defineStore('admin', {
       saveDb(DB_KEYS.GAMING_CATEGORIES, initial)
       return initial
     })(),
+    gamingSubcategories: (() => {
+      const stored = loadDb(DB_KEYS.GAMING_SUBCATEGORIES, null)
+      if (stored && typeof stored === 'object' && Object.keys(stored).length > 0) {
+        return stored
+      }
+      const initial = gamingSubcategoriesData || {}
+      saveDb(DB_KEYS.GAMING_SUBCATEGORIES, initial)
+      return initial
+    })(),
     gamingProviders: GAMING_PROVIDERS
   }},
   getters: {
@@ -601,8 +611,11 @@ export const useAdminStore = defineStore('admin', {
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
+        saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else if (key === DB_KEYS.GAMING_CATEGORIES) {
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
+      } else if (key === DB_KEYS.GAMING_SUBCATEGORIES) {
+        saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -628,6 +641,7 @@ export const useAdminStore = defineStore('admin', {
         })
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
+        saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       }
     },
 
@@ -2692,9 +2706,13 @@ export const useAdminStore = defineStore('admin', {
           : ['Todas', 'PS5', 'PS4', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
         this.persist(DB_KEYS.GAMING_CATEGORIES)
       }
+      if (!this.gamingSubcategories || Object.keys(this.gamingSubcategories).length === 0) {
+        this.gamingSubcategories = gamingSubcategoriesData || {}
+        this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
+      }
     },
 
-    updateGamingProductsFromJson(productsList, categoriesList = null) {
+    updateGamingProductsFromJson(productsList, categoriesList = null, subcategoriesMap = null) {
       if (Array.isArray(productsList) && productsList.length > 0) {
         this.gamingProducts = productsList
         this.persist(DB_KEYS.GAMING_PRODUCTS)
@@ -2702,6 +2720,11 @@ export const useAdminStore = defineStore('admin', {
         if (categoriesList && Array.isArray(categoriesList) && categoriesList.length > 0) {
           this.gamingCategories = categoriesList
           this.persist(DB_KEYS.GAMING_CATEGORIES)
+        }
+
+        if (subcategoriesMap && typeof subcategoriesMap === 'object') {
+          this.gamingSubcategories = subcategoriesMap
+          this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
         }
         return { success: true, count: productsList.length }
       }
@@ -2720,13 +2743,17 @@ export const useAdminStore = defineStore('admin', {
             this.gamingCategories = data.categories
             this.persist(DB_KEYS.GAMING_CATEGORIES)
           }
+          if (data.subcategories && typeof data.subcategories === 'object') {
+            this.gamingSubcategories = data.subcategories
+            this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
+          }
           return { success: true, count: data.products.length }
         }
         throw new Error(data.error || 'Respuesta inválida de la API de videojuegos')
       } catch (err) {
         console.warn('Sync API gaming falló o entorno estático, aplicando catálogo base sincronizado...', err)
         if (gamingProductsData && gamingProductsData.length > 0) {
-          return this.updateGamingProductsFromJson(gamingProductsData, gamingCategoriesData)
+          return this.updateGamingProductsFromJson(gamingProductsData, gamingCategoriesData, gamingSubcategoriesData)
         }
         return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
       }
