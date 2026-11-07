@@ -1824,14 +1824,14 @@ const shareToWhatsAppStatus = () => {
                   <button 
                     type="button" 
                     @click="selectedGamingLicense = 'primary'" 
-                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingLicense === 'primary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center cursor-pointer active:scale-95', selectedGamingLicense === 'primary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
                   >
                     ⭐️ Primaria
                   </button>
                   <button 
                     type="button" 
                     @click="selectedGamingLicense = 'secondary'" 
-                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center', selectedGamingLicense === 'secondary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                    :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center cursor-pointer active:scale-95', selectedGamingLicense === 'secondary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
                   >
                     ⚡️ Secundaria
                   </button>
@@ -1846,7 +1846,7 @@ const shareToWhatsAppStatus = () => {
                     :key="plat"
                     type="button" 
                     @click="selectedGamingPlatform = plat" 
-                    :class="['flex-1 py-1.5 px-2 rounded-lg font-bold text-xs transition text-center whitespace-nowrap', selectedGamingPlatform === plat ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+                    :class="['flex-1 py-1.5 px-2 rounded-lg font-bold text-xs transition text-center whitespace-nowrap cursor-pointer active:scale-95', selectedGamingPlatform === plat ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
                   >
                     {{ plat }}
                   </button>
