@@ -1,4 +1,4 @@
-// Catálogo Oficial de Videojuegos Digitales PS4 / PS5
+// Catálogo Oficial Extendido de Videojuegos Digitales PS4 / PS5
 // Proveedores: Argentina Play (argentinaplay.com.ar) y Juegos Digitales Argentina (juegosdigitalesargentina.com)
 // Regla: En la plataforma pública siempre se exhibe el MAYOR PRECIO entre ambos proveedores para cada modalidad (Primaria / Secundaria).
 
@@ -420,13 +420,277 @@ export const INITIAL_GAMING_PRODUCTS = [
   },
   {
     id: 'GAME-013',
+    title: 'Black Myth: Wukong',
+    slug: 'black-myth-wukong',
+    platform: 'PS5',
+    category: 'Rol & Aventura',
+    badge: '🐒 FENÓMENO MUNDIAL',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202405/2117/bd406f42e9352fdb398efcf21a4ffe575b2306ac40089d21.png',
+    description: 'El aclamado RPG de acción inspirado en la mitología china y la leyenda del Rey Mono. Combates vertiginosos con bastón mágico, transformaciones y gráficos cinematográficos Unreal Engine 5.',
+    features: ['Exclusivo Consola PS5', 'Unreal Engine 5 Next-Gen', 'Decenas de Transformaciones', 'Jefes colosales míticos'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 38900,
+        secondaryPrice: 21000,
+        costPrimary: 27500,
+        costSecondary: 14500,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 41000,
+        secondaryPrice: 19500,
+        costPrimary: 29000,
+        costSecondary: 13500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-014',
+    title: 'Silent Hill 2 Remake',
+    slug: 'silent-hill-2-remake',
+    platform: 'PS5',
+    category: 'Survival Horror',
+    badge: '🌫️ TERROR PSICOLÓGICO',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202210/2000/7cb6eP7FKb4PMq6ZnDDBAlzw.png',
+    description: 'Habiendo recibido una carta de su difunta esposa, James se dirige a Silent Hill en una obra maestra del terror psicológico rehecha con gráficos hiperrealistas y audio 3D inmersivo.',
+    features: ['Exclusivo Consola PS5', 'Audio 3D Tempest Aterrador', 'Cámara al hombro renovada', 'Atmósfera fotorrealista'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 36500,
+        secondaryPrice: 19000,
+        costPrimary: 25500,
+        costSecondary: 13000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 38500,
+        secondaryPrice: 18200,
+        costPrimary: 27000,
+        costSecondary: 12500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-015',
+    title: 'Red Dead Redemption 2',
+    slug: 'red-dead-redemption-2',
+    platform: 'PS4 / PS5',
+    category: 'Acción & Aventura',
+    badge: '🤠 LEYENDA DEL WESTERN',
+    image: 'https://image.api.playstation.com/vulcan/img/rnd/202011/1215/WyHa1BM3ISDVqYSEUMB9VZJs.png',
+    description: 'América, 1899. Arthur Morgan y la banda de Van der Linde huyen de la ley. Considerado uno de los mejores videojuegos de la historia con una narrativa y mundo abierto sin precedentes.',
+    features: ['Modo Historia de +80 Horas', 'Incluye Red Dead Online', 'Mundo Vivo e Hiperrealista', 'Voces y música legendarias'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 19900,
+        secondaryPrice: 9500,
+        costPrimary: 14000,
+        costSecondary: 6500,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 21500,
+        secondaryPrice: 8900,
+        costPrimary: 15000,
+        costSecondary: 6000,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-016',
+    title: 'Cyberpunk 2077: Ultimate Edition',
+    slug: 'cyberpunk-2077-ultimate-edition',
+    platform: 'PS5',
+    category: 'Rol & Aventura',
+    badge: '🌆 NIGHT CITY FUTURISTA',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202111/3013/UjQ1pWQiHwymgQQ6q4pWQkMC.png',
+    description: 'La experiencia definitiva de Cyberpunk 2077 para PS5. Conviértete en V en Night City, incluye la masiva expansión de suspenso y espionaje Phantom Liberty con Idris Elba.',
+    features: ['Incluye Phantom Liberty DLC', 'Ray Tracing & 60FPS en PS5', 'Árboles de Habilidades 2.0', 'Combate con vehículos mejorado'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 32000,
+        secondaryPrice: 16500,
+        costPrimary: 22500,
+        costSecondary: 11000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 34000,
+        secondaryPrice: 15500,
+        costPrimary: 24000,
+        costSecondary: 10500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-017',
+    title: 'Tekken 8',
+    slug: 'tekken-8',
+    platform: 'PS5',
+    category: 'Lucha',
+    badge: '⚡ PUÑO DE HIERRO',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202309/2802/0a334d1fc5c00e6d65577ff65f6226bb708bf542ec038001.jpg',
+    description: 'Siente el poder de cada golpe en Tekken 8 con el motor Unreal Engine 5. Nueva mecánica Heat System, 32 personajes icónicos y modo Arcade Quest competitivo online.',
+    features: ['Unreal Engine 5 a 60FPS', 'Sistema Heat Agresivo', '32 Luchadores Icónicos', 'Modo Arcade Quest & Online'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 35000,
+        secondaryPrice: 18000,
+        costPrimary: 24500,
+        costSecondary: 12000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 36900,
+        secondaryPrice: 16900,
+        costPrimary: 26000,
+        costSecondary: 11500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-018',
+    title: "Marvel's Spider-Man: Miles Morales",
+    slug: 'spider-man-miles-morales',
+    platform: 'PS4 / PS5',
+    category: 'Acción & Aventura',
+    badge: '⚡ PODERES BIOELÉCTRICOS',
+    image: 'https://image.api.playstation.com/vulcan/img/rnd/202010/2417/tnCutdREPv6Pa7atqb8MTxGW.png',
+    description: 'Vive el ascenso de Miles Morales como nuevo Spider-Man dominando increíbles poderes de veneno bioeléctrico y camuflaje óptico en un nevado Nueva York navideño.',
+    features: ['Poderes Veneno & Camuflaje', 'Modo Rendimiento 60FPS', 'Gráficos 4K HDR', 'Tiempo de carga ultra rápido'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 18900,
+        secondaryPrice: 9500,
+        costPrimary: 13000,
+        costSecondary: 6500,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 19900,
+        secondaryPrice: 8900,
+        costPrimary: 14000,
+        costSecondary: 6000,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-019',
+    title: 'Gran Turismo 7',
+    slug: 'gran-turismo-7',
+    platform: 'PS4 / PS5',
+    category: 'Deportes',
+    badge: '🏎️ SIMULADOR REAL',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202109/1404/PN9uW6n3oBMhwEjsA5fye3P0.png',
+    description: 'El simulador de conducción real por excelencia. Más de 420 coches reproducidos al detalle y más de 90 circuitos con clima dinámico y compatibilidad con PlayStation VR2.',
+    features: ['Más de 420 Vehículos Oficiales', 'Clima Dinámico Realista', 'Compatible con PS VR2', 'Físicas hiperrealistas de pista'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 28900,
+        secondaryPrice: 14500,
+        costPrimary: 20000,
+        costSecondary: 9800,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 30500,
+        secondaryPrice: 13900,
+        costPrimary: 21500,
+        costSecondary: 9200,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-020',
+    title: 'The Last of Us Part II Remastered',
+    slug: 'the-last-of-us-part-ii-remastered',
+    platform: 'PS5',
+    category: 'Acción & Aventura',
+    badge: '🏆 GANADOR DE +300 PREMIOS',
+    image: 'https://image.api.playstation.com/vulcan/ap/rnd/202502/1302/a2fa690381bb625c8efca0bbd5210811b9e044ed6f116ab8.jpg',
+    description: 'Experimenta la desgarradora historia de Ellie y Abby optimizada para PS5 con mejoras gráficas nativas, niveles inéditos y el frenético modo de supervivencia roguelike Sin Retorno.',
+    features: ['Nuevo Modo Roguelike Sin Retorno', 'Niveles Perdidos Inéditos', 'Tiempos de Carga Instantáneos', 'Gatillos DualSense Mejorados'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 31000,
+        secondaryPrice: 16500,
+        costPrimary: 21500,
+        costSecondary: 11000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 32900,
+        secondaryPrice: 15500,
+        costPrimary: 23000,
+        costSecondary: 10500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-021',
     title: 'PlayStation Plus Deluxe 12 Meses',
     slug: 'ps-plus-deluxe-12-meses',
     platform: 'PS4 / PS5',
     category: 'Membresías',
     badge: '💎 MEMBRESÍA VIP',
     image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80',
-    description: 'Suscripción anual con cientos de juegos de PS4 y PS5, catálogo de clásicos (PS1, PS2, PSP), pruebas de juegos y multijugador online sin límites.',
+    description: 'Suscripción anual con cientos de juegos de PS4 y PS5, catálogo de clásicos legendarios (PS1, PS2, PSP), pruebas de juegos y multijugador online sin límites.',
     features: ['Multijugador Online Completo', 'Catálogo +400 Juegos Gratis', 'Clásicos PS1, PS2, PSP', 'Descuentos exclusivos PS Store'],
     providers: {
       argentinaplay: {
@@ -447,6 +711,72 @@ export const INITIAL_GAMING_PRODUCTS = [
         secondaryPrice: 35000,
         costPrimary: 52000,
         costSecondary: 25000,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-022',
+    title: 'PlayStation Plus Extra 12 Meses',
+    slug: 'ps-plus-extra-12-meses',
+    platform: 'PS4 / PS5',
+    category: 'Membresías',
+    badge: '⚡ CATÁLOGO DE JUEGOS',
+    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=80',
+    description: 'Disfruta de multijugador online, juegos mensuales gratuitos y acceso a un catálogo de cientos de increíbles juegos de PS4 y PS5 con rotación constante de éxitos.',
+    features: ['Multijugador Online Completo', 'Catálogo +400 Juegos PS4/PS5', 'Juegos Mensuales Gratis', 'Almacenamiento en la Nube PSN'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 59000,
+        secondaryPrice: 32000,
+        costPrimary: 42000,
+        costSecondary: 23000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 62000,
+        secondaryPrice: 30000,
+        costPrimary: 44000,
+        costSecondary: 21500,
+        stock: 'Inmediato'
+      }
+    }
+  },
+  {
+    id: 'GAME-023',
+    title: 'PlayStation Plus Essential 12 Meses',
+    slug: 'ps-plus-essential-12-meses',
+    platform: 'PS4 / PS5',
+    category: 'Membresías',
+    badge: '🎮 ONLINE + JUEGOS MENSUALES',
+    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80',
+    description: 'La membresía esencial para jugar online en PS4 y PS5. Incluye multijugador competitivo, 3 a 4 juegos descargables todos los meses y descuentos exclusivos en PS Store.',
+    features: ['Multijugador Online Ilimitado', '3-4 Juegos Gratis Todos los Meses', 'Descuentos Exclusivos en Tienda', 'Partidas Guardadas en Nube'],
+    providers: {
+      argentinaplay: {
+        providerName: 'Argentina Play',
+        providerUrl: 'https://www.argentinaplay.com.ar/',
+        available: true,
+        primaryPrice: 42000,
+        secondaryPrice: 24000,
+        costPrimary: 30000,
+        costSecondary: 17000,
+        stock: 'Inmediato'
+      },
+      juegosdigitalesargentina: {
+        providerName: 'Juegos Digitales Argentina',
+        providerUrl: 'https://juegosdigitalesargentina.com/',
+        available: true,
+        primaryPrice: 45000,
+        secondaryPrice: 22000,
+        costPrimary: 32000,
+        costSecondary: 15500,
         stock: 'Inmediato'
       }
     }

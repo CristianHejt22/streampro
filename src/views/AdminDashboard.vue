@@ -880,10 +880,21 @@ const gamingNewForm = ref({
 const filteredGamingForAdmin = computed(() => {
   const list = adminStore.processedGamingProducts || []
   return list.filter(game => {
-    const matchesCat = gamingAdminCategoryFilter.value === 'Todas' || game.category === gamingAdminCategoryFilter.value
+    let matchesCat = false
+    if (gamingAdminCategoryFilter.value === 'Todas' || !gamingAdminCategoryFilter.value) {
+      matchesCat = true
+    } else if (gamingAdminCategoryFilter.value === 'PS5') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
+    } else if (gamingAdminCategoryFilter.value === 'PS4') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    } else if (gamingAdminCategoryFilter.value === 'Lanzamientos') {
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
+    } else {
+      matchesCat = game.category === gamingAdminCategoryFilter.value
+    }
     const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || game.platform.includes(gamingAdminPlatformFilter.value)
     const q = gamingAdminSearch.value.toLowerCase().trim()
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q)
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q))
     return matchesCat && matchesPlatform && matchesQ
   })
 })

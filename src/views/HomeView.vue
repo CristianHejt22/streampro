@@ -253,10 +253,22 @@ const setGameLicense = (gameId, licenseType) => {
 const filteredGamingProducts = computed(() => {
   const list = adminStore.processedGamingProducts || []
   return list.filter(game => {
-    const matchesCat = selectedGamingCat.value === 'Todas' || game.category === selectedGamingCat.value
-    const matchesPlatform = gamingPlatformFilter.value === 'ALL' || game.platform.includes(gamingPlatformFilter.value)
+    let matchesCat = false
+    if (selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
+      matchesCat = true
+    } else if (selectedGamingCat.value === 'PS5') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
+    } else if (selectedGamingCat.value === 'PS4') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    } else if (selectedGamingCat.value === 'Lanzamientos') {
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
+    } else {
+      matchesCat = game.category === selectedGamingCat.value
+    }
+
+    const matchesPlatform = gamingPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingPlatformFilter.value))
     const q = gamingSearch.value.toLowerCase().trim()
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || game.description.toLowerCase().includes(q)
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q))
     return matchesCat && matchesPlatform && matchesQ
   })
 })
@@ -2980,19 +2992,30 @@ const submitOrder = async () => {
               </div>
 
               <!-- PRECIO FINAL EN PLATAFORMA (MAYOR PRECIO) -->
-              <div class="flex items-center justify-between pt-1">
-                <div>
-                  <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Precio en Plataforma</span>
-                  <div class="flex items-baseline gap-1.5">
-                    <span class="text-xl font-black text-white font-mono">
-                      ${(getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString()}
+              <div class="space-y-1.5 pt-1">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Mayor Precio Garantizado</span>
+                    <div class="flex items-baseline gap-1.5">
+                      <span class="text-xl font-black text-white font-mono">
+                        ${(getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString()}
+                      </span>
+                      <span class="text-[10px] text-slate-400 font-bold">ARS</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 block mb-0.5">
+                      ✓ Entrega Inmediata
                     </span>
-                    <span class="text-[10px] text-slate-400 font-bold">ARS</span>
+                    <span class="text-[9px] text-slate-400 font-mono">PS Store Oficial</span>
                   </div>
                 </div>
-                <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  Entrega Inmediata
-                </span>
+
+                <!-- Comparación Transparente de Proveedores -->
+                <div class="flex items-center justify-between text-[9px] bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800 text-slate-400">
+                  <span>ArgPlay vs JDA</span>
+                  <span class="text-indigo-300 font-bold">Líder: {{ getGameSelectedLicense(game.id) === 'primary' ? game.primaryPriceLeaderName : game.secondaryPriceLeaderName }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -4918,6 +4941,27 @@ const submitOrder = async () => {
               <div class="text-lg font-black text-white font-mono">${selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString()} ARS</div>
               <p class="text-[10px] text-slate-400">Juegas con el usuario asignado, requiere conexión constante a internet.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Comparativa de Proveedores & Regla de Arbitraje -->
+        <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1.5 text-xs">
+          <div class="flex items-center justify-between text-slate-400 font-bold">
+            <span>Arbitraje Oficial de Proveedores:</span>
+            <span class="text-emerald-400 font-mono text-[11px]">✓ Garantía de Entrega Inmediata</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+            <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+              <span class="text-blue-300 font-bold">🇦🇷 Argentina Play:</span>
+              <span class="font-mono text-white">Prim: ${{ selectedGamingProduct.providers?.argentinaplay?.primaryPrice?.toLocaleString() }} | Sec: ${{ selectedGamingProduct.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</span>
+            </div>
+            <div class="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+              <span class="text-amber-300 font-bold">🎮 JDA:</span>
+              <span class="font-mono text-white">Prim: ${{ selectedGamingProduct.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }} | Sec: ${{ selectedGamingProduct.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-400 text-center pt-0.5">
+            * En tienda compras con el mayor precio garantizado y el servicio de soporte oficial StreamePro 24/7.
           </div>
         </div>
 

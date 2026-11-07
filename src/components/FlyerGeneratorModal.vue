@@ -55,7 +55,18 @@ const gamingProductsList = computed(() => adminStore.processedGamingProducts || 
 
 const filteredGamingProducts = computed(() => {
   return gamingProductsList.value.filter(g => {
-    const matchesCat = selectedGamingCat.value === 'All' || g.category === selectedGamingCat.value
+    let matchesCat = false
+    if (selectedGamingCat.value === 'All' || selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
+      matchesCat = true
+    } else if (selectedGamingCat.value === 'PS5') {
+      matchesCat = Boolean(g.platform && g.platform.includes('PS5'))
+    } else if (selectedGamingCat.value === 'PS4') {
+      matchesCat = Boolean(g.platform && g.platform.includes('PS4'))
+    } else if (selectedGamingCat.value === 'Lanzamientos') {
+      matchesCat = Boolean(g.badge && (g.badge.includes('LANZAMIENTO') || g.badge.includes('2026') || g.badge.includes('2025') || g.badge.includes('2024') || g.badge.includes('TOP') || g.badge.includes('MÁS VENDIDO') || g.badge.includes('FENÓMENO') || g.badge.includes('JUEGO DEL AÑO')))
+    } else {
+      matchesCat = g.category === selectedGamingCat.value
+    }
     const q = gamingSearch.value.toLowerCase().trim()
     const matchesQ = !q || g.title.toLowerCase().includes(q) || (g.platform && g.platform.toLowerCase().includes(q)) || (g.category && g.category.toLowerCase().includes(q))
     return matchesCat && matchesQ
