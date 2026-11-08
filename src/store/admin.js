@@ -2701,7 +2701,8 @@ export const useAdminStore = defineStore('admin', {
         (typeof g.description === 'string' && (g.description.includes('&#') || g.description.includes('inmediata'))) ||
         !g.visibleProviderKey ||
         (g.providers?.argentinaplay?.available && g.providers.argentinaplay.costPrimary !== g.providers.argentinaplay.primaryPrice) ||
-        (g.providers?.juegosdigitalesargentina?.available && g.providers.juegosdigitalesargentina.costPrimary !== g.providers.juegosdigitalesargentina.primaryPrice)
+        (g.providers?.juegosdigitalesargentina?.available && g.providers.juegosdigitalesargentina.costPrimary !== g.providers.juegosdigitalesargentina.primaryPrice) ||
+        (g.id === 'GAME-001' && g.providers?.juegosdigitalesargentina?.primaryPrice === 23800)
       )
 
       if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {

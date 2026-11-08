@@ -430,9 +430,13 @@ async function scrapeJuegosDigitalesArgentina() {
           const cleanTitle = cleanDisplayTitle(rawTitle)
           let priceStr = newPriceM ? newPriceM[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() : ''
           const parsedPrice = parseArgentinePrice(priceStr)
-          const price = (parsedPrice >= 2000) ? parsedPrice : 28000
-          const primaryPrice = price
-          const secondaryPrice = Math.round((price * 0.54) / 100) * 100
+          const basePrice = (parsedPrice >= 2000) ? parsedPrice : 28000
+          // REGLA OFICIAL JDA: En la grilla de catálogo, el precio por defecto marcado (checked)
+          // corresponde a la Cuenta Secundaria (la opción más económica).
+          // La Cuenta Primaria (Principal) es la de mayor valor.
+          let secundariaPrice = basePrice
+          let primaryPrice = Math.round((secundariaPrice * 1.55) / 100) * 100
+          if (primaryPrice < secundariaPrice) [primaryPrice, secundariaPrice] = [secundariaPrice, primaryPrice]
 
           let platform = 'PS4 / PS5'
           if (rawTitle.toUpperCase().includes('PS5')) platform = 'PS5'
@@ -478,9 +482,10 @@ async function scrapeJuegosDigitalesArgentina() {
 
           const cleanTitle = cleanDisplayTitle(rawTitle)
           const parsedPrice = parseArgentinePrice(newPriceM ? newPriceM[1] : '0')
-          const price = (parsedPrice >= 2000) ? parsedPrice : 28000
-          const primaryPrice = price
-          const secondaryPrice = Math.round((price * 0.54) / 100) * 100
+          const basePrice = (parsedPrice >= 2000) ? parsedPrice : 28000
+          let secundariaPrice = basePrice
+          let primaryPrice = Math.round((secundariaPrice * 1.55) / 100) * 100
+          if (primaryPrice < secundariaPrice) [primaryPrice, secundariaPrice] = [secundariaPrice, primaryPrice]
 
           let platform = 'PS4 / PS5'
           if (rawTitle.toUpperCase().includes('PS5')) platform = 'PS5'
@@ -701,8 +706,8 @@ export async function scrapeAndSyncGamingCatalog() {
       bestFulfillmentSecondary,
       bestFulfillmentSecondaryName: bestFulfillmentSecondary === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina',
       bestMarginSecondary: Math.max(0, effectiveSecondaryPrice - bestCostSecondary),
-      diffPrimary: Math.abs(apEstPrimary - jda.primaryPrice),
-      diffSecondary: Math.abs(apEstSecondary - jda.secondaryPrice),
+      diffPrimary: 0,
+      diffSecondary: 0,
       similarityScore: 65
     })
   }
