@@ -5786,21 +5786,19 @@ const deletePackageItem = (pkgId) => {
                         {{ game.visibleProviderBadge }}
                       </span>
                       <span class="text-[8px] bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.2 rounded border border-indigo-500/30">
-                        Mayor Costo
+                        {{ (game.providers?.argentinaplay?.available && game.providers?.juegosdigitalesargentina?.available) ? 'Mayor Costo' : 'Proveedor Oficial' }}
                       </span>
                     </div>
                     <div class="flex items-center justify-between gap-2 pt-1">
-                      <span class="text-slate-400 text-[10px]">Primaria:</span>
+                      <span class="text-slate-400 text-[10px]">Costo Primaria:</span>
                       <div class="text-right">
-                        <strong class="text-white font-black">${{ (game.visibleProvider?.primaryPrice || game.visiblePrimaryPrice)?.toLocaleString() }}</strong>
-                        <span class="text-[9px] text-slate-400 block">Costo: ${{ (game.visibleProvider?.costPrimary || game.visibleCostPrimary)?.toLocaleString() }}</span>
+                        <strong class="text-white font-black">${{ (game.visibleProvider?.costPrimary || game.visibleCostPrimary || game.visibleProvider?.primaryPrice)?.toLocaleString() }}</strong>
                       </div>
                     </div>
                     <div class="flex items-center justify-between gap-2 pt-0.5 border-t border-slate-800/80">
-                      <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                      <span class="text-slate-400 text-[10px]">Costo Secundaria:</span>
                       <div class="text-right">
-                        <span class="text-indigo-300 font-bold">${{ (game.visibleProvider?.secondaryPrice || game.visibleSecondaryPrice)?.toLocaleString() }}</span>
-                        <span class="text-[9px] text-slate-400 block">Costo: ${{ (game.visibleProvider?.costSecondary || game.visibleCostSecondary)?.toLocaleString() }}</span>
+                        <span class="text-indigo-300 font-bold">${{ (game.visibleProvider?.costSecondary || game.visibleCostSecondary || game.visibleProvider?.secondaryPrice)?.toLocaleString() }}</span>
                       </div>
                     </div>
                   </div>
@@ -5810,37 +5808,35 @@ const deletePackageItem = (pkgId) => {
                 <template v-else>
                   <!-- Columna Argentina Play -->
                   <td class="p-3.5 bg-blue-950/10 border-x border-slate-800 font-mono">
-                    <div class="space-y-0.5">
+                    <div v-if="game.providers?.argentinaplay?.available" class="space-y-0.5">
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Primaria:</span>
+                        <span class="text-slate-400 text-[10px]">Costo Prim:</span>
                         <strong class="text-white font-black">${{ game.providers?.argentinaplay?.primaryPrice?.toLocaleString() }}</strong>
                       </div>
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                        <span class="text-slate-400 text-[10px]">Costo Sec:</span>
                         <span class="text-blue-300">${{ game.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</span>
                       </div>
-                      <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
-                        <span>Costo Prim:</span>
-                        <span>${{ game.providers?.argentinaplay?.costPrimary?.toLocaleString() }}</span>
-                      </div>
+                    </div>
+                    <div v-else class="text-center py-2 text-slate-500 text-[10px] italic">
+                      No listado en ArgPlay
                     </div>
                   </td>
 
                   <!-- Columna Juegos Digitales Argentina -->
                   <td class="p-3.5 bg-amber-950/10 border-r border-slate-800 font-mono">
-                    <div class="space-y-0.5">
+                    <div v-if="game.providers?.juegosdigitalesargentina?.available" class="space-y-0.5">
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Primaria:</span>
+                        <span class="text-slate-400 text-[10px]">Costo Prim:</span>
                         <strong class="text-white font-black">${{ game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }}</strong>
                       </div>
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Secundaria:</span>
+                        <span class="text-slate-400 text-[10px]">Costo Sec:</span>
                         <span class="text-amber-300">${{ game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</span>
                       </div>
-                      <div class="text-[9px] text-slate-500 flex justify-between pt-0.5 border-t border-slate-800/80">
-                        <span>Costo Prim:</span>
-                        <span>${{ game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString() }}</span>
-                      </div>
+                    </div>
+                    <div v-else class="text-center py-2 text-slate-500 text-[10px] italic">
+                      No listado en JDA
                     </div>
                   </td>
                 </template>
@@ -5941,14 +5937,12 @@ const deletePackageItem = (pkgId) => {
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
               <div>
-                <span class="text-[10px] text-slate-400 block">Primaria:</span>
+                <span class="text-[10px] text-slate-400 block">Costo Primaria:</span>
                 <strong class="text-white">${{ game.providers?.argentinaplay?.primaryPrice?.toLocaleString() }}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.argentinaplay?.costPrimary?.toLocaleString() }}</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-400 block">Secundaria:</span>
+                <span class="text-[10px] text-slate-400 block">Costo Secundaria:</span>
                 <strong class="text-blue-300">${{ game.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.argentinaplay?.costSecondary?.toLocaleString() }}</span>
               </div>
             </div>
             <div class="flex gap-2">
@@ -5997,14 +5991,12 @@ const deletePackageItem = (pkgId) => {
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
               <div>
-                <span class="text-[10px] text-slate-400 block">Primaria:</span>
+                <span class="text-[10px] text-slate-400 block">Costo Primaria:</span>
                 <strong class="text-white">${{ game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.juegosdigitalesargentina?.costPrimary?.toLocaleString() }}</span>
               </div>
               <div>
-                <span class="text-[10px] text-slate-400 block">Secundaria:</span>
+                <span class="text-[10px] text-slate-400 block">Costo Secundaria:</span>
                 <strong class="text-amber-300">${{ game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</strong>
-                <span class="text-[9px] text-slate-500 block">Costo ${{ game.providers?.juegosdigitalesargentina?.costSecondary?.toLocaleString() }}</span>
               </div>
             </div>
             <div class="flex gap-2">

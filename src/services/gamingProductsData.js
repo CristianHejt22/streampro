@@ -39,8 +39,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 27900,
         secondaryPrice: 13500,
-        costPrimary: 19500,
-        costSecondary: 9200,
+        costPrimary: 27900,
+        costSecondary: 13500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -49,8 +49,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 29999,
         secondaryPrice: 11900,
-        costPrimary: 21000,
-        costSecondary: 8000,
+        costPrimary: 29999,
+        costSecondary: 11900,
         stock: 'Inmediato'
       }
     }
@@ -72,8 +72,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 18500,
         secondaryPrice: 9900,
-        costPrimary: 13000,
-        costSecondary: 6800,
+        costPrimary: 18500,
+        costSecondary: 9900,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -82,8 +82,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 19800,
         secondaryPrice: 8500,
-        costPrimary: 14000,
-        costSecondary: 5900,
+        costPrimary: 19800,
+        costSecondary: 8500,
         stock: 'Inmediato'
       }
     }
@@ -105,8 +105,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 34500,
         secondaryPrice: 18900,
-        costPrimary: 24000,
-        costSecondary: 13000,
+        costPrimary: 34500,
+        costSecondary: 18900,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -115,8 +115,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 36000,
         secondaryPrice: 17500,
-        costPrimary: 25500,
-        costSecondary: 12000,
+        costPrimary: 36000,
+        costSecondary: 17500,
         stock: 'Inmediato'
       }
     }
@@ -138,8 +138,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 31900,
         secondaryPrice: 15500,
-        costPrimary: 22000,
-        costSecondary: 10500,
+        costPrimary: 31900,
+        costSecondary: 15500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -148,8 +148,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 29500,
         secondaryPrice: 16900,
-        costPrimary: 20500,
-        costSecondary: 11500,
+        costPrimary: 29500,
+        costSecondary: 16900,
         stock: 'Inmediato'
       }
     }
@@ -171,8 +171,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 32000,
         secondaryPrice: 15000,
-        costPrimary: 22500,
-        costSecondary: 10000,
+        costPrimary: 32000,
+        costSecondary: 15000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -181,8 +181,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 34500,
         secondaryPrice: 14200,
-        costPrimary: 24000,
-        costSecondary: 9500,
+        costPrimary: 34500,
+        costSecondary: 14200,
         stock: 'Inmediato'
       }
     }
@@ -204,8 +204,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 41000,
         secondaryPrice: 22000,
-        costPrimary: 29000,
-        costSecondary: 15500,
+        costPrimary: 41000,
+        costSecondary: 22000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -214,8 +214,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 42500,
         secondaryPrice: 19900,
-        costPrimary: 30000,
-        costSecondary: 14000,
+        costPrimary: 42500,
+        costSecondary: 19900,
         stock: 'Inmediato'
       }
     }
@@ -237,8 +237,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 44900,
         secondaryPrice: 23500,
-        costPrimary: 31500,
-        costSecondary: 16500,
+        costPrimary: 44900,
+        costSecondary: 23500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -247,8 +247,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 43000,
         secondaryPrice: 24900,
-        costPrimary: 30000,
-        costSecondary: 17500,
+        costPrimary: 43000,
+        costSecondary: 24900,
         stock: 'Inmediato'
       }
     }
@@ -270,8 +270,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 29900,
         secondaryPrice: 14500,
-        costPrimary: 21000,
-        costSecondary: 10000,
+        costPrimary: 29900,
+        costSecondary: 14500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -280,8 +280,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 28500,
         secondaryPrice: 15800,
-        costPrimary: 20000,
-        costSecondary: 11000,
+        costPrimary: 28500,
+        costSecondary: 15800,
         stock: 'Inmediato'
       }
     }
@@ -303,8 +303,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 26500,
         secondaryPrice: 12800,
-        costPrimary: 18500,
-        costSecondary: 9000,
+        costPrimary: 26500,
+        costSecondary: 12800,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -313,8 +313,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 27900,
         secondaryPrice: 11900,
-        costPrimary: 19500,
-        costSecondary: 8200,
+        costPrimary: 27900,
+        costSecondary: 11900,
         stock: 'Inmediato'
       }
     }
@@ -336,8 +336,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 25900,
         secondaryPrice: 12500,
-        costPrimary: 18000,
-        costSecondary: 8500,
+        costPrimary: 25900,
+        costSecondary: 12500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -346,8 +346,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 24800,
         secondaryPrice: 13500,
-        costPrimary: 17200,
-        costSecondary: 9200,
+        costPrimary: 24800,
+        costSecondary: 13500,
         stock: 'Inmediato'
       }
     }
@@ -369,8 +369,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 38000,
         secondaryPrice: 19500,
-        costPrimary: 26500,
-        costSecondary: 13500,
+        costPrimary: 38000,
+        costSecondary: 19500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -379,8 +379,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 39500,
         secondaryPrice: 18200,
-        costPrimary: 27500,
-        costSecondary: 12500,
+        costPrimary: 39500,
+        costSecondary: 18200,
         stock: 'Inmediato'
       }
     }
@@ -402,8 +402,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 34500,
         secondaryPrice: 18500,
-        costPrimary: 24000,
-        costSecondary: 12500,
+        costPrimary: 34500,
+        costSecondary: 18500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -412,8 +412,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 36000,
         secondaryPrice: 17900,
-        costPrimary: 25000,
-        costSecondary: 12000,
+        costPrimary: 36000,
+        costSecondary: 17900,
         stock: 'Inmediato'
       }
     }
@@ -435,8 +435,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 38900,
         secondaryPrice: 21000,
-        costPrimary: 27500,
-        costSecondary: 14500,
+        costPrimary: 38900,
+        costSecondary: 21000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -445,8 +445,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 41000,
         secondaryPrice: 19500,
-        costPrimary: 29000,
-        costSecondary: 13500,
+        costPrimary: 41000,
+        costSecondary: 19500,
         stock: 'Inmediato'
       }
     }
@@ -468,8 +468,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 36500,
         secondaryPrice: 19000,
-        costPrimary: 25500,
-        costSecondary: 13000,
+        costPrimary: 36500,
+        costSecondary: 19000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -478,8 +478,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 38500,
         secondaryPrice: 18200,
-        costPrimary: 27000,
-        costSecondary: 12500,
+        costPrimary: 38500,
+        costSecondary: 18200,
         stock: 'Inmediato'
       }
     }
@@ -501,8 +501,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 19900,
         secondaryPrice: 9500,
-        costPrimary: 14000,
-        costSecondary: 6500,
+        costPrimary: 19900,
+        costSecondary: 9500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -511,8 +511,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 21500,
         secondaryPrice: 8900,
-        costPrimary: 15000,
-        costSecondary: 6000,
+        costPrimary: 21500,
+        costSecondary: 8900,
         stock: 'Inmediato'
       }
     }
@@ -534,8 +534,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 32000,
         secondaryPrice: 16500,
-        costPrimary: 22500,
-        costSecondary: 11000,
+        costPrimary: 32000,
+        costSecondary: 16500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -544,8 +544,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 34000,
         secondaryPrice: 15500,
-        costPrimary: 24000,
-        costSecondary: 10500,
+        costPrimary: 34000,
+        costSecondary: 15500,
         stock: 'Inmediato'
       }
     }
@@ -567,8 +567,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 35000,
         secondaryPrice: 18000,
-        costPrimary: 24500,
-        costSecondary: 12000,
+        costPrimary: 35000,
+        costSecondary: 18000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -577,8 +577,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 36900,
         secondaryPrice: 16900,
-        costPrimary: 26000,
-        costSecondary: 11500,
+        costPrimary: 36900,
+        costSecondary: 16900,
         stock: 'Inmediato'
       }
     }
@@ -600,8 +600,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 18900,
         secondaryPrice: 9500,
-        costPrimary: 13000,
-        costSecondary: 6500,
+        costPrimary: 18900,
+        costSecondary: 9500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -610,8 +610,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 19900,
         secondaryPrice: 8900,
-        costPrimary: 14000,
-        costSecondary: 6000,
+        costPrimary: 19900,
+        costSecondary: 8900,
         stock: 'Inmediato'
       }
     }
@@ -633,8 +633,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 28900,
         secondaryPrice: 14500,
-        costPrimary: 20000,
-        costSecondary: 9800,
+        costPrimary: 28900,
+        costSecondary: 14500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -643,8 +643,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 30500,
         secondaryPrice: 13900,
-        costPrimary: 21500,
-        costSecondary: 9200,
+        costPrimary: 30500,
+        costSecondary: 13900,
         stock: 'Inmediato'
       }
     }
@@ -666,8 +666,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 31000,
         secondaryPrice: 16500,
-        costPrimary: 21500,
-        costSecondary: 11000,
+        costPrimary: 31000,
+        costSecondary: 16500,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -676,8 +676,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 32900,
         secondaryPrice: 15500,
-        costPrimary: 23000,
-        costSecondary: 10500,
+        costPrimary: 32900,
+        costSecondary: 15500,
         stock: 'Inmediato'
       }
     }
@@ -699,8 +699,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 68000,
         secondaryPrice: 38000,
-        costPrimary: 49000,
-        costSecondary: 27000,
+        costPrimary: 68000,
+        costSecondary: 38000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -709,8 +709,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 72000,
         secondaryPrice: 35000,
-        costPrimary: 52000,
-        costSecondary: 25000,
+        costPrimary: 72000,
+        costSecondary: 35000,
         stock: 'Inmediato'
       }
     }
@@ -732,8 +732,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 59000,
         secondaryPrice: 32000,
-        costPrimary: 42000,
-        costSecondary: 23000,
+        costPrimary: 59000,
+        costSecondary: 32000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -742,8 +742,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 62000,
         secondaryPrice: 30000,
-        costPrimary: 44000,
-        costSecondary: 21500,
+        costPrimary: 62000,
+        costSecondary: 30000,
         stock: 'Inmediato'
       }
     }
@@ -765,8 +765,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 42000,
         secondaryPrice: 24000,
-        costPrimary: 30000,
-        costSecondary: 17000,
+        costPrimary: 42000,
+        costSecondary: 24000,
         stock: 'Inmediato'
       },
       juegosdigitalesargentina: {
@@ -775,8 +775,8 @@ export const INITIAL_GAMING_PRODUCTS = [
         available: true,
         primaryPrice: 45000,
         secondaryPrice: 22000,
-        costPrimary: 32000,
-        costSecondary: 15500,
+        costPrimary: 45000,
+        costSecondary: 22000,
         stock: 'Inmediato'
       }
     }
@@ -786,31 +786,51 @@ export const INITIAL_GAMING_PRODUCTS = [
 // Función de procesamiento y arbitraje:
 // Calcula el MAYOR PRECIO entre ambos proveedores para Primaria y Secundaria,
 // e identifica el proveedor que fija el precio y el proveedor con mayor costo ("Colocar solo el de un proveedor visible, los mas altos en costo").
+// El costo del proveedor es EXACTAMENTE lo extraído de las plataformas (precio real del proveedor).
 export function processGamingProduct(product) {
-  const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0 }
-  const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0 }
+  const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
+  const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
 
-  // REGLA SOLICITADA POR EL USUARIO:
-  // "en plataforma mostrara solo los de mayor precio"
-  const effectivePrimaryPrice = Math.max(Number(pArg.primaryPrice) || 0, Number(pJda.primaryPrice) || 0)
-  const effectiveSecondaryPrice = Math.max(Number(pArg.secondaryPrice) || 0, Number(pJda.secondaryPrice) || 0)
+  const hasArg = Boolean(pArg.available && (Number(pArg.primaryPrice) > 0 || Number(pArg.costPrimary) > 0))
+  const hasJda = Boolean(pJda.available && (Number(pJda.primaryPrice) > 0 || Number(pJda.costPrimary) > 0))
 
-  // Proveedor que marca el precio más alto en la plataforma
-  const primaryPriceLeaderKey = (Number(pArg.primaryPrice) >= Number(pJda.primaryPrice)) ? 'argentinaplay' : 'juegosdigitalesargentina'
-  const secondaryPriceLeaderKey = (Number(pArg.secondaryPrice) >= Number(pJda.secondaryPrice)) ? 'argentinaplay' : 'juegosdigitalesargentina'
+  // Costos de adquisición REALES (exactamente lo extraído de las plataformas)
+  const costPrimaryArg = hasArg ? (Number(pArg.costPrimary) || Number(pArg.primaryPrice) || 0) : 0
+  const costPrimaryJda = hasJda ? (Number(pJda.costPrimary) || Number(pJda.primaryPrice) || 0) : 0
+  const costSecondaryArg = hasArg ? (Number(pArg.costSecondary) || Number(pArg.secondaryPrice) || 0) : 0
+  const costSecondaryJda = hasJda ? (Number(pJda.costSecondary) || Number(pJda.secondaryPrice) || 0) : 0
 
-  // Costos de adquisición
-  const costPrimaryArg = Number(pArg.costPrimary) || (Number(pArg.primaryPrice) * 0.7) || 0
-  const costPrimaryJda = Number(pJda.costPrimary) || (Number(pJda.primaryPrice) * 0.7) || 0
-  const costSecondaryArg = Number(pArg.costSecondary) || (Number(pArg.secondaryPrice) * 0.7) || 0
-  const costSecondaryJda = Number(pJda.costSecondary) || (Number(pJda.secondaryPrice) * 0.7) || 0
+  // Precios efectivos en plataforma (el mayor precio entre ambos proveedores, o el del único disponible)
+  let effectivePrimaryPrice = 0
+  let effectiveSecondaryPrice = 0
+
+  if (hasArg && hasJda) {
+    effectivePrimaryPrice = Math.max(costPrimaryArg, costPrimaryJda)
+    effectiveSecondaryPrice = Math.max(costSecondaryArg, costSecondaryJda)
+  } else if (hasArg) {
+    effectivePrimaryPrice = costPrimaryArg
+    effectiveSecondaryPrice = costSecondaryArg
+  } else if (hasJda) {
+    effectivePrimaryPrice = costPrimaryJda
+    effectiveSecondaryPrice = costSecondaryJda
+  } else {
+    effectivePrimaryPrice = Number(product.effectivePrimaryPrice) || 25000
+    effectiveSecondaryPrice = Number(product.effectiveSecondaryPrice) || 12000
+  }
 
   // REGLA SOLICITADA POR EL USUARIO:
   // "Colocar solo el de un proveedor visible, los mas altos en costo."
-  // Se identifica el proveedor con mayor costo entre ambos para que sea el único visible
-  const totalCostArg = costPrimaryArg + costSecondaryArg
-  const totalCostJda = costPrimaryJda + costSecondaryJda
-  const visibleProviderKey = (totalCostArg >= totalCostJda) ? 'argentinaplay' : 'juegosdigitalesargentina'
+  let visibleProviderKey = 'argentinaplay'
+  if (hasArg && hasJda) {
+    const totalCostArg = costPrimaryArg + costSecondaryArg
+    const totalCostJda = costPrimaryJda + costSecondaryJda
+    visibleProviderKey = (totalCostArg >= totalCostJda) ? 'argentinaplay' : 'juegosdigitalesargentina'
+  } else if (hasJda) {
+    visibleProviderKey = 'juegosdigitalesargentina'
+  } else {
+    visibleProviderKey = 'argentinaplay'
+  }
+
   const visibleProvider = visibleProviderKey === 'argentinaplay' ? pArg : pJda
   const visibleProviderMeta = GAMING_PROVIDERS[visibleProviderKey] || {
     id: visibleProviderKey,
@@ -820,17 +840,28 @@ export function processGamingProduct(product) {
     tagColor: visibleProviderKey === 'argentinaplay' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
   }
 
-  // Proveedor óptimo de compra (menor costo para mayor ganancia neta para StreamePro)
-  const bestFulfillmentPrimary = costPrimaryArg <= costPrimaryJda ? 'argentinaplay' : 'juegosdigitalesargentina'
-  const bestMarginPrimary = effectivePrimaryPrice - Math.min(costPrimaryArg, costPrimaryJda)
+  // Proveedor que marca el precio más alto en la plataforma
+  const primaryPriceLeaderKey = visibleProviderKey
+  const secondaryPriceLeaderKey = visibleProviderKey
 
-  const bestFulfillmentSecondary = costSecondaryArg <= costSecondaryJda ? 'argentinaplay' : 'juegosdigitalesargentina'
-  const bestMarginSecondary = effectiveSecondaryPrice - Math.min(costSecondaryArg, costSecondaryJda)
+  // Proveedor óptimo de compra
+  const bestFulfillmentPrimary = (hasArg && hasJda)
+    ? (costPrimaryArg <= costPrimaryJda ? 'argentinaplay' : 'juegosdigitalesargentina')
+    : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
 
-  // Similitud entre catálogos:
-  // Diferencia de precio en $ y %
-  const diffPrimary = Math.abs((Number(pArg.primaryPrice) || 0) - (Number(pJda.primaryPrice) || 0))
-  const diffSecondary = Math.abs((Number(pArg.secondaryPrice) || 0) - (Number(pJda.secondaryPrice) || 0))
+  const minCostPrimary = (hasArg && hasJda) ? Math.min(costPrimaryArg, costPrimaryJda) : (costPrimaryArg || costPrimaryJda)
+  const bestMarginPrimary = Math.max(0, effectivePrimaryPrice - minCostPrimary)
+
+  const bestFulfillmentSecondary = (hasArg && hasJda)
+    ? (costSecondaryArg <= costSecondaryJda ? 'argentinaplay' : 'juegosdigitalesargentina')
+    : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
+
+  const minCostSecondary = (hasArg && hasJda) ? Math.min(costSecondaryArg, costSecondaryJda) : (costSecondaryArg || costSecondaryJda)
+  const bestMarginSecondary = Math.max(0, effectiveSecondaryPrice - minCostSecondary)
+
+  // Diferencia de precio en $
+  const diffPrimary = (hasArg && hasJda) ? Math.abs(costPrimaryArg - costPrimaryJda) : 0
+  const diffSecondary = (hasArg && hasJda) ? Math.abs(costSecondaryArg - costSecondaryJda) : 0
 
   return {
     ...product,
@@ -847,19 +878,19 @@ export function processGamingProduct(product) {
     visibleProviderBadge: visibleProviderMeta.badge,
     visibleProviderTagColor: visibleProviderMeta.tagColor,
     visibleProvider,
-    visibleCostPrimary: visibleProvider.costPrimary,
-    visibleCostSecondary: visibleProvider.costSecondary,
+    visibleCostPrimary: visibleProvider.costPrimary || visibleProvider.primaryPrice,
+    visibleCostSecondary: visibleProvider.costSecondary || visibleProvider.secondaryPrice,
     visiblePrimaryPrice: visibleProvider.primaryPrice,
     visibleSecondaryPrice: visibleProvider.secondaryPrice,
     visibleProviderUrl: visibleProvider.providerUrl,
     bestFulfillmentPrimary,
     bestFulfillmentPrimaryName: GAMING_PROVIDERS[bestFulfillmentPrimary]?.name || bestFulfillmentPrimary,
-    bestMarginPrimary: Math.max(0, bestMarginPrimary),
+    bestMarginPrimary,
     bestFulfillmentSecondary,
     bestFulfillmentSecondaryName: GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
-    bestMarginSecondary: Math.max(0, bestMarginSecondary),
+    bestMarginSecondary,
     diffPrimary,
     diffSecondary,
-    similarityScore: 100 // Título idéntico en ambos catálogos
+    similarityScore: (hasArg && hasJda) ? 100 : 70
   }
 }

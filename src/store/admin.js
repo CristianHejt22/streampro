@@ -2699,7 +2699,9 @@ export const useAdminStore = defineStore('admin', {
       const hasCorruptData = Array.isArray(this.gamingProducts) && this.gamingProducts.some(g => 
         (typeof g.title === 'string' && (g.title.includes('&#') || g.title.includes('&amp;') || g.title.includes('…') || g.title.endsWith('...'))) ||
         (typeof g.description === 'string' && (g.description.includes('&#') || g.description.includes('inmediata'))) ||
-        !g.visibleProviderKey
+        !g.visibleProviderKey ||
+        (g.providers?.argentinaplay?.available && g.providers.argentinaplay.costPrimary !== g.providers.argentinaplay.primaryPrice) ||
+        (g.providers?.juegosdigitalesargentina?.available && g.providers.juegosdigitalesargentina.costPrimary !== g.providers.juegosdigitalesargentina.primaryPrice)
       )
 
       if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {

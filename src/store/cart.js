@@ -174,7 +174,7 @@ export const useCartStore = defineStore('cart', {
       const assignedProviderName = game.visibleProviderName || (isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName)
       
       const providerData = game.providers?.[assignedProviderKey] || {}
-      const providerCost = isPrimary ? (providerData.costPrimary || Math.round(effectivePrice * 0.7)) : (providerData.costSecondary || Math.round(effectivePrice * 0.7))
+      const providerCost = isPrimary ? (providerData.costPrimary || providerData.primaryPrice || effectivePrice) : (providerData.costSecondary || providerData.secondaryPrice || effectivePrice)
 
       const cartItemKey = `gaming_${game.id}_${licenseType}`
       const existingItem = this.items.find(i => i.cartItemKey === cartItemKey)

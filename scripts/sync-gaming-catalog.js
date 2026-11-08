@@ -356,8 +356,8 @@ async function scrapeArgentinaPlay() {
             image: img || 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
             primaryPrice,
             secondaryPrice,
-            costPrimary: Math.round(primaryPrice * 0.7),
-            costSecondary: Math.round(secondaryPrice * 0.7),
+            costPrimary: primaryPrice,
+            costSecondary: secondaryPrice,
             platform,
             category,
             subcategory,
@@ -448,8 +448,8 @@ async function scrapeJuegosDigitalesArgentina() {
             image: imgM ? imgM[1] : 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
             primaryPrice,
             secondaryPrice,
-            costPrimary: Math.round(primaryPrice * 0.7),
-            costSecondary: Math.round(secondaryPrice * 0.7),
+            costPrimary: primaryPrice,
+            costSecondary: secondaryPrice,
             platform,
             category,
             subcategory,
@@ -496,8 +496,8 @@ async function scrapeJuegosDigitalesArgentina() {
             image: imgM ? imgM[1] : 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
             primaryPrice,
             secondaryPrice,
-            costPrimary: Math.round(primaryPrice * 0.7),
-            costSecondary: Math.round(secondaryPrice * 0.7),
+            costPrimary: primaryPrice,
+            costSecondary: secondaryPrice,
             platform,
             category,
             subcategory,
@@ -551,26 +551,26 @@ export async function scrapeAndSyncGamingCatalog() {
     if (jdaMatch) usedJdaSlugs.add(jdaMatch.id)
 
     const jdaData = jdaMatch || {
-      primaryPrice: Math.round(ap.primaryPrice * (0.95 + Math.random() * 0.1)),
-      secondaryPrice: Math.round(ap.secondaryPrice * (0.95 + Math.random() * 0.1)),
-      costPrimary: Math.round(ap.primaryPrice * 0.68),
-      costSecondary: Math.round(ap.secondaryPrice * 0.68),
+      primaryPrice: 0,
+      secondaryPrice: 0,
+      costPrimary: 0,
+      costSecondary: 0,
       url: 'https://juegosdigitalesargentina.com/',
       available: false
     }
 
     // REGLA DEL USUARIO: "en plataforma mostrara solo los de mayor precio"
-    const effectivePrimaryPrice = Math.max(ap.primaryPrice, jdaData.primaryPrice)
-    const effectiveSecondaryPrice = Math.max(ap.secondaryPrice, jdaData.secondaryPrice)
+    const effectivePrimaryPrice = jdaMatch ? Math.max(ap.primaryPrice, jdaData.primaryPrice) : ap.primaryPrice
+    const effectiveSecondaryPrice = jdaMatch ? Math.max(ap.secondaryPrice, jdaData.secondaryPrice) : ap.secondaryPrice
 
-    const primaryPriceLeaderKey = ap.primaryPrice >= jdaData.primaryPrice ? 'argentinaplay' : 'juegosdigitalesargentina'
-    const secondaryPriceLeaderKey = ap.secondaryPrice >= jdaData.secondaryPrice ? 'argentinaplay' : 'juegosdigitalesargentina'
+    const primaryPriceLeaderKey = (jdaMatch && jdaData.primaryPrice > ap.primaryPrice) ? 'juegosdigitalesargentina' : 'argentinaplay'
+    const secondaryPriceLeaderKey = (jdaMatch && jdaData.secondaryPrice > ap.secondaryPrice) ? 'juegosdigitalesargentina' : 'argentinaplay'
 
-    const bestCostPrimary = Math.min(ap.costPrimary, jdaData.costPrimary)
-    const bestFulfillmentPrimary = ap.costPrimary <= jdaData.costPrimary ? 'argentinaplay' : 'juegosdigitalesargentina'
+    const bestCostPrimary = (jdaMatch && jdaData.costPrimary < ap.costPrimary) ? jdaData.costPrimary : ap.costPrimary
+    const bestFulfillmentPrimary = (jdaMatch && jdaData.costPrimary < ap.costPrimary) ? 'juegosdigitalesargentina' : 'argentinaplay'
 
-    const bestCostSecondary = Math.min(ap.costSecondary, jdaData.costSecondary)
-    const bestFulfillmentSecondary = ap.costSecondary <= jdaData.costSecondary ? 'argentinaplay' : 'juegosdigitalesargentina'
+    const bestCostSecondary = (jdaMatch && jdaData.costSecondary < ap.costSecondary) ? jdaData.costSecondary : ap.costSecondary
+    const bestFulfillmentSecondary = (jdaMatch && jdaData.costSecondary < ap.costSecondary) ? 'juegosdigitalesargentina' : 'argentinaplay'
 
     consolidated.push({
       id,
@@ -636,26 +636,20 @@ export async function scrapeAndSyncGamingCatalog() {
     const id = `GAME-${String(counter).padStart(3, '0')}`
     counter++
 
-    const apEstPrimary = Math.round(jda.primaryPrice * (0.95 + Math.random() * 0.1))
-    const apEstSecondary = Math.round(jda.secondaryPrice * (0.95 + Math.random() * 0.1))
+    const effectivePrimaryPrice = jda.primaryPrice
+    const effectiveSecondaryPrice = jda.secondaryPrice
 
-    const effectivePrimaryPrice = Math.max(jda.primaryPrice, apEstPrimary)
-    const effectiveSecondaryPrice = Math.max(jda.secondaryPrice, apEstSecondary)
+    const primaryPriceLeaderKey = 'juegosdigitalesargentina'
+    const secondaryPriceLeaderKey = 'juegosdigitalesargentina'
 
-    const primaryPriceLeaderKey = jda.primaryPrice >= apEstPrimary ? 'juegosdigitalesargentina' : 'argentinaplay'
-    const secondaryPriceLeaderKey = jda.secondaryPrice >= apEstSecondary ? 'juegosdigitalesargentina' : 'argentinaplay'
+    const costPrimaryJda = jda.primaryPrice
+    const costSecondaryJda = jda.secondaryPrice
 
-    const costPrimaryJda = jda.costPrimary
-    const costPrimaryAp = Math.round(apEstPrimary * 0.7)
+    const bestCostPrimary = costPrimaryJda
+    const bestFulfillmentPrimary = 'juegosdigitalesargentina'
 
-    const bestCostPrimary = Math.min(costPrimaryJda, costPrimaryAp)
-    const bestFulfillmentPrimary = costPrimaryJda <= costPrimaryAp ? 'juegosdigitalesargentina' : 'argentinaplay'
-
-    const costSecondaryJda = jda.costSecondary
-    const costSecondaryAp = Math.round(apEstSecondary * 0.7)
-
-    const bestCostSecondary = Math.min(costSecondaryJda, costSecondaryAp)
-    const bestFulfillmentSecondary = costSecondaryJda <= costSecondaryAp ? 'juegosdigitalesargentina' : 'argentinaplay'
+    const bestCostSecondary = costSecondaryJda
+    const bestFulfillmentSecondary = 'juegosdigitalesargentina'
 
     consolidated.push({
       id,
@@ -678,10 +672,10 @@ export async function scrapeAndSyncGamingCatalog() {
           providerName: 'Argentina Play',
           providerUrl: 'https://www.argentinaplay.com.ar/',
           available: false,
-          primaryPrice: apEstPrimary,
-          secondaryPrice: apEstSecondary,
-          costPrimary: costPrimaryAp,
-          costSecondary: costSecondaryAp,
+          primaryPrice: 0,
+          secondaryPrice: 0,
+          costPrimary: 0,
+          costSecondary: 0,
           stock: 'Inmediato'
         },
         juegosdigitalesargentina: {
