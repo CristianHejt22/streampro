@@ -894,3 +894,98 @@ export function processGamingProduct(product) {
     similarityScore: (hasArg && hasJda) ? 100 : 70
   }
 }
+
+// ========================================================
+// FUNCIONES DE DEDUPLICACIÓN DE JUEGOS (SOLO MAYOR VALOR)
+// ========================================================
+export function normalizeGameTitle(title) {
+  if (!title) return ''
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s*\((ps5|ps4|ps3|ps4\s*\/\s*ps5)\)\s*/gi, '')
+    .replace(/\b(ps5|ps4|ps3)\b/gi, '')
+    .replace(/[^a-z0-9]/gi, '')
+    .trim()
+}
+
+export function getGamePrice(g) {
+  if (!g) return 0
+  const p1 = Number(g.effectivePrimaryPrice) || 0
+  const p2 = Number(g.effectiveSecondaryPrice) || 0
+  const pArg = Number(g.providers?.argentinaplay?.primaryPrice) || 0
+  const pJda = Number(g.providers?.juegosdigitalesargentina?.primaryPrice) || 0
+  const pDirect = Number(g.price) || 0
+  return Math.max(p1, p2, pArg, pJda, pDirect)
+}
+
+export function deduplicateGamingProducts(productsList) {
+  if (!Array.isArray(productsList) || productsList.length === 0) return []
+  
+  const map = new Map()
+
+  productsList.forEach(item => {
+    const norm = normalizeGameTitle(item.title) || normalizeGameTitle(item.slug) || String(item.id)
+    const itemPrice = getGamePrice(item)
+
+    if (!map.has(norm)) {
+      map.set(norm, { ...item, _maxPrice: itemPrice })
+    } else {
+      const existing = map.get(norm)
+      const existingPrice = existing._maxPrice
+
+      // Combinar plataformas si una es PS4 y otra PS5
+      let mergedPlatform = existing.platform || item.platform || 'PS4 / PS5'
+      const platformsSet = new Set()
+      ;[existing.platform, item.platform].forEach(p => {
+        if (!p) return
+        if (p.includes('PS5')) platformsSet.add('PS5')
+        if (p.includes('PS4')) platformsSet.add('PS4')
+        if (p.includes('PS3')) platformsSet.add('PS3')
+        if (p.includes('PC') || p.includes('Steam')) platformsSet.add('PC')
+      })
+      if (platformsSet.has('PS4') && platformsSet.has('PS5')) {
+        mergedPlatform = 'PS4 / PS5'
+      } else if (platformsSet.size > 0) {
+        mergedPlatform = Array.from(platformsSet).join(' / ')
+      }
+
+      // Combinar proveedores
+      const mergedProviders = {
+        argentinaplay: {
+          ...(existing.providers?.argentinaplay || {}),
+          ...(item.providers?.argentinaplay || {})
+        },
+        juegosdigitalesargentina: {
+          ...(existing.providers?.juegosdigitalesargentina || {}),
+          ...(item.providers?.juegosdigitalesargentina || {})
+        }
+      }
+
+      // Ganador: EXCLUSIVAMENTE EL DE MAYOR VALOR
+      if (itemPrice > existingPrice) {
+        map.set(norm, {
+          ...existing,
+          ...item,
+          platform: mergedPlatform,
+          providers: mergedProviders,
+          _maxPrice: itemPrice
+        })
+      } else {
+        map.set(norm, {
+          ...item,
+          ...existing,
+          platform: mergedPlatform,
+          providers: mergedProviders,
+          _maxPrice: existingPrice
+        })
+      }
+    }
+  })
+
+  return Array.from(map.values()).map(g => {
+    const { _maxPrice, ...rest } = g
+    return rest
+  })
+}

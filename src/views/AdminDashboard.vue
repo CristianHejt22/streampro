@@ -421,6 +421,21 @@ const filteredPhysicalProductsForAdmin = computed(() => {
   })
 })
 
+// Paginación Reactiva Fluida para Productos Físicos
+const physicalAdminCurrentPage = ref(1)
+const physicalAdminPageSize = ref(24)
+const totalPhysicalAdminPages = computed(() => {
+  return Math.max(1, Math.ceil((filteredPhysicalProductsForAdmin.value?.length || 0) / physicalAdminPageSize.value))
+})
+const paginatedPhysicalProductsForAdmin = computed(() => {
+  const list = filteredPhysicalProductsForAdmin.value || []
+  const start = (physicalAdminCurrentPage.value - 1) * physicalAdminPageSize.value
+  return list.slice(start, start + physicalAdminPageSize.value)
+})
+watch([adminPhysicalCategoryFilter, adminPhysicalProductSearch], () => {
+  physicalAdminCurrentPage.value = 1
+})
+
 const filteredAdminPages = computed(() => {
   const q = (adminPhysicalProductSearch.value || '').toLowerCase().trim()
   return adminPagesList.value.filter(p => {
@@ -951,6 +966,21 @@ const filteredGamingForAdmin = computed(() => {
     const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
     return matchesCat && matchesSubcat && matchesPlatform && matchesQ
   })
+})
+
+// Paginación Reactiva Ultra-Fluida para Videojuegos Gaming
+const gamingAdminCurrentPage = ref(1)
+const gamingAdminPageSize = ref(30)
+const totalGamingAdminPages = computed(() => {
+  return Math.max(1, Math.ceil((filteredGamingForAdmin.value?.length || 0) / gamingAdminPageSize.value))
+})
+const paginatedGamingForAdmin = computed(() => {
+  const list = filteredGamingForAdmin.value || []
+  const start = (gamingAdminCurrentPage.value - 1) * gamingAdminPageSize.value
+  return list.slice(start, start + gamingAdminPageSize.value)
+})
+watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilter, gamingAdminPlatformFilter, onlyHighestCostProvider, gamingAdminSubTab], () => {
+  gamingAdminCurrentPage.value = 1
 })
 
 const openGamingPriceEdit = (game) => {
@@ -2754,7 +2784,7 @@ const deletePackageItem = (pkgId) => {
 
     <!-- Navegación de Pestañas del Proveedor -->
     <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex flex-wrap gap-2 p-1.5 bg-slate-900/60 backdrop-blur rounded-2xl border border-slate-800">
+      <div class="flex items-center gap-2 p-1.5 bg-slate-900/60 backdrop-blur rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap w-full">
         <button 
           @click="adminTab = 'inventory'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'inventory' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
@@ -2819,7 +2849,7 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'gaming'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          🎮 Proveedores Gaming ({{ adminStore.gamingProducts.length }})
+          🎮 Proveedores Gaming ({{ adminStore.processedGamingProducts.length }})
           <span v-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
             {{ adminStore.gamingOrders.length }}
           </span>
@@ -2929,7 +2959,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Módulo de Renovaciones Solicitadas: El Proveedor puede cambiar datos de cuenta -->
-    <div v-if="adminTab === 'renewals' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
+    <div v-if="adminTab === 'renewals'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
         <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
           🔄
@@ -2992,7 +3022,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- Centro de Despachos de Pedidos -->
-    <div v-if="adminTab === 'orders' || adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
+    <div v-if="adminTab === 'orders'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
       
       <!-- HEADER CON TÍTULO Y BOTÓN DE SINCRONIZACIÓN -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
@@ -4926,14 +4956,72 @@ const deletePackageItem = (pkgId) => {
           </select>
         </div>
 
+        
+        <!-- Barra de Paginación Fluida Catálogo Físico -->
+        <div v-if="totalPhysicalAdminPages > 1" class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#020617] rounded-2xl border border-slate-800 text-xs">
+          <div class="text-slate-400 font-mono text-[11px]">
+            Mostrando <strong class="text-white">{{ ((physicalAdminCurrentPage - 1) * physicalAdminPageSize) + 1 }}</strong> - <strong class="text-white">{{ Math.min(physicalAdminCurrentPage * physicalAdminPageSize, filteredPhysicalProductsForAdmin.length) }}</strong> de <strong class="text-amber-400 font-bold">{{ filteredPhysicalProductsForAdmin.length }}</strong> productos
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button 
+              type="button" 
+              @click="physicalAdminCurrentPage = 1" 
+              :disabled="physicalAdminCurrentPage === 1" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Primera página"
+            >
+              «
+            </button>
+            <button 
+              type="button" 
+              @click="physicalAdminCurrentPage--" 
+              :disabled="physicalAdminCurrentPage === 1" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              ‹ Anterior
+            </button>
+
+            <span class="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
+              {{ physicalAdminCurrentPage }} / {{ totalPhysicalAdminPages }}
+            </span>
+
+            <button 
+              type="button" 
+              @click="physicalAdminCurrentPage++" 
+              :disabled="physicalAdminCurrentPage >= totalPhysicalAdminPages" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              Siguiente ›
+            </button>
+            <button 
+              type="button" 
+              @click="physicalAdminCurrentPage = totalPhysicalAdminPages" 
+              :disabled="physicalAdminCurrentPage >= totalPhysicalAdminPages" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Última página"
+            >
+              »
+            </button>
+
+            <select 
+              v-model.number="physicalAdminPageSize" 
+              class="ml-2 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white font-mono text-xs cursor-pointer outline-none"
+            >
+              <option :value="24">24 / pág</option>
+              <option :value="48">48 / pág</option>
+              <option :value="96">96 / pág</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Grid de Tarjetas de Productos Físicos -->
         <div v-if="filteredPhysicalProductsForAdmin.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
           No se encontraron productos físicos con los filtros actuales.
         </div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div 
-            v-for="item in filteredPhysicalProductsForAdmin" 
-            :key="item.id" 
+            v-for="item in paginatedPhysicalProductsForAdmin" :key="item.id" 
             class="bg-[#020617] p-4 rounded-2xl border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 shadow-lg group"
           >
             <div class="space-y-2.5">
@@ -5904,7 +5992,7 @@ const deletePackageItem = (pkgId) => {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
           <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Títulos en Catálogo</span>
-          <div class="text-2xl font-black text-white font-mono">{{ adminStore.gamingProducts.length }} Juegos</div>
+          <div class="text-2xl font-black text-white font-mono">{{ adminStore.processedGamingProducts.length }} Juegos</div>
           <span class="text-[10px] text-indigo-400 font-bold">PS4 & PlayStation 5</span>
         </div>
 
@@ -6014,6 +6102,65 @@ const deletePackageItem = (pkgId) => {
           </div>
         </div>
 
+        
+        <!-- Barra de Paginación Fluida Gaming -->
+        <div v-if="totalGamingAdminPages > 1" class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#020617] rounded-2xl border border-slate-800 text-xs">
+          <div class="text-slate-400 font-mono text-[11px]">
+            Mostrando <strong class="text-white">{{ ((gamingAdminCurrentPage - 1) * gamingAdminPageSize) + 1 }}</strong> - <strong class="text-white">{{ Math.min(gamingAdminCurrentPage * gamingAdminPageSize, filteredGamingForAdmin.length) }}</strong> de <strong class="text-indigo-400 font-bold">{{ filteredGamingForAdmin.length }}</strong> títulos (Sin repetidos • Mayor Valor)
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage = 1" 
+              :disabled="gamingAdminCurrentPage === 1" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Primera página"
+            >
+              «
+            </button>
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage--" 
+              :disabled="gamingAdminCurrentPage === 1" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              ‹ Anterior
+            </button>
+
+            <span class="px-3 py-1.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono font-bold">
+              {{ gamingAdminCurrentPage }} / {{ totalGamingAdminPages }}
+            </span>
+
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage++" 
+              :disabled="gamingAdminCurrentPage >= totalGamingAdminPages" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              Siguiente ›
+            </button>
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage = totalGamingAdminPages" 
+              :disabled="gamingAdminCurrentPage >= totalGamingAdminPages" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Última página"
+            >
+              »
+            </button>
+
+            <select 
+              v-model.number="gamingAdminPageSize" 
+              class="ml-2 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white font-mono text-xs cursor-pointer outline-none"
+            >
+              <option :value="30">30 / pág</option>
+              <option :value="60">60 / pág</option>
+              <option :value="120">120 / pág</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Tabla Comparativa de Similitudes -->
         <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
           <table class="w-full text-left text-xs text-slate-300">
@@ -6035,7 +6182,7 @@ const deletePackageItem = (pkgId) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-850">
-              <tr v-for="game in filteredGamingForAdmin" :key="game.id" class="hover:bg-slate-900/60 transition-colors">
+              <tr v-for="game in paginatedGamingForAdmin" :key="game.id" class="hover:bg-slate-900/60 transition-colors">
                 <!-- Título e Imagen -->
                 <td class="p-3.5">
                   <div class="flex items-center gap-3">
@@ -6174,6 +6321,64 @@ const deletePackageItem = (pkgId) => {
             </tbody>
           </table>
         </div>
+
+        <!-- Barra de Paginación Fluida Gaming -->
+        <div v-if="totalGamingAdminPages > 1" class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#020617] rounded-2xl border border-slate-800 text-xs">
+          <div class="text-slate-400 font-mono text-[11px]">
+            Mostrando <strong class="text-white">{{ ((gamingAdminCurrentPage - 1) * gamingAdminPageSize) + 1 }}</strong> - <strong class="text-white">{{ Math.min(gamingAdminCurrentPage * gamingAdminPageSize, filteredGamingForAdmin.length) }}</strong> de <strong class="text-indigo-400 font-bold">{{ filteredGamingForAdmin.length }}</strong> títulos (Sin repetidos • Mayor Valor)
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage = 1" 
+              :disabled="gamingAdminCurrentPage === 1" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Primera página"
+            >
+              «
+            </button>
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage--" 
+              :disabled="gamingAdminCurrentPage === 1" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              ‹ Anterior
+            </button>
+
+            <span class="px-3 py-1.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono font-bold">
+              {{ gamingAdminCurrentPage }} / {{ totalGamingAdminPages }}
+            </span>
+
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage++" 
+              :disabled="gamingAdminCurrentPage >= totalGamingAdminPages" 
+              class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+            >
+              Siguiente ›
+            </button>
+            <button 
+              type="button" 
+              @click="gamingAdminCurrentPage = totalGamingAdminPages" 
+              :disabled="gamingAdminCurrentPage >= totalGamingAdminPages" 
+              class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition font-bold"
+              title="Última página"
+            >
+              »
+            </button>
+
+            <select 
+              v-model.number="gamingAdminPageSize" 
+              class="ml-2 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white font-mono text-xs cursor-pointer outline-none"
+            >
+              <option :value="30">30 / pág</option>
+              <option :value="60">60 / pág</option>
+              <option :value="120">120 / pág</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- ==================== SUB-VISTA 2: CATÁLOGO ARGENTINA PLAY ==================== -->
@@ -6196,7 +6401,7 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-blue-500/20 rounded-2xl p-4 space-y-3">
+          <div v-for="game in paginatedGamingForAdmin" :key="game.id" class="bg-[#020617] border border-blue-500/20 rounded-2xl p-4 space-y-3">
             <div class="flex gap-3 items-center">
               <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">
@@ -6250,7 +6455,7 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="game in filteredGamingForAdmin" :key="game.id" class="bg-[#020617] border border-amber-500/20 rounded-2xl p-4 space-y-3">
+          <div v-for="game in paginatedGamingForAdmin" :key="game.id" class="bg-[#020617] border border-amber-500/20 rounded-2xl p-4 space-y-3">
             <div class="flex gap-3 items-center">
               <img :src="game.image" :alt="game.title" class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
               <div class="min-w-0 flex-1">

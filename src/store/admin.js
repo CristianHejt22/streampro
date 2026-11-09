@@ -8,7 +8,7 @@ import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
-import { GAMING_PROVIDERS, INITIAL_GAMING_PRODUCTS, processGamingProduct } from '../services/gamingProductsData'
+import { GAMING_PROVIDERS, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { 
   initFirebase, 
@@ -593,10 +593,8 @@ export const useAdminStore = defineStore('admin', {
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
     processedGamingProducts: (state) => {
       const list = state.gamingProducts || []
-      if (list.length > 0 && list[0].visibleProviderKey) {
-        return list
-      }
-      return list.map(p => processGamingProduct(p))
+      const processed = list.map(p => processGamingProduct(p))
+      return deduplicateGamingProducts(processed)
     },
     gamingOrders: (state) => (state.orders || []).filter(o => o.orderType === 'gaming' || o.category === 'Videojuegos Digitales'),
 

@@ -2052,7 +2052,7 @@ const submitOrder = async () => {
           <span>🎮</span>
           <span>Juegos PS4/PS5</span>
           <span class="bg-slate-950/80 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-indigo-400/30">
-            {{ adminStore.gamingProducts?.length || 12 }}
+            {{ adminStore.processedGamingProducts?.length || 12 }}
           </span>
         </RouterLink>
 
