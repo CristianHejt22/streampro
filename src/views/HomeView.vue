@@ -277,6 +277,7 @@ const availableGamingSubcategories = computed(() => {
     if (currentCat === 'Todas' || !currentCat) matchesCat = true
     else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
     else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    else if (currentCat === 'PS3') matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
     else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
     else matchesCat = game.category === currentCat
 
@@ -295,6 +296,8 @@ const filteredGamingProducts = computed(() => {
       matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
     } else if (selectedGamingCat.value === 'PS4') {
       matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    } else if (selectedGamingCat.value === 'PS3') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
     } else if (selectedGamingCat.value === 'Lanzamientos') {
       matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
     } else {
@@ -2915,6 +2918,13 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button"
+              @click="gamingPlatformFilter = 'PS3'"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS3' ? 'bg-cyan-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+            >
+              <span>🕹️</span> PS3
+            </button>
+            <button 
+              type="button"
               @click="gamingPlatformFilter = 'Xbox'"
               :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
             >
@@ -3064,6 +3074,12 @@ const submitOrder = async () => {
                   <span class="text-[10px] text-slate-400 block mt-0.5">Canje permanente y directo en tu cuenta personal</span>
                 </div>
 
+                <!-- Caso PS3: Licencia Digital Completa -->
+                <div v-else-if="game.platform && game.platform.includes('PS3')" class="py-2 px-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-center">
+                  <span class="text-xs font-bold text-cyan-300 block">🕹️ Licencia Digital Oficial PS3</span>
+                  <span class="text-[10px] text-slate-400 block mt-0.5">Juego completo · Instalación directa en tu consola</span>
+                </div>
+
                 <!-- Caso Consolas: Cuenta Primaria vs Cuenta Secundaria -->
                 <div v-else class="grid grid-cols-2 gap-1.5">
                   <button 
@@ -3095,7 +3111,7 @@ const submitOrder = async () => {
                   </button>
                 </div>
                 <!-- Explicación de la modalidad seleccionada -->
-                <p v-if="!game.platform || (!game.platform.includes('PC') && !game.platform.includes('Steam'))" class="text-[10px] text-slate-400 text-center px-1 pt-0.5">
+                <p v-if="!game.platform || (!game.platform.includes('PC') && !game.platform.includes('Steam') && !game.platform.includes('PS3'))" class="text-[10px] text-slate-400 text-center px-1 pt-0.5">
                   {{ getGameSelectedLicense(game.id) === 'primary' ? '✓ Juegas con tu propio usuario personal (online y offline)' : '✓ Juegas con el usuario provisto (requiere internet)' }}
                 </p>
               </div>
@@ -5029,6 +5045,16 @@ const submitOrder = async () => {
           </div>
           <div class="text-xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
           <p class="text-xs text-slate-300">Recibes una clave oficial de activación directa para canjear en la aplicación Steam en tu computadora. El juego queda asociado de por vida a tu cuenta personal.</p>
+        </div>
+
+        <!-- Caso PS3: Licencia Digital Completa en Modal -->
+        <div v-else-if="selectedGamingProduct.platform && selectedGamingProduct.platform.includes('PS3')" class="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-cyan-300">🕹️ Licencia Digital Oficial PlayStation 3</span>
+            <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded font-mono font-bold">100% Permanente</span>
+          </div>
+          <div class="text-xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
+          <p class="text-xs text-slate-300">Recibes una cuenta oficial verificada para descargar el juego completo directamente desde PlayStation Store en tu consola PS3. Puedes jugar con o sin conexión a internet y guardar tus avances.</p>
         </div>
 
         <div v-else class="space-y-2 bg-slate-950 p-4 rounded-2xl border border-indigo-500/30">

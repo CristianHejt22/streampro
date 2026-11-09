@@ -132,5 +132,28 @@
     "PlayStation Plus Essential",
     "PlayStation Plus Extra",
     "PlayStation Plus Deluxe"
+  ],
+  "PS3": [
+    "Todas",
+    "Aventuras 3D",
+    "Acción General",
+    "Misterio & Terror",
+    "Aventura Cinematográfica",
+    "Mundo Abierto",
+    "Fútbol (FC / FIFA)",
+    "Torneo & Mortal Kombat",
+    "Familiar & Coop",
+    "Shooters & Bélico",
+    "Carreras & Conducción",
+    "Anime Fighting",
+    "Lego & Animación",
+    "Zombies & Survival",
+    "Combate 3D",
+    "Básquet & Lucha Libre",
+    "Superhéroes",
+    "Fantasía Oscura & Souls",
+    "Mundos de Fantasía",
+    "Terror Psicológico",
+    "Sci-Fi RPG"
   ]
 }

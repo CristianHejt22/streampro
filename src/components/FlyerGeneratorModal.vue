@@ -530,6 +530,10 @@ const syncGamingFlyer = () => {
     customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
     headlineBadge.value = isPrim ? '🔥 JUEGA CON TU PERFIL PERSONAL' : '⚡️ ACCESO ECONÓMICO GARANTIZADO'
     bullet1.value = isPrim ? 'Juega con tu Gamertag Personal (Logros en tu cuenta)' : 'Juega desde el usuario asignado 100% oficial'
+  } else if (plat.includes('PS3')) {
+    customSubtitle.value = '🕹️ Licencia Digital Oficial · PS3'
+    headlineBadge.value = '🔥 JUEGA EN TU CONSOLA PLAYSTATION 3'
+    bullet1.value = 'Instalación completa y directa en tu consola PS3'
   } else {
     // PlayStation 5 / 4
     customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Digital Oficial`

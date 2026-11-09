@@ -293,6 +293,8 @@ async function scrapeArgentinaPlay() {
     ...Array.from({ length: 6 }, (_, i) => `https://www.argentinaplay.com.ar/juegos-digitales-ps5/page/${i + 1}/`),
     // Catálogo PS4 (6 páginas)
     ...Array.from({ length: 6 }, (_, i) => `https://www.argentinaplay.com.ar/juegos-digitales-ps4/page/${i + 1}/`),
+    // Catálogo PS3 (34 páginas completas)
+    ...Array.from({ length: 34 }, (_, i) => `https://www.argentinaplay.com.ar/juegos-digitales-ps3/page/${i + 1}/`),
     // Categorías específicas
     'https://www.argentinaplay.com.ar/juegos-digitales-ps5/deportesps5/',
     'https://www.argentinaplay.com.ar/juegos-digitales-ps5/accionps5/',
@@ -337,14 +339,33 @@ async function scrapeArgentinaPlay() {
           const cleanTitle = cleanDisplayTitle(rawTitle)
           const prodUrl = linkM ? (linkM[1].startsWith('http') ? linkM[1] : 'https://www.argentinaplay.com.ar' + linkM[1]) : url
 
-          const isSecondary = rawTitle.toLowerCase().includes('secundaria') || rawTitle.toLowerCase().includes('secundario')
-          const primaryPrice = isSecondary ? Math.round(price * 1.85) : price
-          // En tiendas digitales argentinas, la cuenta secundaria oficial ronda el 55-58% de la primaria
-          const secondaryPrice = isSecondary ? price : Math.round((primaryPrice * 0.58) / 100) * 100
-
           let platform = 'PS4 / PS5'
           if (rawTitle.toUpperCase().includes('PS5')) platform = 'PS5'
           else if (rawTitle.toUpperCase().includes('PS4')) platform = 'PS4'
+          else if (rawTitle.toUpperCase().includes('PS3') || url.includes('ps3')) platform = 'PS3'
+
+          if (platform === 'PS3') {
+            const salePrice = Math.round((basePrice * 1.35) / 100) * 100
+            primaryPrice = salePrice
+            secundariaPrice = salePrice
+          }
+          else if (rawTitle.toUpperCase().includes('PS3') || url.includes('ps3')) platform = 'PS3'
+
+          const isSecondary = rawTitle.toLowerCase().includes('secundaria') || rawTitle.toLowerCase().includes('secundario')
+          let primaryPrice = isSecondary ? Math.round(price * 1.85) : price
+          let secondaryPrice = isSecondary ? price : Math.round((primaryPrice * 0.58) / 100) * 100
+
+          let costPrimary = primaryPrice
+          let costSecondary = secondaryPrice
+
+          // Si es PS3: Licencia digital completa única con +35% margen de ganancia comercial
+          if (platform === 'PS3') {
+            costPrimary = price
+            costSecondary = price
+            const salePrice = Math.round((price * 1.35) / 100) * 100
+            primaryPrice = salePrice
+            secondaryPrice = salePrice
+          }
 
           const { category, subcategory } = inferTaxonomy(cleanTitle)
 
@@ -356,8 +377,8 @@ async function scrapeArgentinaPlay() {
             image: img || 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg',
             primaryPrice,
             secondaryPrice,
-            costPrimary: primaryPrice,
-            costSecondary: secondaryPrice,
+            costPrimary,
+            costSecondary,
             platform,
             category,
             subcategory,
@@ -395,6 +416,7 @@ async function scrapeJuegosDigitalesArgentina() {
     'https://juegosdigitalesargentina.com/categorias/cuenta-psn-plus-global?orden=precio+asc',
     'https://juegosdigitalesargentina.com/categorias/fiebre-fifa',
     'https://juegosdigitalesargentina.com/categorias/colecciongta',
+    'https://juegosdigitalesargentina.com/categorias/ps3',
     'https://juegosdigitalesargentina.com/categorias/mas-vendido',
     'https://juegosdigitalesargentina.com/'
   ]
@@ -441,6 +463,13 @@ async function scrapeJuegosDigitalesArgentina() {
           let platform = 'PS4 / PS5'
           if (rawTitle.toUpperCase().includes('PS5')) platform = 'PS5'
           else if (rawTitle.toUpperCase().includes('PS4')) platform = 'PS4'
+          else if (rawTitle.toUpperCase().includes('PS3') || url.includes('ps3')) platform = 'PS3'
+
+          if (platform === 'PS3') {
+            const salePrice = Math.round((basePrice * 1.35) / 100) * 100
+            primaryPrice = salePrice
+            secundariaPrice = salePrice
+          }
 
           const { category, subcategory } = inferTaxonomy(cleanTitle)
 
@@ -490,6 +519,13 @@ async function scrapeJuegosDigitalesArgentina() {
           let platform = 'PS4 / PS5'
           if (rawTitle.toUpperCase().includes('PS5')) platform = 'PS5'
           else if (rawTitle.toUpperCase().includes('PS4')) platform = 'PS4'
+          else if (rawTitle.toUpperCase().includes('PS3') || url.includes('ps3')) platform = 'PS3'
+
+          if (platform === 'PS3') {
+            const salePrice = Math.round((basePrice * 1.35) / 100) * 100
+            primaryPrice = salePrice
+            secundariaPrice = salePrice
+          }
 
           const { category, subcategory } = inferTaxonomy(cleanTitle)
 
@@ -717,6 +753,7 @@ export async function scrapeAndSyncGamingCatalog() {
     'Todas',
     'PS5',
     'PS4',
+    'PS3',
     'Lanzamientos',
     'Acción & Aventura',
     'Deportes',
@@ -750,12 +787,20 @@ export async function scrapeAndSyncGamingCatalog() {
 
     // Agregar a PS5 si corresponde
     if (item.platform && item.platform.includes('PS5')) {
+      subcatsByCat['PS5'] = subcatsByCat['PS5'] || new Set(['Todas'])
       subcatsByCat['PS5'].add(item.subcategory)
     }
 
     // Agregar a PS4 si corresponde
     if (item.platform && item.platform.includes('PS4')) {
+      subcatsByCat['PS4'] = subcatsByCat['PS4'] || new Set(['Todas'])
       subcatsByCat['PS4'].add(item.subcategory)
+    }
+
+    // Agregar a PS3 si corresponde
+    if (item.platform && item.platform.includes('PS3')) {
+      subcatsByCat['PS3'] = subcatsByCat['PS3'] || new Set(['Todas'])
+      subcatsByCat['PS3'].add(item.subcategory)
     }
 
     // Agregar a Lanzamientos si corresponde

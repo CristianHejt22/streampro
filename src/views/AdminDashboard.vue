@@ -861,6 +861,7 @@ const availableAdminGamingSubcategories = computed(() => {
     if (currentCat === 'Todas' || !currentCat) matchesCat = true
     else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
     else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    else if (currentCat === 'PS3') matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
     else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
     else matchesCat = game.category === currentCat
 
@@ -914,6 +915,8 @@ const filteredGamingForAdmin = computed(() => {
       matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
     } else if (gamingAdminCategoryFilter.value === 'PS4') {
       matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    } else if (gamingAdminCategoryFilter.value === 'PS3') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
     } else if (gamingAdminCategoryFilter.value === 'Lanzamientos') {
       matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
     } else {
@@ -5737,6 +5740,7 @@ const deletePackageItem = (pkgId) => {
               <option value="ALL">Todas las Consolas</option>
               <option value="PS5">PlayStation 5</option>
               <option value="PS4">PlayStation 4</option>
+              <option value="PS3">PlayStation 3</option>
             </select>
           </div>
         </div>
@@ -6172,6 +6176,7 @@ const deletePackageItem = (pkgId) => {
                 <option value="PS4 / PS5">PS4 / PS5</option>
                 <option value="PS5">PlayStation 5</option>
                 <option value="PS4">PlayStation 4</option>
+                <option value="PS3">PlayStation 3</option>
               </select>
             </div>
             <div>

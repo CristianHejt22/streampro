@@ -2719,13 +2719,13 @@ export const useAdminStore = defineStore('admin', {
         })
         if (changed) this.persist(DB_KEYS.GAMING_PRODUCTS)
       }
-      if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0) {
+      if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0 || !this.gamingCategories.includes('PS3')) {
         this.gamingCategories = (gamingCategoriesData && gamingCategoriesData.length > 0) 
           ? gamingCategoriesData 
-          : ['Todas', 'PS5', 'PS4', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
+          : ['Todas', 'PS5', 'PS4', 'PS3', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
         this.persist(DB_KEYS.GAMING_CATEGORIES)
       }
-      if (!this.gamingSubcategories || Object.keys(this.gamingSubcategories).length === 0) {
+      if (!this.gamingSubcategories || Object.keys(this.gamingSubcategories).length === 0 || !this.gamingSubcategories['PS3']) {
         this.gamingSubcategories = gamingSubcategoriesData || {}
         this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
       }
