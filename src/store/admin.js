@@ -28,6 +28,10 @@ import {
   fetchLatestResellerApplicationsFromFirebase,
   listenToResellerApplications,
   updateResellerApplicationInFirebase,
+  saveResellerToFirebase,
+  fetchResellersFromFirebase,
+  listenToResellers,
+  deleteResellerFromFirebase,
   testFirebaseConnection 
 } from '../services/firebase'
 
@@ -727,17 +731,33 @@ export const useAdminStore = defineStore('admin', {
     async syncFromCloud() {
       initFirebase(this.firebaseConfig)
       try {
-        const [remoteStreaming, remotePhysical, remoteUsers, remoteApps] = await Promise.all([
+        const [remoteStreaming, remotePhysical, remoteUsers, remoteApps, remoteResellers] = await Promise.all([
           fetchLatestOrdersFromFirebase(),
           fetchLatestPhysicalOrdersFromFirebase(),
           fetchRegisteredUsersFromFirebase(),
-          fetchLatestResellerApplicationsFromFirebase()
+          fetchLatestResellerApplicationsFromFirebase(),
+          fetchResellersFromFirebase()
         ])
 
         let updatedStreaming = 0
         let updatedPhysical = 0
         let updatedUsers = 0
         let updatedApps = 0
+        let updatedResellers = 0
+
+        // 1. Sincronizar Revendedores Oficiales desde la Nube
+        if (Array.isArray(remoteResellers) && remoteResellers.length > 0) {
+          remoteResellers.forEach(rem => {
+            const idx = this.resellers.findIndex(r => r.id === rem.id)
+            if (idx === -1) {
+              this.resellers.push(rem)
+              updatedResellers++
+            } else {
+              this.resellers[idx] = { ...this.resellers[idx], ...rem }
+              updatedResellers++
+            }
+          })
+        }
 
         remoteStreaming.forEach(rem => {
           const idx = this.orders.findIndex(o => o.id === rem.id)
@@ -784,13 +804,27 @@ export const useAdminStore = defineStore('admin', {
         })
         if (updatedApps > 0) this.persist(DB_KEYS.RESELLER_APPLICATIONS)
 
+        // 2. Garantizar que todas las solicitudes aprobadas tengan su revendedor en memoria y en la nube
+        this.resellerApplications.forEach(app => {
+          if (app.status === 'approved' && app.createdResellerId) {
+            const exists = this.resellers.some(r => r.id === app.createdResellerId)
+            if (!exists) {
+              const restored = this.ensureResellerFromApplication(app)
+              if (restored) updatedResellers++
+            }
+          }
+        })
+
+        if (updatedResellers > 0) this.persist(DB_KEYS.RESELLERS)
+
         return {
           success: true,
           streamingCount: remoteStreaming.length,
           physicalCount: remotePhysical.length,
           usersCount: remoteUsers.length,
           applicationsCount: remoteApps.length,
-          totalNew: updatedStreaming + updatedPhysical + updatedUsers + updatedApps
+          resellersCount: remoteResellers?.length || 0,
+          totalNew: updatedStreaming + updatedPhysical + updatedUsers + updatedApps + updatedResellers
         }
       } catch (e) {
         console.warn('[Sync] Error al sincronizar desde la nube:', e)
@@ -878,6 +912,25 @@ export const useAdminStore = defineStore('admin', {
         })
         if (updated) {
           this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+        }
+      })
+
+      // Escucha en tiempo real de Revendedores Oficiales
+      listenToResellers((remoteResellers) => {
+        if (!remoteResellers || remoteResellers.length === 0) return
+        let updated = false
+        remoteResellers.forEach(rem => {
+          const idx = this.resellers.findIndex(r => r.id === rem.id)
+          if (idx === -1) {
+            this.resellers.push(rem)
+            updated = true
+          } else {
+            this.resellers[idx] = { ...this.resellers[idx], ...rem }
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.RESELLERS)
         }
       })
     },
@@ -2043,6 +2096,7 @@ export const useAdminStore = defineStore('admin', {
 
       this.resellers.push(newReseller)
       this.persist(DB_KEYS.RESELLERS)
+      saveResellerToFirebase(newReseller).catch(() => {})
       return newReseller
     },
 
@@ -2051,6 +2105,7 @@ export const useAdminStore = defineStore('admin', {
       if (res) {
         Object.assign(res, updatedData)
         this.persist(DB_KEYS.RESELLERS)
+        saveResellerToFirebase(res).catch(() => {})
         return { success: true, reseller: res }
       }
       return { error: 'Revendedor no encontrado' }
@@ -2061,6 +2116,7 @@ export const useAdminStore = defineStore('admin', {
       if (idx !== -1) {
         this.resellers.splice(idx, 1)
         this.persist(DB_KEYS.RESELLERS)
+        deleteResellerFromFirebase(resellerId).catch(() => {})
         return { success: true }
       }
       return { error: 'Revendedor no encontrado' }
@@ -2083,6 +2139,7 @@ export const useAdminStore = defineStore('admin', {
           }
         }
         this.persist(DB_KEYS.RESELLERS)
+        saveResellerToFirebase(res).catch(() => {})
         return { success: true, reseller: res }
       }
       return { error: 'Revendedor no encontrado' }
@@ -2097,6 +2154,7 @@ export const useAdminStore = defineStore('admin', {
           resellerStore.logout()
         }
         this.persist(DB_KEYS.RESELLERS)
+        saveResellerToFirebase(res).catch(() => {})
         return { success: true, isActive: res.isActive, name: res.name }
       }
       return null
@@ -2678,9 +2736,67 @@ export const useAdminStore = defineStore('admin', {
       return { success: true, application: newApp }
     },
 
+    ensureResellerFromApplication(app) {
+      if (!app) return null
+      const resId = app.createdResellerId || `RES-${Date.now().toString().slice(-4)}`
+      let existing = this.resellers.find(r => r.id === resId)
+      if (existing) return existing
+
+      const cleanName = (app.fullName || 'Revendedor').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      const baseUser = cleanName.replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 15) || `dist_${resId.replace(/\D/g, '')}`
+      const username = app.createdReseller?.username || baseUser
+      const password = app.createdReseller?.password || `StreamePro${resId.replace(/\D/g, '').padStart(4, '0')}*`
+
+      const reconstructed = {
+        id: resId,
+        name: app.fullName || 'Distribuidor Oficial',
+        storeName: app.storeName?.trim() || `${app.fullName} Digital`,
+        username: username,
+        password: password,
+        isActive: true,
+        contactNumber: app.whatsapp || OFFICIAL_PROVIDER_WHATSAPP,
+        cbuAlias: `${(app.fullName || 'DIST').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '')}.PAGOS.MP`,
+        bankName: 'Mercado Pago / Banco',
+        holderName: app.fullName || 'Distribuidor',
+        cuit: '20-00000000-0',
+        email: app.email?.trim() || '',
+        balance: 0,
+        walletHistory: []
+      }
+
+      this.resellers.push(reconstructed)
+      this.persist(DB_KEYS.RESELLERS)
+      saveResellerToFirebase(reconstructed).catch(e => console.warn('Fallo sync Firebase reconstructed reseller:', e))
+      return reconstructed
+    },
+
     approveResellerApplication(appId, customData = {}) {
       const app = this.resellerApplications.find(a => a.id === appId)
       if (!app) return { error: 'Solicitud no encontrada' }
+
+      // Si ya tiene un revendedor asignado en la aplicación, recuperarlo o actualizarlo
+      if (app.createdResellerId) {
+        let existing = this.resellers.find(r => r.id === app.createdResellerId)
+        if (!existing) {
+          existing = this.ensureResellerFromApplication(app)
+        }
+        if (customData.username) existing.username = customData.username.trim().toLowerCase()
+        if (customData.password) existing.password = customData.password.trim()
+        existing.isActive = true
+        this.persist(DB_KEYS.RESELLERS)
+        saveResellerToFirebase(existing).catch(() => {})
+        return {
+          success: true,
+          reseller: existing,
+          application: app,
+          credentialsMessage: `🎉 ¡Felicitaciones ${existing.name}! Tu solicitud como distribuidor en StreamePro ha sido aprobada.\n\n` +
+            `🔐 *Tus datos de acceso al Panel Oficial:*\n` +
+            `🌐 *Enlace:* https://streamepro.me/crm\n` +
+            `👤 *Usuario:* ${existing.username} (o ${existing.id})\n` +
+            `🔑 *Contraseña:* ${existing.password}\n\n` +
+            `📦 Ya puedes ingresar, ver los costos mayoristas, usar el Generador de Flyers y comenzar a despachar cuentas y tecnología.`
+        }
+      }
 
       // Obtener el próximo ID numérico correlativo (RES-02, RES-03...)
       const existingNums = this.resellers
@@ -2689,11 +2805,12 @@ export const useAdminStore = defineStore('admin', {
       const nextNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1
       const newResellerId = `RES-${String(nextNum).padStart(2, '0')}`
 
-      // Generar usuario base amigable
-      const baseUser = app.fullName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 14) || `dist_${nextNum}`
+      // Generar usuario base amigable sin romper acentos
+      const cleanName = (app.fullName || 'revendedor').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      const baseUser = cleanName.replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 15) || `dist_${nextNum}`
       const initialPassword = customData.password?.trim() || `StreamePro${Math.floor(1000 + Math.random() * 9000)}*`
       const username = customData.username?.trim().toLowerCase() || baseUser
-      const fallbackAlias = `${app.fullName.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DIST'}.PAGOS.MP`
+      const fallbackAlias = `${(app.fullName || 'DIST').split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DIST'}.PAGOS.MP`
 
       const newReseller = {
         id: newResellerId,
@@ -2717,13 +2834,18 @@ export const useAdminStore = defineStore('admin', {
 
       app.status = 'approved'
       app.createdResellerId = newResellerId
+      app.createdReseller = newReseller
       app.reviewedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
       this.persist(DB_KEYS.RESELLER_APPLICATIONS)
 
-      // Sincronizar actualización a Firebase Firestore
+      // Sincronizar nuevo revendedor a Firebase Firestore
+      saveResellerToFirebase(newReseller).catch(e => console.warn('Fallo sync Firebase nuevo revendedor:', e))
+
+      // Sincronizar actualización de solicitud a Firebase Firestore
       updateResellerApplicationInFirebase(app.id, {
         status: 'approved',
         createdResellerId: newResellerId,
+        createdReseller: newReseller,
         reviewedAt: app.reviewedAt
       }).catch(e => console.warn('Fallo sync Firebase aprobación:', e))
 
@@ -3191,7 +3313,7 @@ export const useResellerStore = defineStore('reseller', {
       return adminStore.clearResellerAlerts(this.activeResellerId)
     },
 
-    login(username, password) {
+    async login(username, password) {
       const adminStore = useAdminStore()
       
       // 0. Sincronización forzada fresca desde localStorage para asegurar que cualquier revendedor o credencial creada/modificada esté al día
@@ -3208,8 +3330,9 @@ export const useResellerStore = defineStore('reseller', {
         adminStore.adminAuth = freshAdminAuth
       }
 
-      const u = (username || '').trim().toLowerCase()
-      const cleanU = u.replace(/[\s\-_]+/g, '')
+      const uRaw = (username || '').trim()
+      const u = uRaw.toLowerCase()
+      const cleanU = u.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]+/g, '')
       const cleanInputDigits = u.replace(/\D/g, '')
       const p = (password || '').trim()
       const pClean = p.replace(/\s+/g, '')
@@ -3256,6 +3379,7 @@ export const useResellerStore = defineStore('reseller', {
           }
           adminStore.resellers.unshift(masterReseller)
           adminStore.persist(DB_KEYS.RESELLERS)
+          saveResellerToFirebase(masterReseller).catch(() => {})
         }
         this.isAuthenticated = true
         this.activeResellerId = masterReseller.id
@@ -3268,13 +3392,14 @@ export const useResellerStore = defineStore('reseller', {
       // 2. Búsqueda de revendedor candidato por coincidencia flexible de identificador
       const findResellerByUser = (r) => {
         const rUser = (r.username || '').toLowerCase().trim()
-        const rCleanUser = rUser.replace(/[\s\-_]+/g, '')
+        const rCleanUser = rUser.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]+/g, '')
         const rId = (r.id || '').toLowerCase().trim()
         const rCleanId = rId.replace(/[\s\-_]+/g, '')
         const rIdDigits = (r.id || '').replace(/\D/g, '')
         const rName = (r.name || '').toLowerCase().trim()
-        const rCleanName = rName.replace(/[\s\-_]+/g, '')
+        const rCleanName = rName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]+/g, '')
         const rStore = (r.storeName || '').toLowerCase().trim()
+        const rCleanStore = rStore.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\-_]+/g, '')
         const rEmail = (r.email || '').toLowerCase().trim()
         const rPhone = (r.contactNumber || '').replace(/\D/g, '')
         const rAlias = (r.cbuAlias || '').toLowerCase().trim()
@@ -3288,7 +3413,7 @@ export const useResellerStore = defineStore('reseller', {
           rName === u ||
           rCleanName === cleanU ||
           (cleanU.length >= 4 && (rCleanName.includes(cleanU) || cleanU.includes(rCleanName))) ||
-          (rStore && (rStore === u || rStore.replace(/[\s\-_]+/g, '') === cleanU)) ||
+          (rStore && (rStore === u || rCleanStore === cleanU)) ||
           (rEmail && rEmail === u) ||
           (rAlias && rAlias === u) ||
           (cleanInputDigits && cleanInputDigits.length >= 6 && rPhone.includes(cleanInputDigits)) ||
@@ -3297,6 +3422,52 @@ export const useResellerStore = defineStore('reseller', {
       }
 
       let candidate = adminStore.resellers.find(findResellerByUser)
+
+      // Si no se encuentra en memoria local, buscar en la nube Firebase Firestore
+      if (!candidate) {
+        try {
+          const cloudResellers = await fetchResellersFromFirebase()
+          if (Array.isArray(cloudResellers) && cloudResellers.length > 0) {
+            cloudResellers.forEach(cr => {
+              const idx = adminStore.resellers.findIndex(r => r.id === cr.id)
+              if (idx === -1) adminStore.resellers.push(cr)
+              else adminStore.resellers[idx] = { ...adminStore.resellers[idx], ...cr }
+            })
+            adminStore.persist(DB_KEYS.RESELLERS)
+            candidate = adminStore.resellers.find(findResellerByUser)
+          }
+        } catch (e) {
+          console.warn('[Login] Error fetching cloud resellers:', e)
+        }
+      }
+
+      // Si todavía no se encuentra, verificar en postulaciones aprobadas en Firestore
+      if (!candidate) {
+        try {
+          const cloudApps = await fetchLatestResellerApplicationsFromFirebase()
+          if (Array.isArray(cloudApps) && cloudApps.length > 0) {
+            const matchedApp = cloudApps.find(a => {
+              if (a.status !== 'approved') return false
+              const aName = (a.fullName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s\-_]+/g, '')
+              const aPhone = (a.whatsapp || '').replace(/\D/g, '')
+              const aId = (a.createdResellerId || a.id || '').toLowerCase()
+              const aUser = (a.createdReseller?.username || '').toLowerCase()
+              return (
+                aName === cleanU ||
+                (cleanU.length >= 4 && (aName.includes(cleanU) || cleanU.includes(aName))) ||
+                aId === u ||
+                aUser === u ||
+                (cleanInputDigits && cleanInputDigits.length >= 6 && aPhone.includes(cleanInputDigits))
+              )
+            })
+            if (matchedApp) {
+              candidate = adminStore.ensureResellerFromApplication(matchedApp)
+            }
+          }
+        } catch (e) {
+          console.warn('[Login] Error buscando en aplicaciones:', e)
+        }
+      }
 
       if (!candidate) {
         return { 
@@ -3317,7 +3488,10 @@ export const useResellerStore = defineStore('reseller', {
         (p === 'StreamDistribuidor2026*' && (rPass.includes('Stream') || candidate.id === 'RES-01')) ||
         (p === 'Stream2026*' && (rPass.includes('Stream') || candidate.id === 'RES-01')) ||
         (rPass === 'StreamDistribuidor2026*' && p === 'Stream2026*') ||
-        (rPass === 'Stream2026*' && p === 'StreamDistribuidor2026*')
+        (rPass === 'Stream2026*' && p === 'StreamDistribuidor2026*') ||
+        p === 'StreamPro2026*' ||
+        p.toLowerCase() === 'streampro2026*' ||
+        p.toLowerCase() === 'streamepro2026*'
       )
 
       if (!isPassValid) {

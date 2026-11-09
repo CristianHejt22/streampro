@@ -319,6 +319,7 @@ const loginForm = ref({
   password: ''
 })
 const loginError = ref('')
+const isLoggingIn = ref(false)
 const rememberSession = ref(true)
 const biometricsAvailable = ref(false)
 const hasEnrolledBiometrics = ref(false)
@@ -334,6 +335,9 @@ onMounted(async () => {
   if (freshAdminAuth) {
     adminStore.adminAuth = freshAdminAuth
   }
+
+  // Sincronizar en segundo plano con Firebase para tener los revendedores más recientes
+  adminStore.syncFromCloud().catch(() => {})
 
   biometricsAvailable.value = await isBiometricsAvailable()
   hasEnrolledBiometrics.value = hasBiometricEnrolled('reseller')
@@ -354,24 +358,32 @@ onMounted(async () => {
   }
 })
 
-const handleLogin = () => {
+const handleLogin = async () => {
   loginError.value = ''
   if (!loginForm.value.username || !loginForm.value.password) {
     loginError.value = 'Ingresa tu usuario y contraseña de distribuidor'
     toast.add(loginError.value, 'error')
     return
   }
-  const res = resellerStore.login(loginForm.value.username, loginForm.value.password)
-  if (res.success) {
-    if (rememberSession.value) {
-      saveRememberedSession('reseller', res.reseller)
+  isLoggingIn.value = true
+  try {
+    const res = await resellerStore.login(loginForm.value.username, loginForm.value.password)
+    if (res.success) {
+      if (rememberSession.value) {
+        saveRememberedSession('reseller', res.reseller)
+      } else {
+        clearRememberedSession('reseller')
+      }
+      toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
     } else {
-      clearRememberedSession('reseller')
+      loginError.value = res.error || 'Credenciales inválidas'
+      toast.add(loginError.value, 'error')
     }
-    toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
-  } else {
-    loginError.value = res.error || 'Credenciales inválidas'
+  } catch (e) {
+    loginError.value = 'Error al verificar credenciales con el servidor'
     toast.add(loginError.value, 'error')
+  } finally {
+    isLoggingIn.value = false
   }
 }
 
@@ -970,10 +982,12 @@ const shareGamingOnWhatsApp = (game) => {
 
         <button 
           type="submit" 
-          class="w-full bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2 text-sm cursor-pointer" 
+          :disabled="isLoggingIn" 
+          class="w-full bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50" 
         >
-          <span>Ingresar a Mi Panel</span>
-          <span>→</span>
+          <span v-if="isLoggingIn" class="animate-spin inline-block">⏳</span>
+          <span>{{ isLoggingIn ? 'Verificando credenciales...' : 'Ingresar a Mi Panel' }}</span>
+          <span v-if="!isLoggingIn">→</span>
         </button>
 
         <!-- Botón de Inicio con Huella / Biometría (Sólo si el revendedor enroló previamente en su dispositivo) -->

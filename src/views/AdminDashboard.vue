@@ -3456,8 +3456,7 @@ const deletePackageItem = (pkgId) => {
                 </span>
                 <div class="flex gap-1.5">
                   <button 
-                    v-if="adminStore.resellers.find(r => r.id === app.createdResellerId)"
-                    @click="openResellerPanelDirect(adminStore.resellers.find(r => r.id === app.createdResellerId))"
+                    @click="openResellerPanelDirect(adminStore.resellers.find(r => r.id === app.createdResellerId) || adminStore.ensureResellerFromApplication(app))"
                     class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer shadow"
                     title="Abrir e ingresar directamente al panel de este revendedor"
                   >

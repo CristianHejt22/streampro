@@ -5,6 +5,7 @@ import {
   collection, 
   addDoc, 
   setDoc,
+  deleteDoc,
   getDoc,
   doc, 
   query, 
@@ -386,6 +387,96 @@ export async function updateResellerApplicationInFirebase(appId, data) {
     return { success: true }
   } catch (error) {
     console.warn('[Firebase] Error actualizando postulación en Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Guarda un revendedor oficial en la colección 'resellers' de Firestore
+ */
+export async function saveResellerToFirebase(resellerData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanRes = JSON.parse(JSON.stringify(resellerData))
+    cleanRes.updatedAt = new Date().toISOString()
+    cleanRes.serverTimestamp = serverTimestamp()
+    const docId = String(cleanRes.id || `RES-${Date.now().toString().slice(-4)}`)
+    await setDoc(doc(dbInstance, 'resellers', docId), cleanRes, { merge: true })
+    return { success: true, id: docId }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando revendedor en Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Consulta la lista de revendedores oficiales en Firestore
+ */
+export async function fetchResellersFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return []
+
+  try {
+    const q = query(collection(dbInstance, 'resellers'), limit(200))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.warn('[Firebase] Error al consultar resellers en Firestore:', error)
+    return []
+  }
+}
+
+/**
+ * Escucha cambios en tiempo real en la colección 'resellers' de Firestore
+ */
+export function listenToResellers(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return () => {}
+
+  try {
+    const q = query(collection(dbInstance, 'resellers'), limit(200))
+    return onSnapshot(q, (snapshot) => {
+      const resellers = []
+      snapshot.forEach((docSnap) => {
+        resellers.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      callback(resellers)
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error en resellers:', err)
+    })
+  } catch (err) {
+    console.warn('[Firebase] Listener error en resellers:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Elimina un revendedor de Firestore
+ */
+export async function deleteResellerFromFirebase(resellerId) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false }
+
+  try {
+    const docRef = doc(dbInstance, 'resellers', String(resellerId))
+    await deleteDoc(docRef)
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error eliminando revendedor de Firestore:', error)
     return { success: false, error: error.message }
   }
 }
