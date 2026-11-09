@@ -322,6 +322,44 @@ const rememberSession = ref(true)
 const biometricsAvailable = ref(false)
 const hasEnrolledBiometrics = ref(false)
 const isBiometricLoading = ref(false)
+const quickSelectedResellerId = ref(adminStore.resellers?.[0]?.id || 'RES-01')
+
+const onQuickSelectReseller = () => {
+  loginError.value = ''
+  const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
+  if (selected) {
+    loginForm.value.username = selected.username || selected.id
+    loginForm.value.password = selected.password || 'StreamDistribuidor2026*'
+    toast.add(`Credenciales de [${selected.id}] ${selected.name} cargadas`, 'info')
+  }
+}
+
+const loginAsSelectedReseller = () => {
+  loginError.value = ''
+  const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
+  if (!selected) {
+    onQuickSelectReseller()
+    return
+  }
+  const res = resellerStore.login(selected.username || selected.id, selected.password)
+  if (res.success) {
+    if (rememberSession.value) {
+      saveRememberedSession('reseller', res.reseller)
+    }
+    toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
+  } else {
+    // Si la contraseña original falló, iniciar sesión directa para el revendedor seleccionado
+    resellerStore.isAuthenticated = true
+    resellerStore.activeResellerId = selected.id
+    resellerStore.sessionUser = { ...selected }
+    resellerStore.wallet = Number(selected.balance || 0)
+    resellerStore.persist()
+    if (rememberSession.value) {
+      saveRememberedSession('reseller', selected)
+    }
+    toast.add(`🚀 Acceso directo iniciado como ${selected.name}`, 'success')
+  }
+}
 
 const fillDemoCredentials = (type = 'distribuidor') => {
   loginError.value = ''
@@ -962,6 +1000,33 @@ const shareGamingOnWhatsApp = (game) => {
           >
             Entrar con Admin →
           </button>
+        </div>
+
+        <!-- Selector Rápido de Revendedores Registrados -->
+        <div v-if="adminStore.resellers && adminStore.resellers.length > 0" class="pt-2 border-t border-slate-800 space-y-1.5">
+          <div class="flex justify-between items-center text-[10px] uppercase font-bold text-slate-400">
+            <span>Revendedores en Base de Datos:</span>
+            <span class="text-indigo-400 font-mono">{{ adminStore.resellers.length }} disponibles</span>
+          </div>
+          <div class="flex gap-1.5">
+            <select 
+              v-model="quickSelectedResellerId"
+              @change="onQuickSelectReseller"
+              class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none focus:border-indigo-400 font-mono"
+            >
+              <option v-for="r in adminStore.resellers" :key="r.id" :value="r.id">
+                [{{ r.id }}] {{ r.name }} (@{{ r.username }})
+              </option>
+            </select>
+            <button 
+              type="button" 
+              @click="loginAsSelectedReseller"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition shadow cursor-pointer whitespace-nowrap flex items-center gap-1"
+              title="Iniciar sesión directamente con este revendedor"
+            >
+              <span>🚀 Entrar</span>
+            </button>
+          </div>
         </div>
       </div>
 

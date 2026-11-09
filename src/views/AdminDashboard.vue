@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
@@ -22,6 +23,7 @@ import {
 const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
 const toast = useToastStore()
+const router = useRouter()
 
 // MODAL DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF)
 const showReceiptModal = ref(false)
@@ -333,6 +335,17 @@ const copyResellerStoreLink = (reseller) => {
   navigator.clipboard.writeText(url).then(() => {
     toast.add(`🔗 Enlace de tienda copiado para ${reseller.name} (${reseller.id})`, 'success')
   })
+}
+
+const openResellerPanelDirect = (reseller) => {
+  if (!reseller) return
+  resellerStore.isAuthenticated = true
+  resellerStore.activeResellerId = reseller.id
+  resellerStore.sessionUser = { ...reseller }
+  resellerStore.wallet = Number(reseller.balance || 0)
+  resellerStore.persist()
+  router.push('/crm')
+  toast.add(`🚀 Abriendo Panel de Revendedor: ${reseller.name} (${reseller.id})`, 'success')
 }
 
 const handleDeleteReseller = (resellerId) => {
@@ -3381,6 +3394,14 @@ const deletePackageItem = (pkgId) => {
                 </span>
                 <div class="flex gap-1.5">
                   <button 
+                    v-if="adminStore.resellers.find(r => r.id === app.createdResellerId)"
+                    @click="openResellerPanelDirect(adminStore.resellers.find(r => r.id === app.createdResellerId))"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer shadow"
+                    title="Abrir e ingresar directamente al panel de este revendedor"
+                  >
+                    <span>🚀 Abrir</span>
+                  </button>
+                  <button 
                     @click="contactApplicantWhatsApp(app)" 
                     class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded-lg border border-slate-700 font-bold"
                   >
@@ -3492,6 +3513,13 @@ const deletePackageItem = (pkgId) => {
 
           <!-- Acciones de Gestión de Revendedor -->
           <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-800/80">
+            <button 
+              @click="openResellerPanelDirect(res)" 
+              class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-3.5 py-2 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+              title="Abrir el panel de este revendedor e iniciar sesión directamente"
+            >
+              <span>🚀 Abrir Panel</span>
+            </button>
             <button 
               @click="copyResellerCredentials(res)" 
               class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
@@ -7596,10 +7624,16 @@ const deletePackageItem = (pkgId) => {
 
         <div class="flex flex-col sm:flex-row gap-3 pt-2">
           <button 
+            @click="openResellerPanelDirect(approvedCredentialsData.reseller)" 
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-4 rounded-xl shadow-lg transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>🚀 Abrir Panel Ahora</span>
+          </button>
+          <button 
             @click="sendCredentialsWhatsApp(approvedCredentialsData)" 
             class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black py-3 rounded-xl shadow-lg transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>📲 Enviar Credenciales por WhatsApp</span>
+            <span>📲 Enviar por WhatsApp</span>
           </button>
           <button 
             @click="showApprovedCredentialsModal = false; approvedCredentialsData = null" 

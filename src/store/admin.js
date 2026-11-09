@@ -2852,14 +2852,17 @@ export const useAdminStore = defineStore('admin', {
 })
 
 export const useResellerStore = defineStore('reseller', {
-  state: () => ({
-    activeResellerId: null,
-    isAuthenticated: false,
-    sessionUser: null,
-    // Base de datos de clientes y suscripciones entregadas (Limpio en producción)
-    clients: loadDb(DB_KEYS.CLIENTS, []),
-    wallet: 0
-  }),
+  state: () => {
+    const savedAuth = loadDb('reseller_auth_session', null)
+    return {
+      activeResellerId: savedAuth?.id || null,
+      isAuthenticated: Boolean(savedAuth?.isAuthenticated),
+      sessionUser: savedAuth?.user || null,
+      // Base de datos de clientes y suscripciones entregadas (Limpio en producción)
+      clients: loadDb(DB_KEYS.CLIENTS, []),
+      wallet: Number(savedAuth?.user?.balance || 0)
+    }
+  },
   getters: {
     totalProfit: (state) => {
       const resId = state.activeResellerId
@@ -2934,6 +2937,15 @@ export const useResellerStore = defineStore('reseller', {
   actions: {
     persist() {
       saveDb(DB_KEYS.CLIENTS, this.clients)
+      if (this.isAuthenticated && this.sessionUser) {
+        saveDb('reseller_auth_session', {
+          id: this.activeResellerId,
+          isAuthenticated: true,
+          user: this.sessionUser
+        })
+      } else {
+        saveDb('reseller_auth_session', null)
+      }
     },
 
     addDeliveredOrderToClients(order) {
@@ -3106,9 +3118,10 @@ export const useResellerStore = defineStore('reseller', {
     login(username, password) {
       const adminStore = useAdminStore()
       const u = (username || '').trim().toLowerCase()
+      const cleanU = u.replace(/[\s\-_]+/g, '')
       const p = (password || '').trim()
       
-      // 1. Acceso con Credenciales Maestras de Administrador
+      // 1. Acceso con Credenciales Maestras de Administrador (Directo a RES-01)
       const adminAuthUser = (adminStore.adminAuth?.username || 'admin').toLowerCase()
       const adminAuthPass = (adminStore.adminAuth?.password || 'StreamPro2026*Admin').trim()
 
@@ -3136,7 +3149,8 @@ export const useResellerStore = defineStore('reseller', {
         this.isAuthenticated = true
         this.activeResellerId = masterReseller.id
         this.sessionUser = { ...masterReseller }
-        this.wallet = masterReseller.balance || 50000
+        this.wallet = Number(masterReseller.balance || 50000)
+        this.persist()
         return { success: true, reseller: masterReseller, isMasterAdmin: true }
       }
 
@@ -3146,20 +3160,38 @@ export const useResellerStore = defineStore('reseller', {
         adminStore.persist(DB_KEYS.RESELLERS)
       }
 
-      // 3. Búsqueda de revendedor registrado con coincidencia flexible
+      // 3. Búsqueda de revendedor registrado con coincidencia flexible por usuario, ID, nombre o teléfono
+      const cleanInputDigits = u.replace(/\D/g, '')
       const found = adminStore.resellers.find(r => {
-        const rUser = (r.username || '').toLowerCase()
-        const rId = (r.id || '').toLowerCase()
+        const rUser = (r.username || '').toLowerCase().trim()
+        const rCleanUser = rUser.replace(/[\s\-_]+/g, '')
+        const rId = (r.id || '').toLowerCase().trim()
+        const rCleanId = rId.replace(/[\s\-_]+/g, '')
+        const rName = (r.name || '').toLowerCase().trim()
+        const rCleanName = rName.replace(/[\s\-_]+/g, '')
+        const rPhone = (r.contactNumber || '').replace(/\D/g, '')
         const rPass = (r.password || '').trim()
 
         const matchUser = (
           rUser === u || 
+          rCleanUser === cleanU ||
           rId === u ||
+          rCleanId === cleanU ||
+          rName === u ||
+          rCleanName === cleanU ||
+          (cleanInputDigits && cleanInputDigits.length >= 6 && rPhone.includes(cleanInputDigits)) ||
           (u === 'revendedor' && rUser === 'distribuidor') ||
           (u === 'distribuidor' && rUser === 'revendedor')
         )
+
+        // Verificación de clave:
+        // - Clave exacta
+        // - Clave maestra de administrador (permite al admin ingresar a cualquier revendedor)
+        // - Tolerancias de mayúsculas/minúsculas y variantes
         const matchPass = (
+          p === adminAuthPass ||
           rPass === p ||
+          rPass.toLowerCase() === p.toLowerCase() ||
           (p === 'StreamDistribuidor2026*' && rPass === 'Stream2026*') ||
           (p === 'Stream2026*' && rPass === 'StreamDistribuidor2026*') ||
           (p === 'Stream2026*' && rPass.includes('Stream'))
@@ -3178,7 +3210,8 @@ export const useResellerStore = defineStore('reseller', {
       this.isAuthenticated = true
       this.activeResellerId = found.id
       this.sessionUser = { ...found }
-      this.wallet = found.balance || 0
+      this.wallet = Number(found.balance || 0)
+      this.persist()
       return { success: true, reseller: found }
     },
 

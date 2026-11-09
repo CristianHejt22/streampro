@@ -78,7 +78,7 @@ const router = createRouter({
     },
     {
       path: '/crm',
-      alias: ['/reseller', '/revendedor', '/cm', '/panel', '/c'],
+      alias: ['/reseller', '/revendedor', '/cm', '/panel', '/c', '/distribuidor'],
       name: 'crm',
       component: ResellerDashboard
     },
