@@ -1184,13 +1184,52 @@ const saveResellerAuth = () => {
     toast.add('El usuario y la contraseña son obligatorios', 'error')
     return
   }
-  adminStore.updateResellerAuth(selectedResellerForAuth.value.id, {
+  const updated = adminStore.updateResellerAuth(selectedResellerForAuth.value.id, {
     username: resellerAuthForm.value.username.trim(),
     password: resellerAuthForm.value.password.trim(),
     isActive: resellerAuthForm.value.isActive
   })
-  toast.add(`Credenciales y estado de ${selectedResellerForAuth.value.name} guardados con éxito`, 'success')
-  showResellerAuthModal.value = false
+  if (updated.success) {
+    toast.add(`Credenciales y estado de ${selectedResellerForAuth.value.name} guardados con éxito`, 'success')
+    showResellerAuthModal.value = false
+  } else {
+    toast.add(updated.error || 'Error al guardar credenciales', 'error')
+  }
+}
+
+const saveResellerAuthAndOpenCrm = () => {
+  if (!resellerAuthForm.value.username.trim() || !resellerAuthForm.value.password.trim()) {
+    toast.add('El usuario y la contraseña son obligatorios', 'error')
+    return
+  }
+  const updated = adminStore.updateResellerAuth(selectedResellerForAuth.value.id, {
+    username: resellerAuthForm.value.username.trim(),
+    password: resellerAuthForm.value.password.trim(),
+    isActive: resellerAuthForm.value.isActive
+  })
+  if (updated.success) {
+    toast.add(`Credenciales guardadas. Accediendo al panel /crm como ${selectedResellerForAuth.value.name}...`, 'success')
+    showResellerAuthModal.value = false
+    openResellerPanelDirect(updated.reseller)
+  } else {
+    toast.add(updated.error || 'Error al guardar credenciales', 'error')
+  }
+}
+
+const copyModalResellerCredentials = () => {
+  const user = resellerAuthForm.value.username.trim()
+  const pass = resellerAuthForm.value.password.trim()
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://streamepro.me'
+  const text = `Panel de Distribuidor StreamePro:\n🌐 Enlace: ${origin}/crm\n👤 Usuario: ${user}\n🔑 Clave: ${pass}`
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.add('Usuario y contraseña copiados al portapapeles', 'success')
+    }).catch(() => {
+      toast.add(`Usuario: ${user} | Clave: ${pass}`, 'info')
+    })
+  } else {
+    toast.add(`Usuario: ${user} | Clave: ${pass}`, 'info')
+  }
 }
 
 const toggleResellerStatus = (resellerId) => {
@@ -7403,16 +7442,41 @@ const deletePackageItem = (pkgId) => {
             <p class="text-[10px] text-slate-500 mt-1">Visible para que puedas suministrársela al distribuidor.</p>
           </div>
 
-          <div class="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-indigo-300 text-[11px]">
-            ℹ️ El revendedor utilizará estas credenciales para autenticarse en el panel <strong>/crm</strong>.
+          <div class="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-indigo-300 text-[11px] space-y-1.5">
+            <div class="flex items-start justify-between gap-2">
+              <p>
+                ℹ️ El revendedor utilizará estas credenciales para autenticarse en el panel 
+                <router-link to="/crm" target="_blank" class="text-brand-accent underline font-bold">/crm</router-link>.
+              </p>
+              <button 
+                type="button" 
+                @click="copyModalResellerCredentials"
+                class="shrink-0 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                title="Copiar usuario, clave y enlace"
+              >
+                📋 Copiar
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              💡 Como Administrador, también puedes ingresar a cualquier revendedor usando tu contraseña maestra de Admin.
+            </p>
           </div>
 
-          <div class="flex gap-3 pt-2">
-            <button type="button" @click="showResellerAuthModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
-              Cancelar
-            </button>
-            <button type="submit" class="w-2/3 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
-              Guardar Credenciales
+          <div class="space-y-2 pt-2">
+            <div class="flex gap-3">
+              <button type="button" @click="showResellerAuthModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl cursor-pointer">
+                Cancelar
+              </button>
+              <button type="submit" class="w-2/3 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl shadow transition-all cursor-pointer">
+                Guardar Credenciales
+              </button>
+            </div>
+            <button 
+              type="button" 
+              @click="saveResellerAuthAndOpenCrm" 
+              class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+            >
+              <span>🚀 Guardar y Abrir Panel en /crm</span>
             </button>
           </div>
         </form>

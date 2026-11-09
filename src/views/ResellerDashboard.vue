@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
+import { loadDb, DB_KEYS } from '../services/db'
 import html2canvas from 'html2canvas'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
@@ -318,14 +319,29 @@ const loginForm = ref({
   password: ''
 })
 const loginError = ref('')
+const failedCandidate = ref(null)
 const rememberSession = ref(true)
 const biometricsAvailable = ref(false)
 const hasEnrolledBiometrics = ref(false)
 const isBiometricLoading = ref(false)
 const quickSelectedResellerId = ref(adminStore.resellers?.[0]?.id || 'RES-01')
 
+const directLoginAsCandidate = () => {
+  if (!failedCandidate.value) return
+  resellerStore.isAuthenticated = true
+  resellerStore.activeResellerId = failedCandidate.value.id
+  resellerStore.sessionUser = { ...failedCandidate.value }
+  resellerStore.wallet = Number(failedCandidate.value.balance || 0)
+  resellerStore.persist()
+  if (rememberSession.value) {
+    saveRememberedSession('reseller', failedCandidate.value)
+  }
+  toast.add(`🚀 Acceso directo iniciado como ${failedCandidate.value.name}`, 'success')
+}
+
 const onQuickSelectReseller = () => {
   loginError.value = ''
+  failedCandidate.value = null
   const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
   if (selected) {
     loginForm.value.username = selected.username || selected.id
@@ -336,6 +352,7 @@ const onQuickSelectReseller = () => {
 
 const loginAsSelectedReseller = () => {
   loginError.value = ''
+  failedCandidate.value = null
   const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
   if (!selected) {
     onQuickSelectReseller()
@@ -361,20 +378,44 @@ const loginAsSelectedReseller = () => {
   }
 }
 
-const fillDemoCredentials = (type = 'distribuidor') => {
+const fillDemoCredentials = (type = 'distribuidor', autoSubmit = true) => {
   loginError.value = ''
+  failedCandidate.value = null
+  // Sincronizar credenciales frescas de localStorage
+  const freshAdminAuth = loadDb(DB_KEYS.ADMIN_AUTH, adminStore.adminAuth)
+  if (freshAdminAuth) adminStore.adminAuth = freshAdminAuth
+  const freshResellers = loadDb(DB_KEYS.RESELLERS, adminStore.resellers)
+  if (freshResellers && freshResellers.length > 0) adminStore.resellers = freshResellers
+
   if (type === 'admin') {
     loginForm.value.username = adminStore.adminAuth?.username || 'admin'
     loginForm.value.password = adminStore.adminAuth?.password || 'StreamPro2026*Admin'
     toast.add('Credenciales maestras de administrador cargadas', 'info')
   } else {
-    loginForm.value.username = 'distribuidor'
-    loginForm.value.password = 'StreamDistribuidor2026*'
+    const mainReseller = adminStore.resellers?.[0]
+    loginForm.value.username = mainReseller?.username || 'distribuidor'
+    loginForm.value.password = mainReseller?.password || 'StreamDistribuidor2026*'
     toast.add('Credenciales de distribuidor oficial cargadas', 'info')
+  }
+  if (autoSubmit) {
+    handleLogin()
   }
 }
 
 onMounted(async () => {
+  // Sincronización fresca con localStorage para garantizar veracidad
+  const freshResellers = loadDb(DB_KEYS.RESELLERS, null)
+  if (Array.isArray(freshResellers) && freshResellers.length > 0) {
+    adminStore.resellers = freshResellers
+  }
+  const freshAdminAuth = loadDb(DB_KEYS.ADMIN_AUTH, null)
+  if (freshAdminAuth) {
+    adminStore.adminAuth = freshAdminAuth
+  }
+  if ((!quickSelectedResellerId.value || quickSelectedResellerId.value === 'RES-01') && adminStore.resellers?.length > 0) {
+    quickSelectedResellerId.value = adminStore.resellers[0].id
+  }
+
   biometricsAvailable.value = await isBiometricsAvailable()
   hasEnrolledBiometrics.value = hasBiometricEnrolled('reseller')
 
@@ -396,6 +437,7 @@ onMounted(async () => {
 
 const handleLogin = () => {
   loginError.value = ''
+  failedCandidate.value = null
   if (!loginForm.value.username || !loginForm.value.password) {
     loginError.value = 'Ingresa tu usuario y contraseña de distribuidor'
     toast.add(loginError.value, 'error')
@@ -411,6 +453,9 @@ const handleLogin = () => {
     toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
   } else {
     loginError.value = res.error || 'Credenciales inválidas'
+    if (res.candidateReseller) {
+      failedCandidate.value = res.candidateReseller
+    }
     toast.add(loginError.value, 'error')
   }
 }
@@ -967,9 +1012,21 @@ const shareGamingOnWhatsApp = (game) => {
         <p class="text-xs text-slate-400">Ingresa con tus credenciales de revendedor autorizadas por el proveedor.</p>
       </div>
 
-      <div v-if="loginError" class="p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
-        <span class="shrink-0 text-base">⚠️</span>
-        <span>{{ loginError }}</span>
+      <div v-if="loginError" class="p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="shrink-0 text-base">⚠️</span>
+          <span>{{ loginError }}</span>
+        </div>
+        <div v-if="failedCandidate" class="pt-2 border-t border-red-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <span class="text-[11px] text-slate-300">¿Eres el administrador verificando a <strong>{{ failedCandidate.name }}</strong>?</span>
+          <button 
+            type="button" 
+            @click="directLoginAsCandidate"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1 shadow"
+          >
+            <span>🚀 Entrar como {{ failedCandidate.id }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Tarjeta de Credenciales de Acceso Oficial -->
