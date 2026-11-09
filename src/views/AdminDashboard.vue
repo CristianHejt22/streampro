@@ -1212,6 +1212,63 @@ const copyGamingOrderDetails = async (order) => {
 }
 
 // ==========================================
+// MODAL DE ASIGNACIÓN / EDICIÓN DE NOMBRE DEL JUEGO GAMER
+// ==========================================
+const showAssignGameModal = ref(false)
+const targetGameOrder = ref(null)
+const assignGameTitleInput = ref('')
+const assignGamePlatformInput = ref('PS4 / PS5')
+const assignGameLicenseInput = ref('primary')
+const gameCatalogSearchQuery = ref('')
+
+const filteredCatalogGamesForPicker = computed(() => {
+  const q = gameCatalogSearchQuery.value.trim().toLowerCase()
+  const list = adminStore.processedGamingProducts || []
+  if (!q) return list.slice(0, 15)
+  return list.filter(g => g.title.toLowerCase().includes(q) || (g.category && g.category.toLowerCase().includes(q))).slice(0, 20)
+})
+
+const openAssignGameModal = (order) => {
+  targetGameOrder.value = order
+  const existingTitle = order.gameTitle && !order.gameTitle.includes('Pendiente') 
+    ? order.gameTitle 
+    : (order.platform && !['PS4 / PS5', 'PS4', 'PS5', 'PlayStation'].includes(order.platform.trim())
+        ? order.platform.replace(/\s*\((PS4|PS5|PS4\s*\/\s*PS5|PlayStation)\)/i, '').trim()
+        : '')
+
+  assignGameTitleInput.value = existingTitle
+  assignGamePlatformInput.value = order.gamePlatform || (order.platform?.includes('PS5') ? 'PS5' : (order.platform?.includes('PS4') ? 'PS4' : 'PS4 / PS5'))
+  assignGameLicenseInput.value = order.licenseType || (order.planLabel?.includes('Secundaria') ? 'secondary' : 'primary')
+  gameCatalogSearchQuery.value = existingTitle
+  showAssignGameModal.value = true
+}
+
+const selectCatalogGameForOrder = (game) => {
+  assignGameTitleInput.value = game.title
+  if (game.platform) assignGamePlatformInput.value = game.platform
+}
+
+const saveAssignedGameToOrder = () => {
+  if (!targetGameOrder.value) return
+  if (!assignGameTitleInput.value.trim()) {
+    toast.add('Por favor, ingresa o selecciona el nombre del videojuego', 'warning')
+    return
+  }
+  const res = adminStore.updateGamingOrderGameTitle(
+    targetGameOrder.value.id,
+    assignGameTitleInput.value.trim(),
+    assignGamePlatformInput.value,
+    assignGameLicenseInput.value
+  )
+  if (res.success) {
+    toast.add(`✓ Videojuego "${assignGameTitleInput.value.trim()}" asignado al pedido #${targetGameOrder.value.id}`, 'success')
+    showAssignGameModal.value = false
+  } else {
+    toast.add(res.error || 'Error al guardar nombre del juego', 'error')
+  }
+}
+
+// ==========================================
 // IMPORTACIÓN Y SINCRONIZACIÓN GAMING (ARGPLAY & JDA)
 // ==========================================
 const isSyncingGaming = ref(false)
@@ -3238,7 +3295,21 @@ const deletePackageItem = (pkgId) => {
           <div class="flex justify-between items-start gap-4">
             <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="text-lg font-black text-white">{{ order.platform }}</span>
+                <span v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))" class="text-[10px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  🎮 VIDEOJUEGO
+                </span>
+                <span class="text-lg font-black text-white">
+                  {{ order.gameTitle || order.platform }}
+                </span>
+                <button 
+                  v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))"
+                  type="button" 
+                  @click="openAssignGameModal(order)"
+                  class="text-[10px] bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer"
+                  title="Asignar o editar nombre exacto del videojuego"
+                >
+                  ✏️ Editar Juego
+                </button>
                 <span class="text-xs font-mono text-brand-accent bg-brand-accent/15 px-2 py-0.5 rounded border border-brand-accent/30 font-bold">
                   {{ order.id }}
                 </span>
@@ -3281,7 +3352,10 @@ const deletePackageItem = (pkgId) => {
                   </span>
                 </p>
                 <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 pt-0.5">
-                  <span>Plan: <strong class="text-slate-200">{{ order.planLabel || order.devices + ' Pantallas' }}</strong></span>
+                  <span v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))">
+                    Modalidad: <strong class="text-amber-300">{{ order.licenseLabel || order.planLabel || '⭐️ Cuenta Primaria' }}</strong> • Plataforma: <strong class="text-slate-200">{{ order.gamePlatform || 'PS4 / PS5' }}</strong>
+                  </span>
+                  <span v-else>Plan: <strong class="text-slate-200">{{ order.planLabel || order.devices + ' Pantallas' }}</strong></span>
                   <span>•</span>
                   <span>Monto: <strong class="text-emerald-400 font-mono">${{ (order.clientPrice || order.total || 0).toLocaleString() }} ARS</strong></span>
                   <span v-if="order.paymentMethod">• {{ order.paymentMethod }}</span>
@@ -3325,6 +3399,14 @@ const deletePackageItem = (pkgId) => {
                   title="Seleccionar cuenta y PINs manualmente"
                 >
                   <span>⚙️ Despacho Manual</span>
+                </button>
+                <button 
+                  v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))"
+                  @click="sendWhatsAppGameDelivery(order)"
+                  class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 font-bold text-[11px] rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer shadow"
+                  title="Enviar datos y credenciales del videojuego por WhatsApp"
+                >
+                  <span>🎮 Entregar Juego WhatsApp</span>
                 </button>
                 <button 
                   v-if="order.resellerId === 'DIRECT' || !order.resellerId"
@@ -6866,12 +6948,26 @@ const deletePackageItem = (pkgId) => {
                     </a>
                   </div>
 
-                  <div class="text-xs text-slate-300 flex flex-wrap items-center gap-1.5">
-                    <span class="text-white font-bold text-sm">🎮 {{ order.gameTitle || order.platform }}</span>
-                    <span class="text-slate-500">•</span>
+                  <div class="text-xs text-slate-300 flex flex-wrap items-center gap-2">
+                    <span class="text-white font-black text-base">🎮 {{ order.gameTitle || order.platform }}</span>
+                    <button 
+                      type="button" 
+                      @click="openAssignGameModal(order)"
+                      class="text-[10px] bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Editar o cambiar el nombre del juego"
+                    >
+                      ✏️ Editar Juego
+                    </button>
                     <span :class="['px-2 py-0.5 rounded text-[11px] font-bold', (order.licenseType === 'primary' || (order.licenseLabel && order.licenseLabel.includes('Primaria'))) ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-indigo-400/20 text-indigo-300 border border-indigo-400/30']">
                       {{ order.licenseLabel || (order.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria') }}
                     </span>
+                  </div>
+
+                  <div v-if="!order.gameTitle || order.gameTitle.includes('Pendiente') || order.gameTitle === 'Videojuego PS4 / PS5'" class="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                    <span>⚠️ Nombre del juego pendiente de asignar.</span>
+                    <button @click="openAssignGameModal(order)" type="button" class="underline font-bold text-amber-200 hover:text-white cursor-pointer">
+                      Asignar Nombre del Juego Ahora →
+                    </button>
                   </div>
 
                   <div class="flex flex-wrap items-center gap-2 text-xs pt-0.5">
@@ -6955,6 +7051,16 @@ const deletePackageItem = (pkgId) => {
                     class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow cursor-pointer"
                   >
                     <span>💬 Entregar por WhatsApp</span>
+                  </button>
+
+                  <!-- Botón Editar / Asignar Juego -->
+                  <button 
+                    type="button" 
+                    @click="openAssignGameModal(order)"
+                    class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+                    title="Editar título o plataforma del juego"
+                  >
+                    <span>✏️ Editar Juego</span>
                   </button>
                 </div>
 
@@ -7654,7 +7760,11 @@ const deletePackageItem = (pkgId) => {
               <h3 class="text-xl font-black text-white">Configurar Entrega de Cuenta</h3>
               <span class="text-xs font-mono font-bold bg-brand-accent/20 text-brand-accent px-2 py-0.5 rounded">{{ selectedOrder.customerNumber }}</span>
             </div>
-            <p class="text-xs text-slate-400 mt-0.5">Orden {{ selectedOrder.id }} • {{ selectedOrder.customerName }} ({{ selectedOrder.platform }})</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Orden {{ selectedOrder.id }} • {{ selectedOrder.customerName }} 
+              <span v-if="selectedOrder.gameTitle || selectedOrder.orderType === 'gaming'" class="text-indigo-300 font-bold">• 🎮 {{ selectedOrder.gameTitle || selectedOrder.platform }}</span>
+              <span v-else>({{ selectedOrder.platform }})</span>
+            </p>
           </div>
           <button @click="showDispatchModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
@@ -8964,6 +9074,102 @@ const deletePackageItem = (pkgId) => {
             class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-5 py-2 rounded-xl transition cursor-pointer"
           >
             Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE ASIGNACIÓN / EDICIÓN DE NOMBRE DEL JUEGO GAMER -->
+    <div v-if="showAssignGameModal && targetGameOrder" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-5 shadow-2xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-lg font-black text-white flex items-center gap-2">
+              <span>🎮</span>
+              <span>Asignar Videojuego a Orden #{{ targetGameOrder.id }}</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Cliente: <strong class="text-white">{{ targetGameOrder.customerName }}</strong> • {{ targetGameOrder.customerPhone }}
+            </p>
+          </div>
+          <button @click="showAssignGameModal = false" type="button" class="w-9 h-9 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 flex items-center justify-center text-sm font-bold transition cursor-pointer" title="Cerrar">✕</button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Campo Nombre del Videojuego -->
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Nombre Exacto del Videojuego a Entregar</label>
+            <input 
+              v-model="assignGameTitleInput" 
+              type="text" 
+              placeholder="Ej: Grand Theft Auto V, EA Sports FC 25, God of War..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white font-bold outline-none focus:border-indigo-500"
+            >
+          </div>
+
+          <!-- Selector Rápido desde el Catálogo de 960 Juegos -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-[11px] font-bold uppercase text-indigo-300">Seleccionar desde el Catálogo ({{ adminStore.processedGamingProducts.length }} Juegos)</label>
+              <span class="text-[10px] text-slate-500">Click para autocompletar</span>
+            </div>
+            <input 
+              v-model="gameCatalogSearchQuery" 
+              type="text" 
+              placeholder="Buscar en catálogo (ej: Spider, FIFA, Mortal, Dragon, GTA...)" 
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none focus:border-indigo-500"
+            >
+            <div class="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+              <button 
+                v-for="game in filteredCatalogGamesForPicker" 
+                :key="game.id" 
+                type="button"
+                @click="selectCatalogGameForOrder(game)"
+                :class="[
+                  'w-full text-left p-2 rounded-lg text-xs font-bold transition flex items-center justify-between cursor-pointer',
+                  assignGameTitleInput === game.title ? 'bg-indigo-600 text-white' : 'bg-slate-900/60 hover:bg-slate-800 text-slate-300'
+                ]"
+              >
+                <span class="truncate">{{ game.title }}</span>
+                <span class="text-[10px] text-slate-400 font-mono shrink-0 ml-2">{{ game.platform }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Plataforma y Modalidad -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Plataforma Consola</label>
+              <select v-model="assignGamePlatformInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none cursor-pointer">
+                <option value="PS4 / PS5">PS4 / PS5</option>
+                <option value="PS5">PlayStation 5</option>
+                <option value="PS4">PlayStation 4</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Modalidad de Cuenta</label>
+              <select v-model="assignGameLicenseInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none cursor-pointer">
+                <option value="primary">⭐️ Cuenta Primaria</option>
+                <option value="secondary">⚡️ Cuenta Secundaria</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button 
+            type="button" 
+            @click="showAssignGameModal = false" 
+            class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            @click="saveAssignedGameToOrder" 
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-lg shadow-indigo-600/30 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>💾 Guardar Videojuego</span>
           </button>
         </div>
       </div>

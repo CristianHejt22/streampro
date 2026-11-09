@@ -1436,10 +1436,15 @@ const sendOrderToWhatsApp = () => {
   }
 
   const itemsList = ord.items.map(i => {
-    const name = i.name || i.platform || 'Item'
+    const isGame = i.itemType === 'gaming' || Boolean(i.gameId) || Boolean(i.licenseType)
+    const gameTitle = i.title || i.baseName
+    let name = i.name || (isGame && gameTitle ? `${gameTitle} (${i.platform || 'PS4/PS5'})` : i.platform) || 'Item'
     const qty = i.quantity || i.units || 1
     const price = i.clientPrice || (i.priceNumeric || (parseInt(String(i.price || '0').replace(/[$. ]/g, '')) || 0))
     let str = `• ${name} (x${qty}): ${(price * qty).toLocaleString()} ARS`
+    if (i.licenseLabel || i.licenseType) {
+      str += ` [${i.licenseLabel || (i.licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria')}]`
+    }
     if (i.activationEmail) {
       str += `\n  ✉️ Correo activación: ${i.activationEmail}`
     }
@@ -1572,18 +1577,27 @@ const submitOrder = async () => {
       }).catch(() => {})
     }
 
+    const isGaming = item.itemType === 'gaming' || Boolean(item.gameId) || Boolean(item.licenseType)
+    const gameName = item.title || item.baseName || item.name || null
+    const gamePlatform = item.platform || 'PS4 / PS5'
+    const platformDisplay = isGaming && gameName 
+      ? (gameName.includes(gamePlatform) ? gameName : `${gameName} (${gamePlatform})`)
+      : item.platform
+
     await adminStore.createStreamingOrder({
       id: streamingOrderId,
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
       pin: clientForm.value.pin,
-      platform: item.platform,
+      platform: platformDisplay,
       activationEmail: item.activationEmail || null,
       devices: item.units,
       pinPreference: item.pinPreference || 'same',
       planKey: item.planKey,
-      planLabel: item.planLabel,
+      planLabel: isGaming 
+        ? (item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'))
+        : item.planLabel,
       providerCost: item.providerCost,
       resellerProfit: isDirect ? 0 : item.resellerProfit,
       clientPrice: item.clientPrice,
@@ -1595,13 +1609,15 @@ const submitOrder = async () => {
       receiptFileType: receiptMeta.fileType || null,
       receiptFileSize: receiptMeta.fileSize || 0,
       paymentMethod: clientForm.value.paymentMethod,
-      orderType: item.itemType === 'gaming' ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
-      gameTitle: item.title || item.baseName || item.name || null,
+      orderType: isGaming ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
+      gameTitle: gameName,
+      gamePlatform: isGaming ? gamePlatform : null,
       licenseType: item.licenseType || null,
-      licenseLabel: item.licenseLabel || null,
+      licenseLabel: item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'),
       fulfillmentProvider: item.providerKey || null,
       fulfillmentProviderName: item.providerName || null,
       providerUrl: item.providerUrl || null,
+      category: isGaming ? 'Videojuegos Digitales' : null,
       profileSelections: (item.profiles || []).map(p => ({
         name: p.name
       }))

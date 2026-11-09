@@ -1377,7 +1377,7 @@ const shareGamingOnWhatsApp = (game) => {
             <!-- Detalle del Plan / Servicio & Finanzas -->
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex flex-wrap justify-between items-center gap-3 text-xs">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-white text-sm">{{ order.platform }}</span>
+                <span class="font-bold text-white text-sm">{{ (order.gameTitle || order.orderType === 'gaming') ? `🎮 ${order.gameTitle || order.platform}` : order.platform }}</span>
                 <span class="text-slate-400">· {{ order.planLabel || `${order.devices} Pantalla(s)` }}</span>
                 <span v-if="order.pinPreference" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">
                   PIN: {{ order.pinPreference }}

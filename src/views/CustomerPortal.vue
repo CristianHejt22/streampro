@@ -237,7 +237,7 @@ const openOrderWhatsApp = (order) => {
     `👤 *Cliente:* ${order.customerName || 'Cliente'}\n` +
     `📱 *WhatsApp:* ${order.customerPhone || ''}\n` +
     (order.pin ? `🔐 *PIN de Bóveda:* ${order.pin}\n` : '') +
-    `🎬 *Servicio:* ${order.platform || 'Streaming'} - ${order.planLabel || (order.devices ? order.devices + ' Pantalla(s)' : '1 Pantalla')}\n` +
+    `📦 *Producto:* ${(order.orderType === "gaming" || order.gameTitle) ? `🎮 ${order.gameTitle || order.platform}` : (order.platform || "Streaming")} - ${order.planLabel || (order.devices ? order.devices + " Pantalla(s)" : "1 Pantalla")}\n` +
     `💰 *Total:* ${(order.clientPrice || order.total || 0).toLocaleString()} ARS\n\n` +
     `Adjunto mi consulta / comprobante de pago.`
 
@@ -407,7 +407,7 @@ const handleCustomerRenewal = (acc) => {
                     <span class="text-xs font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
                       Orden #{{ order.id }}
                     </span>
-                    <h4 class="text-white font-bold text-sm">{{ order.platform }} - {{ order.planLabel || (order.devices ? order.devices + ' Pantalla(s)' : '1 Pantalla') }}</h4>
+                    <h4 class="text-white font-bold text-sm">{{ (order.orderType === "gaming" || order.gameTitle) ? `🎮 ${order.gameTitle || order.platform}` : order.platform }} - {{ order.planLabel || (order.devices ? order.devices + " Pantalla(s)" : "1 Pantalla") }}</h4>
                   </div>
                   <p class="text-xs text-slate-300 mt-1">
                     Registrado a nombre de: <strong class="text-white">{{ order.customerName }}</strong> ({{ order.customerNumber }})
