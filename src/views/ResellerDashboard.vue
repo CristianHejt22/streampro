@@ -323,6 +323,19 @@ const biometricsAvailable = ref(false)
 const hasEnrolledBiometrics = ref(false)
 const isBiometricLoading = ref(false)
 
+const fillDemoCredentials = (type = 'distribuidor') => {
+  loginError.value = ''
+  if (type === 'admin') {
+    loginForm.value.username = adminStore.adminAuth?.username || 'admin'
+    loginForm.value.password = adminStore.adminAuth?.password || 'StreamPro2026*Admin'
+    toast.add('Credenciales maestras de administrador cargadas', 'info')
+  } else {
+    loginForm.value.username = 'distribuidor'
+    loginForm.value.password = 'StreamDistribuidor2026*'
+    toast.add('Credenciales de distribuidor oficial cargadas', 'info')
+  }
+}
+
 onMounted(async () => {
   biometricsAvailable.value = await isBiometricsAvailable()
   hasEnrolledBiometrics.value = hasBiometricEnrolled('reseller')
@@ -919,6 +932,37 @@ const shareGamingOnWhatsApp = (game) => {
       <div v-if="loginError" class="p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
         <span class="shrink-0 text-base">⚠️</span>
         <span>{{ loginError }}</span>
+      </div>
+
+      <!-- Tarjeta de Credenciales de Acceso Oficial -->
+      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2">
+        <div class="flex items-center justify-between text-slate-300 font-bold">
+          <span class="flex items-center gap-1.5 text-amber-300">
+            <span>🔑</span>
+            <span>Credenciales de Acceso:</span>
+          </span>
+          <button 
+            type="button" 
+            @click="fillDemoCredentials('distribuidor')"
+            class="text-brand-accent hover:underline text-[11px] font-bold cursor-pointer"
+          >
+            ⚡ Autocompletar
+          </button>
+        </div>
+        <div class="font-mono text-[11px] text-slate-300 space-y-0.5 bg-slate-900/60 p-2 rounded-xl border border-slate-800/80">
+          <p>Usuario: <strong class="text-white">distribuidor</strong></p>
+          <p>Clave: <strong class="text-emerald-400">StreamDistribuidor2026*</strong></p>
+        </div>
+        <div class="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+          <span>¿Acceso Dueño / Admin?</span>
+          <button 
+            type="button" 
+            @click="fillDemoCredentials('admin')"
+            class="text-indigo-400 hover:underline font-mono text-[11px] cursor-pointer"
+          >
+            Entrar con Admin →
+          </button>
+        </div>
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-4">
