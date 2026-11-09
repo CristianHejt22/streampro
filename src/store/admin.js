@@ -572,6 +572,27 @@ export const useAdminStore = defineStore('admin', {
       }
       return false
     })(),
+    gamingStoreMarginPercent: (() => {
+      const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (stored && typeof stored.gamingStoreMarginPercent === 'number') {
+        return stored.gamingStoreMarginPercent
+      }
+      return 20 // Default 20% markup de la tienda sobre costo de videojuegos
+    })(),
+    gamingResellerCommissionPercent: (() => {
+      const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (stored && typeof stored.gamingResellerCommissionPercent === 'number') {
+        return stored.gamingResellerCommissionPercent
+      }
+      return 10 // Default 10% comisión de PVP para revendedores en videojuegos
+    })(),
+    gamingMinResellerProfit: (() => {
+      const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (stored && typeof stored.gamingMinResellerProfit === 'number') {
+        return stored.gamingMinResellerProfit
+      }
+      return 1000 // Ganancia mínima garantizada al revendedor en ARS
+    })(),
 
     // CATÁLOGO DE VIDEOJUEGOS DIGITALES PS4 / PS5 (Argentina Play y Juegos Digitales Argentina)
     gamingProducts: (() => {
@@ -622,8 +643,65 @@ export const useAdminStore = defineStore('admin', {
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
     processedGamingProducts: (state) => {
       const list = state.gamingProducts || []
-      const processed = list.map(p => processGamingProduct(p))
+      const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
+      const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
+      const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
+      const processed = list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit))
       return deduplicateGamingProducts(processed)
+    },
+
+    gamingPricingSummary: (state) => {
+      const list = state.gamingProducts || []
+      const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
+      const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
+      const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
+      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit)))
+
+      let totalPrimaryCost = 0
+      let totalSecondaryCost = 0
+      let totalPrimaryPVP = 0
+      let totalSecondaryPVP = 0
+      let totalPrimaryResellerProfit = 0
+      let totalSecondaryResellerProfit = 0
+      let count = Math.max(1, processed.length)
+
+      processed.forEach(g => {
+        totalPrimaryCost += Number(g.baseCostPrimary || 0)
+        totalSecondaryCost += Number(g.baseCostSecondary || 0)
+        totalPrimaryPVP += Number(g.effectivePrimaryPrice || 0)
+        totalSecondaryPVP += Number(g.effectiveSecondaryPrice || 0)
+        totalPrimaryResellerProfit += Number(g.resellerPrimaryProfit || 0)
+        totalSecondaryResellerProfit += Number(g.resellerSecondaryProfit || 0)
+      })
+
+      const avgPrimaryCost = Math.round(totalPrimaryCost / count)
+      const avgPrimaryPVP = Math.round(totalPrimaryPVP / count)
+      const avgPrimaryStoreProfit = Math.max(0, avgPrimaryPVP - avgPrimaryCost)
+      const avgPrimaryResellerProfit = Math.round(totalPrimaryResellerProfit / count)
+      const avgPrimaryNetStore = Math.max(0, avgPrimaryStoreProfit - avgPrimaryResellerProfit)
+
+      const avgSecondaryCost = Math.round(totalSecondaryCost / count)
+      const avgSecondaryPVP = Math.round(totalSecondaryPVP / count)
+      const avgSecondaryStoreProfit = Math.max(0, avgSecondaryPVP - avgSecondaryCost)
+      const avgSecondaryResellerProfit = Math.round(totalSecondaryResellerProfit / count)
+      const avgSecondaryNetStore = Math.max(0, avgSecondaryStoreProfit - avgSecondaryResellerProfit)
+
+      return {
+        totalGames: processed.length,
+        storeMarginPercent: storeMargin,
+        resellerCommissionPercent: resellerCommission,
+        minResellerProfit: minProfit,
+        avgPrimaryCost,
+        avgPrimaryPVP,
+        avgPrimaryStoreProfit,
+        avgPrimaryResellerProfit,
+        avgPrimaryNetStore,
+        avgSecondaryCost,
+        avgSecondaryPVP,
+        avgSecondaryStoreProfit,
+        avgSecondaryResellerProfit,
+        avgSecondaryNetStore
+      }
     },
     gamingOrders: (state) => (state.orders || []).filter(o => 
       o.orderType === 'gaming' || 
@@ -1080,14 +1158,36 @@ export const useAdminStore = defineStore('admin', {
     persistStoreSettings() {
       const settings = {
         isStoreVisible: this.isStoreVisible,
-        isPhysicalStoreVisible: this.isPhysicalStoreVisible
+        isPhysicalStoreVisible: this.isPhysicalStoreVisible,
+        gamingStoreMarginPercent: Number(this.gamingStoreMarginPercent ?? 20),
+        gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
+        gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000)
       }
       saveDb(DB_KEYS.STORE_SETTINGS, settings)
       // Sincronización en la nube Firebase Firestore para todos los clientes en tiempo real
       saveStoreSettingsToFirebase(settings).catch(() => {})
     },
 
-    // Sincronización en la nube de la visibilidad de tienda para clientes y admin
+    updateGamingMargins({ storeMargin, resellerCommission, minResellerProfit }) {
+      if (storeMargin !== undefined && storeMargin !== null) {
+        this.gamingStoreMarginPercent = Math.max(0, Number(storeMargin))
+      }
+      if (resellerCommission !== undefined && resellerCommission !== null) {
+        this.gamingResellerCommissionPercent = Math.max(0, Number(resellerCommission))
+      }
+      if (minResellerProfit !== undefined && minResellerProfit !== null) {
+        this.gamingMinResellerProfit = Math.max(0, Number(minResellerProfit))
+      }
+      this.persistStoreSettings()
+      return {
+        success: true,
+        gamingStoreMarginPercent: this.gamingStoreMarginPercent,
+        gamingResellerCommissionPercent: this.gamingResellerCommissionPercent,
+        gamingMinResellerProfit: this.gamingMinResellerProfit
+      }
+    },
+
+    // Sincronización en la nube de la visibilidad y configuración de tienda para clientes y admin
     async initStoreSettingsSync() {
       initFirebase(this.firebaseConfig)
 
@@ -1101,9 +1201,21 @@ export const useAdminStore = defineStore('admin', {
           if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
             this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
           }
+          if (typeof cloudSettings.gamingStoreMarginPercent === 'number') {
+            this.gamingStoreMarginPercent = cloudSettings.gamingStoreMarginPercent
+          }
+          if (typeof cloudSettings.gamingResellerCommissionPercent === 'number') {
+            this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
+          }
+          if (typeof cloudSettings.gamingMinResellerProfit === 'number') {
+            this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
+          }
           saveDb(DB_KEYS.STORE_SETTINGS, {
             isStoreVisible: this.isStoreVisible,
-            isPhysicalStoreVisible: this.isPhysicalStoreVisible
+            isPhysicalStoreVisible: this.isPhysicalStoreVisible,
+            gamingStoreMarginPercent: this.gamingStoreMarginPercent,
+            gamingResellerCommissionPercent: this.gamingResellerCommissionPercent,
+            gamingMinResellerProfit: this.gamingMinResellerProfit
           })
         }
       } catch (e) {}
@@ -1117,9 +1229,21 @@ export const useAdminStore = defineStore('admin', {
         if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
           this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
         }
+        if (typeof cloudSettings.gamingStoreMarginPercent === 'number') {
+          this.gamingStoreMarginPercent = cloudSettings.gamingStoreMarginPercent
+        }
+        if (typeof cloudSettings.gamingResellerCommissionPercent === 'number') {
+          this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
+        }
+        if (typeof cloudSettings.gamingMinResellerProfit === 'number') {
+          this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
+        }
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
-          isPhysicalStoreVisible: this.isPhysicalStoreVisible
+          isPhysicalStoreVisible: this.isPhysicalStoreVisible,
+          gamingStoreMarginPercent: this.gamingStoreMarginPercent,
+          gamingResellerCommissionPercent: this.gamingResellerCommissionPercent,
+          gamingMinResellerProfit: this.gamingMinResellerProfit
         })
       })
     },

@@ -201,7 +201,12 @@ export const useCartStore = defineStore('cart', {
           clientPrice: effectivePrice,
           originalPrice: Math.round(effectivePrice * 1.25),
           providerCost: providerCost,
-          resellerProfit: Math.max(Math.round(effectivePrice - providerCost), Math.max(1000, Math.round(effectivePrice * 0.10))),
+          resellerProfit: isPrimary 
+            ? (game.resellerPrimaryProfit || Math.max(1000, Math.round(effectivePrice * 0.10))) 
+            : (game.resellerSecondaryProfit || Math.max(800, Math.round(effectivePrice * 0.10))),
+          storeProfit: isPrimary 
+            ? (game.storeGrossMarginPrimary || Math.max(0, effectivePrice - providerCost)) 
+            : (game.storeGrossMarginSecondary || Math.max(0, effectivePrice - providerCost)),
           image: game.image,
           priceFormatted: `$${effectivePrice.toLocaleString()} ARS`,
           providerKey: assignedProviderKey,

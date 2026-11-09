@@ -787,7 +787,7 @@ export const INITIAL_GAMING_PRODUCTS = [
 // Calcula el MAYOR PRECIO entre ambos proveedores para Primaria y Secundaria,
 // e identifica el proveedor que fija el precio y el proveedor con mayor costo ("Colocar solo el de un proveedor visible, los mas altos en costo").
 // El costo del proveedor es EXACTAMENTE lo extraído de las plataformas (precio real del proveedor).
-export function processGamingProduct(product) {
+export function processGamingProduct(product, storeMarginPercent = 20, resellerCommissionPercent = 10, minResellerProfit = 1000) {
   const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
   const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
 
@@ -800,23 +800,68 @@ export function processGamingProduct(product) {
   const costSecondaryArg = hasArg ? (Number(pArg.costSecondary) || Number(pArg.secondaryPrice) || 0) : 0
   const costSecondaryJda = hasJda ? (Number(pJda.costSecondary) || Number(pJda.secondaryPrice) || 0) : 0
 
-  // Precios efectivos en plataforma (el mayor precio entre ambos proveedores, o el del único disponible)
+  // Costo base mayor entre ambos proveedores (o el del único disponible)
+  let baseCostPrimary = 0
+  let baseCostSecondary = 0
+
+  if (hasArg && hasJda) {
+    baseCostPrimary = Math.max(costPrimaryArg, costPrimaryJda)
+    baseCostSecondary = Math.max(costSecondaryArg, costSecondaryJda)
+  } else if (hasArg) {
+    baseCostPrimary = costPrimaryArg
+    baseCostSecondary = costSecondaryArg
+  } else if (hasJda) {
+    baseCostPrimary = costPrimaryJda
+    baseCostSecondary = costSecondaryJda
+  } else {
+    baseCostPrimary = Number(product.baseCostPrimary || product.effectivePrimaryPrice) || 20000
+    baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 10000
+  }
+
+  // Margen de ganancia de la tienda (% markup sobre costo) y comisión del revendedor (% de PVP)
+  const marginRate = Number(storeMarginPercent || 0) / 100
+  const resellerRate = Number(resellerCommissionPercent || 10) / 100
+  const minProfit = Number(minResellerProfit || 1000)
+
+  // Precios efectivos en plataforma (PVP al Cliente):
+  // Si el producto tiene un precio manual personalizado fijado por el admin, se respeta;
+  // de lo contrario, se suma el % de ganancia de tienda sobre el costo del proveedor.
   let effectivePrimaryPrice = 0
   let effectiveSecondaryPrice = 0
 
-  if (hasArg && hasJda) {
-    effectivePrimaryPrice = Math.max(costPrimaryArg, costPrimaryJda)
-    effectiveSecondaryPrice = Math.max(costSecondaryArg, costSecondaryJda)
-  } else if (hasArg) {
-    effectivePrimaryPrice = costPrimaryArg
-    effectiveSecondaryPrice = costSecondaryArg
-  } else if (hasJda) {
-    effectivePrimaryPrice = costPrimaryJda
-    effectiveSecondaryPrice = costSecondaryJda
+  if (product.customPrimaryPrice && Number(product.customPrimaryPrice) > 0) {
+    effectivePrimaryPrice = Number(product.customPrimaryPrice)
+  } else if (baseCostPrimary > 0) {
+    const raw = baseCostPrimary * (1 + marginRate)
+    effectivePrimaryPrice = Math.ceil(raw / 100) * 100
   } else {
     effectivePrimaryPrice = Number(product.effectivePrimaryPrice) || 25000
+  }
+
+  if (product.customSecondaryPrice && Number(product.customSecondaryPrice) > 0) {
+    effectiveSecondaryPrice = Number(product.customSecondaryPrice)
+  } else if (baseCostSecondary > 0) {
+    const raw = baseCostSecondary * (1 + marginRate)
+    effectiveSecondaryPrice = Math.ceil(raw / 100) * 100
+  } else {
     effectiveSecondaryPrice = Number(product.effectiveSecondaryPrice) || 12000
   }
+
+  // Comisión / Ganancia del Revendedor:
+  const resellerPrimaryProfit = effectivePrimaryPrice > 0 
+    ? Math.max(minProfit, Math.round(effectivePrimaryPrice * resellerRate)) 
+    : 0
+  const resellerSecondaryProfit = effectiveSecondaryPrice > 0 
+    ? Math.max(Math.round(minProfit * 0.75), Math.round(effectiveSecondaryPrice * resellerRate)) 
+    : 0
+
+  // Margen Bruto de la Tienda (Venta Directa Oficial):
+  const storeGrossMarginPrimary = Math.max(0, effectivePrimaryPrice - baseCostPrimary)
+  const storeGrossMarginSecondary = Math.max(0, effectiveSecondaryPrice - baseCostSecondary)
+
+  // Margen Neto de la Tienda (cuando vende el revendedor, descontando su comisión):
+  const storeNetPrimaryWithReseller = Math.max(0, storeGrossMarginPrimary - resellerPrimaryProfit)
+  const storeNetSecondaryWithReseller = Math.max(0, storeGrossMarginSecondary - resellerSecondaryProfit)
 
   // REGLA SOLICITADA POR EL USUARIO:
   // "Colocar solo el de un proveedor visible, los mas altos en costo."
@@ -865,8 +910,18 @@ export function processGamingProduct(product) {
 
   return {
     ...product,
+    baseCostPrimary,
+    baseCostSecondary,
     effectivePrimaryPrice,
     effectiveSecondaryPrice,
+    resellerPrimaryProfit,
+    resellerSecondaryProfit,
+    storeGrossMarginPrimary,
+    storeGrossMarginSecondary,
+    storeNetPrimaryWithReseller,
+    storeNetSecondaryWithReseller,
+    storeMarginPercent,
+    resellerCommissionPercent,
     primaryPriceLeaderKey,
     primaryPriceLeaderName: 'StreamePro',
     secondaryPriceLeaderKey,

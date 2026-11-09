@@ -893,8 +893,14 @@ watch([resellerGamingSearch, resellerGamingPlatformFilter], () => {
   resellerGamingPage.value = 1
 })
 
-const getResellerGameProfit = (price) => {
-  return Math.max(1000, Math.round(Number(price || 0) * 0.10))
+const getResellerGameProfit = (price, game = null, isPrimary = true) => {
+  if (game) {
+    if (isPrimary && typeof game.resellerPrimaryProfit === 'number') return game.resellerPrimaryProfit
+    if (!isPrimary && typeof game.resellerSecondaryProfit === 'number') return game.resellerSecondaryProfit
+  }
+  const pct = Number(adminStore.gamingResellerCommissionPercent ?? 10) / 100
+  const minProfit = Number(adminStore.gamingMinResellerProfit ?? 1000)
+  return Math.max(minProfit, Math.round(Number(price || 0) * pct))
 }
 
 const copyGamingReferralLink = (game, licenseType = 'primary') => {
@@ -2670,7 +2676,7 @@ const shareGamingOnWhatsApp = (game) => {
           </div>
           <h3 class="text-2xl font-black text-white mt-1">Videojuegos Digitales PS5, PS4 y PS3</h3>
           <p class="text-xs text-slate-300 mt-1">
-            Ganas como mínimo el <strong>10% de comisión directa</strong> por cada venta referida. Copia tu enlace con tu código <strong>{{ currentResellerId }}</strong> o crea flyers promocionales en 1 clic.
+            Ganas el <strong>{{ adminStore.gamingResellerCommissionPercent ?? 10 }}% de comisión directa</strong> por cada venta referida (mínimo garantizado: <strong>${{ (adminStore.gamingMinResellerProfit ?? 1000).toLocaleString() }} ARS</strong>). Copia tu enlace con tu código <strong>{{ currentResellerId }}</strong> o crea flyers promocionales en 1 clic.
           </p>
         </div>
         
@@ -2801,7 +2807,7 @@ const shareGamingOnWhatsApp = (game) => {
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 block">Tu Ganancia</span>
                     <span class="text-emerald-400 font-black font-mono text-xs">
-                      +${{ getResellerGameProfit(game.effectivePrimaryPrice).toLocaleString() }} ARS
+                      +${{ getResellerGameProfit(game.effectivePrimaryPrice, game, true).toLocaleString() }} ARS
                     </span>
                   </div>
                 </div>
@@ -2815,7 +2821,7 @@ const shareGamingOnWhatsApp = (game) => {
                   <div class="text-right">
                     <span class="text-[10px] text-slate-400 block">Tu Ganancia</span>
                     <span class="text-emerald-400 font-black font-mono text-xs">
-                      +${{ getResellerGameProfit(game.effectiveSecondaryPrice).toLocaleString() }} ARS
+                      +${{ getResellerGameProfit(game.effectiveSecondaryPrice, game, false).toLocaleString() }} ARS
                     </span>
                   </div>
                 </div>

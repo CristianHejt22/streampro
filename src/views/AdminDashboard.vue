@@ -882,6 +882,76 @@ const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
 const onlyHighestCostProvider = ref(true)
 
+// ==========================================
+// ESTRATEGIA DE PRECIOS & MÁRGENES GAMING
+// ==========================================
+const gamingMarginForm = ref({
+  storeMargin: adminStore.gamingStoreMarginPercent ?? 20,
+  resellerCommission: adminStore.gamingResellerCommissionPercent ?? 10,
+  minResellerProfit: adminStore.gamingMinResellerProfit ?? 1000,
+  simulatedCost: 25000
+})
+const isSavingGamingMargins = ref(false)
+
+watch(() => [adminStore.gamingStoreMarginPercent, adminStore.gamingResellerCommissionPercent, adminStore.gamingMinResellerProfit], ([sm, rc, mrp]) => {
+  if (typeof sm === 'number') gamingMarginForm.value.storeMargin = sm
+  if (typeof rc === 'number') gamingMarginForm.value.resellerCommission = rc
+  if (typeof mrp === 'number') gamingMarginForm.value.minResellerProfit = mrp
+})
+
+const simulatedCalculation = computed(() => {
+  const cost = Math.max(0, Number(gamingMarginForm.value.simulatedCost) || 0)
+  const storeMarginPct = Math.max(0, Number(gamingMarginForm.value.storeMargin) || 0)
+  const resellerCommissionPct = Math.max(0, Number(gamingMarginForm.value.resellerCommission) || 0)
+  const minResellerProfit = Math.max(0, Number(gamingMarginForm.value.minResellerProfit) || 0)
+
+  const markup = Math.ceil((cost * (storeMarginPct / 100)) / 100) * 100
+  const pvp = cost + markup
+  const resellerCut = Math.max(minResellerProfit, Math.round(pvp * (resellerCommissionPct / 100)))
+  const storeGrossMargin = markup
+  const storeNetWithReseller = Math.max(0, storeGrossMargin - resellerCut)
+  const storeEffectiveNetPct = pvp > 0 ? Math.round((storeNetWithReseller / pvp) * 100) : 0
+
+  return {
+    cost,
+    markup,
+    pvp,
+    resellerCut,
+    storeGrossMargin,
+    storeNetWithReseller,
+    storeEffectiveNetPct
+  }
+})
+
+const applyStoreMarginPreset = (pct) => {
+  gamingMarginForm.value.storeMargin = pct
+}
+
+const applyResellerCommissionPreset = (pct) => {
+  gamingMarginForm.value.resellerCommission = pct
+}
+
+const applyMinResellerProfitPreset = (amt) => {
+  gamingMarginForm.value.minResellerProfit = amt
+}
+
+const saveGamingMarginSettings = async () => {
+  try {
+    isSavingGamingMargins.value = true
+    await adminStore.updateGamingMargins({
+      storeMargin: Number(gamingMarginForm.value.storeMargin) || 0,
+      resellerCommission: Number(gamingMarginForm.value.resellerCommission) || 0,
+      minResellerProfit: Number(gamingMarginForm.value.minResellerProfit) || 0
+    })
+    toast.add(`✓ Estrategia guardada: +${gamingMarginForm.value.storeMargin}% Ganancia Tienda y ${gamingMarginForm.value.resellerCommission}% Comisión Revendedor aplicados a los 960 juegos.`, 'success')
+  } catch (err) {
+    console.error('Error saving gaming margins:', err)
+    toast.add('Error al guardar la configuración de márgenes', 'error')
+  } finally {
+    isSavingGamingMargins.value = false
+  }
+}
+
 watch(gamingAdminCategoryFilter, () => {
   gamingAdminSubcategoryFilter.value = 'Todas'
 })
@@ -6232,6 +6302,15 @@ const deletePackageItem = (pkgId) => {
 
         <button 
           type="button"
+          @click="gamingAdminSubTab = 'margins'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'margins' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white']"
+        >
+          <span>📊</span>
+          <span>Estrategia de Márgenes & Precios (+{{ adminStore.gamingStoreMarginPercent }}% / {{ adminStore.gamingResellerCommissionPercent }}%)</span>
+        </button>
+
+        <button 
+          type="button"
           @click="gamingAdminSubTab = 'argentinaplay'"
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'argentinaplay' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white']"
         >
@@ -6483,17 +6562,26 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </td>
 
-                <!-- Margen & Proveedor Recomendado -->
+                <!-- Margen & Desglose Financiero -->
                 <td class="p-3.5 font-mono text-[11px]">
-                  <div class="space-y-1">
-                    <div>
-                      <span class="text-[9px] text-slate-400 block">Comprar Primaria en:</span>
-                      <span class="font-bold text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</span>
-                      <span class="text-[10px] text-emerald-400 block font-black">+${{ game.bestMarginPrimary?.toLocaleString() }} ganancia</span>
+                  <div class="space-y-1.5">
+                    <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800 space-y-1">
+                      <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-slate-400">Ganancia Tienda:</span>
+                        <strong class="text-emerald-400 font-black">+${{ (game.storeGrossMarginPrimary || 0).toLocaleString() }} ARS</strong>
+                      </div>
+                      <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-slate-400">Comisión Revendedor:</span>
+                        <span class="text-indigo-300 font-bold">+${{ (game.resellerPrimaryProfit || 0).toLocaleString() }} ARS</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[9px] pt-1 border-t border-slate-800/80 text-slate-400">
+                        <span>Neto Tienda (c/ Rev.):</span>
+                        <span class="text-emerald-300 font-bold">+${{ (game.storeNetPrimaryWithReseller || 0).toLocaleString() }} ARS</span>
+                      </div>
                     </div>
-                    <div class="pt-0.5 border-t border-slate-800/80">
-                      <span class="text-[9px] text-slate-400 block">Comprar Secundaria en:</span>
-                      <span class="font-bold text-amber-300">{{ game.bestFulfillmentSecondaryName }}</span>
+                    <div class="text-[9px] text-slate-400 flex items-center justify-between px-1">
+                      <span>Comprar en:</span>
+                      <span class="font-bold text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</span>
                     </div>
                   </div>
                 </td>
@@ -6580,6 +6668,336 @@ const deletePackageItem = (pkgId) => {
       </div>
 
       <!-- ==================== SUB-VISTA 2: CATÁLOGO ARGENTINA PLAY ==================== -->
+      <!-- ==================== SUB-VISTA: ESTRATEGIA DE PRECIOS & MÁRGENES GAMING ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'margins'" class="space-y-6">
+        <!-- Banner Explicativo de la Estrategia -->
+        <div class="bg-gradient-to-r from-emerald-950/40 via-indigo-950/30 to-purple-950/30 border border-emerald-500/30 rounded-3xl p-6 relative overflow-hidden">
+          <div class="relative z-10 space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                Fórmula Activa de Arbitraje y Margen
+              </span>
+              <span class="text-xs font-mono text-slate-400">Catálogo: {{ adminStore.gamingPricingSummary?.totalGames || adminStore.processedGamingProducts.length }} Títulos</span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-white">
+              Gestión Integral de Ganancias y Comisiones Gaming
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+              Configura el porcentaje de ganancia neta para StreamePro sobre el costo de adquisición de los proveedores mayoristas (Argentina Play y Juegos Digitales Argentina), y el porcentaje de comisión líquida asignado a tus revendedores por cada venta concretada. Los precios de venta al público (PVP) se calculan y redondean a la centena superior automáticamente.
+            </p>
+          </div>
+        </div>
+
+        <!-- Métricas Promedio del Catálogo Global -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Costo Mayorista Prom.</span>
+            <div class="text-lg font-black text-slate-200 font-mono">
+              ${{ (adminStore.gamingPricingSummary?.avgPrimaryCost || 0).toLocaleString() }} ARS
+            </div>
+            <span class="text-[9px] text-slate-400">Base Cuenta Primaria</span>
+          </div>
+
+          <div class="bg-[#020617] border border-indigo-500/30 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">PVP Final Tienda Prom.</span>
+            <div class="text-lg font-black text-indigo-300 font-mono">
+              ${{ (adminStore.gamingPricingSummary?.avgPrimaryPVP || 0).toLocaleString() }} ARS
+            </div>
+            <span class="text-[9px] text-indigo-400/80">Markup aplicado: +{{ adminStore.gamingStoreMarginPercent }}%</span>
+          </div>
+
+          <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Ganancia Tienda Directa</span>
+            <div class="text-lg font-black text-emerald-400 font-mono">
+              +${{ (adminStore.gamingPricingSummary?.avgPrimaryStoreProfit || 0).toLocaleString() }} ARS
+            </div>
+            <span class="text-[9px] text-emerald-400/80">Venta sin revendedor</span>
+          </div>
+
+          <div class="bg-[#020617] border border-purple-500/30 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] uppercase font-bold text-purple-300 tracking-wider">Comisión Revendedor</span>
+            <div class="text-lg font-black text-purple-300 font-mono">
+              +${{ (adminStore.gamingPricingSummary?.avgPrimaryResellerProfit || 0).toLocaleString() }} ARS
+            </div>
+            <span class="text-[9px] text-purple-300/80">{{ adminStore.gamingResellerCommissionPercent }}% s/ PVP (mín ${{ adminStore.gamingMinResellerProfit }})</span>
+          </div>
+
+          <div class="bg-[#020617] border border-teal-500/30 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] uppercase font-bold text-teal-300 tracking-wider">Ganancia Tienda c/ Rev.</span>
+            <div class="text-lg font-black text-teal-300 font-mono">
+              +${{ (adminStore.gamingPricingSummary?.avgPrimaryNetStore || 0).toLocaleString() }} ARS
+            </div>
+            <span class="text-[9px] text-teal-300/80">Margen neto de StreamePro</span>
+          </div>
+        </div>
+
+        <!-- Panel de Control de Parámetros y Simulador Interactivo -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Columna Izquierda: Formulario de Configuración -->
+          <div class="lg:col-span-6 bg-[#020617] border border-slate-800 p-6 rounded-3xl space-y-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-base font-black text-white flex items-center gap-2">
+                <span>⚙️</span>
+                <span>Configurar Reglas de Precios</span>
+              </h4>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                Afecta 960 juegos
+              </span>
+            </div>
+
+            <!-- Parámetro 1: % Margen Tienda -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-bold text-slate-300">
+                  📈 % Ganancia Tienda (Markup sobre Costo Mayorista)
+                </label>
+                <span class="text-xs font-black font-mono text-emerald-400">+{{ gamingMarginForm.storeMargin }}%</span>
+              </div>
+              <input 
+                v-model.number="gamingMarginForm.storeMargin" 
+                type="number" 
+                min="0" 
+                max="200" 
+                step="1"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono font-bold text-sm outline-none focus:border-emerald-500 transition"
+              >
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                <span class="text-[10px] text-slate-400 mr-1 self-center">Presets:</span>
+                <button 
+                  v-for="p in [15, 20, 25, 30, 35, 40]" 
+                  :key="p"
+                  type="button"
+                  @click="applyStoreMarginPreset(p)"
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer', gamingMarginForm.storeMargin === p ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700']"
+                >
+                  +{{ p }}%
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                Se suma automáticamente al costo mayorista del proveedor líder y se redondea a la centena superior.
+              </p>
+            </div>
+
+            <!-- Parámetro 2: % Comisión Revendedor -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-bold text-slate-300">
+                  🤝 % Comisión Revendedor (Sobre PVP Final)
+                </label>
+                <span class="text-xs font-black font-mono text-indigo-400">{{ gamingMarginForm.resellerCommission }}%</span>
+              </div>
+              <input 
+                v-model.number="gamingMarginForm.resellerCommission" 
+                type="number" 
+                min="0" 
+                max="50" 
+                step="1"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono font-bold text-sm outline-none focus:border-indigo-500 transition"
+              >
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                <span class="text-[10px] text-slate-400 mr-1 self-center">Presets:</span>
+                <button 
+                  v-for="c in [5, 8, 10, 12, 15, 20]" 
+                  :key="c"
+                  type="button"
+                  @click="applyResellerCommissionPreset(c)"
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer', gamingMarginForm.resellerCommission === c ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700']"
+                >
+                  {{ c }}%
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                Comisión directa que se acredita en la billetera virtual del revendedor cuando un cliente compra con su enlace de referido.
+              </p>
+            </div>
+
+            <!-- Parámetro 3: Ganancia Mínima Revendedor -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-bold text-slate-300">
+                  🛡️ Ganancia Mínima Garantizada por Juego ($ ARS)
+                </label>
+                <span class="text-xs font-black font-mono text-purple-400">${{ gamingMarginForm.minResellerProfit.toLocaleString() }} ARS</span>
+              </div>
+              <input 
+                v-model.number="gamingMarginForm.minResellerProfit" 
+                type="number" 
+                min="0" 
+                max="10000" 
+                step="100"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono font-bold text-sm outline-none focus:border-purple-500 transition"
+              >
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                <span class="text-[10px] text-slate-400 mr-1 self-center">Presets:</span>
+                <button 
+                  v-for="amt in [800, 1000, 1500, 2000]" 
+                  :key="amt"
+                  type="button"
+                  @click="applyMinResellerProfitPreset(amt)"
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer', gamingMarginForm.minResellerProfit === amt ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700']"
+                >
+                  ${{ amt.toLocaleString() }}
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                Garantiza que el revendedor nunca gane menos de este valor en ningún título del catálogo.
+              </p>
+            </div>
+
+            <!-- Botón Guardar -->
+            <div class="pt-2">
+              <button 
+                type="button"
+                @click="saveGamingMarginSettings"
+                :disabled="isSavingGamingMargins"
+                class="w-full py-3.5 px-4 rounded-xl font-black text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>💾</span>
+                <span>{{ isSavingGamingMargins ? 'Guardando y Aplicando...' : 'Guardar y Aplicar a Todo el Catálogo (960 Juegos)' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Simulador Interactivo en Vivo -->
+          <div class="lg:col-span-6 bg-[#020617] border border-slate-800 p-6 rounded-3xl space-y-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-base font-black text-white flex items-center gap-2">
+                <span>🧮</span>
+                <span>Simulador en Tiempo Real</span>
+              </h4>
+              <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                Calculadora Dinámica
+              </span>
+            </div>
+
+            <!-- Entrada de Costo de Prueba -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-300">
+                Simular Costo Mayorista de Proveedor ($ ARS):
+              </label>
+              <div class="relative">
+                <span class="absolute left-3.5 top-3 text-slate-500 font-mono font-bold">$</span>
+                <input 
+                  v-model.number="gamingMarginForm.simulatedCost" 
+                  type="number" 
+                  step="500"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 pl-8 text-white font-mono font-bold text-sm outline-none focus:border-indigo-500"
+                >
+              </div>
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                <span class="text-[10px] text-slate-400 mr-1 self-center">Ejemplos típicos:</span>
+                <button 
+                  v-for="amt in [12000, 18000, 25000, 35000, 48000]" 
+                  :key="amt"
+                  type="button"
+                  @click="gamingMarginForm.simulatedCost = amt"
+                  class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-mono transition cursor-pointer"
+                >
+                  ${{ amt.toLocaleString() }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Tarjeta Desglose del Resultado -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/90 space-y-3">
+              <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-800">
+                <span class="text-slate-400">Costo Base Proveedor:</span>
+                <strong class="text-white font-mono font-bold">${{ simulatedCalculation.cost.toLocaleString() }} ARS</strong>
+              </div>
+
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-emerald-400 font-bold">+ Ganancia Tienda (Markup +{{ gamingMarginForm.storeMargin }}%):</span>
+                <span class="text-emerald-400 font-mono font-black">+${{ simulatedCalculation.markup.toLocaleString() }} ARS</span>
+              </div>
+
+              <div class="flex items-center justify-between text-sm py-2 px-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
+                <span class="text-white font-black">🏷️ PVP Final al Público:</span>
+                <span class="text-indigo-300 font-mono font-black text-base">${{ simulatedCalculation.pvp.toLocaleString() }} ARS</span>
+              </div>
+
+              <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
+                <span class="text-purple-300">🤝 Comisión Revendedor ({{ gamingMarginForm.resellerCommission }}%):</span>
+                <span class="text-purple-400 font-mono font-bold">+${{ simulatedCalculation.resellerCut.toLocaleString() }} ARS</span>
+              </div>
+
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-teal-300">💰 Ganancia Neta Tienda (con Revendedor):</span>
+                <strong class="text-teal-400 font-mono font-black">+${{ simulatedCalculation.storeNetWithReseller.toLocaleString() }} ARS ({{ simulatedCalculation.storeEffectiveNetPct }}% s/ PVP)</strong>
+              </div>
+            </div>
+
+            <!-- Comparación Escenarios de Venta -->
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div class="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl space-y-1">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase block">Escenario A: Venta Directa</span>
+                <div class="text-sm font-black text-white font-mono">+${{ simulatedCalculation.storeGrossMargin.toLocaleString() }} ARS</div>
+                <p class="text-[9px] text-slate-400">100% de la ganancia queda para StreamePro.</p>
+              </div>
+
+              <div class="bg-indigo-950/20 border border-indigo-500/30 p-3 rounded-xl space-y-1">
+                <span class="text-[10px] text-indigo-400 font-bold uppercase block">Escenario B: Con Revendedor</span>
+                <div class="text-sm font-black text-white font-mono">+${{ simulatedCalculation.storeNetWithReseller.toLocaleString() }} ARS</div>
+                <p class="text-[9px] text-slate-400">Tienda gana neto tras pagar ${{ simulatedCalculation.resellerCut.toLocaleString() }} al revendedor.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Muestra en Vivo de Juegos Reales con Margen Aplicado -->
+        <div class="bg-[#020617] border border-slate-800 p-6 rounded-3xl space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-base font-black text-white">Muestra en Vivo de Precios y Márgenes</h4>
+              <p class="text-xs text-slate-400">Comprueba cómo se aplican los márgenes en los juegos reales del catálogo</p>
+            </div>
+            <button 
+              type="button" 
+              @click="gamingAdminSubTab = 'comparison'"
+              class="text-xs font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer flex items-center gap-1"
+            >
+              <span>Ver los 960 juegos en Comparador</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div 
+              v-for="game in (adminStore.processedGamingProducts || []).slice(0, 6)" 
+              :key="game.id"
+              class="bg-slate-900/60 border border-slate-800 p-3.5 rounded-2xl flex items-start gap-3 hover:border-slate-700 transition"
+            >
+              <img 
+                :src="game.image" 
+                :alt="game.title" 
+                class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0"
+                @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
+              >
+              <div class="flex-1 min-w-0 space-y-1 text-xs">
+                <h5 class="font-black text-white line-clamp-1 text-xs">{{ game.title }}</h5>
+                <div class="flex items-center gap-1">
+                  <span class="text-[9px] bg-indigo-500/20 text-indigo-300 font-mono font-bold px-1.5 py-0.2 rounded">{{ game.platform }}</span>
+                  <span class="text-[9px] text-slate-400">{{ game.visibleProviderBadge }}</span>
+                </div>
+                <div class="pt-1 space-y-0.5 text-[11px] font-mono">
+                  <div class="flex justify-between text-slate-400">
+                    <span>Costo Proveedor:</span>
+                    <strong class="text-slate-200">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
+                  </div>
+                  <div class="flex justify-between text-indigo-300">
+                    <span>PVP Público:</span>
+                    <strong class="text-emerald-400 font-bold">${{ (game.effectivePrimaryPrice || 0).toLocaleString() }}</strong>
+                  </div>
+                  <div class="flex justify-between text-[10px] text-slate-400 pt-0.5 border-t border-slate-800">
+                    <span>Tienda: <strong class="text-emerald-400">+${{ (game.storeGrossMarginPrimary || 0).toLocaleString() }}</strong></span>
+                    <span>Revendedor: <strong class="text-purple-300">+${{ (game.resellerPrimaryProfit || 0).toLocaleString() }}</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-else-if="gamingAdminSubTab === 'argentinaplay'" class="space-y-4">
         <div class="p-4 bg-blue-950/30 border border-blue-500/30 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div class="flex items-center gap-3">

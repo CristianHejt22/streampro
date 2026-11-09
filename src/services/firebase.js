@@ -291,6 +291,9 @@ export async function saveStoreSettingsToFirebase(settings) {
     const data = {
       isStoreVisible: typeof settings.isStoreVisible === 'boolean' ? settings.isStoreVisible : true,
       isPhysicalStoreVisible: typeof settings.isPhysicalStoreVisible === 'boolean' ? settings.isPhysicalStoreVisible : false,
+      gamingStoreMarginPercent: Number(settings.gamingStoreMarginPercent ?? 20),
+      gamingResellerCommissionPercent: Number(settings.gamingResellerCommissionPercent ?? 10),
+      gamingMinResellerProfit: Number(settings.gamingMinResellerProfit ?? 1000),
       updatedAt: new Date().toISOString()
     }
     await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })
