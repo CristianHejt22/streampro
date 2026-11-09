@@ -62,7 +62,15 @@ const handleProfileSaved = (prof) => {
   savedUserName.value = prof.name ? prof.name.split(' ')[0] : ''
 }
 
+const isRecruitmentArea = computed(() => {
+  const p = route.path.toLowerCase()
+  return [
+    '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'
+  ].some(allowed => p === allowed || p.startsWith(allowed + '/'))
+})
+
 const isClientArea = computed(() => {
+  if (isRecruitmentArea.value) return false
   const p = route.path.toLowerCase()
   return [
     '/', '/suscripciones', '/streaming', '/digital',
@@ -108,7 +116,7 @@ const handleOpenCart = () => {
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-accent/20 blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
 
-    <header class="bg-[#030712]/90 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-50 transition-all shadow-lg shadow-black/20">
+    <header v-if="!isRecruitmentArea" class="bg-[#030712]/90 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-30 transition-all shadow-lg shadow-black/20">
       <div class="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
         <!-- Fila Principal: Logo + Status + Acciones / Navegación -->
         <div class="flex items-center justify-between gap-3">
@@ -362,11 +370,11 @@ const handleOpenCart = () => {
       </div>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-8 relative z-10 max-w-7xl">
+    <main :class="['flex-grow relative', isRecruitmentArea ? 'w-full p-0' : 'container mx-auto px-4 py-8 max-w-7xl']">
       <RouterView />
     </main>
 
-    <footer class="border-t border-white/[0.08] mt-auto relative z-10 bg-[#020617]/95 backdrop-blur-xl">
+    <footer v-if="!isRecruitmentArea" class="border-t border-white/[0.08] mt-auto relative z-20 bg-[#020617]/95 backdrop-blur-xl">
       <!-- Grid Principal del Footer -->
       <div class="container mx-auto px-4 py-12">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">

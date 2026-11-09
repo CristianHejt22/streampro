@@ -2885,8 +2885,8 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL GESTIÓN Y AUDITORÍA DE BILLETERA (Historial de Movimientos y Cargas) -->
-    <div v-if="showWalletModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl p-6 shadow-2xl relative space-y-4">
+    <div v-if="showWalletModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <div class="flex items-center gap-2">
@@ -2895,7 +2895,7 @@ const shareGamingOnWhatsApp = (game) => {
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Consulta las recargas del Administrador y todos los movimientos contables.</p>
           </div>
-          <button @click="showWalletModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showWalletModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 p-4 rounded-xl border border-indigo-500/30 flex justify-between items-center">
@@ -2948,14 +2948,14 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL DETALLE Y EDICIÓN DE CLIENTE -->
-    <div v-if="showDetailModal && selectedClient" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-5">
+    <div v-if="showDetailModal && selectedClient" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Ficha: {{ selectedClient.name }}</h3>
             <p class="text-xs text-slate-400">N° Cliente: <strong class="text-brand-accent">{{ selectedClient.clientNumber }}</strong> • {{ selectedClient.platform }}</p>
           </div>
-          <button @click="showDetailModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showDetailModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="space-y-4">
@@ -3022,14 +3022,14 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL: SOLICITAR COMPRA MANUAL DESDE EL PANEL REVENDEDOR -->
-    <div v-if="showManualPurchaseModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showManualPurchaseModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Solicitud de Compra Manual</h3>
             <p class="text-slate-400">Emite una orden directa al Proveedor para despachar a tu cliente o pagar con tu Billetera.</p>
           </div>
-          <button @click="showManualPurchaseModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showManualPurchaseModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="submitManualPurchase" class="space-y-4">
@@ -3113,14 +3113,14 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL: DATOS DE TRANSFERENCIA BANCARIA DEL PROVEEDOR -->
-    <div v-if="showProviderBankModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showProviderBankModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Datos Bancarios del Proveedor</h3>
             <p class="text-slate-400">Transfiere a esta cuenta para compras mayoristas o facilítala a clientes directos.</p>
           </div>
-          <button @click="showProviderBankModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showProviderBankModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="bg-gradient-to-br from-slate-950 to-indigo-950/40 p-4 rounded-xl border border-indigo-500/30 space-y-2 font-mono text-xs">
@@ -3150,14 +3150,14 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL: CÓDIGO QR INTERACTIVO DEL LINK DEL REVENDEDOR -->
-    <div v-if="showQrModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-center space-y-4">
+    <div v-if="showQrModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-sm max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative text-center space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <div class="text-left">
             <h3 class="text-base font-black text-white">Código QR de tu Tienda</h3>
             <p class="text-[11px] text-slate-400">Escanea para ir directo a tu enlace de afiliado</p>
           </div>
-          <button @click="showQrModal = false" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+          <button @click="showQrModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="bg-white p-4 rounded-2xl mx-auto w-fit shadow-lg border-4 border-brand-accent/30 flex items-center justify-center">
@@ -3189,14 +3189,14 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL 1: COMPROBANTE DIGITAL OFICIAL DE ENTREGA (IMAGEN / PDF) -->
-    <div v-if="showVoucherModal && selectedVoucherClient" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4">
+    <div v-if="showVoucherModal && selectedVoucherClient" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-base font-black text-white">Comprobante Oficial de Entrega</h3>
             <p class="text-[11px] text-slate-400">Diseñado para enviar directo por WhatsApp o descargar en imagen</p>
           </div>
-          <button @click="showVoucherModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showVoucherModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Tarjeta Renderizable para Imagen -->
@@ -3290,8 +3290,8 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL 2: SIMULADOR Y CALCULADORA DE GANANCIAS MAYORISTAS -->
-    <div v-if="showCalcModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
+    <div v-if="showCalcModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <div class="flex items-center gap-2">
@@ -3300,7 +3300,7 @@ const shareGamingOnWhatsApp = (game) => {
             </div>
             <p class="text-slate-400 mt-0.5">Calcula tus márgenes y ganancias netas proyectadas antes de ordenar lotes.</p>
           </div>
-          <button @click="showCalcModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showCalcModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="space-y-4">
@@ -3376,8 +3376,8 @@ const shareGamingOnWhatsApp = (game) => {
     </div>
 
     <!-- MODAL: PREVISUALIZADOR DE URL DE PRODUCTO FÍSICO -->
-    <div v-if="showPhysicalUrlModal && previewingPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-sky-500/30 w-full max-w-xl rounded-3xl p-6 shadow-2xl relative space-y-5">
+    <div v-if="showPhysicalUrlModal && previewingPhysicalProduct" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-sky-500/30 w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-xl shadow">

@@ -149,7 +149,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+  <div v-if="modelValue" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-slate-950/85 backdrop-blur-md animate-fade-in">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
       
       <!-- Fondo decorativo -->
@@ -166,9 +166,7 @@ onUnmounted(() => {
             <p class="text-xs text-slate-400">Facilidad de navegación y compras rápidas</p>
           </div>
         </div>
-        <button @click="closeModal" class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
-          ✕
-        </button>
+        <button @click="closeModal" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
       </div>
 
       <!-- VISTA: Perfil Guardado Activo -->

@@ -4202,14 +4202,14 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL DE ELECCIÓN DE PLAN -->
-    <div v-if="showConfigModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showConfigModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Elegir Plan: {{ selectedProduct.name }}</h3>
             <p class="text-xs text-slate-400 mt-0.5">Selecciona la modalidad deseada para tu orden oficial.</p>
           </div>
-          <button @click="showConfigModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+          <button @click="showConfigModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Selector Visual de Planes con Precios Dentro de las Selecciones -->
@@ -4296,14 +4296,14 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL CARRITO PREVIO AL ENVÍO -->
-    <div v-if="showCartDrawer" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showCartDrawer" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-center border-b border-slate-800 pb-4">
           <div class="flex items-center gap-2">
             <svg class="w-6 h-6 text-brand-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
             <h3 class="text-xl font-black text-white">Carrito de Compras</h3>
           </div>
-          <button @click="showCartDrawer = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showCartDrawer = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div v-if="cartStore.items.length === 0" class="text-center py-12 text-slate-500">
@@ -4374,7 +4374,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL CHECKOUT: CON DATOS COMPLETOS DEL REVENDEDOR PARA CONFIRMAR PAGOS -->
-    <div v-if="showCheckoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showCheckoutModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
@@ -4386,7 +4386,7 @@ const submitOrder = async () => {
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Identificador de cliente generado para vincular tu perfil y servicio.</p>
           </div>
-          <button @click="showCheckoutModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showCheckoutModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="submitOrder" class="space-y-4 text-xs">
@@ -4837,7 +4837,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL: FICHA TÉCNICA E INFORMACIÓN DEL SERVICIO (+INFO) -->
-    <div v-if="showStreamingInfoModal && selectedStreamingInfo" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showStreamingInfoModal && selectedStreamingInfo" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-3">
@@ -4849,7 +4849,7 @@ const submitOrder = async () => {
               <p class="text-xs text-sky-400 font-semibold">{{ selectedStreamingInfo.category }} • Garantía Oficial StreamePro</p>
             </div>
           </div>
-          <button @click="showStreamingInfoModal = false" class="text-slate-400 hover:text-white p-1 text-lg cursor-pointer">✕</button>
+          <button @click="showStreamingInfoModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Descripción General -->
@@ -4948,7 +4948,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL DE DETALLE DE PRODUCTO FÍSICO (revende.com.ar) -->
-    <div v-if="showPhysicalModal && selectedPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showPhysicalModal && selectedPhysicalProduct" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <!-- Encabezado con Categoría, ID, SKU y Stock -->
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
@@ -4964,7 +4964,7 @@ const submitOrder = async () => {
               Stock: {{ (selectedPhysicalVariant ? selectedPhysicalVariant.stock : selectedPhysicalProduct.stock) || 0 }} disponibles
             </span>
           </div>
-          <button @click="showPhysicalModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+          <button @click="showPhysicalModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Imagen y Galería + Info de Precios -->
@@ -5130,7 +5130,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL DE CONFIRMACIÓN DE PEDIDO Y ENVÍO DE COMPROBANTE POR WHATSAPP -->
-    <div v-if="showOrderSuccessModal && lastPlacedOrder" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div v-if="showOrderSuccessModal && lastPlacedOrder" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         
         <!-- Header con ícono de éxito -->
@@ -5305,14 +5305,14 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL LIGHTBOX: IMAGEN DE PRODUCTO FÍSICO EN FOCO HD -->
-    <div v-if="showImageZoomModal && selectedPhysicalProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200" @click="showImageZoomModal = false">
+    <div v-if="showImageZoomModal && selectedPhysicalProduct" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/90 backdrop-blur-md animate-in fade-in duration-200" @click="showImageZoomModal = false">
       <div class="relative max-w-2xl w-full bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar" @click.stop>
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h4 class="font-black text-white text-sm sm:text-base">{{ selectedPhysicalProduct.name }}</h4>
             <span class="text-amber-400 font-black text-xs font-mono">{{ selectedPhysicalProduct.price }}</span>
           </div>
-          <button @click="showImageZoomModal = false" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center transition cursor-pointer">✕</button>
+          <button @click="showImageZoomModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
         <div class="w-full h-80 sm:h-96 bg-white rounded-2xl p-4 flex items-center justify-center shadow-inner overflow-hidden">
           <img :src="selectedPhysicalProduct.image" :alt="selectedPhysicalProduct.name" class="max-h-full max-w-full object-contain" @error="(e) => e.target.src = '/og-banner.png'">
@@ -5327,14 +5327,9 @@ const submitOrder = async () => {
     </div>
 
     <!-- MODAL: DETALLE DEL VIDEOJUEGO DIGITAL (PS4 / PS5) -->
-    <div v-if="showGamingDetailModal && selectedGamingProduct" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+    <div v-if="showGamingDetailModal && selectedGamingProduct" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-fade-in">
       <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-5 shadow-2xl relative">
-        <button 
-          @click="showGamingDetailModal = false"
-          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
-        >
-          ✕
-        </button>
+        <button @click="showGamingDetailModal = false" type="button" class="absolute top-4 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all cursor-pointer z-10" title="Cerrar">✕</button>
 
         <!-- Portada e Info Principal -->
         <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">

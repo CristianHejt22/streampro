@@ -189,7 +189,7 @@ const dismissBanner = () => {
     </div>
 
     <!-- MODAL DE GUÍA PARA DISPOSITIVOS iOS (SAFARI EN IPHONE / IPAD) -->
-    <div v-if="showIosModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+    <div v-if="showIosModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-fade-in">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative space-y-5 text-center">
         <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center font-black text-slate-950 text-2xl mx-auto shadow-lg">
           ⚡

@@ -8,6 +8,11 @@ const router = useRouter()
 const adminStore = useAdminStore()
 const toast = useToastStore()
 
+// Estado de visibilidad de la tienda física / dropshipping
+const isPhysicalStoreActive = computed(() => {
+  return Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
+})
+
 // WhatsApp de contacto con el proveedor oficial
 const providerWhatsApp = computed(() => {
   return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
@@ -24,13 +29,19 @@ const scrollToSection = (id) => {
 // ==========================================
 // FORMULARIO DE SOLICITUD DE REVENDEDOR
 // ==========================================
+const defaultCatalogInterest = computed(() => {
+  return isPhysicalStoreActive.value 
+    ? 'Todo el catálogo (Streaming + Videojuegos + Tecnología)' 
+    : 'Todo el catálogo digital (Streaming + Videojuegos)'
+})
+
 const applicationForm = ref({
   fullName: '',
   whatsapp: '',
   email: '',
   city: '',
   storeName: '',
-  interestCatalog: 'Todo el catálogo (Streaming + Videojuegos + Tecnología)',
+  interestCatalog: 'Todo el catálogo',
   experience: 'Quiero empezar desde cero',
   notes: ''
 })
@@ -50,9 +61,14 @@ const submitApplication = async () => {
 
   isSubmitting.value = true
   try {
+    const selectedCatalog = applicationForm.value.interestCatalog === 'Todo el catálogo' 
+      ? defaultCatalogInterest.value 
+      : applicationForm.value.interestCatalog
+
     const payload = {
       ...applicationForm.value,
-      notes: `[Interés: ${applicationForm.value.interestCatalog}] ${applicationForm.value.notes || ''}`.trim()
+      interestCatalog: selectedCatalog,
+      notes: `[Interés: ${selectedCatalog}] ${applicationForm.value.notes || ''}`.trim()
     }
     const res = await adminStore.submitResellerApplication(payload)
     if (res && res.success) {
@@ -75,7 +91,7 @@ const resetForm = () => {
     email: '',
     city: '',
     storeName: '',
-    interestCatalog: 'Todo el catálogo (Streaming + Videojuegos + Tecnología)',
+    interestCatalog: 'Todo el catálogo',
     experience: 'Quiero empezar desde cero',
     notes: ''
   }
@@ -99,7 +115,10 @@ const contactPriorityWhatsApp = () => {
 // Contacto WhatsApp general
 const contactProviderWhatsApp = () => {
   const cleanPhone = providerWhatsApp.value.replace(/[^0-9]/g, '')
-  const text = `¡Hola! Estuve viendo la propuesta mayorista en la web de StreamePro y me interesa registrarme como REVENDEDOR OFICIAL para vender Streaming, Videojuegos y Tecnología. ¿Me darían más información para comenzar?`
+  const businessOffer = isPhysicalStoreActive.value 
+    ? 'Streaming, Videojuegos y Tecnología' 
+    : 'Streaming y Videojuegos Digitales'
+  const text = `¡Hola! Estuve viendo la propuesta mayorista en la web de StreamePro y me interesa registrarme como REVENDEDOR OFICIAL para vender ${businessOffer}. ¿Me darían más información para comenzar?`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank')
 }
 
@@ -124,6 +143,7 @@ const estimatedMonthlyGamingProfit = computed(() => {
 })
 
 const estimatedMonthlyPhysicalProfit = computed(() => {
+  if (!isPhysicalStoreActive.value) return 0
   return monthlyPhysicalSales.value * avgProfitPerPhysical.value
 })
 
@@ -136,43 +156,52 @@ const totalEstimatedMonthlyProfit = computed(() => {
 })
 
 // ==========================================
-// FAQ ACORDEÓN
+// FAQ ACORDEÓN (ADAPTABLE)
 // ==========================================
-const activeFaq = ref(0) // Primer ítem abierto por defecto
+const activeFaq = ref(0)
 const toggleFaq = (idx) => {
   activeFaq.value = activeFaq.value === idx ? null : idx
 }
 
-const faqs = [
-  {
-    q: '¿Necesito experiencia previa o inversión inicial de dinero para empezar?',
-    a: '¡Absolutamente ninguna! No pagas membresía ni compras inventario por adelantado. Nosotros te habilitamos tu Panel Oficial de Revendedor (/crm). Cuando un cliente te pide una suscripción, videojuego o producto, él te transfiere el dinero primero a tu cuenta y luego tú despachas desde el panel a precio mayorista, quedándote con tu ganancia neta en el momento.'
-  },
-  {
-    q: '¿Qué catálogo tengo disponible exactamente para revender?',
-    a: 'Accedes al catálogo mayorista unificado más completo del mercado en 3 categorías: 1) Streaming Premium (Netflix, Max, Disney+, Spotify, Paramount+, IPTV, Prime, YouTube con perfiles y PIN privado); 2) Videojuegos Digitales (+1.160 títulos para consolas PS3, PS4, PS5, Steam y PC con piso mínimo asegurado del 10% de ganancia); 3) Tecnología & Accesorios Físicos (+360 productos como smartwatches, auriculares inalámbricos, mandos gamer y gadgets con despacho directo a todo el país).'
-  },
-  {
-    q: '¿Cuáles son los tiempos de entrega y cómo funciona la Garantía Oficial?',
-    a: 'Para los servicios digitales (streaming y videojuegos), el tiempo garantizado de entrega es de 60 a 90 minutos con instructivo paso a paso y perfiles listos. Cuentas con Garantía Oficial StreamePro ante cualquier novedad técnica o eventualidad; el soporte central atiende las solicitudes y te respalda para cuidar al 100% la reputación de tu negocio.'
-  },
-  {
-    q: '¿Cómo le entrego el servicio o juego a mi cliente?',
-    a: 'Desde tu panel de revendedor tienes la herramienta de 1 clic "Copiar para WhatsApp". Al presionarlo, el sistema genera automáticamente un mensaje formal y profesional con el correo de acceso, contraseña, perfil asignado, PIN privado e instructivo de conexión. Solo pegas el mensaje en el chat con tu cliente y listo.'
-  },
-  {
-    q: '¿Cómo cobro el dinero de mis ventas?',
-    a: 'Tus clientes te pagan a ti directamente a través de tu CBU, CVU, Mercado Pago, Cuenta DNI, Ualá o cualquier entidad bancaria. Puedes configurar tu propio Alias bancario en el panel para que figure automáticamente en tus comprobantes.'
-  },
-  {
-    q: '¿Puedo vender bajo mi propio nombre de marca o tienda personal?',
-    a: '¡Por supuesto! Eres tu propio jefe y puedes usar el nombre comercial que elijas (ej: "TuNombre Digital Play", "Zona Gamer", etc.). Nosotros operamos como tu centro mayorista; tus clientes son tuyos y nunca verán datos que no sean los de tu propia marca.'
-  },
-  {
-    q: '¿Cómo funciona el Dropshipping de productos de tecnología física?',
-    a: 'Publicas los productos de tecnología de nuestro catálogo en tus redes o catálogo de WhatsApp al precio final que prefieras. Cuando un cliente te compra, cargas la orden en el panel indicando los datos de envío de tu cliente. Nuestro centro de logística empaqueta y despacha el pedido por correo a cualquier punto de Argentina sin que tengas que tocar una sola caja.'
+const faqs = computed(() => {
+  const list = [
+    {
+      q: '¿Necesito experiencia previa o inversión inicial de dinero para empezar?',
+      a: '¡Absolutamente ninguna! No pagas membresía ni compras inventario por adelantado. Nosotros te habilitamos tu Panel Oficial de Revendedor (/crm). Cuando un cliente te pide una suscripción o videojuego, él te transfiere el dinero primero a tu cuenta y luego tú despachas desde el panel a precio mayorista, quedándote con tu ganancia neta en el momento.'
+    },
+    {
+      q: '¿Qué catálogo tengo disponible exactamente para revender?',
+      a: isPhysicalStoreActive.value
+        ? 'Accedes al catálogo mayorista unificado más completo del mercado en 3 categorías: 1) Streaming Premium (Netflix, Max, Disney+, Spotify, Paramount+, IPTV, Prime, YouTube con perfiles y PIN privado); 2) Videojuegos Digitales (+1.160 títulos para consolas PS3, PS4, PS5, Steam y PC con piso mínimo asegurado del 10% de ganancia); 3) Tecnología & Accesorios Físicos (+360 productos como smartwatches, auriculares inalámbricos, mandos gamer y gadgets con despacho directo a todo el país).'
+        : 'Accedes al catálogo mayorista digital más completo del mercado en 2 categorías principales: 1) Streaming Premium (Netflix, Max, Disney+, Spotify, Paramount+, IPTV, Prime, YouTube con perfiles y PIN privado); 2) Videojuegos Digitales (+1.160 títulos para consolas PS3, PS4, PS5, Steam y PC con piso mínimo asegurado del 10% de ganancia y entrega en 60/90 min).'
+    },
+    {
+      q: '¿Cuáles son los tiempos de entrega y cómo funciona la Garantía Oficial?',
+      a: 'Para los servicios digitales (streaming y videojuegos), el tiempo garantizado de entrega es de 60 a 90 minutos con instructivo paso a paso y perfiles listos. Cuentas con Garantía Oficial StreamePro ante cualquier novedad técnica o eventualidad; el soporte central atiende las solicitudes y te respalda para cuidar al 100% la reputación de tu negocio.'
+    },
+    {
+      q: '¿Cómo le entrego el servicio o juego a mi cliente?',
+      a: 'Desde tu panel de revendedor tienes la herramienta de 1 clic "Copiar para WhatsApp". Al presionarlo, el sistema genera automáticamente un mensaje formal y profesional con el correo de acceso, contraseña, perfil asignado, PIN privado e instructivo de conexión. Solo pegas el mensaje en el chat con tu cliente y listo.'
+    },
+    {
+      q: '¿Cómo cobro el dinero de mis ventas?',
+      a: 'Tus clientes te pagan a ti directamente a través de tu CBU, CVU, Mercado Pago, Cuenta DNI, Ualá o cualquier entidad bancaria. Puedes configurar tu propio Alias bancario en el panel para que figure automáticamente en tus comprobantes.'
+    },
+    {
+      q: '¿Puedo vender bajo mi propio nombre de marca o tienda personal?',
+      a: '¡Por supuesto! Eres tu propio jefe y puedes usar el nombre comercial que elijas (ej: "TuNombre Digital Play", "Zona Gamer", etc.). Nosotros operamos como tu centro mayorista; tus clientes son tuyos y nunca verán datos que no sean los de tu propia marca.'
+    }
+  ]
+
+  if (isPhysicalStoreActive.value) {
+    list.push({
+      q: '¿Cómo funciona el Dropshipping de productos de tecnología física?',
+      a: 'Publicas los productos de tecnología de nuestro catálogo en tus redes o catálogo de WhatsApp al precio final que prefieras. Cuando un cliente te compra, cargas la orden en el panel indicando los datos de envío de tu cliente. Nuestro centro de logística empaqueta y despacha el pedido por correo a cualquier punto de Argentina sin que tengas que tocar una sola caja.'
+    })
   }
-]
+
+  return list
+})
 </script>
 
 <template>
@@ -195,7 +224,7 @@ const faqs = [
 
         <nav class="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-300">
           <button @click="scrollToSection('catalogo')" class="hover:text-amber-400 transition-colors cursor-pointer">
-            📦 Catálogo Trío
+            📦 Catálogo
           </button>
           <button @click="scrollToSection('calculadora')" class="hover:text-amber-400 transition-colors cursor-pointer">
             📊 Calculadora
@@ -253,16 +282,16 @@ const faqs = [
         <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight sm:leading-none">
           Construye tu Propio Negocio de <br class="hidden sm:inline" />
           <span class="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-200 bg-clip-text text-transparent">
-            Streaming, Videojuegos & Tecnología
+            Streaming & Videojuegos{{ isPhysicalStoreActive ? ' & Tecnología' : '' }}
           </span>
           <br />Sin Invertir en Stock
         </h1>
 
         <p class="text-sm sm:text-lg text-slate-300 max-w-3xl mx-auto font-normal leading-relaxed">
-          Accede a costos mayoristas exclusivos, despacha cuentas completas o perfiles con PIN en segundos, vende más de <strong class="text-white">1.160 videojuegos digitales</strong> para PlayStation/PC y más de <strong class="text-white">360 productos físicos en dropshipping</strong>. Entrega en 60/90 minutos con <strong class="text-amber-400 font-bold">Garantía Oficial</strong> y cobro directo a tu CBU/Alias.
+          Accede a costos mayoristas exclusivos, despacha cuentas completas o perfiles con PIN en segundos, y vende más de <strong class="text-white">1.160 videojuegos digitales</strong> para PlayStation/PC<span v-if="isPhysicalStoreActive"> y más de <strong class="text-white">360 productos físicos en dropshipping</strong></span>. Entrega en 60/90 minutos con <strong class="text-amber-400 font-bold">Garantía Oficial</strong> y cobro directo a tu CBU/Alias.
         </p>
 
-        <!-- Píldoras de las 3 ramas -->
+        <!-- Píldoras de las ramas activas -->
         <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs font-mono font-bold">
           <span class="bg-slate-900/80 border border-slate-800 text-amber-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
             🍿 Streaming & Cuentas PIN
@@ -270,7 +299,7 @@ const faqs = [
           <span class="bg-slate-900/80 border border-slate-800 text-purple-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
             🎮 +1.160 Videojuegos Digitales
           </span>
-          <span class="bg-slate-900/80 border border-slate-800 text-sky-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+          <span v-if="isPhysicalStoreActive" class="bg-slate-900/80 border border-slate-800 text-sky-400 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
             📦 +360 Productos Dropshipping
           </span>
         </div>
@@ -298,8 +327,8 @@ const faqs = [
           </button>
         </div>
 
-        <!-- Métricas destacadas -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-10 border-t border-slate-800/80 max-w-4xl mx-auto text-left">
+        <!-- Métricas destacadas adaptables -->
+        <div :class="['grid gap-4 pt-10 border-t border-slate-800/80 max-w-4xl mx-auto text-left', isPhysicalStoreActive ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3']">
           <div class="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 hover:border-amber-500/30 transition-colors">
             <span class="text-2xl font-black text-amber-400 block">+40%</span>
             <span class="text-xs text-slate-400">Margen neto en streaming</span>
@@ -308,7 +337,7 @@ const faqs = [
             <span class="text-2xl font-black text-purple-400 block">+1.160</span>
             <span class="text-xs text-slate-400">Juegos PlayStation & PC</span>
           </div>
-          <div class="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 hover:border-sky-500/30 transition-colors">
+          <div v-if="isPhysicalStoreActive" class="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 hover:border-sky-500/30 transition-colors">
             <span class="text-2xl font-black text-sky-400 block">+360</span>
             <span class="text-xs text-slate-400">Productos dropshipping físico</span>
           </div>
@@ -319,19 +348,21 @@ const faqs = [
         </div>
       </section>
 
-      <!-- SECCIÓN: LAS 3 LÍNEAS DE NEGOCIO (CATÁLOGO TRÍO) -->
+      <!-- SECCIÓN: CATÁLOGO SHOWCASE -->
       <section id="catalogo" class="max-w-6xl mx-auto px-4 sm:px-6 space-y-10 scroll-mt-20">
         <div class="text-center space-y-3">
           <span class="text-xs font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-            CATÁLOGO MAYORISTA UNIFICADO
+            {{ isPhysicalStoreActive ? 'CATÁLOGO MAYORISTA UNIFICADO' : 'CATÁLOGO DIGITAL MAYORISTA' }}
           </span>
-          <h2 class="text-3xl sm:text-4xl font-black text-white">Un Solo Panel, Tres Negocios Altamente Rentables</h2>
+          <h2 class="text-3xl sm:text-4xl font-black text-white">
+            {{ isPhysicalStoreActive ? 'Un Solo Panel, Tres Negocios Altamente Rentables' : 'Un Solo Panel, Dos Negocios Digitales Altamente Rentables' }}
+          </h2>
           <p class="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto">
-            A diferencia de proveedores informales que solo venden una cosa, con StreamePro diversificas tu oferta para multiplicar las ventas diarias a tus mismos clientes.
+            A diferencia de proveedores informales que solo venden un servicio, con StreamePro diversificas tu oferta para multiplicar las ventas diarias a tus mismos clientes.
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div :class="['grid gap-6', isPhysicalStoreActive ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto']">
           
           <!-- TARJETA 1: STREAMING -->
           <div class="bg-gradient-to-b from-slate-900/80 to-slate-950 p-6 sm:p-7 rounded-3xl border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-5 relative overflow-hidden group">
@@ -401,8 +432,8 @@ const faqs = [
             </div>
           </div>
 
-          <!-- TARJETA 3: TECNOLOGÍA FÍSICA -->
-          <div class="bg-gradient-to-b from-slate-900/80 to-slate-950 p-6 sm:p-7 rounded-3xl border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col justify-between space-y-5 relative overflow-hidden group">
+          <!-- TARJETA 3: TECNOLOGÍA FÍSICA (CONDICIONADA A TIENDA ACTIVA) -->
+          <div v-if="isPhysicalStoreActive" class="bg-gradient-to-b from-slate-900/80 to-slate-950 p-6 sm:p-7 rounded-3xl border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col justify-between space-y-5 relative overflow-hidden group">
             <div class="space-y-3 relative z-10">
               <div class="w-12 h-12 rounded-2xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-2xl border border-sky-500/30">
                 📦
@@ -449,7 +480,7 @@ const faqs = [
             </span>
             <h2 class="text-2xl sm:text-3xl font-black text-white">¿Cuánto Puedes Ganar como Revendedor?</h2>
             <p class="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-              Ajusta los deslizadores según tus metas y descubre tu ganancia neta mensual estimada combinando Streaming, Videojuegos y Tecnología.
+              Ajusta los deslizadores según tus metas y descubre tu ganancia neta mensual estimada combinando Streaming{{ isPhysicalStoreActive ? ', Videojuegos y Tecnología' : ' y Videojuegos Digitales' }}.
             </p>
           </div>
 
@@ -499,8 +530,8 @@ const faqs = [
                 </div>
               </div>
 
-              <!-- Slider 3: Productos Físicos -->
-              <div class="space-y-2">
+              <!-- Slider 3: Productos Físicos (CONDICIONADO) -->
+              <div v-if="isPhysicalStoreActive" class="space-y-2">
                 <div class="flex justify-between items-center text-xs">
                   <span class="font-bold text-slate-300">📦 Ventas Tecnología (Dropshipping):</span>
                   <span class="font-mono font-black text-sky-400 text-sm">{{ monthlyPhysicalSales }} ventas</span>
@@ -554,7 +585,7 @@ const faqs = [
                   </span>
                   <strong class="text-slate-200">${{ estimatedMonthlyGamingProfit.toLocaleString() }} ARS</strong>
                 </div>
-                <div class="flex justify-between text-slate-400">
+                <div v-if="isPhysicalStoreActive" class="flex justify-between text-slate-400">
                   <span class="flex items-center gap-1.5">
                     <span class="text-sky-400">📦</span> Tecnología ({{ monthlyPhysicalSales }} despachos):
                   </span>
@@ -616,7 +647,7 @@ const faqs = [
                 <span class="text-red-400 font-bold">✕</span> Solo 1 o 2 cuentas genéricas
               </div>
               <div class="text-emerald-400 font-bold text-[11px] flex items-center gap-1.5 md:justify-center">
-                <span>✓</span> Streaming + 1.160 Juegos + 360 Gadgets
+                <span>✓</span> Streaming + 1.160 Juegos{{ isPhysicalStoreActive ? ' + 360 Gadgets' : '' }}
               </div>
             </div>
 
@@ -854,10 +885,12 @@ const faqs = [
                   v-model="applicationForm.interestCatalog"
                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
                 >
-                  <option value="Todo el catálogo (Streaming + Videojuegos + Tecnología)">🌟 Todo el catálogo completo (Streaming + Videojuegos + Tecnología)</option>
+                  <option value="Todo el catálogo">
+                    🌟 {{ isPhysicalStoreActive ? 'Todo el catálogo completo (Streaming + Videojuegos + Tecnología)' : 'Catálogo Digital Completo (Streaming + Videojuegos)' }}
+                  </option>
                   <option value="Cuentas y Pantallas de Streaming">🍿 Streaming (Netflix, Max, Disney+, Spotify, IPTV)</option>
                   <option value="Videojuegos Digitales PS3/PS4/PS5/PC">🎮 Videojuegos Digitales (PlayStation y PC)</option>
-                  <option value="Tecnología Física en Dropshipping">📦 Dropshipping de Tecnología y Accesorios</option>
+                  <option v-if="isPhysicalStoreActive" value="Tecnología Física en Dropshipping">📦 Dropshipping de Tecnología y Accesorios</option>
                 </select>
               </div>
 
@@ -962,7 +995,7 @@ const faqs = [
               </button>
               <button 
                 @click="contactProviderWhatsApp" 
-                class="w-full sm:w-auto bg-slate-900/10 hover:bg-slate-900/20 text-slate-950 border border-slate-950/30 font-black text-sm px-6 py-4 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                class="w-full sm:w-auto bg-slate-900/10 hover:bg-slate-900/20 text-slate-950 border border-slate-950/30 font-black text-sm px-6 py-4 rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
               >
                 <span>💬 WhatsApp Directo con Proveedor</span>
               </button>
@@ -981,7 +1014,7 @@ const faqs = [
         <button @click="scrollToSection('formulario-solicitud')" class="hover:text-amber-400 transition-colors cursor-pointer">Solicitar Panel</button>
         <button @click="contactProviderWhatsApp" class="hover:text-amber-400 transition-colors cursor-pointer">Soporte WhatsApp</button>
       </div>
-      <p>© 2026 StreamePro Mayorista Central. Red Oficial de Distribución de Streaming, Videojuegos & Tecnología.</p>
+      <p>© 2026 StreamePro Mayorista Central. Red Oficial de Distribución de Streaming & Videojuegos{{ isPhysicalStoreActive ? ' & Tecnología' : '' }}.</p>
       <p class="text-[11px] text-slate-600">Bahía Blanca, Buenos Aires, Argentina • Garantía Oficial y Entrega 60/90 min</p>
     </footer>
 

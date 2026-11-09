@@ -666,7 +666,7 @@ const handleCustomerRenewal = (acc) => {
     </Transition>
 
     <!-- MODAL: ACTUALIZAR HOGAR CON NETFLIX -->
-    <div v-if="showHogarModal && selectedHogarAccount" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showHogarModal && selectedHogarAccount" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-4">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-3">
@@ -678,7 +678,7 @@ const handleCustomerRenewal = (acc) => {
               <p class="text-xs text-slate-400 font-mono">{{ selectedHogarAccount.account }}</p>
             </div>
           </div>
-          <button @click="showHogarModal = false" class="text-slate-400 hover:text-white p-1 text-lg cursor-pointer">✕</button>
+          <button @click="showHogarModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="p-4 bg-red-950/40 border border-red-500/30 rounded-2xl text-xs text-red-200 space-y-2">

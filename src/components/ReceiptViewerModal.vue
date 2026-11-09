@@ -93,7 +93,7 @@ const downloadReceipt = () => {
 <template>
   <div 
     v-if="show" 
-    class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+    class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
   >
     <div class="bg-slate-900 border border-slate-700/80 w-full max-w-2xl rounded-3xl p-5 sm:p-7 shadow-2xl relative space-y-4 max-h-[92vh] flex flex-col text-white">
       
@@ -119,13 +119,7 @@ const downloadReceipt = () => {
           </p>
         </div>
         
-        <button 
-          @click="emit('close')" 
-          class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer text-lg"
-          title="Cerrar modal"
-        >
-          ✕
-        </button>
+        <button @click="emit('close')" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar modal">✕</button>
       </div>
 
       <!-- Estado: Cargando -->

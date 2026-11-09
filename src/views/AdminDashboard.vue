@@ -6344,14 +6344,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE EDICIÓN DE PRECIOS GAMING (AMBOS PROVEEDORES) -->
-    <div v-if="showGamingPriceEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
+    <div v-if="showGamingPriceEditModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar p-6 space-y-5 shadow-2xl">
         <div class="flex justify-between items-center pb-3 border-b border-slate-800">
           <div>
             <h3 class="text-lg font-black text-white">Editar Precios de Proveedores: {{ gamingEditForm.title }}</h3>
             <p class="text-xs text-slate-400">Actualiza los precios de Argentina Play y JDA. La tienda exhibirá automáticamente el mayor precio.</p>
           </div>
-          <button @click="showGamingPriceEditModal = false" class="text-slate-400 hover:text-white font-bold">✕</button>
+          <button @click="showGamingPriceEditModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -6425,11 +6425,11 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL PARA AGREGAR NUEVO VIDEOJUEGO -->
-    <div v-if="showGamingNewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div v-if="showGamingNewModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md">
       <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-4 shadow-2xl">
         <div class="flex justify-between items-center pb-3 border-b border-slate-800">
           <h3 class="text-lg font-black text-white">➕ Agregar Nuevo Videojuego Digital</h3>
-          <button @click="showGamingNewModal = false" class="text-slate-400 hover:text-white font-bold">✕</button>
+          <button @click="showGamingNewModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="space-y-3">
@@ -6629,14 +6629,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE CAMBIO PRIVADO DE CONTRASEÑA -->
-    <div v-if="showPasswordModal && selectedInvItem" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-4">
+    <div v-if="showPasswordModal && selectedInvItem" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Cambiar Contraseña Maestra</h3>
             <p class="text-xs text-slate-400">{{ selectedInvItem.account }}</p>
           </div>
-          <button @click="showPasswordModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showPasswordModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl text-xs text-amber-300">
@@ -6694,8 +6694,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE EDICIÓN COMPLETA DE LOTE DE INVENTARIO MAYORISTA -->
-    <div v-if="showEditInventoryModal && editingInvItem" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl relative space-y-5">
+    <div v-if="showEditInventoryModal && editingInvItem" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20 text-lg">
@@ -6706,7 +6706,7 @@ const deletePackageItem = (pkgId) => {
               <p class="text-xs font-mono text-slate-400">{{ editingInvItem.id }} • {{ editingInvItem.platform }}</p>
             </div>
           </div>
-          <button @click="showEditInventoryModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+          <button @click="showEditInventoryModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Formulario de Edición -->
@@ -6857,8 +6857,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE MODIFICACIÓN DE RENOVACIÓN POR EL PROVEEDOR -->
-    <div v-if="showRenewalEditModal && selectedRenewal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showRenewalEditModal && selectedRenewal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <div class="flex items-center gap-2">
@@ -6867,7 +6867,7 @@ const deletePackageItem = (pkgId) => {
             </div>
             <p class="text-slate-400 mt-0.5">{{ selectedRenewal.clientName }} • {{ selectedRenewal.platform }} (Revendedor: <strong class="text-amber-400">{{ selectedRenewal.resellerId }}</strong>)</p>
           </div>
-          <button @click="showRenewalEditModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showRenewalEditModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <!-- Selector de Modo de Renovación -->
@@ -6971,8 +6971,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE DESPACHO INTERACTIVO -->
-    <div v-if="showDispatchModal && selectedOrder" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl p-6 shadow-2xl relative space-y-6">
+    <div v-if="showDispatchModal && selectedOrder" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-6">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <div class="flex items-center gap-2">
@@ -6981,7 +6981,7 @@ const deletePackageItem = (pkgId) => {
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Orden {{ selectedOrder.id }} • {{ selectedOrder.customerName }} ({{ selectedOrder.platform }})</p>
           </div>
-          <button @click="showDispatchModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showDispatchModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="space-y-4">
@@ -7054,8 +7054,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE ÉXITO DE ENTREGA Y ENVÍO POR WHATSAPP -->
-    <div v-if="showDeliveryResultModal && deliveredOrderData" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 text-white">
+    <div v-if="showDeliveryResultModal && deliveredOrderData" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 text-white">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl font-black">
@@ -7066,7 +7066,7 @@ const deletePackageItem = (pkgId) => {
               <p class="text-xs text-slate-400">Orden {{ deliveredOrderData.id }} • {{ deliveredOrderData.customerName }} ({{ deliveredOrderData.customerNumber }})</p>
             </div>
           </div>
-          <button @click="showDeliveryResultModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showDeliveryResultModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="space-y-4">
@@ -7130,14 +7130,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: AVISAR EVENTUALIDAD A REVENDEDOR (ESTADO: YA FUE AVISADO) -->
-    <div v-if="showIncidentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showIncidentModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Notificar Eventualidad a Revendedor</h3>
             <p class="text-slate-400">Se enviará una alerta prioritaria al panel del revendedor marcada como [YA FUE AVISADO].</p>
           </div>
-          <button @click="showIncidentModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showIncidentModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div>
@@ -7186,14 +7186,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: REGISTRAR NUEVO REVENDEDOR -->
-    <div v-if="showAddResellerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showAddResellerModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Alta de Nuevo Revendedor</h3>
             <p class="text-slate-400">Registra un nuevo distribuidor oficial con sus datos bancarios para transferencias.</p>
           </div>
-          <button @click="showAddResellerModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showAddResellerModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="handleAddReseller" class="space-y-3">
@@ -7302,14 +7302,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: CARGAR BILLETERA DE REVENDEDOR DESDE ADMIN CON CONFIRMACIÓN -->
-    <div v-if="showRechargeModal && selectedResellerForRecharge" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showRechargeModal && selectedResellerForRecharge" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-xl font-black text-white">Cargar Saldo a Billetera Mayorista</h3>
             <p class="text-slate-400">Revendedor: <strong class="text-amber-400">[{{ selectedResellerForRecharge.id }}] {{ selectedResellerForRecharge.name }}</strong></p>
           </div>
-          <button @click="showRechargeModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showRechargeModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center font-mono">
@@ -7406,8 +7406,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: GESTIONAR ACCESO Y CREDENCIALES DE DISTRIBUIDOR -->
-    <div v-if="showResellerAuthModal && selectedResellerForAuth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
+    <div v-if="showResellerAuthModal && selectedResellerForAuth" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <div class="flex items-center gap-2">
@@ -7418,7 +7418,7 @@ const deletePackageItem = (pkgId) => {
             </div>
             <p class="text-slate-400 mt-0.5">Revendedor: <strong class="text-white">{{ selectedResellerForAuth.name }}</strong></p>
           </div>
-          <button @click="showResellerAuthModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showResellerAuthModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="saveResellerAuth" class="space-y-4">
@@ -7506,8 +7506,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: GESTIÓN DE CREDENCIALES MAESTRAS DE ADMINISTRADOR -->
-    <div v-if="showAdminAuthModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-amber-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
+    <div v-if="showAdminAuthModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-amber-500/30 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-5 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="flex items-center gap-2">
             <span class="text-xl">🛡️</span>
@@ -7516,7 +7516,7 @@ const deletePackageItem = (pkgId) => {
               <p class="text-slate-400">Acceso maestro al Centro Mayorista Proveedor.</p>
             </div>
           </div>
-          <button @click="showAdminAuthModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showAdminAuthModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="saveAdminAuth" class="space-y-4">
@@ -7572,14 +7572,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: EDITAR PRECIOS Y COSTOS DE PLAN VIRTUAL -->
-    <div v-if="editingPlanModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="editingPlanModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <span class="text-xs font-mono font-bold text-cyan-400">{{ editingPlatformKey }}</span>
             <h3 class="text-lg font-black text-white">Editar Precios y Ganancias</h3>
           </div>
-          <button @click="editingPlanModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="editingPlanModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="savePlanEdit" class="space-y-3">
@@ -7617,14 +7617,14 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: AGREGAR NUEVA PLATAFORMA VIRTUAL AL CATÁLOGO -->
-    <div v-if="showAddPlatformModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+    <div v-if="showAddPlatformModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-lg font-black text-white">Nueva Plataforma Virtual</h3>
             <p class="text-slate-400">Registra un nuevo servicio de streaming en el catálogo.</p>
           </div>
-          <button @click="showAddPlatformModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="showAddPlatformModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="submitAddPlatform" class="space-y-3">
@@ -7672,8 +7672,8 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: CREDENCIALES GENERADAS PARA NUEVO REVENDEDOR APROBADO -->
-    <div v-if="showApprovedCredentialsModal && approvedCredentialsData" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative">
+    <div v-if="showApprovedCredentialsModal && approvedCredentialsData" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-emerald-500/40 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative">
         <div class="text-center space-y-2">
           <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto border border-emerald-500/30 shadow-inner">
             🎉
@@ -7732,7 +7732,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL AGREGAR / EDITAR CUENTA BANCARIA -->
-    <div v-if="showAddAccountModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+    <div v-if="showAddAccountModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
@@ -7807,7 +7807,7 @@ const deletePackageItem = (pkgId) => {
     />
 
     <!-- MODAL DE GESTIÓN: CREAR / EDITAR PRODUCTO FÍSICO O PÁGINA (ADMIN) -->
-    <div v-if="showPhysicalProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div v-if="showPhysicalProductModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <!-- Encabezado Modal -->
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
@@ -7819,7 +7819,7 @@ const deletePackageItem = (pkgId) => {
               {{ physicalProductForm.adminOnly ? 'Configuración de página visible únicamente para administradores.' : 'Gestiona los detalles, SKU, stock, precios y descripción en catálogo.' }}
             </p>
           </div>
-          <button @click="showPhysicalProductModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+          <button @click="showPhysicalProductModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="savePhysicalProductForm" class="space-y-4 text-xs">
@@ -8074,7 +8074,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
         <!-- MODAL: AJUSTE MASIVO POR PORCENTAJE (%) PARA TODOS LOS PRODUCTOS -->
-    <div v-if="showBulkPercentageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div v-if="showBulkPercentageModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <!-- Encabezado Modal -->
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
@@ -8087,7 +8087,7 @@ const deletePackageItem = (pkgId) => {
               Aplica hasta 150% de aumento conservando la proporción de descuentos existentes, o programa ofertas sobre precios de lista.
             </p>
           </div>
-          <button @click="showBulkPercentageModal = false" class="text-slate-400 hover:text-white p-1 text-lg cursor-pointer">✕</button>
+          <button @click="showBulkPercentageModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <form @submit.prevent="applyBulkPercentage" class="space-y-4 text-xs">
@@ -8253,7 +8253,7 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL: PREVISUALIZADOR DE PÁGINA / CONTENIDO (SOLO ADMIN) -->
-    <div v-if="showPagePreviewModal && previewingPage" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div v-if="showPagePreviewModal && previewingPage" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div class="space-y-1">
@@ -8265,7 +8265,7 @@ const deletePackageItem = (pkgId) => {
             </div>
             <h3 class="text-lg font-black text-white leading-snug">{{ previewingPage.name }}</h3>
           </div>
-          <button @click="showPagePreviewModal = false" class="text-slate-400 hover:text-white p-1 text-lg">✕</button>
+          <button @click="showPagePreviewModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
         <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
