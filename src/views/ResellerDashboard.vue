@@ -319,88 +319,10 @@ const loginForm = ref({
   password: ''
 })
 const loginError = ref('')
-const failedCandidate = ref(null)
 const rememberSession = ref(true)
 const biometricsAvailable = ref(false)
 const hasEnrolledBiometrics = ref(false)
 const isBiometricLoading = ref(false)
-const quickSelectedResellerId = ref(adminStore.resellers?.[0]?.id || 'RES-01')
-
-const directLoginAsCandidate = () => {
-  if (!failedCandidate.value) return
-  resellerStore.isAuthenticated = true
-  resellerStore.activeResellerId = failedCandidate.value.id
-  resellerStore.sessionUser = { ...failedCandidate.value }
-  resellerStore.wallet = Number(failedCandidate.value.balance || 0)
-  resellerStore.persist()
-  if (rememberSession.value) {
-    saveRememberedSession('reseller', failedCandidate.value)
-  }
-  toast.add(`🚀 Acceso directo iniciado como ${failedCandidate.value.name}`, 'success')
-}
-
-const onQuickSelectReseller = () => {
-  loginError.value = ''
-  failedCandidate.value = null
-  const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
-  if (selected) {
-    loginForm.value.username = selected.username || selected.id
-    loginForm.value.password = selected.password || 'StreamDistribuidor2026*'
-    toast.add(`Credenciales de [${selected.id}] ${selected.name} cargadas`, 'info')
-  }
-}
-
-const loginAsSelectedReseller = () => {
-  loginError.value = ''
-  failedCandidate.value = null
-  const selected = adminStore.resellers.find(r => r.id === quickSelectedResellerId.value)
-  if (!selected) {
-    onQuickSelectReseller()
-    return
-  }
-  const res = resellerStore.login(selected.username || selected.id, selected.password)
-  if (res.success) {
-    if (rememberSession.value) {
-      saveRememberedSession('reseller', res.reseller)
-    }
-    toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
-  } else {
-    // Si la contraseña original falló, iniciar sesión directa para el revendedor seleccionado
-    resellerStore.isAuthenticated = true
-    resellerStore.activeResellerId = selected.id
-    resellerStore.sessionUser = { ...selected }
-    resellerStore.wallet = Number(selected.balance || 0)
-    resellerStore.persist()
-    if (rememberSession.value) {
-      saveRememberedSession('reseller', selected)
-    }
-    toast.add(`🚀 Acceso directo iniciado como ${selected.name}`, 'success')
-  }
-}
-
-const fillDemoCredentials = (type = 'distribuidor', autoSubmit = true) => {
-  loginError.value = ''
-  failedCandidate.value = null
-  // Sincronizar credenciales frescas de localStorage
-  const freshAdminAuth = loadDb(DB_KEYS.ADMIN_AUTH, adminStore.adminAuth)
-  if (freshAdminAuth) adminStore.adminAuth = freshAdminAuth
-  const freshResellers = loadDb(DB_KEYS.RESELLERS, adminStore.resellers)
-  if (freshResellers && freshResellers.length > 0) adminStore.resellers = freshResellers
-
-  if (type === 'admin') {
-    loginForm.value.username = adminStore.adminAuth?.username || 'admin'
-    loginForm.value.password = adminStore.adminAuth?.password || 'StreamPro2026*Admin'
-    toast.add('Credenciales maestras de administrador cargadas', 'info')
-  } else {
-    const mainReseller = adminStore.resellers?.[0]
-    loginForm.value.username = mainReseller?.username || 'distribuidor'
-    loginForm.value.password = mainReseller?.password || 'StreamDistribuidor2026*'
-    toast.add('Credenciales de distribuidor oficial cargadas', 'info')
-  }
-  if (autoSubmit) {
-    handleLogin()
-  }
-}
 
 onMounted(async () => {
   // Sincronización fresca con localStorage para garantizar veracidad
@@ -411,9 +333,6 @@ onMounted(async () => {
   const freshAdminAuth = loadDb(DB_KEYS.ADMIN_AUTH, null)
   if (freshAdminAuth) {
     adminStore.adminAuth = freshAdminAuth
-  }
-  if ((!quickSelectedResellerId.value || quickSelectedResellerId.value === 'RES-01') && adminStore.resellers?.length > 0) {
-    quickSelectedResellerId.value = adminStore.resellers[0].id
   }
 
   biometricsAvailable.value = await isBiometricsAvailable()
@@ -437,7 +356,6 @@ onMounted(async () => {
 
 const handleLogin = () => {
   loginError.value = ''
-  failedCandidate.value = null
   if (!loginForm.value.username || !loginForm.value.password) {
     loginError.value = 'Ingresa tu usuario y contraseña de distribuidor'
     toast.add(loginError.value, 'error')
@@ -453,9 +371,6 @@ const handleLogin = () => {
     toast.add(`¡Bienvenido! Sesión iniciada como ${res.reseller.name}`, 'success')
   } else {
     loginError.value = res.error || 'Credenciales inválidas'
-    if (res.candidateReseller) {
-      failedCandidate.value = res.candidateReseller
-    }
     toast.add(loginError.value, 'error')
   }
 }
@@ -1012,90 +927,21 @@ const shareGamingOnWhatsApp = (game) => {
         <p class="text-xs text-slate-400">Ingresa con tus credenciales de revendedor autorizadas por el proveedor.</p>
       </div>
 
-      <div v-if="loginError" class="p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs space-y-2">
-        <div class="flex items-center gap-2">
-          <span class="shrink-0 text-base">⚠️</span>
-          <span>{{ loginError }}</span>
-        </div>
-        <div v-if="failedCandidate" class="pt-2 border-t border-red-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <span class="text-[11px] text-slate-300">¿Eres el administrador verificando a <strong>{{ failedCandidate.name }}</strong>?</span>
-          <button 
-            type="button" 
-            @click="directLoginAsCandidate"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1 shadow"
-          >
-            <span>🚀 Entrar como {{ failedCandidate.id }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Tarjeta de Credenciales de Acceso Oficial -->
-      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs space-y-2">
-        <div class="flex items-center justify-between text-slate-300 font-bold">
-          <span class="flex items-center gap-1.5 text-amber-300">
-            <span>🔑</span>
-            <span>Credenciales de Acceso:</span>
-          </span>
-          <button 
-            type="button" 
-            @click="fillDemoCredentials('distribuidor')"
-            class="text-brand-accent hover:underline text-[11px] font-bold cursor-pointer"
-          >
-            ⚡ Autocompletar
-          </button>
-        </div>
-        <div class="font-mono text-[11px] text-slate-300 space-y-0.5 bg-slate-900/60 p-2 rounded-xl border border-slate-800/80">
-          <p>Usuario: <strong class="text-white">distribuidor</strong></p>
-          <p>Clave: <strong class="text-emerald-400">StreamDistribuidor2026*</strong></p>
-        </div>
-        <div class="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-          <span>¿Acceso Dueño / Admin?</span>
-          <button 
-            type="button" 
-            @click="fillDemoCredentials('admin')"
-            class="text-indigo-400 hover:underline font-mono text-[11px] cursor-pointer"
-          >
-            Entrar con Admin →
-          </button>
-        </div>
-
-        <!-- Selector Rápido de Revendedores Registrados -->
-        <div v-if="adminStore.resellers && adminStore.resellers.length > 0" class="pt-2 border-t border-slate-800 space-y-1.5">
-          <div class="flex justify-between items-center text-[10px] uppercase font-bold text-slate-400">
-            <span>Revendedores en Base de Datos:</span>
-            <span class="text-indigo-400 font-mono">{{ adminStore.resellers.length }} disponibles</span>
-          </div>
-          <div class="flex gap-1.5">
-            <select 
-              v-model="quickSelectedResellerId"
-              @change="onQuickSelectReseller"
-              class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none focus:border-indigo-400 font-mono"
-            >
-              <option v-for="r in adminStore.resellers" :key="r.id" :value="r.id">
-                [{{ r.id }}] {{ r.name }} (@{{ r.username }})
-              </option>
-            </select>
-            <button 
-              type="button" 
-              @click="loginAsSelectedReseller"
-              class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition shadow cursor-pointer whitespace-nowrap flex items-center gap-1"
-              title="Iniciar sesión directamente con este revendedor"
-            >
-              <span>🚀 Entrar</span>
-            </button>
-          </div>
-        </div>
+      <div v-if="loginError" class="p-3.5 bg-red-950/40 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
+        <span class="shrink-0 text-base">⚠️</span>
+        <span>{{ loginError }}</span>
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Usuario / Identificador</label>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Usuario o Identificador</label>
           <input 
             v-model="loginForm.username" 
             type="text" 
-            placeholder="ej. mi_usuario" 
+            placeholder="Ingresa tu usuario asignado" 
             required 
-            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-accent transition-all"
+            autocomplete="username"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-accent transition-all font-mono" 
           >
         </div>
 
@@ -1106,7 +952,8 @@ const shareGamingOnWhatsApp = (game) => {
             type="password" 
             placeholder="••••••••••••" 
             required 
-            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-accent transition-all"
+            autocomplete="current-password"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-accent transition-all" 
           >
         </div>
 
@@ -1123,32 +970,34 @@ const shareGamingOnWhatsApp = (game) => {
 
         <button 
           type="submit" 
-          class="w-full bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2 text-sm"
+          class="w-full bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-brand-accent/20 flex items-center justify-center gap-2 text-sm cursor-pointer" 
         >
           <span>Ingresar a Mi Panel</span>
           <span>→</span>
         </button>
 
-        <!-- Botón de Inicio Rápido con Huella / Biometría -->
-        <div v-if="hasEnrolledBiometrics || biometricsAvailable" class="pt-2">
-          <div class="relative flex py-2 items-center">
-            <div class="flex-grow border-t border-slate-800"></div>
-            <span class="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-bold tracking-wider">o acceso rápido</span>
-            <div class="flex-grow border-t border-slate-800"></div>
-          </div>
-
+        <!-- Botón de Inicio con Huella / Biometría (Sólo si el revendedor enroló previamente en su dispositivo) -->
+        <div v-if="hasEnrolledBiometrics" class="pt-2">
           <button 
             type="button" 
-            @click="handleBiometricLogin"
-            :disabled="isBiometricLoading"
-            class="w-full bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-emerald-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 text-emerald-300 border border-emerald-500/40 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-sm disabled:opacity-50"
+            @click="handleBiometricLogin" 
+            :disabled="isBiometricLoading" 
+            class="w-full bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-emerald-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 text-emerald-300 border border-emerald-500/40 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-sm disabled:opacity-50 cursor-pointer"
           >
             <span class="text-base">👆</span>
             <span v-if="isBiometricLoading">Verificando Huella / Biometría...</span>
-            <span v-else>Iniciar con Huella / Face ID / Windows Hello</span>
+            <span v-else>Iniciar con Huella / Face ID</span>
           </button>
         </div>
       </form>
+
+      <div class="pt-4 border-t border-slate-800/80 text-center space-y-1">
+        <p class="text-xs text-slate-400">¿Aún no eres distribuidor autorizado?</p>
+        <router-link to="/revendedores" class="text-xs text-brand-accent hover:underline font-bold inline-flex items-center gap-1">
+          <span>Postúlate para abrir tu cuenta oficial</span>
+          <span>→</span>
+        </router-link>
+      </div>
     </div>
   </div>
 

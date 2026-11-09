@@ -3231,15 +3231,9 @@ export const useResellerStore = defineStore('reseller', {
 
       let candidate = adminStore.resellers.find(findResellerByUser)
 
-      // Fallback amigable: si solo existe 1 revendedor registrado y se envió un intento general
-      if (!candidate && adminStore.resellers.length === 1 && (u.includes('distrib') || u.includes('revend') || u.includes('admin') || u.includes('panel'))) {
-        candidate = adminStore.resellers[0]
-      }
-
       if (!candidate) {
         return { 
-          error: `Usuario o identificador "${username}" no encontrado. Verifica las credenciales creadas en Administración o utiliza el selector rápido.`,
-          userNotFound: true
+          error: 'Usuario o contraseña incorrectos. Verifica tus credenciales otorgadas por Administración.'
         }
       }
 
@@ -3261,14 +3255,12 @@ export const useResellerStore = defineStore('reseller', {
 
       if (!isPassValid) {
         return { 
-          error: `Contraseña incorrecta para "${candidate.name}". Verifica mayúsculas y caracteres, o ingresa con la clave de Administrador.`,
-          passwordIncorrect: true,
-          candidateReseller: candidate
+          error: 'Usuario o contraseña incorrectos. Verifica tus credenciales otorgadas por Administración.'
         }
       }
 
       if (candidate.isActive === false) {
-        return { error: `Acceso denegado: La cuenta de "${candidate.name}" ha sido desactivada por Administración.` }
+        return { error: 'Acceso denegado: Esta cuenta de distribuidor ha sido desactivada por Administración.' }
       }
 
       this.isAuthenticated = true
