@@ -1946,21 +1946,29 @@ export const useAdminStore = defineStore('admin', {
 
     // Administrar Revendedores desde el Panel Proveedor
     addReseller(resellerData) {
-      const newId = `RES-${String(this.resellers.length + 1).padStart(2, '0')}`
-      const baseUsername = resellerData.username?.trim().toLowerCase() || `distribuidor${this.resellers.length + 1}`
+      // Prevención de colisión de IDs: calcular el número máximo existente + 1
+      const existingNums = this.resellers
+        .map(r => parseInt(r.id?.replace(/\D/g, '') || '0'))
+        .filter(n => !isNaN(n))
+      const nextNum = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1
+      const newId = `RES-${String(nextNum).padStart(2, '0')}`
+      
+      const safeName = resellerData.name?.trim() || `Distribuidor ${nextNum}`
+      const baseUsername = resellerData.username?.trim().toLowerCase() || `distribuidor${nextNum}`
       const basePassword = resellerData.password?.trim() || `Stream${Math.floor(1000 + Math.random() * 9000)}*`
+      const fallbackAlias = `${safeName.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DIST'}.PAGOS.MP`
       
       const newReseller = {
         id: newId,
-        name: resellerData.name?.trim(),
-        storeName: resellerData.storeName?.trim() || resellerData.name?.trim(),
+        name: safeName,
+        storeName: resellerData.storeName?.trim() || safeName,
         username: baseUsername,
         password: basePassword,
         isActive: resellerData.isActive !== false,
         contactNumber: resellerData.contactNumber?.trim() || '+54 9 11 0000-0000',
-        cbuAlias: resellerData.cbuAlias?.trim() || 'DISTRIBUIDOR.ALIAS.MP',
-        bankName: resellerData.bankName?.trim() || 'Banco / Billetera Virtual',
-        holderName: resellerData.holderName?.trim() || resellerData.name?.trim(),
+        cbuAlias: resellerData.cbuAlias?.trim() || fallbackAlias,
+        bankName: resellerData.bankName?.trim() || 'Mercado Pago / Billetera Virtual',
+        holderName: resellerData.holderName?.trim() || safeName,
         cuit: resellerData.cuit?.trim() || '20-00000000-0',
         balance: Number(resellerData.balance || 0),
         walletHistory: []
@@ -2574,6 +2582,16 @@ export const useAdminStore = defineStore('admin', {
       }
       this.resellerApplications.unshift(newApp)
       this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+
+      // Notificar al bot de Telegram en tiempo real
+      if (typeof window !== 'undefined' && window.fetch) {
+        fetch('/api/notify-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicant: newApp })
+        }).catch(err => console.warn('Aviso Telegram de nuevo postulante:', err))
+      }
+
       return { success: true, application: newApp }
     },
 
@@ -2592,6 +2610,7 @@ export const useAdminStore = defineStore('admin', {
       const baseUser = app.fullName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 14) || `dist_${nextNum}`
       const initialPassword = customData.password?.trim() || `StreamePro${Math.floor(1000 + Math.random() * 9000)}*`
       const username = customData.username?.trim().toLowerCase() || baseUser
+      const fallbackAlias = `${app.fullName.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DIST'}.PAGOS.MP`
 
       const newReseller = {
         id: newResellerId,
@@ -2601,10 +2620,10 @@ export const useAdminStore = defineStore('admin', {
         password: initialPassword,
         isActive: true,
         contactNumber: app.whatsapp,
-        cbuAlias: customData.cbuAlias?.trim() || '',
+        cbuAlias: customData.cbuAlias?.trim() || fallbackAlias,
         bankName: customData.bankName?.trim() || 'Mercado Pago / Banco',
         holderName: app.fullName,
-        cuit: customData.cuit?.trim() || '',
+        cuit: customData.cuit?.trim() || '20-00000000-0',
         balance: 0,
         walletHistory: []
       }

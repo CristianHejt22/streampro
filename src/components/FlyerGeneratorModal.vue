@@ -94,6 +94,8 @@ const filteredGamingProducts = computed(() => {
       matchesCat = Boolean(g.platform && g.platform.includes('PS5'))
     } else if (selectedGamingCat.value === 'PS4') {
       matchesCat = Boolean(g.platform && g.platform.includes('PS4'))
+    } else if (selectedGamingCat.value === 'PS3') {
+      matchesCat = Boolean(g.platform && g.platform.includes('PS3'))
     } else if (selectedGamingCat.value === 'Lanzamientos') {
       matchesCat = Boolean(g.badge && (g.badge.includes('LANZAMIENTO') || g.badge.includes('2026') || g.badge.includes('2025') || g.badge.includes('2024') || g.badge.includes('TOP') || g.badge.includes('MÁS VENDIDO') || g.badge.includes('FENÓMENO') || g.badge.includes('JUEGO DEL AÑO')))
     } else {
@@ -494,6 +496,8 @@ const syncGamingFlyer = () => {
     selectedGamingPlatform.value = 'PS5'
   } else if (g.platform === 'PS4') {
     selectedGamingPlatform.value = 'PS4'
+  } else if (g.platform === 'PS3') {
+    selectedGamingPlatform.value = 'PS3'
   } else if (g.platform.includes('Switch')) {
     selectedGamingPlatform.value = 'Nintendo Switch'
   } else if (g.platform.includes('Xbox')) {
@@ -520,7 +524,7 @@ const syncGamingFlyer = () => {
 
   if (plat.includes('PC') || plat.includes('Steam')) {
     customSubtitle.value = `🔑 Clave Digital Oficial · ${storeName}`
-    headlineBadge.value = '🔥 ACTIVACIÓN INMEDIATA & PERMANENTE'
+    headlineBadge.value = '🔥 ENTREGA 60/90 MIN & GARANTÍA OFICIAL'
     bullet1.value = 'Código original para canjear en tu cuenta de Steam'
   } else if (plat.includes('Switch')) {
     customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
@@ -618,8 +622,13 @@ watch(() => props.initialProduct, (prod) => {
     flyerProductType.value = 'gaming'
     if (prod.id || prod.gameId) selectedGamingId.value = prod.id || prod.gameId
     if (prod.licenseType) selectedGamingLicense.value = prod.licenseType
-    if (prod.platform && (prod.platform.includes('PS4') || prod.platform.includes('PS5'))) {
-      selectedGamingPlatform.value = prod.platform.includes('PS4') ? 'PS4' : 'PS5'
+    if (prod.platform) {
+      if (prod.platform.includes('PS3')) selectedGamingPlatform.value = 'PS3'
+      else if (prod.platform.includes('PS4')) selectedGamingPlatform.value = 'PS4'
+      else if (prod.platform.includes('PS5')) selectedGamingPlatform.value = 'PS5'
+      else if (prod.platform.includes('Switch')) selectedGamingPlatform.value = 'Nintendo Switch'
+      else if (prod.platform.includes('Xbox')) selectedGamingPlatform.value = prod.platform.includes('One') ? 'Xbox One' : 'Xbox Series X|S'
+      else if (prod.platform.includes('PC') || prod.platform.includes('Steam')) selectedGamingPlatform.value = 'PC (Steam)'
     }
     syncGamingFlyer()
   } else if (prod.itemType === 'package' || prod.services || prod.promoPrice) {

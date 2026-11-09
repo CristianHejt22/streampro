@@ -81,6 +81,34 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, result })
     }
 
+    // Notificación de nueva postulación de revendedor
+    if (body.applicant) {
+      const app = body.applicant
+      const cleanCustomerPhone = String(app.whatsapp || '').replace(/[^0-9]/g, '')
+      const waLink = cleanCustomerPhone ? `https://wa.me/${cleanCustomerPhone}` : null
+
+      const applicantMessage = 
+        `🤝 <b>¡NUEVA SOLICITUD DE REVENDEDOR EN STREAMEPRO!</b> 🚀\n\n` +
+        `📋 <b>N° Solicitud:</b> <code>${escapeHtml(app.id || 'APP')}</code>\n` +
+        `👤 <b>Postulante:</b> ${escapeHtml(app.fullName || 'Sin nombre')}\n` +
+        `📱 <b>WhatsApp:</b> ${waLink ? `<a href="${waLink}">${escapeHtml(app.whatsapp)}</a>` : escapeHtml(app.whatsapp || 'Sin WhatsApp')}\n` +
+        `✉️ <b>Email:</b> ${escapeHtml(app.email || 'No especificado')}\n` +
+        `📍 <b>Ciudad / Zona:</b> ${escapeHtml(app.city || 'No especificada')}\n` +
+        `🏪 <b>Nombre de Emprendimiento:</b> ${escapeHtml(app.storeName || 'A definir')}\n` +
+        `💼 <b>Experiencia:</b> ${escapeHtml(app.experience || 'No especificada')}\n` +
+        (app.notes ? `📝 <b>Notas:</b> <i>"${escapeHtml(app.notes)}"</i>\n` : '') +
+        `\n🔗 <b>Revisar y Aprobar en Panel:</b> https://streamepro.me/admin`
+
+      const telegramRes = await sendTelegramMessage(token, chatId, applicantMessage)
+      return res.status(200).json({ success: true, telegramRes })
+    }
+
+    // Mensaje de texto libre / alerta personalizada
+    if (body.customMessage) {
+      const telegramRes = await sendTelegramMessage(token, chatId, body.customMessage)
+      return res.status(200).json({ success: true, telegramRes })
+    }
+
     const ord = body.order
     if (!ord) {
       return res.status(400).json({ error: 'Faltan datos de la orden' })

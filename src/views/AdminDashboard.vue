@@ -318,11 +318,20 @@ const copyResellerCredentials = (reseller) => {
     `👤 *Usuario:* ${reseller.username}\n` +
     `🔒 *Contraseña:* ${reseller.password}\n` +
     `💼 *Billetera Inicial:* $${(reseller.balance || 0).toLocaleString()} ARS\n\n` +
-    `🌐 *Acceso al Portal:* ${origin}/distribuidor\n\n` +
+    `🌐 *Acceso al Portal:* ${origin}/distribuidor\n` +
+    `🔗 *Tu Enlace de Tienda Oficial:* ${origin}/?ref=${reseller.id}\n\n` +
     `¡Bienvenido al equipo de distribución oficial!`
 
   navigator.clipboard.writeText(text).then(() => {
     toast.add(`Credenciales de ${reseller.name} copiadas para WhatsApp`, 'success')
+  })
+}
+
+const copyResellerStoreLink = (reseller) => {
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
+  const url = `${origin}/?ref=${reseller.id}`
+  navigator.clipboard.writeText(url).then(() => {
+    toast.add(`🔗 Enlace de tienda copiado para ${reseller.name} (${reseller.id})`, 'success')
   })
 }
 
@@ -3489,6 +3498,13 @@ const deletePackageItem = (pkgId) => {
               title="Copiar credenciales oficiales y enlace para enviar por WhatsApp"
             >
               <span>📲 Copiar para WhatsApp</span>
+            </button>
+            <button 
+              @click="copyResellerStoreLink(res)" 
+              class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5"
+              title="Copiar enlace de tienda con referido de este distribuidor"
+            >
+              <span>🔗 Link Tienda</span>
             </button>
             <button 
               @click="openResellerAuthModal(res)" 

@@ -721,7 +721,7 @@ const applyRouteParams = () => {
       if (route.query.lic && (route.query.lic === 'primary' || route.query.lic === 'secondary')) {
         setGameLicense(foundGame.id, route.query.lic)
       }
-      if (route.query.plat && (route.query.plat === 'PS5' || route.query.plat === 'PS4')) {
+      if (route.query.plat && (route.query.plat === 'PS5' || route.query.plat === 'PS4' || route.query.plat === 'PS3')) {
         gamingPlatformFilter.value = route.query.plat
       }
       openGamingDetail(foundGame)
@@ -1888,15 +1888,15 @@ const submitOrder = async () => {
         
         <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-normal">
           {{ isPhysicalNavVisible 
-            ? 'Acceso garantizado a tus plataformas favoritas con PIN exclusivo y entrega inmediata + Más de ' + adminStore.physicalProducts.length + ' productos de tecnología, electrónica, bazar y herramientas con envíos a todo el país y confirmación por WhatsApp antes de transferir.'
-            : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega inmediata de 10 min a 1 hora garantizada.' }}
+            ? 'Acceso garantizado a tus plataformas favoritas con PIN exclusivo y entrega 60/90min + Más de ' + adminStore.physicalProducts.length + ' productos de tecnología, electrónica, bazar y herramientas con envíos a todo el país y confirmación por WhatsApp antes de transferir.'
+            : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega garantizada en 60/90min.' }}
         </p>
 
         <!-- Trust Metrics Grid -->
         <div class="mt-6 flex flex-wrap items-center gap-2.5 text-xs font-semibold">
           <div class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
             <span class="text-emerald-400 text-sm">⏱️</span>
-            <span class="text-slate-200">Entrega Digital: 10 min a 1h</span>
+            <span class="text-slate-200">Entrega Digital: 60/90 min</span>
           </div>
           <div v-if="isPhysicalNavVisible" class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
             <span class="text-amber-400 text-sm">🚚</span>
@@ -3001,7 +3001,7 @@ const submitOrder = async () => {
             <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
             <div>
               <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Individuales 4K</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con activación inmediata</p>
+              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega 60/90 min</p>
             </div>
           </div>
           <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Suscripciones →</span>
@@ -3452,7 +3452,7 @@ const submitOrder = async () => {
             <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
             <div>
               <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Digitales 4K</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega inmediata</p>
+              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega 60/90 min</p>
             </div>
           </div>
           <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Streaming →</span>

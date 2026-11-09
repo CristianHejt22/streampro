@@ -477,7 +477,7 @@ const showQrModal = ref(false)
 const shareStoreToWhatsApp = () => {
   const currentRes = adminStore.resellers.find(r => r.id === currentResellerId.value)
   const name = currentRes?.name || 'Distribuidor Oficial'
-  const text = `👋 ¡Hola! Te comparto nuestra tienda oficial de streaming de *${name}* 🎬🍿\n\n✅ Netflix, Max, Disney+, Spotify e IPTV al mejor precio garantizado\n✅ Cuentas 100% oficiales y entrega en 10 min a 1 hora con PIN propio (carga tu comprobante para agilizar)\n\n🛒 *Haz tu pedido directamente acá:*\n👉 ${uniqueAffiliateLink.value}\n\n¡Cualquier duda avísame para coordinar tu entrega!`
+  const text = `👋 ¡Hola! Te comparto nuestra tienda oficial de streaming de *${name}* 🎬🍿\n\n✅ Netflix, Max, Disney+, Spotify e IPTV al mejor precio garantizado\n✅ Cuentas 100% oficiales y entrega garantizada en 60/90 min con PIN propio (carga tu comprobante para agilizar)\n\n🛒 *Haz tu pedido directamente acá:*\n👉 ${uniqueAffiliateLink.value}\n\n¡Cualquier duda avísame para coordinar tu entrega!`
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
 }
 
@@ -829,6 +829,76 @@ const openProductInNewTab = (product) => {
   const link = getProductReferralUrl(product)
   window.open(link, '_blank')
 }
+
+// ==========================================
+// CATÁLOGO DE VIDEOJUEGOS PARA REVENDEDORES
+// ==========================================
+const resellerGamingSearch = ref('')
+const resellerGamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4' | 'PS3'
+const resellerGamingPage = ref(1)
+const resellerGamingItemsPerPage = ref(18)
+
+const filteredResellerGames = computed(() => {
+  const list = adminStore.processedGamingProducts || []
+  const q = resellerGamingSearch.value.toLowerCase().trim()
+  const plat = resellerGamingPlatformFilter.value
+
+  return list.filter(g => {
+    let matchesPlat = true
+    if (plat === 'PS5') matchesPlat = Boolean(g.platform && g.platform.includes('PS5'))
+    else if (plat === 'PS4') matchesPlat = Boolean(g.platform && g.platform.includes('PS4'))
+    else if (plat === 'PS3') matchesPlat = Boolean(g.platform && g.platform.includes('PS3'))
+
+    const matchesQ = !q || 
+      g.title?.toLowerCase().includes(q) || 
+      (g.platform && g.platform.toLowerCase().includes(q)) || 
+      (g.category && g.category.toLowerCase().includes(q))
+    return matchesPlat && matchesQ
+  })
+})
+
+const totalResellerGamingPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredResellerGames.value.length / resellerGamingItemsPerPage.value))
+})
+
+const paginatedResellerGames = computed(() => {
+  const start = (resellerGamingPage.value - 1) * resellerGamingItemsPerPage.value
+  return filteredResellerGames.value.slice(start, start + resellerGamingItemsPerPage.value)
+})
+
+watch([resellerGamingSearch, resellerGamingPlatformFilter], () => {
+  resellerGamingPage.value = 1
+})
+
+const getResellerGameProfit = (price) => {
+  return Math.max(1000, Math.round(Number(price || 0) * 0.10))
+}
+
+const copyGamingReferralLink = (game, licenseType = 'primary') => {
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
+  const url = `${origin}/?ref=${currentResellerId.value}&game=${game.id}&lic=${licenseType}`
+  navigator.clipboard.writeText(url).then(() => {
+    toast.add(`🔗 Enlace copiado: ${game.title} (${licenseType === 'primary' ? 'Primaria' : 'Secundaria'})`, 'success')
+  })
+}
+
+const shareGamingOnWhatsApp = (game) => {
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
+  const refLink = `${origin}/?ref=${currentResellerId.value}&game=${game.id}`
+  const myStore = resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Distribuidor Oficial'
+  
+  const text = 
+    `🎮 *¡${game.title.toUpperCase()} (${game.platform})!* 🔥\n\n` +
+    `Disponible con entrega digital garantizada en *${myStore}*:\n` +
+    (game.effectivePrimaryPrice ? `⭐️ *Cuenta Primaria:* $${game.effectivePrimaryPrice.toLocaleString()} ARS (Juegas con tu usuario personal)\n` : '') +
+    (game.effectiveSecondaryPrice ? `⚡️ *Cuenta Secundaria:* $${game.effectiveSecondaryPrice.toLocaleString()} ARS (Juegas con usuario provisto)\n` : '') +
+    `\n⏱️ *Entrega Digital:* 60/90 min con Garantía Oficial\n` +
+    `💳 *Medios de Pago:* Mercado Pago, Billeteras Virtuales y Transferencia Bancaria\n\n` +
+    `👉 *Pide tu juego online directamente aquí:*\n${refLink}`
+
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+  window.open(waUrl, '_blank')
+}
 </script>
 
 <template>
@@ -1011,6 +1081,13 @@ const openProductInNewTab = (product) => {
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
         Suite de Marketing & Flyers
+      </button>
+      <button 
+        @click="tab = 'gaming'" 
+        :class="['font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm', tab === 'gaming' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+      >
+        <span>🎮</span>
+        <span>Catálogo Videojuegos ({{ adminStore.processedGamingProducts?.length || 1160 }})</span>
       </button>
     </div>
 
@@ -2065,7 +2142,7 @@ const openProductInNewTab = (product) => {
     </div>
 
     <!-- Pestaña Marketing & Generador de Copy Pro -->
-    <div v-else class="space-y-8 animate-in fade-in duration-300">
+    <div v-else-if="tab === 'marketing'" class="space-y-8 animate-in fade-in duration-300">
       
       <!-- HERO MARKETING Y ENLACE DE TIENDA -->
       <div class="bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -2513,7 +2590,7 @@ const openProductInNewTab = (product) => {
             <div class="relative z-10 flex items-center justify-between w-full text-[9px] font-black uppercase tracking-wider opacity-90 border-t border-white/20 pt-2 text-slate-300">
               <span>🔒 PIN Provisto</span>
               <span>🛡️ Cero Caídas</span>
-              <span>⏱️ 10 min a 1 h</span>
+              <span>⏱️ 60/90 min</span>
             </div>
           </div>
 
@@ -2548,6 +2625,234 @@ const openProductInNewTab = (product) => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Pestaña Catálogo de Videojuegos (PS5 / PS4 / PS3) -->
+    <div v-else-if="tab === 'gaming'" class="space-y-8 animate-in fade-in duration-300">
+      
+      <!-- HERO VIDEOJUEGOS Y RENTABILIDAD -->
+      <div class="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/60 p-6 rounded-3xl border border-indigo-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-0.5 rounded-full">
+              🎮 Catálogo Oficial Digital
+            </span>
+            <span class="text-xs font-mono text-slate-400">Distribuidor: {{ currentResellerId }}</span>
+          </div>
+          <h3 class="text-2xl font-black text-white mt-1">Videojuegos Digitales PS5, PS4 y PS3</h3>
+          <p class="text-xs text-slate-300 mt-1">
+            Ganas como mínimo el <strong>10% de comisión directa</strong> por cada venta referida. Copia tu enlace con tu código <strong>{{ currentResellerId }}</strong> o crea flyers promocionales en 1 clic.
+          </p>
+        </div>
+        
+        <div class="flex flex-wrap gap-2">
+          <button 
+            @click="tab = 'marketing'" 
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🎨 Suite de Flyers</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- BARRA DE BÚSQUEDA Y FILTRO DE CONSOLAS -->
+      <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+        <!-- Input de búsqueda -->
+        <div class="relative flex-1">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">🔍</span>
+          <input 
+            v-model="resellerGamingSearch" 
+            type="text" 
+            placeholder="Buscar por título (ej: GTA, FIFA, Resident Evil, Gran Turismo...)" 
+            class="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+          >
+        </div>
+
+        <!-- Filtro por plataforma -->
+        <div class="flex gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
+          <button 
+            v-for="plat in ['ALL', 'PS5', 'PS4', 'PS3']" 
+            :key="plat"
+            @click="resellerGamingPlatformFilter = plat"
+            :class="[
+              'px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer',
+              resellerGamingPlatformFilter === plat ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white'
+            ]"
+          >
+            {{ plat === 'ALL' ? 'Todas las Consolas' : plat }}
+          </button>
+        </div>
+      </div>
+
+      <!-- CONTADOR Y PAGINACIÓN ARRIBA -->
+      <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+        <span>Mostrando <strong>{{ filteredResellerGames.length }}</strong> títulos disponibles</span>
+        <div class="flex items-center gap-2">
+          <span>Página {{ resellerGamingPage }} de {{ totalResellerGamingPages }}</span>
+          <button 
+            :disabled="resellerGamingPage <= 1"
+            @click="resellerGamingPage--"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-white cursor-pointer"
+          >
+            ◀
+          </button>
+          <button 
+            :disabled="resellerGamingPage >= totalResellerGamingPages"
+            @click="resellerGamingPage++"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-white cursor-pointer"
+          >
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- GRID DE VIDEOJUEGOS -->
+      <div v-if="paginatedResellerGames.length === 0" class="text-center py-16 bg-slate-950/60 rounded-2xl border border-slate-800/80 text-slate-500">
+        <span class="text-4xl block mb-2">🎮</span>
+        <p class="font-bold">No se encontraron juegos con los filtros seleccionados.</p>
+        <button @click="resellerGamingSearch = ''; resellerGamingPlatformFilter = 'ALL'" class="mt-3 text-xs text-indigo-400 underline cursor-pointer">Restablecer filtros</button>
+      </div>
+
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div 
+          v-for="game in paginatedResellerGames" 
+          :key="game.id" 
+          class="bg-[#020617] rounded-2xl border border-slate-800 overflow-hidden flex flex-col justify-between hover:border-indigo-500/40 transition-all shadow-xl group"
+        >
+          <div>
+            <!-- Portada y Badges -->
+            <div class="relative aspect-[16/9] w-full overflow-hidden bg-slate-950">
+              <img 
+                :src="game.image" 
+                :alt="game.title" 
+                loading="lazy"
+                decoding="async"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent"></div>
+              
+              <div class="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-indigo-600 text-white shadow">
+                  {{ game.platform }}
+                </span>
+                <span v-if="game.badge" class="text-[10px] font-black uppercase px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 shadow">
+                  {{ game.badge }}
+                </span>
+              </div>
+
+              <div class="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[10px]">
+                <span class="text-slate-300 font-mono bg-slate-950/80 px-2 py-0.5 rounded border border-white/10 backdrop-blur">
+                  ⏱️ Entrega: 60/90 min
+                </span>
+                <span class="text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 backdrop-blur">
+                  ✓ Garantía Oficial
+                </span>
+              </div>
+            </div>
+
+            <!-- Título y categoría -->
+            <div class="p-4 space-y-3">
+              <div>
+                <h4 class="font-black text-white text-base leading-snug line-clamp-1 group-hover:text-indigo-300 transition-colors" :title="game.title">
+                  {{ game.title }}
+                </h4>
+                <span class="text-[11px] text-slate-400 block mt-0.5">
+                  {{ game.category || 'Videojuegos' }} · ID: <code>{{ game.id }}</code>
+                </span>
+              </div>
+
+              <!-- Desglose de Precios y Ganancia para el Revendedor -->
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <!-- Primaria -->
+                <div v-if="game.effectivePrimaryPrice" class="flex justify-between items-center text-xs">
+                  <div>
+                    <span class="text-white font-bold block text-[11px]">⭐️ Cuenta Primaria</span>
+                    <span class="text-[10px] text-slate-500 font-mono">PVP: ${{ game.effectivePrimaryPrice.toLocaleString() }}</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] text-slate-400 block">Tu Ganancia</span>
+                    <span class="text-emerald-400 font-black font-mono text-xs">
+                      +${{ getResellerGameProfit(game.effectivePrimaryPrice).toLocaleString() }} ARS
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Secundaria -->
+                <div v-if="game.effectiveSecondaryPrice" class="flex justify-between items-center text-xs pt-1.5 border-t border-slate-800/80">
+                  <div>
+                    <span class="text-white font-bold block text-[11px]">⚡️ Cuenta Secundaria</span>
+                    <span class="text-[10px] text-slate-500 font-mono">PVP: ${{ game.effectiveSecondaryPrice.toLocaleString() }}</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] text-slate-400 block">Tu Ganancia</span>
+                    <span class="text-emerald-400 font-black font-mono text-xs">
+                      +${{ getResellerGameProfit(game.effectiveSecondaryPrice).toLocaleString() }} ARS
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones Rápidas -->
+          <div class="p-4 pt-0 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                @click="copyGamingReferralLink(game, 'primary')" 
+                class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                title="Copiar enlace directo con tu código de referido para este juego"
+              >
+                <span>🔗 Link Primaria</span>
+              </button>
+              <button 
+                v-if="game.effectiveSecondaryPrice"
+                @click="copyGamingReferralLink(game, 'secondary')" 
+                class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                title="Copiar enlace para cuenta secundaria"
+              >
+                <span>⚡️ Link Sec.</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                @click="openFlyerForProduct(game)" 
+                class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>🎨 Crear Flyer</span>
+              </button>
+              <button 
+                @click="shareGamingOnWhatsApp(game)" 
+                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>📲 WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGINACIÓN INFERIOR -->
+      <div v-if="totalResellerGamingPages > 1" class="flex justify-center items-center gap-2 pt-4 border-t border-slate-800">
+        <button 
+          :disabled="resellerGamingPage <= 1"
+          @click="resellerGamingPage--"
+          class="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+        >
+          ◀ Anterior
+        </button>
+        <span class="text-xs text-slate-400 font-mono px-3">
+          Página {{ resellerGamingPage }} de {{ totalResellerGamingPages }}
+        </span>
+        <button 
+          :disabled="resellerGamingPage >= totalResellerGamingPages"
+          @click="resellerGamingPage++"
+          class="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+        >
+          Siguiente ▶
+        </button>
+      </div>
+
     </div>
 
     <!-- MODAL GESTIÓN Y AUDITORÍA DE BILLETERA (Historial de Movimientos y Cargas) -->
