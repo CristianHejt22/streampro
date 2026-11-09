@@ -560,7 +560,13 @@ export const useAdminStore = defineStore('admin', {
     approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
     directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
-    processedGamingProducts: (state) => (state.gamingProducts || []).map(p => processGamingProduct(p)),
+    processedGamingProducts: (state) => {
+      const list = state.gamingProducts || []
+      if (list.length > 0 && list[0].visibleProviderKey) {
+        return list
+      }
+      return list.map(p => processGamingProduct(p))
+    },
     gamingOrders: (state) => (state.orders || []).filter(o => o.orderType === 'gaming' || o.category === 'Videojuegos Digitales'),
 
     // Métricas Dinámicas de Stock por Plataforma y Pantallas

@@ -1,12 +1,13 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { testFirebaseConnection } from '../services/firebase'
-import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
-import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
+const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
+const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
+
 import { 
   isBiometricsAvailable, 
   registerBiometricCredential, 

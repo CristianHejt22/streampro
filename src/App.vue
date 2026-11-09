@@ -1,12 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useAdminStore, useResellerStore } from './store/admin'
 import { useCartStore } from './store/cart'
 import { getRememberedSession } from './services/biometrics'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
-import UserProfileModal from './components/UserProfileModal.vue'
+
+const UserProfileModal = defineAsyncComponent(() => import('./components/UserProfileModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -132,7 +133,7 @@ const handleOpenCart = () => {
           <!-- 2. Badge de Garantía (Visible en Pantallas Grandes) -->
           <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Garantía Oficial • Entrega: 10 min a 1 hora</span>
+            <span>Garantía Oficial • Entrega: 60/90 min</span>
           </div>
 
           <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
@@ -170,10 +171,10 @@ const handleOpenCart = () => {
             <RouterLink 
               to="/juegos" 
               class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎮</span>
-              <span>Juegos PS4/PS5</span>
+              <span>Juegos PS5/PS4/PS3</span>
               <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
                 {{ adminStore.gamingProducts?.length || 12 }}
               </span>
@@ -318,10 +319,10 @@ const handleOpenCart = () => {
           <RouterLink 
             to="/juegos" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎮</span>
-            <span>Juegos PS4/PS5</span>
+            <span>Juegos PS5/PS4/PS3</span>
             <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
               {{ adminStore.gamingProducts?.length || 12 }}
             </span>

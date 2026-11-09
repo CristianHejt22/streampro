@@ -128,6 +128,30 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    target: 'esnext',
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('gamingProducts.json')) {
+            return 'catalog-gaming'
+          }
+          if (id.includes('physicalProducts.json')) {
+            return 'catalog-physical'
+          }
+          if (id.includes('node_modules')) {
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
+              return 'vendor-vue'
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase'
+            }
+          }
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

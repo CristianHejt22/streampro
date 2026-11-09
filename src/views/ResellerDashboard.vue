@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import html2canvas from 'html2canvas'
-import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
-import ReceiptViewerModal from '../components/ReceiptViewerModal.vue'
+const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
+const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { 
   isBiometricsAvailable, 

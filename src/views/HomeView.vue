@@ -1,13 +1,14 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAdminStore, PLATFORM_PLANS } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { sendLocalNotification } from '../services/notifications'
 import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
-import FlyerGeneratorModal from '../components/FlyerGeneratorModal.vue'
 import { getRememberedSession } from '../services/biometrics'
+
+const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -310,6 +311,54 @@ const filteredGamingProducts = computed(() => {
     const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
     return matchesCat && matchesSubcat && matchesPlatform && matchesQ
   })
+})
+
+// Paginación y alto rendimiento del catálogo Gaming (1,160+ títulos)
+const gamingCurrentPage = ref(1)
+const gamingItemsPerPage = ref(24)
+
+const totalGamingPages = computed(() => {
+  if (gamingItemsPerPage.value === 'all') return 1
+  const perPage = Number(gamingItemsPerPage.value) || 24
+  return Math.max(1, Math.ceil(filteredGamingProducts.value.length / perPage))
+})
+
+const paginatedGamingProducts = computed(() => {
+  if (gamingItemsPerPage.value === 'all') {
+    return filteredGamingProducts.value
+  }
+  const perPage = Number(gamingItemsPerPage.value) || 24
+  const start = (gamingCurrentPage.value - 1) * perPage
+  return filteredGamingProducts.value.slice(start, start + perPage)
+})
+
+const visibleGamingPages = computed(() => {
+  const total = totalGamingPages.value
+  const current = gamingCurrentPage.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages = []
+  pages.push(1)
+  if (current > 3) pages.push('...')
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  if (current < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
+})
+
+const changeGamingPage = (page) => {
+  if (page < 1 || page > totalGamingPages.value) return
+  gamingCurrentPage.value = page
+  scrollToSection('videojuegos-digitales')
+}
+
+watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingItemsPerPage], () => {
+  gamingCurrentPage.value = 1
 })
 
 const openGamingDetail = (game) => {
@@ -1005,7 +1054,7 @@ const activePhysicalFiltersCount = computed(() => {
   return count
 })
 
-const scrollToSection = (sectionId) => {
+function scrollToSection(sectionId) {
   if (typeof document !== 'undefined') {
     const el = document.getElementById(sectionId)
     if (el) {
@@ -1016,20 +1065,25 @@ const scrollToSection = (sectionId) => {
 
 const selectStoreSection = (sec, targetAnchor = null) => {
   storeSection.value = sec
+  const query = { ...route.query }
+  delete query.sec
+
   if (sec === 'all' || sec === 'home') {
-    router.push({ path: '/' })
+    router.push({ path: '/', query }).catch(() => {})
   } else if (sec === 'digital') {
-    router.push({ path: '/suscripciones' })
+    router.push({ path: '/suscripciones', query }).catch(() => {})
+  } else if (sec === 'gaming') {
+    router.push({ path: '/juegos', query }).catch(() => {})
   } else if (sec === 'packages') {
-    router.push({ path: '/combos' })
+    router.push({ path: '/combos', query }).catch(() => {})
   } else if (sec === 'physical') {
-    router.push({ path: '/tienda' })
+    router.push({ path: '/tienda', query }).catch(() => {})
   }
 
   if (targetAnchor && typeof document !== 'undefined') {
     setTimeout(() => {
       scrollToSection(targetAnchor)
-    }, 120)
+    }, 50)
   }
 }
 
@@ -3113,7 +3167,7 @@ const submitOrder = async () => {
       <!-- Cuadrícula de Juegos -->
       <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         <div 
-          v-for="game in filteredGamingProducts" 
+          v-for="game in paginatedGamingProducts" 
           :key="game.id"
           class="bg-slate-900/70 border border-white/[0.08] rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 shadow-xl flex flex-col justify-between group"
         >
@@ -3123,6 +3177,8 @@ const submitOrder = async () => {
               <img 
                 :src="game.image" 
                 :alt="game.title" 
+                loading="lazy"
+                decoding="async"
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
                 @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
               >
@@ -3286,6 +3342,88 @@ const submitOrder = async () => {
                 <span>🎨 Flyer</span>
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paginación Inferior del Catálogo Gaming -->
+      <div v-if="filteredGamingProducts.length > 0" class="pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Mostrando</span>
+          <span class="font-bold text-white font-mono">{{ ((gamingCurrentPage - 1) * (gamingItemsPerPage === 'all' ? filteredGamingProducts.length : gamingItemsPerPage)) + 1 }} - {{ Math.min(gamingCurrentPage * (gamingItemsPerPage === 'all' ? filteredGamingProducts.length : gamingItemsPerPage), filteredGamingProducts.length) }}</span>
+          <span>de</span>
+          <span class="font-bold text-indigo-400 font-mono">{{ filteredGamingProducts.length }}</span>
+          <span>videojuegos</span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Por pág:</span>
+            <select v-model="gamingItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none cursor-pointer">
+              <option :value="16">16</option>
+              <option :value="24">24</option>
+              <option :value="48">48</option>
+              <option :value="96">96</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+
+          <div v-if="totalGamingPages > 1" class="flex items-center gap-1">
+            <button 
+              type="button"
+              @click="changeGamingPage(1)" 
+              :disabled="gamingCurrentPage <= 1"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Primera página"
+            >
+              ««
+            </button>
+            <button 
+              type="button"
+              @click="changeGamingPage(gamingCurrentPage - 1)" 
+              :disabled="gamingCurrentPage <= 1"
+              class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página anterior"
+            >
+              ‹ Anterior
+            </button>
+
+            <!-- Números de Página con Elipsis -->
+            <template v-for="(p, idx) in visibleGamingPages" :key="idx">
+              <span v-if="p === '...'" class="px-2 py-1 text-slate-500 font-mono">...</span>
+              <button 
+                v-else
+                type="button"
+                @click="changeGamingPage(p)"
+                :class="[
+                  'px-3.5 py-1.5 rounded-lg font-bold text-xs font-mono transition-all cursor-pointer',
+                  gamingCurrentPage === p 
+                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/25 font-black ring-2 ring-indigo-400' 
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                ]"
+              >
+                {{ p }}
+              </button>
+            </template>
+
+            <button 
+              type="button"
+              @click="changeGamingPage(gamingCurrentPage + 1)" 
+              :disabled="gamingCurrentPage >= totalGamingPages"
+              class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Página siguiente"
+            >
+              Siguiente ›
+            </button>
+            <button 
+              type="button"
+              @click="changeGamingPage(totalGamingPages)" 
+              :disabled="gamingCurrentPage >= totalGamingPages"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 text-slate-200 font-bold cursor-pointer transition-colors"
+              title="Última página"
+            >
+              »»
+            </button>
           </div>
         </div>
       </div>
