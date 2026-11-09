@@ -1343,6 +1343,57 @@ const firebaseForm = ref({
 const isTestingTelegram = ref(false)
 const isTestingFirebase = ref(false)
 
+// CONFIGURACIÓN MERCADO PAGO CHECKOUT PRO
+const mercadoPagoForm = ref({
+  accessToken: adminStore.mercadoPagoConfig?.accessToken || '',
+  publicKey: adminStore.mercadoPagoConfig?.publicKey || '',
+  enabled: adminStore.mercadoPagoConfig?.enabled !== false
+})
+const showMpToken = ref(false)
+const isTestingMercadoPago = ref(false)
+
+const saveMercadoPagoSettings = () => {
+  adminStore.updateMercadoPagoConfig(mercadoPagoForm.value)
+  toast.add('¡Configuración de Mercado Pago guardada correctamente!', 'success')
+}
+
+const testMercadoPagoConnection = async () => {
+  const token = (mercadoPagoForm.value.accessToken || '').trim()
+  if (!token) {
+    toast.add('Ingresa tu Access Token de Mercado Pago antes de probar', 'error')
+    return
+  }
+  isTestingMercadoPago.value = true
+  try {
+    const res = await fetch('/api/create-preference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customAccessToken: token,
+        orderId: `TEST-${Date.now().toString().slice(-4)}`,
+        items: [
+          {
+            id: 'test-1',
+            title: 'Verificación de Integración Mercado Pago',
+            quantity: 1,
+            unitPrice: 100
+          }
+        ]
+      })
+    })
+    const data = await res.json()
+    if (data.success && data.initPoint) {
+      toast.add('¡Conexión exitosa con Mercado Pago! La pasarela está lista para cobrar.', 'success')
+    } else {
+      toast.add(`Error de Mercado Pago: ${data.error || 'Token inválido o permisos insuficientes'}`, 'error')
+    }
+  } catch (e) {
+    toast.add(`No se pudo conectar con el endpoint de Mercado Pago: ${e.message}`, 'error')
+  } finally {
+    isTestingMercadoPago.value = false
+  }
+}
+
 const saveTelegramSettings = () => {
   adminStore.updateTelegramConfig(telegramForm.value)
   toast.add('¡Configuración de Telegram guardada!', 'success')
@@ -4021,6 +4072,13 @@ const deletePackageItem = (pkgId) => {
             <span>☁️ Alertas Telegram & Firebase</span>
             <span v-if="adminStore.telegramConfig?.botToken || adminStore.firebaseConfig?.projectId" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
+          <button 
+            @click="bankSubTab = 'mercadopago'"
+            :class="['px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer', bankSubTab === 'mercadopago' ? 'bg-sky-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+          >
+            <span>💳 Mercado Pago</span>
+            <span v-if="(mercadoPagoForm.accessToken || '').trim()" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
         </div>
       </div>
 
@@ -4480,6 +4538,111 @@ const deletePackageItem = (pkgId) => {
             <p class="text-slate-400 text-[11px]">
               También cuentas con el microservicio IMAP en <code class="text-amber-300 font-sans">scripts/bank-email-watcher.js</code> si prefieres correrlo en tu propio servidor VPS o Node.js.
             </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-TAB 5: MERCADO PAGO CHECKOUT PRO -->
+      <div v-if="bankSubTab === 'mercadopago'" class="space-y-6">
+        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-5">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xl">💳</span>
+                <h3 class="text-lg font-black text-white">Mercado Pago Checkout Pro (Pasarela Oficial)</h3>
+                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', (mercadoPagoForm.accessToken || '').trim() ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400']">
+                  {{ (mercadoPagoForm.accessToken || '').trim() ? '🟢 Conectado y Listo para Cobrar' : '⚪ Pendiente de Token' }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                Tus clientes podrán pagar al instante con Saldo de Mercado Pago, Tarjetas de Débito, Crédito en cuotas o Dinero en cuenta. Las órdenes se aprueban automáticamente mediante Webhook sin necesidad de subir comprobante manual.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                type="button"
+                @click="testMercadoPagoConnection" 
+                :disabled="isTestingMercadoPago"
+                class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <span>{{ isTestingMercadoPago ? '⏳ Verificando...' : '⚡ Probar Conexión' }}</span>
+              </button>
+              <button 
+                type="button"
+                @click="saveMercadoPagoSettings" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow cursor-pointer"
+              >
+                Guardar Credenciales
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="block text-xs font-bold uppercase text-slate-300">Mercado Pago Access Token *</label>
+                <button 
+                  type="button" 
+                  @click="showMpToken = !showMpToken" 
+                  class="text-[10px] text-sky-400 hover:underline cursor-pointer"
+                >
+                  {{ showMpToken ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+              <input 
+                v-model="mercadoPagoForm.accessToken" 
+                :type="showMpToken ? 'text' : 'password'"
+                placeholder="APP_USR-0000000000000000-000000-..." 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono outline-none focus:border-sky-400"
+              />
+              <span class="text-[10px] text-slate-500">Credencial de producción o pruebas obtenida del panel Developers de Mercado Pago.</span>
+            </div>
+
+            <div class="space-y-1">
+              <label class="block text-xs font-bold uppercase text-slate-300">Mercado Pago Public Key (Opcional)</label>
+              <input 
+                v-model="mercadoPagoForm.publicKey" 
+                type="text" 
+                placeholder="APP_USR-00000000-0000-0000-..." 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white font-mono outline-none focus:border-sky-400"
+              />
+              <span class="text-[10px] text-slate-500">Clave pública para integraciones en el navegador o Bricks.</span>
+            </div>
+          </div>
+
+          <!-- Switch para activar o pausar Mercado Pago -->
+          <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-bold text-white block">Estado de la Pasarela en Tienda</span>
+              <p class="text-[11px] text-slate-400">Si está habilitado, los clientes verán el botón de Mercado Pago en la pasarela de compra.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="mercadoPagoForm.enabled" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+
+          <!-- Webhook y retorno oficial -->
+          <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-800 text-xs space-y-2">
+            <span class="font-bold text-sky-400 block">⚡ Webhook de Aprobación Inmediata:</span>
+            <p class="text-slate-300 text-[11px]">
+              La URL de notificaciones automáticas ya está vinculada en las preferencias creadas:
+            </p>
+            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between text-[11px] font-mono text-emerald-400">
+              <span>https://streamepro.me/api/mp-webhook</span>
+              <span class="text-slate-500 text-[10px]">Auto-verificación & Alerta a Telegram</span>
+            </div>
+          </div>
+
+          <!-- Guía rápida de obtención de credenciales -->
+          <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+            <span class="font-bold text-sky-400 block">📖 Cómo obtener tu Access Token de Mercado Pago en 1 minuto:</span>
+            <ol class="list-decimal list-inside space-y-1.5 text-slate-300 text-[11px] leading-relaxed">
+              <li>Inicia sesión en tu cuenta de Mercado Pago y abre <a href="https://www.mercadopago.com.ar/developers/panel" target="_blank" class="text-brand-accent underline">mercadopago.com.ar/developers/panel</a>.</li>
+              <li>En el menú lateral haz clic en <strong>"Tus integraciones"</strong> y selecciona tu aplicación (o haz clic en <em>"Crear aplicación"</em> si aún no tienes una, seleccionando <em>Checkout Pro</em>).</li>
+              <li>Ve a la pestaña <strong>"Credenciales de producción"</strong> (o "Credenciales de prueba" si deseas testear primero).</li>
+              <li>Copia el <strong>Access token</strong> (comienza con <code class="text-amber-300 font-mono">APP_USR-...</code> o <code class="text-amber-300 font-mono">TEST-...</code>) y pégalo arriba. ¡Haz clic en "Guardar Credenciales" y tu tienda empezará a cobrar al instante!</li>
+            </ol>
           </div>
         </div>
       </div>

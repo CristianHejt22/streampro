@@ -342,6 +342,17 @@ export const useAdminStore = defineStore('admin', {
         return conf
       })(),
 
+      // Configuración de Pasarela Mercado Pago Checkout Pro
+      mercadoPagoConfig: (() => {
+        const conf = loadDb(DB_KEYS.MERCADOPAGO_CONFIG, {
+          accessToken: '',
+          publicKey: '',
+          enabled: true
+        })
+        if (conf.enabled === undefined) conf.enabled = true
+        return conf
+      })(),
+
       // Configuración de Sincronización en la Nube con Firebase Firestore
       firebaseConfig: (() => {
         const conf = loadDb(DB_KEYS.FIREBASE_CONFIG, {
@@ -606,6 +617,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(key, this[key])
       } else if (key === DB_KEYS.TELEGRAM_CONFIG) {
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
+      } else if (key === DB_KEYS.MERCADOPAGO_CONFIG) {
+        saveDb(DB_KEYS.MERCADOPAGO_CONFIG, this.mercadoPagoConfig)
       } else if (key === DB_KEYS.FIREBASE_CONFIG) {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
@@ -634,6 +647,7 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
         saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
+        saveDb(DB_KEYS.MERCADOPAGO_CONFIG, this.mercadoPagoConfig)
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
@@ -651,6 +665,15 @@ export const useAdminStore = defineStore('admin', {
       if (chatId !== undefined) this.telegramConfig.chatId = chatId.trim()
       if (enabled !== undefined) this.telegramConfig.enabled = Boolean(enabled)
       this.persist(DB_KEYS.TELEGRAM_CONFIG)
+      return { success: true }
+    },
+
+    // Actualización de credenciales y estado de Mercado Pago Checkout Pro
+    updateMercadoPagoConfig({ accessToken, publicKey, enabled }) {
+      if (accessToken !== undefined) this.mercadoPagoConfig.accessToken = accessToken.trim()
+      if (publicKey !== undefined) this.mercadoPagoConfig.publicKey = publicKey.trim()
+      if (enabled !== undefined) this.mercadoPagoConfig.enabled = Boolean(enabled)
+      this.persist(DB_KEYS.MERCADOPAGO_CONFIG)
       return { success: true }
     },
 

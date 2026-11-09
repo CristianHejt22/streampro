@@ -378,6 +378,7 @@ watch(showCartDrawer, (isOpen) => {
 const showCheckoutModal = ref(false)
 const showOrderSuccessModal = ref(false)
 const lastPlacedOrder = ref(null)
+const isProcessingMpPayment = ref(false)
 
 const getInitialClientForm = () => {
   let saved = null
@@ -390,10 +391,11 @@ const getInitialClientForm = () => {
     clientNumber: saved?.clientNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: saved?.name || '',
     whatsapp: saved?.phone || '',
+    email: saved?.email || '',
     pin: saved?.pin || '',
     shippingAddress: saved?.address || '',
     selectedResellerId: 'DIRECT',
-    paymentMethod: 'Transferencia Bancaria / CBU',
+    paymentMethod: 'mercadopago', // Por defecto Mercado Pago (aprobación automática)
     transferVoucher: '',
     isSharedUrl: false
   }
@@ -417,6 +419,7 @@ const handleLogoutProfile = () => {
   } catch {}
   clientForm.value.fullName = ''
   clientForm.value.whatsapp = ''
+  clientForm.value.email = ''
   clientForm.value.pin = ''
   clientForm.value.shippingAddress = ''
   clientForm.value.clientNumber = `CLI-${Math.floor(1000 + Math.random() * 9000)}`
@@ -466,6 +469,7 @@ const handleQuickLogin = () => {
     clientForm.value.fullName = user.name
     clientForm.value.whatsapp = user.phone
     clientForm.value.clientNumber = user.clientNumber || clientForm.value.clientNumber
+    if (user.email) clientForm.value.email = user.email
     if (user.pin) clientForm.value.pin = user.pin
     if (user.address) clientForm.value.shippingAddress = user.address
 
@@ -474,6 +478,7 @@ const handleQuickLogin = () => {
         clientNumber: clientForm.value.clientNumber,
         name: user.name,
         phone: user.phone,
+        email: clientForm.value.email || user.email || '',
         pin: clientForm.value.pin,
         address: clientForm.value.shippingAddress
       }))
@@ -673,6 +678,35 @@ const applyRouteParams = () => {
       openGamingDetail(foundGame)
       toast.add(`🎮 ¡Bienvenido! Mostrando: ${foundGame.title}`, 'info')
     }
+  }
+
+  // Detección de retorno desde Mercado Pago (?mp_status=approved&order_id=CLI-...)
+  if (route.query.mp_status) {
+    const mpStatus = String(route.query.mp_status).toLowerCase()
+    const orderId = route.query.order_id || route.query.external_reference || ''
+
+    if (mpStatus === 'approved') {
+      toast.add(`🎉 ¡Pago Aprobado por Mercado Pago! Tu pedido #${orderId} está en preparación y entrega (60/90 min).`, 'success')
+      sendLocalNotification(`🎉 Pago Aprobado #${orderId}`, {
+        body: `Tu pago por Mercado Pago fue acreditado con éxito. Tiempo de entrega: 60 a 90 min.`,
+        icon: '/pwa-192x192.png'
+      })
+    } else if (mpStatus === 'pending') {
+      toast.add(`⏳ Tu pago en Mercado Pago para el pedido #${orderId} está pendiente de acreditación.`, 'info')
+    } else if (mpStatus === 'failure') {
+      toast.add(`⚠️ El pago con Mercado Pago para el pedido #${orderId} no se completó o fue cancelado. Puedes reintentar cuando desees.`, 'error')
+    }
+
+    // Limpiar parámetros de Mercado Pago de la URL para evitar duplicar alertas
+    const cleanQuery = { ...route.query }
+    const mpParamsToRemove = [
+      'mp_status', 'order_id', 'collection_id', 'collection_status',
+      'payment_id', 'status', 'external_reference', 'payment_type',
+      'merchant_order_id', 'preference_id', 'site_id', 'processing_mode',
+      'merchant_account_id'
+    ]
+    mpParamsToRemove.forEach(p => delete cleanQuery[p])
+    router.replace({ path: route.path, query: cleanQuery }).catch(() => {})
   }
 }
 
@@ -1541,7 +1575,69 @@ const submitOrder = async () => {
     })
   }
 
-  // 4. Disparar y esperar notificación a Telegram
+  // 4. Si el medio de pago seleccionado es Mercado Pago: Crear preferencia y redirigir
+  if (clientForm.value.paymentMethod === 'mercadopago') {
+    isProcessingMpPayment.value = true
+    try {
+      const res = await fetch('/api/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cartStore.items.map((item, idx) => ({
+            id: String(item.id || item.productKey || `ITEM-${idx + 1}`),
+            title: String(item.title || item.baseName || item.name || item.planLabel || 'Servicio Digital StreamePro'),
+            description: String(item.platform ? `${item.platform} - ${item.planLabel || item.licenseLabel || 'Licencia'}` : 'Servicio Digital StreamePro'),
+            quantity: item.quantity || 1,
+            price: Math.round(Number(item.price || item.clientPrice || 0)),
+            image: item.image || ''
+          })),
+          orderId: prevNum,
+          payerName: clientForm.value.fullName,
+          payerEmail: clientForm.value.email || '',
+          payerPhone: clientForm.value.whatsapp,
+          origin: window.location.origin,
+          customAccessToken: (adminStore.mercadoPagoConfig?.accessToken || '').trim()
+        })
+      })
+
+      const mpData = await res.json()
+      if (!res.ok || !mpData.success || !mpData.initPoint) {
+        throw new Error(mpData.error || 'No se pudo generar el link de pago seguro de Mercado Pago.')
+      }
+
+      // Notificar a Telegram que se inició el pago en MP
+      try {
+        await fetch('/api/notify-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: {
+              ...orderSnapshot,
+              paymentMethod: 'Mercado Pago (Checkout Pro - En Proceso)',
+              pin: clientForm.value.pin
+            },
+            telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
+            telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
+          })
+        })
+      } catch (tgErr) {
+        console.warn('Telegram notify error:', tgErr)
+      }
+
+      cartStore.clearCart()
+      showCheckoutModal.value = false
+      toast.add('⚡ Redirigiendo a la pasarela oficial de Mercado Pago...', 'info')
+      window.location.href = mpData.initPoint
+      return
+    } catch (mpErr) {
+      console.error('Error al iniciar Mercado Pago:', mpErr)
+      isProcessingMpPayment.value = false
+      toast.add(mpErr.message || 'Error al conectar con Mercado Pago. Puedes pagar por Transferencia Bancaria.', 'error')
+      return
+    }
+  }
+
+  // 5. Disparar y esperar notificación a Telegram (Transferencia Bancaria manual)
   try {
     await fetch('/api/notify-order', {
       method: 'POST',
@@ -1569,7 +1665,7 @@ const submitOrder = async () => {
 
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
-    body: `Tu pedido por ${orderSnapshot.total.toLocaleString()} ARS fue enviado a los paneles de atención. Tiempo de entrega: 10 min a 1 hora.`,
+    body: `Tu pedido por ${orderSnapshot.total.toLocaleString()} ARS fue enviado a los paneles de atención. Tiempo de entrega: 60 a 90 min.`,
     icon: '/pwa-192x192.png',
     tag: `streampro-order-${prevNum}`
   })
@@ -1579,10 +1675,11 @@ const submitOrder = async () => {
     clientNumber: savedProfile.clientNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: savedProfile.name || '',
     whatsapp: savedProfile.phone || '',
+    email: savedProfile.email || '',
     pin: savedProfile.pin || '',
     shippingAddress: '',
     selectedResellerId: currentRef, // Mantener estado de sesión actual
-    paymentMethod: 'Transferencia Bancaria / CBU',
+    paymentMethod: 'mercadopago',
     transferVoucher: '',
     isSharedUrl: false
   }
@@ -1591,7 +1688,7 @@ const submitOrder = async () => {
   if (physicalItems.length > 0 && digitalItems.length === 0) {
     toast.add(`¡Pedido registrado directamente en el panel (#${prevNum})! Un asesor coordinará tu envío.`, 'success')
   } else {
-    toast.add(`¡Pedido y comprobante recibidos en el panel (#${prevNum})! Tiempo estimado de entrega: 10 min a 1 hora.`, 'success')
+    toast.add(`¡Pedido y comprobante recibidos en el panel (#${prevNum})! Tiempo estimado de entrega: 60 a 90 min.`, 'success')
   }
 }
 </script>
@@ -4347,8 +4444,88 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <!-- TARJETA CON DATOS OFICIALES PARA TRANSFERENCIA (SOLO SI TIENE SERVICIOS DIGITALES) -->
-          <div v-if="cartStore.hasDigitalItems" class="bg-gradient-to-br from-slate-950 to-indigo-950/40 p-4 rounded-xl border border-brand-accent/30 space-y-2">
+          <!-- SELECTOR DE MÉTODO DE PAGO (SOLO SI TIENE SERVICIOS DIGITALES) -->
+          <div v-if="cartStore.hasDigitalItems" class="space-y-2">
+            <label class="block font-bold uppercase text-slate-300 text-xs">
+              Elige tu Medio de Pago
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- OPCIÓN 1: MERCADO PAGO -->
+              <button 
+                type="button" 
+                @click="clientForm.paymentMethod = 'mercadopago'"
+                :class="[
+                  'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer',
+                  clientForm.paymentMethod === 'mercadopago'
+                    ? 'bg-sky-500/15 border-sky-400 ring-2 ring-sky-400/30'
+                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 opacity-75'
+                ]"
+              >
+                <div class="flex items-center justify-between w-full mb-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">💳</span>
+                    <strong class="text-xs font-black text-white">Mercado Pago</strong>
+                  </div>
+                  <span class="text-[9px] bg-sky-500/20 text-sky-300 font-bold px-1.5 py-0.5 rounded border border-sky-500/30">
+                    Aprobación Automática
+                  </span>
+                </div>
+                <p class="text-[10px] text-slate-400 leading-tight">
+                  Saldo en cuenta, débito, crédito o cuotas.
+                </p>
+              </button>
+
+              <!-- OPCIÓN 2: TRANSFERENCIA BANCARIA -->
+              <button 
+                type="button" 
+                @click="clientForm.paymentMethod = 'transfer'"
+                :class="[
+                  'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer',
+                  clientForm.paymentMethod === 'transfer'
+                    ? 'bg-emerald-500/15 border-emerald-400 ring-2 ring-emerald-400/30'
+                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 opacity-75'
+                ]"
+              >
+                <div class="flex items-center justify-between w-full mb-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">🏦</span>
+                    <strong class="text-xs font-black text-white">Transferencia Bancaria</strong>
+                  </div>
+                  <span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">
+                    Alias / CBU
+                  </span>
+                </div>
+                <p class="text-[10px] text-slate-400 leading-tight">
+                  Transfiere por CBU/Alias y adjunta comprobante.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <!-- BANNER EXPLICATIVO MERCADO PAGO -->
+          <div v-if="cartStore.hasDigitalItems && clientForm.paymentMethod === 'mercadopago'" class="bg-gradient-to-r from-sky-950/60 via-slate-950 to-indigo-950/50 p-4 rounded-xl border border-sky-500/40 space-y-3 shadow-lg">
+            <div class="flex items-center gap-2 text-sky-300 font-bold">
+              <span class="text-base">⚡</span>
+              <span class="text-xs uppercase tracking-wider">Acreditación Inmediata con Mercado Pago</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Al hacer clic en <strong class="text-white">"Pagar con Mercado Pago"</strong> serás redirigido a la pasarela segura oficial para completar el pago. Una vez abonado, tu pedido se confirmará y entrará a cola de entrega en <strong>60 a 90 minutos</strong> sin necesidad de subir ningún comprobante manual.
+            </p>
+            <div class="space-y-1">
+              <label class="block font-bold uppercase text-slate-400 text-[10px]">
+                Correo Electrónico (Para recibir el comprobante oficial de Mercado Pago)
+              </label>
+              <input 
+                v-model="clientForm.email" 
+                type="email" 
+                placeholder="ejemplo@correo.com" 
+                class="w-full bg-slate-900 border border-slate-800 focus:border-sky-400 rounded-xl p-2.5 text-white outline-none font-medium text-xs" 
+              >
+            </div>
+          </div>
+
+          <!-- TARJETA CON DATOS OFICIALES PARA TRANSFERENCIA (SOLO SI TIENE SERVICIOS DIGITALES Y PAGO POR TRANSFERENCIA) -->
+          <div v-if="cartStore.hasDigitalItems && clientForm.paymentMethod === 'transfer'" class="bg-gradient-to-br from-slate-950 to-indigo-950/40 p-4 rounded-xl border border-brand-accent/30 space-y-2">
             <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
               <span class="text-[10px] font-black uppercase tracking-wider text-brand-accent">
                 {{ isDirectSale ? 'Datos Oficiales del Proveedor Central (Venta Directa)' : 'Datos para Transferencia (Distribuidor Oficial)' }}
@@ -4386,7 +4563,7 @@ const submitOrder = async () => {
               v-model="clientForm.shippingAddress" 
               type="text" 
               placeholder="Calle, Número, Piso/Depto, Localidad, Código Postal" 
-              class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-3 text-white outline-none font-medium"
+              class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-3 text-white outline-none font-medium" 
               required
             >
           </div>
@@ -4396,12 +4573,12 @@ const submitOrder = async () => {
             <span class="text-base shrink-0">⏱️</span>
             <div>
               <strong class="font-bold text-amber-300 block">Tiempo estimado de entrega:</strong>
-              <span>La entrega de las cuentas puede demorar de 10 minutos a 1 hora. Carga tu comprobante para agilizar la entrega.</span>
+              <span>Tiempo de entrega estimado: <strong>60 a 90 minutos</strong>. {{ clientForm.paymentMethod === 'mercadopago' ? 'Tu pago se acredita automáticamente al instante.' : 'Carga tu comprobante para agilizar la entrega.' }}</span>
             </div>
           </div>
 
-          <!-- Comprobante de Pago en JPG / PNG o PDF con Mini Nube -->
-          <div class="space-y-2 pt-1">
+          <!-- Comprobante de Pago en JPG / PNG o PDF con Mini Nube (SOLO SI PAGA POR TRANSFERENCIA) -->
+          <div v-if="clientForm.paymentMethod === 'transfer'" class="space-y-2 pt-1">
             <div class="flex justify-between items-center">
               <label class="block font-bold uppercase text-slate-300 text-xs">
                 Adjuntar Comprobante de Pago (JPG, PNG o PDF)
@@ -4480,7 +4657,7 @@ const submitOrder = async () => {
 
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm">
             <span class="text-slate-400 font-semibold">
-              {{ cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'Total Estimado del Pedido:' : 'Total a transferir:' }}
+              {{ cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'Total Estimado del Pedido:' : (clientForm.paymentMethod === 'mercadopago' ? 'Total a abonar en Mercado Pago:' : 'Total a transferir:') }}
             </span>
             <span :class="['font-black text-lg', cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'text-amber-400' : 'text-brand-accent']">
               ${{ cartStore.total.toFixed(2) }} ARS
@@ -4493,14 +4670,28 @@ const submitOrder = async () => {
             </button>
             <button 
               type="submit" 
+              :disabled="isProcessingMpPayment"
               :class="[
-                'w-2/3 font-black py-3 rounded-xl transition-all shadow-lg text-sm',
+                'w-2/3 font-black py-3 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50',
                 cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
                   ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
-                  : 'bg-brand-accent text-slate-950 hover:bg-sky-400 shadow-brand-accent/20'
+                  : (clientForm.paymentMethod === 'mercadopago' 
+                      ? 'bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 shadow-sky-400/25' 
+                      : 'bg-brand-accent text-slate-950 hover:bg-sky-400 shadow-brand-accent/20')
               ]"
             >
-              {{ cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'Confirmar Pedido Físico (Estado Pendiente)' : 'Confirmar y Finalizar Pedido' }}
+              <span v-if="isProcessingMpPayment" class="animate-spin text-base">⏳</span>
+              <span>
+                {{ 
+                  isProcessingMpPayment 
+                    ? 'Conectando con Mercado Pago...' 
+                    : (cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
+                        ? 'Confirmar Pedido Físico (Estado Pendiente)' 
+                        : (clientForm.paymentMethod === 'mercadopago' 
+                            ? `Pagar con Mercado Pago ($${cartStore.total.toLocaleString()} ARS) →` 
+                            : 'Confirmar y Finalizar Pedido'))
+                }}
+              </span>
             </button>
           </div>
         </form>
