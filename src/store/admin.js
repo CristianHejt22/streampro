@@ -596,7 +596,79 @@ export const useAdminStore = defineStore('admin', {
       const processed = list.map(p => processGamingProduct(p))
       return deduplicateGamingProducts(processed)
     },
-    gamingOrders: (state) => (state.orders || []).filter(o => o.orderType === 'gaming' || o.category === 'Videojuegos Digitales'),
+    gamingOrders: (state) => (state.orders || []).filter(o => 
+      o.orderType === 'gaming' || 
+      o.category === 'Videojuegos Digitales' || 
+      o.category === 'gaming' ||
+      Boolean(o.gameTitle) ||
+      Boolean(o.licenseType) ||
+      (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5')))
+    ),
+
+    gamingSalesStats: (state) => {
+      const orders = (state.orders || []).filter(o => 
+        o.orderType === 'gaming' || 
+        o.category === 'Videojuegos Digitales' || 
+        o.category === 'gaming' ||
+        Boolean(o.gameTitle) ||
+        Boolean(o.licenseType) ||
+        (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5')))
+      )
+      let totalBilled = 0
+      let totalCost = 0
+      let totalProfit = 0
+      let pendingCount = 0
+      let dispatchedCount = 0
+      let primaryCount = 0
+      let secondaryCount = 0
+      let argPlayCount = 0
+      let jdaCount = 0
+
+      orders.forEach(o => {
+        const price = Number(o.clientPrice || o.totalAmount || 0)
+        const cost = Number(o.providerCost || 0)
+        const profit = Number(o.resellerProfit || (price - cost) || 0)
+
+        totalBilled += price
+        totalCost += cost
+        totalProfit += Math.max(0, profit)
+
+        if (o.status === 'Dispatched' || o.status === 'Entregado') {
+          dispatchedCount++
+        } else {
+          pendingCount++
+        }
+
+        const isPrim = o.licenseType === 'primary' || 
+          (o.licenseLabel && o.licenseLabel.toLowerCase().includes('primaria')) || 
+          (o.planLabel && o.planLabel.toLowerCase().includes('primaria'))
+        if (isPrim) {
+          primaryCount++
+        } else {
+          secondaryCount++
+        }
+
+        const prov = (o.fulfillmentProvider || o.fulfillmentProviderName || '').toLowerCase()
+        if (prov.includes('argentina') || prov.includes('arg')) {
+          argPlayCount++
+        } else if (prov.includes('juegos') || prov.includes('jda')) {
+          jdaCount++
+        }
+      })
+
+      return {
+        totalOrders: orders.length,
+        totalBilled,
+        totalCost,
+        totalProfit,
+        pendingCount,
+        dispatchedCount,
+        primaryCount,
+        secondaryCount,
+        argPlayCount,
+        jdaCount
+      }
+    },
 
     // Métricas Dinámicas de Stock por Plataforma y Pantallas
     getPlatformStock: (state) => (platform) => {
@@ -2313,6 +2385,14 @@ export const useAdminStore = defineStore('admin', {
         receiptFileSize: orderData.receiptFileSize || 0,
         receiptStatus: orderData.hasReceipt ? 'pending_verification' : 'no_receipt',
         paymentMethod: orderData.paymentMethod || 'Transferencia Bancaria',
+        orderType: orderData.orderType || (orderData.gameTitle ? 'gaming' : 'streaming'),
+        gameTitle: orderData.gameTitle || null,
+        licenseType: orderData.licenseType || null,
+        licenseLabel: orderData.licenseLabel || null,
+        fulfillmentProvider: orderData.fulfillmentProvider || null,
+        fulfillmentProviderName: orderData.fulfillmentProviderName || null,
+        providerUrl: orderData.providerUrl || null,
+        category: orderData.category || (orderData.orderType === 'gaming' || orderData.gameTitle ? 'Videojuegos Digitales' : null),
         profileSelections: (orderData.profileSelections || []).map(p => ({
           name: p.name
         })),
@@ -2596,6 +2676,20 @@ export const useAdminStore = defineStore('admin', {
       order.cancelReason = reason
       order.cancelledAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 
+      this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
+      return { success: true, order }
+    },
+
+    updateGamingOrderStatus(orderId, newStatus = 'Dispatched') {
+      const order = (this.orders || []).find(o => o.id === orderId)
+      if (!order) return { error: 'Orden no encontrada' }
+      order.status = newStatus
+      if (newStatus === 'Dispatched' || newStatus === 'Entregado') {
+        order.dispatchedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      } else {
+        delete order.dispatchedAt
+      }
       this.persist(DB_KEYS.ORDERS)
       saveStreamingOrderToFirebase(order).catch(() => {})
       return { success: true, order }

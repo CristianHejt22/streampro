@@ -1101,6 +1101,117 @@ const sendWhatsAppGameDelivery = (order) => {
 }
 
 // ==========================================
+// GESTIÓN AVANZADA DE VENTAS Y PEDIDOS GAMER
+// ==========================================
+const gamingOrderSearch = ref('')
+const gamingOrderStatusFilter = ref('ALL') // 'ALL' | 'PENDING' | 'DISPATCHED'
+const gamingOrderProviderFilter = ref('ALL') // 'ALL' | 'argentinaplay' | 'juegosdigitalesargentina'
+const gamingOrderLicenseFilter = ref('ALL') // 'ALL' | 'primary' | 'secondary'
+const gamingOrderCurrentPage = ref(1)
+const gamingOrderPageSize = ref(15)
+
+const filteredGamingOrdersForAdmin = computed(() => {
+  let list = adminStore.gamingOrders || []
+
+  // Filtro por Estado
+  if (gamingOrderStatusFilter.value === 'PENDING') {
+    list = list.filter(o => o.status !== 'Dispatched' && o.status !== 'Entregado')
+  } else if (gamingOrderStatusFilter.value === 'DISPATCHED') {
+    list = list.filter(o => o.status === 'Dispatched' || o.status === 'Entregado')
+  }
+
+  // Filtro por Proveedor
+  if (gamingOrderProviderFilter.value === 'argentinaplay') {
+    list = list.filter(o => {
+      const prov = (o.fulfillmentProvider || o.fulfillmentProviderName || '').toLowerCase()
+      return prov.includes('argentina') || prov.includes('arg')
+    })
+  } else if (gamingOrderProviderFilter.value === 'juegosdigitalesargentina') {
+    list = list.filter(o => {
+      const prov = (o.fulfillmentProvider || o.fulfillmentProviderName || '').toLowerCase()
+      return prov.includes('juegos') || prov.includes('jda')
+    })
+  }
+
+  // Filtro por Tipo de Licencia
+  if (gamingOrderLicenseFilter.value === 'primary') {
+    list = list.filter(o => o.licenseType === 'primary' || (o.licenseLabel && o.licenseLabel.toLowerCase().includes('primaria')) || (o.planLabel && o.planLabel.toLowerCase().includes('primaria')))
+  } else if (gamingOrderLicenseFilter.value === 'secondary') {
+    list = list.filter(o => o.licenseType === 'secondary' || (o.licenseLabel && o.licenseLabel.toLowerCase().includes('secundaria')) || (o.planLabel && o.planLabel.toLowerCase().includes('secundaria')))
+  }
+
+  // Filtro por Búsqueda (Texto)
+  if (gamingOrderSearch.value.trim()) {
+    const q = gamingOrderSearch.value.trim().toLowerCase()
+    list = list.filter(o => 
+      (o.id && o.id.toLowerCase().includes(q)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+      (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
+      (o.gameTitle && o.gameTitle.toLowerCase().includes(q)) ||
+      (o.platform && o.platform.toLowerCase().includes(q)) ||
+      (o.fulfillmentProviderName && o.fulfillmentProviderName.toLowerCase().includes(q)) ||
+      (o.voucher && o.voucher.toLowerCase().includes(q))
+    )
+  }
+
+  return list
+})
+
+const totalGamingOrderPages = computed(() => {
+  return Math.max(1, Math.ceil((filteredGamingOrdersForAdmin.value?.length || 0) / gamingOrderPageSize.value))
+})
+
+const paginatedGamingOrdersForAdmin = computed(() => {
+  const list = filteredGamingOrdersForAdmin.value || []
+  const start = (gamingOrderCurrentPage.value - 1) * gamingOrderPageSize.value
+  return list.slice(start, start + gamingOrderPageSize.value)
+})
+
+watch([gamingOrderSearch, gamingOrderStatusFilter, gamingOrderProviderFilter, gamingOrderLicenseFilter, gamingOrderPageSize], () => {
+  gamingOrderCurrentPage.value = 1
+})
+
+const handleToggleGamingOrderStatus = (order) => {
+  const isDelivered = order.status === 'Dispatched' || order.status === 'Entregado'
+  const newStatus = isDelivered ? 'Waiting Provider' : 'Dispatched'
+  const res = adminStore.updateGamingOrderStatus(order.id, newStatus)
+  if (res.success) {
+    toast.add(`Pedido gamer #${order.id} marcado como: ${newStatus === 'Dispatched' ? 'Entregado' : 'Pendiente'}`, 'success')
+  } else {
+    toast.add(res.error || 'Error al actualizar estado', 'error')
+  }
+}
+
+const handleDeleteGamingOrder = (order) => {
+  if (confirm(`¿Seguro que deseas eliminar el pedido gamer #${order.id} de ${order.customerName}?`)) {
+    const res = adminStore.deleteStreamingOrder(order.id)
+    if (res.success) {
+      toast.add(`Pedido gamer #${order.id} eliminado correctamente`, 'info')
+    } else {
+      toast.add(res.error || 'Error al eliminar', 'error')
+    }
+  }
+}
+
+const copyGamingOrderDetails = async (order) => {
+  const isPrim = order.licenseType === 'primary' || (order.planLabel && order.planLabel.includes('Primaria'))
+  const text = `🎮 Pedido Gamer #${order.id}
+👤 Cliente: ${order.customerName || 'Cliente'} (${order.customerPhone || 'S/N'})
+🎯 Juego: ${order.gameTitle || order.platform || 'PlayStation'}
+🔑 Modalidad: ${isPrim ? 'Cuenta Primaria' : 'Cuenta Secundaria'}
+🏢 Proveedor: ${order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina')}
+💰 Cobrado: $${(order.clientPrice || order.totalAmount || 0).toLocaleString()} ARS
+📦 Estado: ${order.status === 'Dispatched' ? 'Entregado' : 'Pendiente'}`
+
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add('Datos del pedido gamer copiados al portapapeles', 'info')
+  } catch {
+    toast.add('Error al copiar datos', 'error')
+  }
+}
+
+// ==========================================
 // IMPORTACIÓN Y SINCRONIZACIÓN GAMING (ARGPLAY & JDA)
 // ==========================================
 const isSyncingGaming = ref(false)
@@ -6015,9 +6126,14 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
-          <span class="text-[11px] font-bold text-emerald-400 block uppercase tracking-wider">Pedidos Gamer Registrados</span>
-          <div class="text-2xl font-black text-emerald-400 font-mono">{{ adminStore.gamingOrders.length }} Ventas</div>
-          <span class="text-[10px] text-slate-400">Con proveedor asignado</span>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Ventas Gamer</span>
+            <span class="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
+              ${{ (adminStore.gamingSalesStats?.totalBilled || 0).toLocaleString() }} ARS
+            </span>
+          </div>
+          <div class="text-2xl font-black text-emerald-400 font-mono">{{ adminStore.gamingOrders.length }} Pedidos</div>
+          <span class="text-[10px] text-slate-400">Margen est: <strong class="text-emerald-300 font-mono font-bold">${{ (adminStore.gamingSalesStats?.totalProfit || 0).toLocaleString() }} ARS</strong></span>
         </div>
       </div>
 
@@ -6490,57 +6606,411 @@ const deletePackageItem = (pkgId) => {
       </div>
 
       <!-- ==================== SUB-VISTA 4: PEDIDOS GAMER & PROVEEDOR ELEGIDO ==================== -->
-      <div v-else-if="gamingAdminSubTab === 'orders'" class="space-y-4">
+      <div v-else-if="gamingAdminSubTab === 'orders'" class="space-y-6">
+        
+        <!-- ENCABEZADO Y ACCIONES RÁPIDAS -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#020617] p-5 rounded-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🎮📦</span>
+              <h3 class="text-lg font-black text-white">Centro de Despacho & Control de Ventas Gamer</h3>
+              <span class="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                {{ adminStore.gamingSalesStats?.totalOrders || adminStore.gamingOrders.length }} Total
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Control de facturación, cálculo de márgenes netos, verificación de comprobantes y entrega de licencias vía WhatsApp.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button 
+              type="button"
+              @click="manualCloudSync"
+              :disabled="isSyncingCloud"
+              class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
+              title="Sincronizar pedidos gamer con Firebase"
+            >
+              <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI METRICS GRID: DATOS FINANCIEROS Y OPERATIVOS GAMER -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <!-- Facturación Total -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-emerald-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Facturado Total</span>
+            <span class="text-xl font-black text-emerald-400 font-mono block">
+              ${{ (adminStore.gamingSalesStats?.totalBilled || 0).toLocaleString() }}
+            </span>
+            <span class="text-[10px] text-slate-400">ARS cobrados</span>
+          </div>
+
+          <!-- Margen / Ganancia Estimada -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-purple-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Ganancia / Margen</span>
+            <span class="text-xl font-black text-purple-400 font-mono block">
+              +${{ (adminStore.gamingSalesStats?.totalProfit || 0).toLocaleString() }}
+            </span>
+            <span class="text-[10px] text-purple-300/80">Margen neto est.</span>
+          </div>
+
+          <!-- Por Despachar / Pendientes -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-amber-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Por Entregar</span>
+            <span class="text-2xl font-black text-amber-400 font-mono block">
+              {{ adminStore.gamingSalesStats?.pendingCount || 0 }}
+            </span>
+            <span class="text-[10px] text-amber-300/80">Esperando entrega</span>
+          </div>
+
+          <!-- Entregados -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-sky-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Entregados</span>
+            <span class="text-2xl font-black text-sky-400 font-mono block">
+              {{ adminStore.gamingSalesStats?.dispatchedCount || 0 }}
+            </span>
+            <span class="text-[10px] text-sky-300/80">Despachados</span>
+          </div>
+
+          <!-- Licencias Primarias vs Secundarias -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Tipo de Licencia</span>
+            <div class="text-sm font-black text-white font-mono flex items-center gap-1.5 pt-1">
+              <span class="text-amber-300">⭐️ {{ adminStore.gamingSalesStats?.primaryCount || 0 }}</span>
+              <span class="text-slate-500">/</span>
+              <span class="text-indigo-300">⚡️ {{ adminStore.gamingSalesStats?.secondaryCount || 0 }}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Primarias / Secundarias</span>
+          </div>
+
+          <!-- Desglose por Proveedor -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Por Proveedor</span>
+            <div class="text-xs font-black text-white font-mono flex items-center gap-1 pt-1">
+              <span class="text-blue-300">🇦🇷 {{ adminStore.gamingSalesStats?.argPlayCount || 0 }}</span>
+              <span class="text-slate-500">|</span>
+              <span class="text-amber-300">🎮 {{ adminStore.gamingSalesStats?.jdaCount || 0 }}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Arg Play / JDA</span>
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTROS Y BÚSQUEDA REACTIVA -->
+        <div class="flex flex-col md:flex-row gap-3 bg-[#020617] p-4 rounded-2xl border border-slate-800">
+          <div class="flex-1 relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-500 text-xs">🔍</span>
+            <input 
+              v-model="gamingOrderSearch" 
+              type="text" 
+              placeholder="Buscar por N° Orden, cliente, WhatsApp, videojuego o proveedor..." 
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+            >
+            <button 
+              v-if="gamingOrderSearch" 
+              @click="gamingOrderSearch = ''" 
+              type="button" 
+              class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Filtro por Estado -->
+            <select 
+              v-model="gamingOrderStatusFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todos los Estados ({{ adminStore.gamingOrders.length }})</option>
+              <option value="PENDING">⏳ Pendientes ({{ adminStore.gamingSalesStats?.pendingCount || 0 }})</option>
+              <option value="DISPATCHED">✅ Entregados ({{ adminStore.gamingSalesStats?.dispatchedCount || 0 }})</option>
+            </select>
+
+            <!-- Filtro por Proveedor -->
+            <select 
+              v-model="gamingOrderProviderFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todos los Proveedores</option>
+              <option value="argentinaplay">🇦🇷 Argentina Play</option>
+              <option value="juegosdigitalesargentina">🎮 Juegos Digitales Arg</option>
+            </select>
+
+            <!-- Filtro por Licencia -->
+            <select 
+              v-model="gamingOrderLicenseFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todas las Licencias</option>
+              <option value="primary">⭐️ Cuenta Primaria</option>
+              <option value="secondary">⚡️ Cuenta Secundaria</option>
+            </select>
+
+            <!-- Reset -->
+            <button 
+              v-if="gamingOrderSearch || gamingOrderStatusFilter !== 'ALL' || gamingOrderProviderFilter !== 'ALL' || gamingOrderLicenseFilter !== 'ALL'"
+              @click="gamingOrderSearch = ''; gamingOrderStatusFilter = 'ALL'; gamingOrderProviderFilter = 'ALL'; gamingOrderLicenseFilter = 'ALL'"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              title="Limpiar filtros"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- LISTA DE PEDIDOS GAMER -->
         <div v-if="adminStore.gamingOrders.length === 0" class="p-12 bg-[#020617] border border-slate-800 rounded-2xl text-center space-y-3">
           <span class="text-4xl block">🎮📦</span>
           <h4 class="text-base font-bold text-white">No hay pedidos de videojuegos registrados aún</h4>
           <p class="text-xs text-slate-400 max-w-md mx-auto">
-            Cuando los clientes agreguen juegos digitales desde la tienda web o WhatsApp, aquí aparecerá el pedido con el proveedor asignado (Argentina Play o JDA) y el botón de compra y entrega en 1 clic.
+            Cuando los clientes agreguen juegos digitales desde la tienda web o WhatsApp, aquí aparecerá el pedido con el proveedor asignado (Argentina Play o JDA), el cálculo de márgenes y los botones de compra y entrega en 1 clic.
           </p>
         </div>
 
-        <div v-else class="space-y-3">
-          <div 
-            v-for="order in adminStore.gamingOrders" 
-            :key="order.id"
-            class="bg-[#020617] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+        <div v-else-if="filteredGamingOrdersForAdmin.length === 0" class="p-10 bg-[#020617] border border-slate-800 border-dashed rounded-2xl text-center space-y-3">
+          <span class="text-3xl block">🔍</span>
+          <h4 class="text-sm font-bold text-white">No se encontraron pedidos gamer con los filtros seleccionados</h4>
+          <p class="text-xs text-slate-400">Intenta cambiar el término de búsqueda o restablecer los filtros.</p>
+          <button 
+            type="button"
+            @click="gamingOrderSearch = ''; gamingOrderStatusFilter = 'ALL'; gamingOrderProviderFilter = 'ALL'; gamingOrderLicenseFilter = 'ALL'"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer"
           >
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="font-mono font-bold text-xs text-indigo-400">#{{ order.id }}</span>
-                <span class="text-xs font-black text-white">{{ order.customerName }}</span>
-                <span class="text-[10px] text-slate-400">({{ order.customerPhone }})</span>
-                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full', order.status === 'Dispatched' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
-                  {{ order.status === 'Dispatched' ? 'Entregado' : 'Pendiente' }}
-                </span>
+            Restablecer Filtros
+          </button>
+        </div>
+
+        <div v-else class="space-y-4">
+          <!-- Selector de Paginación Superior -->
+          <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+            <span>Mostrando <strong>{{ paginatedGamingOrdersForAdmin.length }}</strong> de <strong>{{ filteredGamingOrdersForAdmin.length }}</strong> pedidos</span>
+            <div class="flex items-center gap-2">
+              <span>Por página:</span>
+              <select v-model="gamingOrderPageSize" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs outline-none">
+                <option :value="15">15</option>
+                <option :value="30">30</option>
+                <option :value="60">60</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cards de Pedidos Gamer -->
+          <div class="grid grid-cols-1 gap-3.5">
+            <div 
+              v-for="order in paginatedGamingOrdersForAdmin" 
+              :key="order.id"
+              :class="[
+                'bg-[#020617] border rounded-2xl p-4 sm:p-5 transition-all shadow-lg space-y-3.5',
+                order.status === 'Dispatched' || order.status === 'Entregado' 
+                  ? 'border-emerald-500/30 hover:border-emerald-500/50' 
+                  : 'border-amber-500/40 hover:border-amber-400/60 shadow-amber-500/5'
+              ]"
+            >
+              <!-- Fila Superior: ID, Estado, Canal y Fecha -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                <div class="flex items-center gap-2.5">
+                  <span class="font-mono font-bold text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+                    #{{ order.id }}
+                  </span>
+                  
+                  <span 
+                    :class="[
+                      'text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition',
+                      order.status === 'Dispatched' || order.status === 'Entregado'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' 
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                    ]"
+                    @click="handleToggleGamingOrderStatus(order)"
+                    :title="'Click para cambiar estado a ' + (order.status === 'Dispatched' ? 'Pendiente' : 'Entregado')"
+                  >
+                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '✅ Entregado' : '⏳ Pendiente' }}</span>
+                  </span>
+
+                  <span v-if="order.resellerName" class="text-[10px] font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                    🏪 {{ order.resellerName }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                  <span v-if="order.createdAt || order.createdDate" class="font-mono text-[11px]">
+                    🕒 {{ order.createdAt || order.createdDate }}
+                  </span>
+                  <button 
+                    type="button"
+                    @click="copyGamingOrderDetails(order)"
+                    class="text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1 cursor-pointer"
+                    title="Copiar resumen del pedido"
+                  >
+                    📋 Copiar
+                  </button>
+                </div>
               </div>
-              <div class="text-xs text-slate-300">
-                <strong>Juego:</strong> {{ order.gameTitle || order.platform }} • 
-                <span class="font-bold text-amber-300">{{ order.licenseLabel || (order.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria') }}</span>
+
+              <!-- Fila Principal: Datos del Juego, Cliente y Precios -->
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+                <!-- Info del Cliente y Juego (md:col-span-7) -->
+                <div class="md:col-span-7 space-y-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-black text-white">{{ order.customerName || 'Cliente' }}</span>
+                    <a 
+                      v-if="order.customerPhone"
+                      :href="'https://wa.me/' + formatWaPhone(order.customerPhone)" 
+                      target="_blank" 
+                      class="text-xs text-emerald-400 hover:underline flex items-center gap-0.5 font-mono"
+                      title="Abrir chat de WhatsApp"
+                    >
+                      <span>💬 {{ order.customerPhone }}</span>
+                    </a>
+                  </div>
+
+                  <div class="text-xs text-slate-300 flex flex-wrap items-center gap-1.5">
+                    <span class="text-white font-bold text-sm">🎮 {{ order.gameTitle || order.platform }}</span>
+                    <span class="text-slate-500">•</span>
+                    <span :class="['px-2 py-0.5 rounded text-[11px] font-bold', (order.licenseType === 'primary' || (order.licenseLabel && order.licenseLabel.includes('Primaria'))) ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-indigo-400/20 text-indigo-300 border border-indigo-400/30']">
+                      {{ order.licenseLabel || (order.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria') }}
+                    </span>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 text-xs pt-0.5">
+                    <span class="text-slate-400">Proveedor sugerido:</span>
+                    <span :class="['font-bold flex items-center gap-1', (order.fulfillmentProvider === 'argentinaplay' || (order.fulfillmentProviderName && order.fulfillmentProviderName.includes('Argentina'))) ? 'text-blue-300' : 'text-amber-300']">
+                      <span>{{ (order.fulfillmentProvider === 'argentinaplay' || (order.fulfillmentProviderName && order.fulfillmentProviderName.includes('Argentina'))) ? '🇦🇷' : '🎮' }}</span>
+                      {{ order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina') }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Desglose Financiero (md:col-span-5) -->
+                <div class="md:col-span-5 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Cobrado</span>
+                    <span class="text-xs sm:text-sm font-black text-emerald-400 font-mono block">
+                      ${{ (order.clientPrice || order.totalAmount || 0).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-slate-500">ARS</span>
+                  </div>
+
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Costo Prov.</span>
+                    <span class="text-xs sm:text-sm font-bold text-slate-300 font-mono block">
+                      ${{ (order.providerCost || 0).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-slate-500">ARS</span>
+                  </div>
+
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-purple-300 block">Margen Est.</span>
+                    <span class="text-xs sm:text-sm font-black text-purple-400 font-mono block">
+                      +${{ Math.max(0, (order.resellerProfit || ((order.clientPrice || 0) - (order.providerCost || 0)))).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-purple-300/70">ARS neto</span>
+                  </div>
+                </div>
               </div>
-              <div class="flex items-center gap-2 text-xs">
-                <span class="text-slate-400">Proveedor asignado:</span>
-                <strong :class="order.fulfillmentProvider === 'argentinaplay' ? 'text-blue-300' : 'text-amber-300'">
-                  {{ order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina') }}
-                </strong>
-                <span class="text-emerald-400 font-mono font-bold">| Cobrado: ${order.clientPrice?.toLocaleString()} ARS</span>
+
+              <!-- Fila Inferior: Botones de Acción -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Botón de Alternar Estado (Entregado / Pendiente) -->
+                  <button 
+                    type="button"
+                    @click="handleToggleGamingOrderStatus(order)"
+                    :class="[
+                      'px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1 shadow cursor-pointer',
+                      order.status === 'Dispatched' || order.status === 'Entregado'
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    ]"
+                  >
+                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '🔄 Marcar como Pendiente' : '✅ Marcar como Entregado' }}</span>
+                  </button>
+
+                  <!-- Botón de Ver Comprobante si existe -->
+                  <button 
+                    v-if="order.hasReceipt || order.voucher"
+                    type="button"
+                    @click="openReceiptViewer(order)"
+                    class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-bold text-xs transition flex items-center gap-1 cursor-pointer"
+                    title="Ver comprobante de pago subido por el cliente"
+                  >
+                    <span>🧾 Ver Comprobante</span>
+                  </button>
+
+                  <!-- Botón Comprar en Proveedor -->
+                  <a 
+                    :href="order.providerUrl || (order.fulfillmentProvider === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : 'https://juegosdigitalesargentina.com/')" 
+                    target="_blank"
+                    class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                  >
+                    <span>🔗 Comprar en Proveedor ↗</span>
+                  </a>
+
+                  <!-- Botón Entregar por WhatsApp -->
+                  <button 
+                    type="button" 
+                    @click="sendWhatsAppGameDelivery(order)"
+                    class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow cursor-pointer"
+                  >
+                    <span>💬 Entregar por WhatsApp</span>
+                  </button>
+                </div>
+
+                <!-- Botón Eliminar Pedido -->
+                <button 
+                  type="button"
+                  @click="handleDeleteGamingOrder(order)"
+                  class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                  title="Eliminar pedido gamer"
+                >
+                  <span class="text-sm">🗑️</span>
+                </button>
               </div>
             </div>
+          </div>
 
-            <div class="flex flex-wrap gap-2">
-              <a 
-                :href="order.providerUrl || (order.fulfillmentProvider === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : 'https://juegosdigitalesargentina.com/')" 
-                target="_blank"
-                class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
-              >
-                <span>🔗 Comprar en Proveedor ↗</span>
-              </a>
+          <!-- Paginador Inferior -->
+          <div v-if="totalGamingOrderPages > 1" class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-800">
+            <span class="text-xs text-slate-400">
+              Página <strong>{{ gamingOrderCurrentPage }}</strong> de <strong>{{ totalGamingOrderPages }}</strong> ({{ filteredGamingOrdersForAdmin.length }} pedidos gamer)
+            </span>
+            <div class="flex items-center gap-1">
               <button 
                 type="button" 
-                @click="sendWhatsAppGameDelivery(order)"
-                class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                @click="gamingOrderCurrentPage = 1"
+                :disabled="gamingOrderCurrentPage === 1"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
               >
-                <span>💬 Entregar por WhatsApp</span>
+                ««
+              </button>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage--"
+                :disabled="gamingOrderCurrentPage === 1"
+                class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                Anterior
+              </button>
+              <span class="px-3 py-1 text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+                {{ gamingOrderCurrentPage }} / {{ totalGamingOrderPages }}
+              </span>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage++"
+                :disabled="gamingOrderCurrentPage === totalGamingOrderPages"
+                class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                Siguiente
+              </button>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage = totalGamingOrderPages"
+                :disabled="gamingOrderCurrentPage === totalGamingOrderPages"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                »»
               </button>
             </div>
           </div>
