@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore, useResellerStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
-import { generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
+import { loadDb, DB_KEYS, generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { testFirebaseConnection } from '../services/firebase'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
@@ -2078,8 +2078,14 @@ onMounted(async () => {
   adminStore.ensurePhysicalProductsLoaded()
   adminStore.ensureGamingProductsLoaded()
 
-  // Sincronización automática de órdenes en la nube
+  // Sincronización automática de órdenes y postulaciones en la nube
   adminStore.initCloudSync()
+
+  // Recargar aplicaciones de revendedores desde almacenamiento local
+  const freshApps = loadDb(DB_KEYS.RESELLER_APPLICATIONS, null)
+  if (Array.isArray(freshApps) && freshApps.length > 0) {
+    adminStore.resellerApplications = freshApps
+  }
 
   adminBiometricsAvailable.value = await isBiometricsAvailable()
   hasAdminEnrolledBiometrics.value = hasBiometricEnrolled('admin')
@@ -2094,6 +2100,12 @@ onMounted(async () => {
         toast.add(`¡Bienvenido de nuevo, ${adminStore.adminAuth?.name || 'Administrador'}! Sesión restaurada.`, 'success')
       }
     }
+  }
+})
+
+watch(adminTab, (newTab) => {
+  if (newTab === 'resellers') {
+    adminStore.syncFromCloud().catch(() => {})
   }
 })
 
@@ -3316,29 +3328,40 @@ const deletePackageItem = (pkgId) => {
             </div>
           </div>
 
-          <!-- Filtro de Solicitudes -->
-          <div class="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+          <!-- Filtro de Solicitudes y Botón de Recarga -->
+          <div class="flex flex-wrap items-center gap-2">
             <button 
-              type="button"
-              @click="applicationFilter = 'pending'"
-              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'pending' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+              type="button" 
+              @click="adminStore.syncFromCloud()" 
+              class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all"
+              title="Sincronizar solicitudes desde la nube Firebase"
             >
-              Pendientes ({{ adminStore.pendingResellerApplications?.length || 0 }})
+              <span>🔄</span>
+              <span>Sincronizar</span>
             </button>
-            <button 
-              type="button"
-              @click="applicationFilter = 'approved'"
-              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'approved' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
-            >
-              Aprobadas ({{ adminStore.approvedResellerApplications?.length || 0 }})
-            </button>
-            <button 
-              type="button"
-              @click="applicationFilter = 'all'"
-              :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white']"
-            >
-              Todas ({{ adminStore.resellerApplications?.length || 0 }})
-            </button>
+            <div class="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+              <button 
+                type="button"
+                @click="applicationFilter = 'pending'"
+                :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'pending' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+              >
+                Pendientes ({{ adminStore.pendingResellerApplications?.length || 0 }})
+              </button>
+              <button 
+                type="button"
+                @click="applicationFilter = 'approved'"
+                :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'approved' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+              >
+                Aprobadas ({{ adminStore.approvedResellerApplications?.length || 0 }})
+              </button>
+              <button 
+                type="button"
+                @click="applicationFilter = 'all'"
+                :class="['px-3 py-1.5 rounded-lg font-bold transition-all', applicationFilter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white']"
+              >
+                Todas ({{ adminStore.resellerApplications?.length || 0 }})
+              </button>
+            </div>
           </div>
         </div>
 

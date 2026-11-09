@@ -24,6 +24,10 @@ import {
   saveStoreSettingsToFirebase,
   fetchStoreSettingsFromFirebase,
   listenToStoreSettings,
+  saveResellerApplicationToFirebase,
+  fetchLatestResellerApplicationsFromFirebase,
+  listenToResellerApplications,
+  updateResellerApplicationInFirebase,
   testFirebaseConnection 
 } from '../services/firebase'
 
@@ -646,6 +650,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(key, this[key])
       } else if (key === DB_KEYS.ADMIN_AUTH) {
         saveDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
+      } else if (key === DB_KEYS.RESELLER_APPLICATIONS) {
+        saveDb(DB_KEYS.RESELLER_APPLICATIONS, this.resellerApplications)
       } else if (key === DB_KEYS.TELEGRAM_CONFIG) {
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
       } else if (key === DB_KEYS.MERCADOPAGO_CONFIG) {
@@ -677,6 +683,7 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
         saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
         saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
+        saveDb(DB_KEYS.RESELLER_APPLICATIONS, this.resellerApplications)
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
         saveDb(DB_KEYS.MERCADOPAGO_CONFIG, this.mercadoPagoConfig)
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
@@ -720,15 +727,17 @@ export const useAdminStore = defineStore('admin', {
     async syncFromCloud() {
       initFirebase(this.firebaseConfig)
       try {
-        const [remoteStreaming, remotePhysical, remoteUsers] = await Promise.all([
+        const [remoteStreaming, remotePhysical, remoteUsers, remoteApps] = await Promise.all([
           fetchLatestOrdersFromFirebase(),
           fetchLatestPhysicalOrdersFromFirebase(),
-          fetchRegisteredUsersFromFirebase()
+          fetchRegisteredUsersFromFirebase(),
+          fetchLatestResellerApplicationsFromFirebase()
         ])
 
         let updatedStreaming = 0
         let updatedPhysical = 0
         let updatedUsers = 0
+        let updatedApps = 0
 
         remoteStreaming.forEach(rem => {
           const idx = this.orders.findIndex(o => o.id === rem.id)
@@ -763,12 +772,25 @@ export const useAdminStore = defineStore('admin', {
         })
         if (updatedUsers > 0) this.persist(DB_KEYS.REGISTERED_USERS)
 
+        remoteApps.forEach(rem => {
+          const idx = this.resellerApplications.findIndex(a => a.id === rem.id)
+          if (idx === -1) {
+            this.resellerApplications.unshift(rem)
+            updatedApps++
+          } else if (this.resellerApplications[idx].status !== rem.status || this.resellerApplications[idx].createdResellerId !== rem.createdResellerId) {
+            this.resellerApplications[idx] = { ...this.resellerApplications[idx], ...rem }
+            updatedApps++
+          }
+        })
+        if (updatedApps > 0) this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+
         return {
           success: true,
           streamingCount: remoteStreaming.length,
           physicalCount: remotePhysical.length,
           usersCount: remoteUsers.length,
-          totalNew: updatedStreaming + updatedPhysical + updatedUsers
+          applicationsCount: remoteApps.length,
+          totalNew: updatedStreaming + updatedPhysical + updatedUsers + updatedApps
         }
       } catch (e) {
         console.warn('[Sync] Error al sincronizar desde la nube:', e)
@@ -837,6 +859,25 @@ export const useAdminStore = defineStore('admin', {
         })
         if (updated) {
           this.persist(DB_KEYS.REGISTERED_USERS)
+        }
+      })
+
+      // Escucha en tiempo real de Solicitudes de Nuevos Revendedores
+      listenToResellerApplications((remoteApps) => {
+        if (!remoteApps || remoteApps.length === 0) return
+        let updated = false
+        remoteApps.forEach(rem => {
+          const idx = this.resellerApplications.findIndex(a => a.id === rem.id)
+          if (idx === -1) {
+            this.resellerApplications.unshift(rem)
+            updated = true
+          } else if (this.resellerApplications[idx].status !== rem.status || this.resellerApplications[idx].createdResellerId !== rem.createdResellerId) {
+            this.resellerApplications[idx] = { ...this.resellerApplications[idx], ...rem }
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.RESELLER_APPLICATIONS)
         }
       })
     },
@@ -2596,7 +2637,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // GESTIÓN DE SOLICITUDES DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
-    submitResellerApplication(applicationData) {
+    async submitResellerApplication(applicationData) {
       const newApp = {
         id: `APP-${Date.now().toString().slice(-4)}`,
         fullName: applicationData.fullName?.trim() || '',
@@ -2614,12 +2655,23 @@ export const useAdminStore = defineStore('admin', {
       this.resellerApplications.unshift(newApp)
       this.persist(DB_KEYS.RESELLER_APPLICATIONS)
 
+      // Guardar en la nube Firebase Firestore en tiempo real para que llegue al panel de inmediato
+      try {
+        await saveResellerApplicationToFirebase(newApp)
+      } catch (err) {
+        console.warn('Fallo guardado Firebase de postulante:', err)
+      }
+
       // Notificar al bot de Telegram en tiempo real
       if (typeof window !== 'undefined' && window.fetch) {
         fetch('/api/notify-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicant: newApp })
+          body: JSON.stringify({ 
+            applicant: newApp,
+            telegramToken: this.telegramConfig?.botToken,
+            telegramChatId: this.telegramConfig?.chatId
+          })
         }).catch(err => console.warn('Aviso Telegram de nuevo postulante:', err))
       }
 
@@ -2668,6 +2720,13 @@ export const useAdminStore = defineStore('admin', {
       app.reviewedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
       this.persist(DB_KEYS.RESELLER_APPLICATIONS)
 
+      // Sincronizar actualización a Firebase Firestore
+      updateResellerApplicationInFirebase(app.id, {
+        status: 'approved',
+        createdResellerId: newResellerId,
+        reviewedAt: app.reviewedAt
+      }).catch(e => console.warn('Fallo sync Firebase aprobación:', e))
+
       return { 
         success: true, 
         reseller: newReseller, 
@@ -2687,6 +2746,10 @@ export const useAdminStore = defineStore('admin', {
         app.status = 'rejected'
         app.reviewedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
         this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+        updateResellerApplicationInFirebase(app.id, {
+          status: 'rejected',
+          reviewedAt: app.reviewedAt
+        }).catch(e => console.warn('Fallo sync Firebase rechazo:', e))
       }
       return { success: true }
     },
@@ -2694,6 +2757,10 @@ export const useAdminStore = defineStore('admin', {
     deleteResellerApplication(appId) {
       this.resellerApplications = this.resellerApplications.filter(a => a.id !== appId)
       this.persist(DB_KEYS.RESELLER_APPLICATIONS)
+      updateResellerApplicationInFirebase(appId, {
+        status: 'deleted',
+        deletedAt: new Date().toISOString()
+      }).catch(e => console.warn('Fallo sync Firebase delete:', e))
       return { success: true }
     },
 

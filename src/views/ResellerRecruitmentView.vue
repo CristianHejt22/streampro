@@ -40,7 +40,7 @@ const submitApplication = async () => {
 
   isSubmitting.value = true
   try {
-    const res = adminStore.submitResellerApplication(applicationForm.value)
+    const res = await adminStore.submitResellerApplication(applicationForm.value)
     if (res && res.success) {
       submittedApplication.value = res.application
       toast.add('¡Solicitud enviada con éxito! La revisaremos en breve.', 'success')

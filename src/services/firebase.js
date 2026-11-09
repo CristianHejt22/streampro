@@ -301,6 +301,96 @@ export async function saveStoreSettingsToFirebase(settings) {
 }
 
 /**
+ * Guarda una postulación de revendedor en la colección 'reseller_applications' de Firestore
+ */
+export async function saveResellerApplicationToFirebase(appData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanApp = JSON.parse(JSON.stringify(appData))
+    cleanApp.createdAtTimestamp = serverTimestamp()
+    cleanApp.updatedAt = new Date().toISOString()
+    const docId = String(cleanApp.id || `APP-${Date.now().toString().slice(-4)}`)
+    await setDoc(doc(dbInstance, 'reseller_applications', docId), cleanApp, { merge: true })
+    return { success: true, id: docId }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando postulación de revendedor:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Consulta directa de postulaciones de revendedores
+ */
+export async function fetchLatestResellerApplicationsFromFirebase() {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return []
+
+  try {
+    const q = query(collection(dbInstance, 'reseller_applications'), limit(150))
+    const snap = await getDocs(q)
+    const list = []
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() })
+    })
+    return list
+  } catch (error) {
+    console.warn('[Firebase] Error al consultar reseller_applications:', error)
+    return []
+  }
+}
+
+/**
+ * Escucha cambios en tiempo real en la colección 'reseller_applications'
+ */
+export function listenToResellerApplications(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return () => {}
+
+  try {
+    const q = query(collection(dbInstance, 'reseller_applications'), limit(150))
+    return onSnapshot(q, (snapshot) => {
+      const apps = []
+      snapshot.forEach((docSnap) => {
+        apps.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      callback(apps)
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error en reseller_applications:', err)
+    })
+  } catch (err) {
+    console.warn('[Firebase] Listener error en reseller_applications:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Actualiza el estado de una postulación de revendedor en Firestore
+ */
+export async function updateResellerApplicationInFirebase(appId, data) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const docRef = doc(dbInstance, 'reseller_applications', String(appId))
+    await setDoc(docRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true })
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error actualizando postulación en Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Consulta la configuración de la tienda en Firestore
  */
 export async function fetchStoreSettingsFromFirebase() {
