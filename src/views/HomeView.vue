@@ -82,6 +82,9 @@ const openFlyerForGaming = (game, licenseType = null) => {
     category: 'Videojuegos Digitales',
     licenseType: lic,
     platform: game.platform,
+    image: game.image,
+    effectivePrimaryPrice: game.effectivePrimaryPrice,
+    effectiveSecondaryPrice: game.effectiveSecondaryPrice,
     priceNumeric: lic === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
   }
   showFlyerModal.value = true
@@ -217,7 +220,7 @@ const currentPageSection = computed(() => {
   const p = route.path.toLowerCase()
   if (['/suscripciones', '/streaming', '/digital'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'digital'
   if (['/combos', '/paquetes', '/ofertas'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'packages'
-  if (['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'gaming'
+  if (['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'gaming'
   if (['/tienda', '/catalogo', '/productos', '/p'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'physical'
   if (route.query.sec === 'digital') return 'digital'
   if (route.query.sec === 'packages') return 'packages'
@@ -234,15 +237,80 @@ watch(currentPageSection, (sec) => {
 }, { immediate: true })
 
 // ==========================================
+// CUPONES PROMOCIONALES EN CARRITO
+// ==========================================
+const promoCodeInput = ref('')
+const applyCartPromoCode = () => {
+  const code = String(promoCodeInput.value || '').trim().toUpperCase()
+  if (!code) {
+    toast.add('Ingresa un código promocional para aplicar', 'warning')
+    return
+  }
+  const res = adminStore.validatePromoCode(code, cartStore.items)
+  if (res.success && res.coupon) {
+    cartStore.applyCoupon(res.coupon)
+    promoCodeInput.value = ''
+    toast.add(`🏷️ Cupón ${res.coupon.code} aplicado: -$${cartStore.couponDiscountAmount.toLocaleString()} ARS`, 'success')
+  } else {
+    toast.add(res.error || 'Cupón inválido o no aplicable al carrito actual', 'error')
+  }
+}
+
+// ==========================================
 // SECCIÓN: VIDEOJUEGOS DIGITALES PS4 / PS5
 // ==========================================
 const selectedGamingCat = ref('Todas')
 const selectedGamingSubcat = ref('Todas')
 const gamingSearch = ref('')
 const gamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4'
+const gamingSortBy = ref('default') // 'default' | 'price_asc' | 'price_desc' | 'title_asc'
+const gamingPriceCeiling = ref('ALL') // 'ALL' | '15000' | '25000' | '40000'
+const onlyGamingFavorites = ref(false)
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
 const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
+
+const loadStoredGamingWishlist = () => {
+  try {
+    const raw = localStorage.getItem('streamepro_gaming_wishlist')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch {}
+  return []
+}
+const gamingWishlistIds = ref(loadStoredGamingWishlist())
+const isGamingFavorite = (gameId) => gamingWishlistIds.value.includes(gameId)
+const toggleGamingFavorite = (gameId) => {
+  if (!gameId) return
+  if (isGamingFavorite(gameId)) {
+    gamingWishlistIds.value = gamingWishlistIds.value.filter(id => id !== gameId)
+    toast.add('Quitado de tus juegos favoritos', 'info')
+  } else {
+    gamingWishlistIds.value = [...gamingWishlistIds.value, gameId]
+    toast.add('❤️ Guardado en tus Favoritos', 'success')
+  }
+  try {
+    localStorage.setItem('streamepro_gaming_wishlist', JSON.stringify(gamingWishlistIds.value))
+  } catch {}
+}
+
+const copyGamingShareUrl = async (game) => {
+  if (!game) return
+  const origin = getBaseOrigin()
+  const refCode = !isDirectSale.value && clientForm.value.selectedResellerId ? clientForm.value.selectedResellerId : ''
+  const lic = getGameSelectedLicense(game.id)
+  const shareUrl = refCode
+    ? `${origin}/juego/${encodeURIComponent(game.id)}/${encodeURIComponent(refCode)}?lic=${lic}`
+    : `${origin}/juego/${encodeURIComponent(game.id)}?lic=${lic}`
+  try {
+    await navigator.clipboard.writeText(shareUrl)
+    toast.add(`🔗 Enlace copiado para compartir "${game.title}"`, 'success')
+  } catch {
+    toast.add(shareUrl, 'info')
+  }
+}
 
 const getGameSelectedLicense = (gameId) => {
   return gamingLicenseSelections.value[gameId] || 'primary'
@@ -289,7 +357,14 @@ const availableGamingSubcategories = computed(() => {
 
 const filteredGamingProducts = computed(() => {
   const list = adminStore.processedGamingProducts || []
-  return list.filter(game => {
+  const ceiling = gamingPriceCeiling.value !== 'ALL' ? Number(gamingPriceCeiling.value) : 0
+  const onlyFavs = onlyGamingFavorites.value
+  const favSet = onlyFavs ? new Set(gamingWishlistIds.value) : null
+  const q = gamingSearch.value.toLowerCase().trim()
+
+  const filtered = list.filter(game => {
+    if (favSet && !favSet.has(game.id)) return false
+
     let matchesCat = false
     if (selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
       matchesCat = true
@@ -307,10 +382,26 @@ const filteredGamingProducts = computed(() => {
 
     const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
     const matchesPlatform = gamingPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingPlatformFilter.value))
-    const q = gamingSearch.value.toLowerCase().trim()
     const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
-    return matchesCat && matchesSubcat && matchesPlatform && matchesQ
+    if (!matchesCat || !matchesSubcat || !matchesPlatform || !matchesQ) return false
+
+    if (ceiling > 0) {
+      const refPrice = Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0)
+      if (!refPrice || refPrice > ceiling) return false
+    }
+    return true
   })
+
+  if (gamingSortBy.value === 'price_asc') {
+    return [...filtered].sort((a, b) => Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 9999999) - Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 9999999))
+  }
+  if (gamingSortBy.value === 'price_desc') {
+    return [...filtered].sort((a, b) => Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 0) - Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 0))
+  }
+  if (gamingSortBy.value === 'title_asc') {
+    return [...filtered].sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
+  }
+  return filtered
 })
 
 // Paginación y alto rendimiento del catálogo Gaming (1,160+ títulos)
@@ -357,7 +448,7 @@ const changeGamingPage = (page) => {
   scrollToSection('videojuegos-digitales')
 }
 
-watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingItemsPerPage], () => {
+watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingSortBy, gamingPriceCeiling, onlyGamingFavorites, gamingItemsPerPage], () => {
   gamingCurrentPage.value = 1
 })
 
@@ -509,10 +600,16 @@ const handleQuickLogin = () => {
   }
 
   if (user) {
-    // Si la cuenta tiene PIN registrado y el usuario ingresó uno, verificar
-    if (user.pin && pin && user.pin !== pin) {
-      toast.add('El PIN ingresado no coincide con tu cuenta', 'error')
-      return
+    // Si la cuenta tiene PIN registrado, verificar obligatoriamente antes de cargar datos sensibles
+    if (user.pin) {
+      if (!pin) {
+        toast.add('Ingresa tu PIN de 4 dígitos para cargar los datos de tu cuenta', 'warning')
+        return
+      }
+      if (String(user.pin).trim() !== String(pin).trim()) {
+        toast.add('El PIN ingresado no coincide con tu cuenta', 'error')
+        return
+      }
     }
 
     clientForm.value.fullName = user.name
@@ -550,6 +647,7 @@ const isAnyModalOpen = computed(() => {
     showConfigModal.value ||
     showStreamingInfoModal.value ||
     showPhysicalModal.value ||
+    showGamingDetailModal.value ||
     showImageZoomModal.value ||
     showFlyerModal.value
 })
@@ -679,7 +777,7 @@ const applyRouteParams = () => {
     storeSection.value = 'physical'
   } else if (route.query.sec === 'digital' || ['/suscripciones', '/streaming', '/digital'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'digital'
-  } else if (route.query.sec === 'gaming' || route.query.game || ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/playstation'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+  } else if (route.query.sec === 'gaming' || route.query.game || route.query.g || ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'gaming'
   } else if (route.query.sec === 'packages' || route.query.pkg || ['/combos', '/paquetes', '/ofertas'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'packages'
@@ -689,6 +787,17 @@ const applyRouteParams = () => {
     }
   } else if (route.query.sec === 'all' || route.path === '/') {
     storeSection.value = 'all'
+  }
+
+  // Búsqueda global desde querystring (?q=...)
+  if (route.query.q) {
+    const qStr = String(route.query.q).trim()
+    gamingSearch.value = qStr
+    searchQuery.value = qStr
+    physicalSearchQuery.value = qStr
+    if (!route.query.sec && route.path === '/') {
+      storeSection.value = 'gaming'
+    }
   }
 
   // Apertura automática del carrito si viene en URL (?openCart=true)
@@ -721,11 +830,18 @@ const applyRouteParams = () => {
       if (route.query.lic && (route.query.lic === 'primary' || route.query.lic === 'secondary')) {
         setGameLicense(foundGame.id, route.query.lic)
       }
-      if (route.query.plat && (route.query.plat === 'PS5' || route.query.plat === 'PS4' || route.query.plat === 'PS3')) {
-        gamingPlatformFilter.value = route.query.plat
+      if (route.query.plat && ['PS5', 'PS4', 'PS3', 'Switch', 'Xbox', 'PC'].includes(String(route.query.plat))) {
+        gamingPlatformFilter.value = String(route.query.plat)
       }
       openGamingDetail(foundGame)
       toast.add(`🎮 ¡Bienvenido! Mostrando: ${foundGame.title}`, 'info')
+    }
+  } else if (route.query.plat) {
+    const platParam = String(route.query.plat).trim()
+    if (['PS5', 'PS4', 'PS3', 'Switch', 'Xbox', 'PC'].includes(platParam) && (storeSection.value === 'gaming' || route.query.sec === 'gaming')) {
+      gamingPlatformFilter.value = platParam
+    } else if (storeSection.value === 'digital' || route.query.sec === 'digital') {
+      digitalPlatformFilter.value = platParam
     }
   }
 
@@ -920,9 +1036,13 @@ const shareProductWhatsApp = (product) => {
 }
 
 // SEO Dinámico y Títulos Optimizados según Sección Actual
-watch([currentPageSection, selectedPhysicalProduct], ([sec, prod]) => {
-  if (prod) {
+watch([currentPageSection, selectedPhysicalProduct, selectedGamingProduct], ([sec, prod, game]) => {
+  if (game) {
+    document.title = `${game.title} (${game.platform}) - $${(game.effectivePrimaryPrice || 0).toLocaleString()} ARS | PlayStation Store Oficial`
+  } else if (prod) {
     document.title = `${prod.name} (${prod.price}) | StreamePro Oficial`
+  } else if (sec === 'gaming') {
+    document.title = 'Juegos Digitales PS5, PS4 & PS3 Oficiales | StreamePro Oficial'
   } else if (sec === 'physical') {
     document.title = 'Tienda de Productos Físicos & Tecnología | StreamePro Oficial'
   } else if (sec === 'digital') {
@@ -930,7 +1050,7 @@ watch([currentPageSection, selectedPhysicalProduct], ([sec, prod]) => {
   } else if (sec === 'packages') {
     document.title = 'Combos & Paquetes Promocionales con Descuento | StreamePro Oficial'
   } else {
-    document.title = 'StreamePro | Tienda Oficial de Streaming & Tecnología'
+    document.title = 'StreamePro | Tienda Oficial de Streaming, Gaming & Tecnología'
   }
 }, { immediate: true })
 
@@ -960,10 +1080,11 @@ const physicalCurrentPage = ref(1)
 const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 
 // ==================== COLECCIONES DE OFERTAS MÚLTIPLES PARA PÁGINA PRINCIPAL ====================
-// 1. Teaser Curado de 6 Rubros Destacados (NO las 20+ categorías completas en Home)
+// 1. Teaser Curado de Rubros Destacados
 const homeFeaturedCategories = computed(() => {
   const list = [
     { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
+    { id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${adminStore.processedGamingProducts?.length || 1084} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
     { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' }
   ]
 
@@ -1550,20 +1671,26 @@ const submitOrder = async () => {
     }
   }
 
-  // 1. Guardar o actualizar perfil local del cliente
+  // 1. Guardar o actualizar perfil local del cliente (preservando email)
   try {
     localStorage.setItem('streampro_user_profile', JSON.stringify({
       clientNumber: clientForm.value.clientNumber,
       name: clientForm.value.fullName,
       phone: clientForm.value.whatsapp,
+      email: clientForm.value.email || '',
       pin: clientForm.value.pin,
       address: clientForm.value.shippingAddress || ''
     }))
   } catch {}
 
-  // 2. Registrar órdenes digitales de streaming esperando confirmación de guardado en la nube
-  for (const item of digitalItems) {
-    const streamingOrderId = `ORD-${Date.now().toString().slice(-4)}`
+  const netMultiplier = cartStore.subtotal > 0 ? Math.max(0.05, cartStore.total / cartStore.subtotal) : 1
+
+  // 2. Registrar órdenes digitales de streaming / gaming evitando colisión de IDs en compras múltiples
+  for (let idx = 0; idx < digitalItems.length; idx++) {
+    const item = digitalItems[idx]
+    const streamingOrderId = `ORD-${Date.now().toString().slice(-5)}-${idx + 1}`
+    const qty = Math.max(1, Number(item.quantity) || 1)
+    const effectiveLinePrice = Math.round(Number(item.clientPrice || 0) * qty * netMultiplier)
     
     if (hasUploadedReceipt) {
       saveReceipt(streamingOrderId, {
@@ -1573,7 +1700,7 @@ const submitOrder = async () => {
         dataUrl: receiptMeta.dataUrl,
         customerName: clientForm.value.fullName,
         customerPhone: clientForm.value.whatsapp,
-        amount: item.clientPrice
+        amount: effectiveLinePrice
       }).catch(() => {})
     }
 
@@ -1592,15 +1719,16 @@ const submitOrder = async () => {
       pin: clientForm.value.pin,
       platform: platformDisplay,
       activationEmail: item.activationEmail || null,
-      devices: item.units,
+      devices: qty * (Number(item.units) || 1),
+      quantity: qty,
       pinPreference: item.pinPreference || 'same',
       planKey: item.planKey,
       planLabel: isGaming 
-        ? (item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'))
-        : item.planLabel,
-      providerCost: item.providerCost,
-      resellerProfit: isDirect ? 0 : item.resellerProfit,
-      clientPrice: item.clientPrice,
+        ? `${qty > 1 ? qty + 'x ' : ''}${item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria')}`
+        : `${qty > 1 ? qty + 'x ' : ''}${item.planLabel}`,
+      providerCost: Number(item.providerCost || 0) * qty,
+      resellerProfit: isDirect ? 0 : (Number(item.resellerProfit || 0) * qty),
+      clientPrice: effectiveLinePrice,
       resellerId: isDirect ? 'DIRECT' : clientForm.value.selectedResellerId,
       resellerName: isDirect ? 'StreamePro Oficial (Venta Directa)' : (currentReseller.value?.name || 'Distribuidor Asignado'),
       voucher: clientForm.value.transferVoucher || (hasUploadedReceipt ? `Comprobante en Nube (${receiptMeta.fileName})` : 'Sin comprobante adjunto'),
@@ -1610,12 +1738,13 @@ const submitOrder = async () => {
       receiptFileSize: receiptMeta.fileSize || 0,
       paymentMethod: clientForm.value.paymentMethod,
       orderType: isGaming ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
+      gameId: item.gameId || item.id || null,
       gameTitle: gameName,
       gamePlatform: isGaming ? gamePlatform : null,
       licenseType: item.licenseType || null,
       licenseLabel: item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'),
       fulfillmentProvider: item.providerKey || null,
-      fulfillmentProviderName: item.providerName || null,
+      fulfillmentProviderName: item.fulfillmentProviderName || item.providerName || null,
       providerUrl: item.providerUrl || null,
       category: isGaming ? 'Videojuegos Digitales' : null,
       profileSelections: (item.profiles || []).map(p => ({
@@ -1649,6 +1778,7 @@ const submitOrder = async () => {
   if (clientForm.value.paymentMethod === 'mercadopago') {
     isProcessingMpPayment.value = true
     try {
+      const mpDiscountRatio = cartStore.subtotal > 0 ? Math.max(0.05, cartStore.total / cartStore.subtotal) : 1
       const res = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1658,7 +1788,7 @@ const submitOrder = async () => {
             title: String(item.title || item.baseName || item.name || item.planLabel || 'Servicio Digital StreamePro'),
             description: String(item.platform ? `${item.platform} - ${item.planLabel || item.licenseLabel || 'Licencia'}` : 'Servicio Digital StreamePro'),
             quantity: item.quantity || 1,
-            price: Math.round(Number(item.price || item.clientPrice || 0)),
+            price: Math.max(1, Math.round(Number(item.price || item.clientPrice || 0) * mpDiscountRatio)),
             image: item.image || ''
           })),
           orderId: prevNum,
@@ -1694,6 +1824,9 @@ const submitOrder = async () => {
         console.warn('Telegram notify error:', tgErr)
       }
 
+      if (cartStore.appliedCoupon?.code) {
+        adminStore.incrementPromoUse(cartStore.appliedCoupon.code)
+      }
       cartStore.clearCart()
       showCheckoutModal.value = false
       toast.add('⚡ Redirigiendo a la pasarela oficial de Mercado Pago...', 'info')
@@ -1725,6 +1858,9 @@ const submitOrder = async () => {
     console.warn('Telegram notify error:', err)
   }
 
+  if (cartStore.appliedCoupon?.code) {
+    adminStore.incrementPromoUse(cartStore.appliedCoupon.code)
+  }
   lastPlacedOrder.value = {
     ...orderSnapshot,
     pin: clientForm.value.pin
@@ -1944,6 +2080,14 @@ const submitOrder = async () => {
           >
             <span>🎁</span>
             <span>Combos & Promos</span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/juegos"
+            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-indigo-500 via-purple-600 to-blue-600 text-white shadow-indigo-500/25 hover:scale-[1.02]"
+          >
+            <span>🎮</span>
+            <span>Juegos Digitales ({{ adminStore.processedGamingProducts?.length || 1084 }})</span>
           </RouterLink>
 
           <RouterLink 
@@ -2456,6 +2600,50 @@ const submitOrder = async () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4.5 Teaser Catálogo Gaming PS5 / PS4 / PS3 en Inicio -->
+      <div v-if="(adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+              <span>🎮</span>
+              <span>Videojuegos Digitales Oficiales PS5, PS4 & PS3</span>
+            </h3>
+            <p class="text-xs text-slate-400">Cuentas Primarias y Secundarias originales con activación oficial en tu consola.</p>
+          </div>
+          <RouterLink
+            to="/juegos"
+            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow flex items-center gap-1.5 transition"
+          >
+            <span>Explorar {{ adminStore.processedGamingProducts.length }} Juegos</span>
+            <span>→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div
+            v-for="game in (adminStore.processedGamingProducts || []).slice(0, 4)"
+            :key="game.id"
+            @click="openGamingDetail(game)"
+            class="bg-slate-900/70 border border-white/[0.08] hover:border-indigo-500/50 rounded-2xl overflow-hidden transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
+          >
+            <div>
+              <div class="relative h-32 sm:h-36 bg-black overflow-hidden">
+                <img :src="game.image" :alt="game.title" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
+                <span class="absolute top-2 left-2 bg-indigo-600/90 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono">{{ game.platform }}</span>
+              </div>
+              <div class="p-3 space-y-1">
+                <h4 class="font-black text-white text-xs line-clamp-1 group-hover:text-indigo-300 transition">{{ game.title }}</h4>
+                <span class="text-[10px] text-slate-400 block">{{ game.category }}</span>
+              </div>
+            </div>
+            <div class="px-3 pb-3 pt-1 flex items-center justify-between border-t border-slate-800/80">
+              <span class="text-[10px] text-slate-400">Desde:</span>
+              <strong class="text-xs sm:text-sm font-black text-indigo-300 font-mono">${{ (game.effectiveSecondaryPrice || game.effectivePrimaryPrice || 0).toLocaleString() }} ARS</strong>
             </div>
           </div>
         </div>
@@ -3114,10 +3302,10 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Buscador y Filtros de Categorías -->
+        <!-- Buscador, Ordenamiento, Rango de Precio y Favoritos -->
         <div class="space-y-3 pt-3 border-t border-indigo-500/20">
-          <!-- Fila 1: Buscador y Contador de Títulos -->
-          <div class="flex flex-col sm:flex-row items-center gap-3">
+          <!-- Fila 1: Buscador, Ordenamiento y Acciones Rápidas -->
+          <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
             <div class="relative flex-1 w-full">
               <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               <input 
@@ -3127,10 +3315,55 @@ const submitOrder = async () => {
                 class="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl py-2.5 pl-10 pr-4 text-white placeholder:text-slate-500 text-xs sm:text-sm focus:border-indigo-400 outline-none"
               >
             </div>
-            <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+              <select
+                v-model="gamingSortBy"
+                class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
+                title="Ordenar catálogo"
+              >
+                <option value="default">✨ Destacados</option>
+                <option value="price_asc">🏷️ Menor Precio</option>
+                <option value="price_desc">💎 Mayor Precio</option>
+                <option value="title_asc">🔤 Alfabético (A-Z)</option>
+              </select>
+
+              <select
+                v-model="gamingPriceCeiling"
+                class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
+                title="Filtrar por presupuesto"
+              >
+                <option value="ALL">💰 Cualquier Precio</option>
+                <option value="15000">Hasta $15.000</option>
+                <option value="25000">Hasta $25.000</option>
+                <option value="40000">Hasta $40.000</option>
+              </select>
+
+              <button
+                type="button"
+                @click="onlyGamingFavorites = !onlyGamingFavorites"
+                :class="[
+                  'px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1',
+                  onlyGamingFavorites
+                    ? 'bg-rose-600 text-white border-rose-500 shadow'
+                    : 'bg-slate-950 text-slate-300 border-slate-700 hover:border-rose-500/40 hover:text-rose-300'
+                ]"
+              >
+                <span>❤️</span>
+                <span>Favoritos ({{ gamingWishlistIds.length }})</span>
+              </button>
+
               <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap">
-                🎮 {{ filteredGamingProducts.length }} títulos disponibles
+                🎮 {{ filteredGamingProducts.length }} títulos
               </span>
+
+              <button
+                type="button"
+                @click="showCartDrawer = true"
+                class="px-3 py-2 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 text-slate-950 font-black text-xs shadow cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🛒</span>
+                <span>Carrito ({{ cartStore.totalItems }})</span>
+              </button>
             </div>
           </div>
 
@@ -3200,8 +3433,8 @@ const submitOrder = async () => {
               >
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60"></div>
               
-              <!-- Badges Superiores -->
-              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+              <!-- Badges Superiores & Botón Favoritos -->
+              <div class="absolute top-2.5 left-2.5 right-11 flex items-center gap-1.5 flex-wrap">
                 <span class="bg-indigo-600/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow font-mono">
                   {{ game.platform }}
                 </span>
@@ -3209,6 +3442,20 @@ const submitOrder = async () => {
                   {{ game.badge }}
                 </span>
               </div>
+
+              <button
+                type="button"
+                @click.stop="toggleGamingFavorite(game.id)"
+                :class="[
+                  'absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border backdrop-blur-md shadow transition cursor-pointer active:scale-90',
+                  isGamingFavorite(game.id)
+                    ? 'bg-rose-500/90 border-rose-300 text-white'
+                    : 'bg-slate-950/75 border-white/15 text-slate-300 hover:text-rose-300'
+                ]"
+                :title="isGamingFavorite(game.id) ? 'Quitar de Favoritos' : 'Guardar en Favoritos'"
+              >
+                <span class="text-xs">{{ isGamingFavorite(game.id) ? '❤️' : '🤍' }}</span>
+              </button>
 
               <!-- Categoría y Subcategoría en Portada -->
               <div class="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-1.5 flex-wrap">
@@ -3339,12 +3586,12 @@ const submitOrder = async () => {
               </button>
             </div>
 
-            <!-- Fila 2: Detalle Completo y Generador de Flyer -->
-            <div class="grid grid-cols-2 gap-2">
+            <!-- Fila 2: Detalle Completo, Flyer y Compartir Link -->
+            <div class="flex gap-2">
               <button 
                 type="button"
                 @click="openGamingDetail(game)"
-                class="bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs py-2 px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                class="flex-1 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs py-2 px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Ver sinopsis y características completas"
               >
                 <span>👁️ Detalle</span>
@@ -3352,10 +3599,18 @@ const submitOrder = async () => {
               <button 
                 type="button"
                 @click="openFlyerForGaming(game)"
-                class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Generar flyer publicitario para redes y estados"
               >
                 <span>🎨 Flyer</span>
+              </button>
+              <button
+                type="button"
+                @click="copyGamingShareUrl(game)"
+                class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-sky-300 border border-slate-700 text-xs font-bold transition cursor-pointer active:scale-95"
+                title="Copiar enlace directo del juego con portada oficial"
+              >
+                🔗
               </button>
             </div>
           </div>
@@ -3451,8 +3706,8 @@ const submitOrder = async () => {
         <p class="text-xs text-slate-400">Prueba cambiando la categoría o término de búsqueda.</p>
         <button 
           type="button" 
-          @click="selectedGamingCat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'"
-          class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs"
+          @click="selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'; gamingPriceCeiling = 'ALL'; onlyGamingFavorites = false; gamingSortBy = 'default'"
+          class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs cursor-pointer"
         >
           Restablecer Filtros
         </button>
@@ -4361,18 +4616,56 @@ const submitOrder = async () => {
             </div>
           </div>
 
+          <!-- Código Promocional / Cupón de Descuento -->
+          <div class="bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                <span>🎁</span>
+                <span>¿Tienes un Cupón de Descuento?</span>
+              </span>
+              <span v-if="!cartStore.appliedCoupon" class="text-[10px] text-amber-300 font-mono">Ej: BIENVENIDO10 / GAMER5</span>
+            </div>
+            <div v-if="cartStore.appliedCoupon" class="flex items-center justify-between bg-emerald-500/15 border border-emerald-500/30 rounded-lg px-3 py-2 text-xs">
+              <div>
+                <strong class="text-emerald-300 font-mono">✓ {{ cartStore.appliedCoupon.code }}</strong>
+                <span class="text-slate-300 ml-1.5">{{ cartStore.appliedCoupon.description }}</span>
+              </div>
+              <button type="button" @click="cartStore.removeCoupon()" class="text-rose-400 hover:text-rose-300 font-bold text-[11px] cursor-pointer">Quitar ✕</button>
+            </div>
+            <div v-else class="flex gap-2">
+              <input
+                v-model="promoCodeInput"
+                @keyup.enter="applyCartPromoCode"
+                type="text"
+                placeholder="Ingresa tu código promo..."
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono uppercase outline-none focus:border-brand-accent"
+              >
+              <button
+                type="button"
+                @click="applyCartPromoCode"
+                class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition cursor-pointer"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+
           <div class="bg-slate-950 p-4 rounded-xl space-y-2 text-sm border border-slate-800">
             <div class="flex justify-between text-slate-400">
               <span>Subtotal:</span>
-              <span class="text-white font-semibold">${{ cartStore.subtotal }} ARS</span>
+              <span class="text-white font-semibold">${{ cartStore.subtotal.toLocaleString() }} ARS</span>
             </div>
-            <div v-if="cartStore.discountPercentage > 0" class="flex justify-between text-emerald-400 font-bold bg-emerald-400/10 p-2 rounded-lg">
-              <span>Descuento por Volumen ({{ cartStore.discountPercentage }}%):</span>
-              <span>- ${{ (cartStore.subtotal * (cartStore.discountPercentage / 100)).toFixed(2) }} ARS</span>
+            <div v-if="cartStore.discountPercentage > 0" class="flex justify-between text-emerald-400 font-bold bg-emerald-400/10 p-2 rounded-lg text-xs">
+              <span>Descuento Volumen Streaming ({{ cartStore.discountPercentage }}%):</span>
+              <span>- ${{ Math.round(cartStore.items.filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming').reduce((a, i) => a + (i.clientPrice * i.quantity), 0) * (cartStore.discountPercentage / 100)).toLocaleString() }} ARS</span>
+            </div>
+            <div v-if="cartStore.couponDiscountAmount > 0" class="flex justify-between text-amber-300 font-bold bg-amber-500/10 p-2 rounded-lg text-xs border border-amber-500/20">
+              <span>Cupón ({{ cartStore.appliedCoupon?.code }}):</span>
+              <span>- ${{ cartStore.couponDiscountAmount.toLocaleString() }} ARS</span>
             </div>
             <div class="flex justify-between items-center text-lg font-black border-t border-slate-800 pt-2 text-white">
               <span>Total Final:</span>
-              <span class="text-brand-accent text-2xl">${{ cartStore.total.toFixed(2) }} ARS</span>
+              <span class="text-brand-accent text-2xl">${{ Math.round(cartStore.total).toLocaleString() }} ARS</span>
             </div>
           </div>
 
@@ -5465,42 +5758,66 @@ const submitOrder = async () => {
         </div>
 
         <!-- Botones de Acción del Modal -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-          <button 
-            type="button" 
-            @click="buyGamingViaWhatsApp(selectedGamingProduct); showGamingDetailModal = false"
-            class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
-            title="Comprar directo por WhatsApp"
-          >
-            <span>⚡ Comprar por WhatsApp</span>
-          </button>
-          <button 
-            type="button" 
-            @click="addGameToCartFromModal"
-            class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
-            title="Agregar al carrito de compras"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            <span>+ Carrito (${{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
-          </button>
-          <button 
-            type="button" 
-            @click="openFlyerForGaming(selectedGamingProduct); showGamingDetailModal = false"
-            class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white font-bold py-3 px-3 rounded-xl border border-indigo-500/30 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-            title="Crear Flyer de este juego"
-          >
-            <span>🎨 Crear Flyer</span>
-          </button>
+        <div class="space-y-2.5 pt-2">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button 
+              type="button" 
+              @click="buyGamingViaWhatsApp(selectedGamingProduct); showGamingDetailModal = false"
+              class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              title="Comprar directo por WhatsApp"
+            >
+              <span>⚡ Comprar por WhatsApp</span>
+            </button>
+            <button 
+              type="button" 
+              @click="addGameToCartFromModal"
+              class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              title="Agregar al carrito de compras"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+              <span>+ Carrito (${{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
+            </button>
+            <button 
+              type="button" 
+              @click="openFlyerForGaming(selectedGamingProduct); showGamingDetailModal = false"
+              class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white font-bold py-3 px-3 rounded-xl border border-indigo-500/30 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              title="Crear Flyer de este juego"
+            >
+              <span>🎨 Crear Flyer</span>
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              @click="copyGamingShareUrl(selectedGamingProduct)"
+              class="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>🔗 Copiar Enlace Directo</span>
+            </button>
+            <button
+              type="button"
+              @click="toggleGamingFavorite(selectedGamingProduct.id)"
+              :class="[
+                'py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition',
+                isGamingFavorite(selectedGamingProduct.id)
+                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+              ]"
+            >
+              <span>{{ isGamingFavorite(selectedGamingProduct.id) ? '❤️ En Tus Favoritos' : '🤍 Guardar en Favoritos' }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- MODAL GENERADOR DE FLYERS (SOLO PRODUCTOS FÍSICOS PARA CLIENTES) -->
+    <!-- MODAL GENERADOR DE FLYERS -->
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
       :default-store-name="resellerStoreName"
+      :default-phone="currentReseller?.contactNumber || adminStore.providerBankInfo?.whatsapp || ''"
       website-domain="streamepro.me"
       @close="showFlyerModal = false" 
     />

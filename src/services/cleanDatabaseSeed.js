@@ -222,7 +222,7 @@ export function createStarterAccountForPlatform(platform, index = 1) {
     'Disney+': 15000,
     Spotify: 9000,
     IPTV: 9000,
-    'Prime Video:': 7000,
+    'Prime Video': 7000,
     'YouTube Premium': 8000
   }
 

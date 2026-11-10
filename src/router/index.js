@@ -63,6 +63,22 @@ const router = createRouter({
       })
     },
     {
+      path: '/juego/:id',
+      alias: ['/j/:id'],
+      redirect: to => ({
+        path: '/juegos',
+        query: { ...to.query, game: to.params.id }
+      })
+    },
+    {
+      path: '/juego/:id/:ref',
+      alias: ['/j/:id/:ref'],
+      redirect: to => ({
+        path: '/juegos',
+        query: { ...to.query, game: to.params.id, ref: to.params.ref }
+      })
+    },
+    {
       path: '/ref/:ref',
       alias: ['/tienda/:ref', '/r/:ref'],
       redirect: to => ({

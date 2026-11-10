@@ -50,7 +50,9 @@ export const DB_KEYS = {
   GAMING_CATEGORIES: 'gaming_categories',
   GAMING_SUBCATEGORIES: 'gaming_subcategories',
   GAMING_ORDERS: 'gaming_orders',
-  GAMING_PROVIDER_SITES: 'gaming_provider_sites'
+  GAMING_PROVIDER_SITES: 'gaming_provider_sites',
+  PROMO_CODES: 'promo_codes',
+  SUPPORT_TICKETS: 'support_tickets'
 }
 
 export function loadDb(key, defaultValue) {

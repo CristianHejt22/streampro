@@ -66,7 +66,7 @@ const decodeHtmlEntities = (str) => {
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
 }
 
-// 4. Videojuegos Digitales Multiplataforma (Argentina Play & JDA)
+// 4. Videojuegos Digitales Multiplataforma (Catálogo Oficial Consola / PlayStation)
 const selectedGamingId = ref('GAME-182')
 const selectedGamingLicense = ref('primary') // 'primary' | 'secondary'
 const selectedGamingPlatform = ref('PS5')
@@ -807,20 +807,27 @@ const displaySubtitle = computed(() => {
   return 'Tecnología & Accesorios de Alta Calidad'
 })
 
-// URL de referencia oficial (usando solo el dominio principal)
+const gamingFlyerGuaranteeText = computed(() => {
+  const plat = String(selectedGamingPlatform.value || '')
+  if (plat.includes('PC') || plat.includes('Steam')) return '🔑 Clave Oficial Steam · Entrega 60/90min · Garantía 100%'
+  if (plat.includes('Switch')) return '🎮 Licencia Oficial Nintendo · Entrega 60/90min · Garantía 100%'
+  if (plat.includes('Xbox')) return '🎮 Licencia Oficial Xbox · Entrega 60/90min · Garantía 100%'
+  return '🎮 Licencia Oficial PlayStation · Entrega 60/90min · Garantía 100%'
+})
+
+// URL de referencia / enlace directo oficial con OpenGraph 1200x630
 const fullProductReferralUrl = computed(() => {
   const domain = displayDomain.value || 'streamepro.me'
   const base = `https://${domain}`
   const refCode = props.resellerRef && props.resellerRef !== 'DIRECT' ? props.resellerRef : null
 
   if (flyerProductType.value === 'gaming' && selectedGamingProduct.value?.id) {
+    const gamePath = `${base}/juego/${encodeURIComponent(selectedGamingProduct.value.id)}${refCode ? '/' + encodeURIComponent(refCode) : ''}`
     const params = new URLSearchParams()
-    params.set('sec', 'gaming')
-    params.set('game', selectedGamingProduct.value.id)
     if (selectedGamingLicense.value) params.set('lic', selectedGamingLicense.value)
     if (selectedGamingPlatform.value) params.set('plat', selectedGamingPlatform.value)
-    if (refCode) params.set('ref', refCode)
-    return `${base}/?${params.toString()}`
+    const qs = params.toString()
+    return qs ? `${gamePath}?${qs}` : gamePath
   }
 
   if (flyerProductType.value === 'combo' && selectedPackage.value?.id) {
@@ -832,10 +839,8 @@ const fullProductReferralUrl = computed(() => {
   }
 
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.id) {
-    const params = new URLSearchParams()
-    params.set('prod', String(selectedPhysicalProduct.value.id))
-    if (refCode) params.set('ref', refCode)
-    return `${base}/?${params.toString()}`
+    const prodId = encodeURIComponent(String(selectedPhysicalProduct.value.id))
+    return refCode ? `${base}/producto/${prodId}/${encodeURIComponent(refCode)}` : `${base}/producto/${prodId}`
   }
 
   const params = new URLSearchParams()
@@ -848,7 +853,8 @@ const fullProductReferralUrl = computed(() => {
 const copyProductReferralUrl = () => {
   if (navigator?.clipboard?.writeText) {
     navigator.clipboard.writeText(fullProductReferralUrl.value).then(() => {
-      toast.add('¡Enlace de referencia con tu comisión copiado!', 'success')
+      const isReseller = props.resellerRef && props.resellerRef !== 'DIRECT'
+      toast.add(isReseller ? '¡Enlace de referencia con tu comisión copiado!' : '¡Enlace oficial del producto copiado!', 'success')
     }).catch(() => {
       toast.add('Error al copiar el enlace', 'error')
     })
@@ -1200,13 +1206,7 @@ function renderCanvasFlyerBlob() {
         const guaranteeText = flyerProductType.value === 'physical'
           ? '🚚 Envío a Todo el País · Garantía Oficial 100%'
           : flyerProductType.value === 'gaming'
-          ? (selectedGamingPlatform.value.includes('PC') || selectedGamingPlatform.value.includes('Steam')
-              ? '🔑 Clave Oficial Steam · Entrega 60/90min · Garantía 100%'
-              : selectedGamingPlatform.value.includes('Switch')
-              ? '🎮 Licencia Oficial Nintendo · Entrega 60/90min · Garantía 100%'
-              : selectedGamingPlatform.value.includes('Xbox')
-              ? '🎮 Licencia Oficial Xbox · Entrega 60/90min · Garantía 100%'
-              : '🎮 Licencia Oficial PlayStation · Entrega 60/90min · Garantía 100%')
+          ? gamingFlyerGuaranteeText.value
           : '⚡ Entrega 60/90min · Garantía Oficial 100%'
 
         if (hasOrig) {
@@ -1436,6 +1436,24 @@ function renderCanvasFlyerBlob() {
           drawCyberBullets(ctx, 150, bulletsY, 34, numBullets, true)
         }
 
+        // Banda inferior opcional con WhatsApp & Dominio Oficial en la descarga HD
+        if (props.defaultPhone || displayDomain.value) {
+          const footerText = [
+            storeName.value || 'StreamePro Oficial',
+            props.defaultPhone ? `WhatsApp: ${props.defaultPhone}` : '',
+            displayDomain.value || 'streamepro.me'
+          ].filter(Boolean).join('  •  ')
+          const barW = Math.min(width - 120, Math.max(460, footerText.length * 14 + 60))
+          const barX = format === 'banner' ? 740 : (width - barW) / 2
+          const barY = height - (format === 'story' ? 88 : 66)
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
+          roundRect(ctx, barX, barY, barW, 44, 22, true, true, th.cardBorder, 1.5)
+          ctx.fillStyle = '#e2e8f0'
+          ctx.font = 'bold 20px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText(footerText, barX + barW / 2, barY + 29)
+        }
+
         canvas.toBlob((blob) => {
           if (!blob) {
             reject(new Error('Fallo al exportar blob de canvas'))
@@ -1552,10 +1570,14 @@ const copySocialCopy = () => {
   text += `⚡ *¡Haz tu pedido 100% online con garantía oficial!*\n`
   text += `🌐 *Compra directa aquí:* ${fullProductReferralUrl.value}\n`
   text += `🏪 *${storeName.value}*`
+  if (props.defaultPhone) {
+    text += `\n📲 *WhatsApp:* ${props.defaultPhone}`
+  }
 
   if (navigator?.clipboard?.writeText) {
     navigator.clipboard.writeText(text).then(() => {
-      toast.add('¡Texto con tu enlace de referencia copiado! Pégalo en tu Estado o Historia.', 'success')
+      const isReseller = props.resellerRef && props.resellerRef !== 'DIRECT'
+      toast.add(isReseller ? '¡Texto con tu enlace de referencia copiado! Pégalo en tu Estado o Historia.' : '¡Texto promocional con enlace directo copiado! Pégalo en WhatsApp o Redes.', 'success')
     })
   }
 }
@@ -1649,7 +1671,7 @@ const shareToWhatsAppStatus = () => {
                 :class="['py-2 px-2 rounded-xl font-black text-xs transition-all flex flex-col items-center justify-center gap-1 text-center', flyerProductType === 'gaming' ? 'bg-indigo-600 text-white shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
               >
                 <span class="text-base">🎮</span>
-                <span class="leading-tight">Juegos PS4/PS5</span>
+                <span class="leading-tight">Videojuegos Digitales</span>
               </button>
 
               <button 
@@ -2405,7 +2427,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
@@ -2474,7 +2496,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
@@ -2542,7 +2564,7 @@ const shareToWhatsAppStatus = () => {
                       </div>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="space-y-0.5 text-[8px] text-slate-200">

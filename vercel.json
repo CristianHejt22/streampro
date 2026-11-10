@@ -78,6 +78,22 @@
       "destination": "/api/product-preview?prod=:id"
     },
     {
+      "source": "/producto/:id/:ref",
+      "destination": "/api/product-preview?prod=:id&ref=:ref"
+    },
+    {
+      "source": "/j/:id",
+      "destination": "/api/product-preview?game=:id"
+    },
+    {
+      "source": "/juego/:id",
+      "destination": "/api/product-preview?game=:id"
+    },
+    {
+      "source": "/juego/:id/:ref",
+      "destination": "/api/product-preview?game=:id&ref=:ref"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -41,6 +41,8 @@ const handleConfirmCloseFromReceipt = (order) => {
   showReceiptModal.value = false
   if (isPhysicalReceipt.value) {
     handleConfirmPhysicalOrder(order)
+  } else if (isOrderGamingType(order)) {
+    openGamingDispatchModal(order)
   } else {
     openDispatchModal(order)
   }
@@ -1840,36 +1842,59 @@ const saveNewGamingProduct = () => {
 const sendWhatsAppGameDelivery = (order) => {
   const phone = formatWaPhone(order.customerPhone)
   const isPrim = order.licenseType === 'primary' || (order.planLabel && order.planLabel.includes('Primaria'))
-  const provName = order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina')
-  const msg = `¡Hola ${order.customerName || 'Gamer'}! 🎮 Tu juego digital está listo para jugar en *StreamePro*:
+  const acc = order.accountDetails
+  const portalUrl = 'https://streamepro.me/portal'
 
-` +
-    `🎯 *Juego:* ${order.gameTitle || order.platform || 'Juego PlayStation'}
-` +
-    `🔑 *Modalidad:* ${isPrim ? '⭐️ Cuenta Primaria (Juegas con tu usuario)' : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)'}
-` +
-    `🏢 *Proveedor Asignado:* ${provName}
+  const credsBlock = acc && acc.email
+    ? `🔐 *TUS CREDENCIALES DE ACCESO:*\n` +
+      `📧 *Correo:* ${acc.email}\n` +
+      `🔑 *Contraseña:* ${acc.pass || '-'}\n` +
+      (acc.pin ? `📌 *Código 2FA / PIN:* ${acc.pin}\n` : '') +
+      (acc.notes ? `📝 *Nota:* ${acc.notes}\n` : '') + `\n`
+    : ''
 
-` +
-    `📋 *Instrucciones de Instalación:*
-` +
-    `1. Enciende tu consola PS4/PS5 y crea un Nuevo Usuario.
-` +
-    `2. Inicia sesión con el correo y contraseña que te enviamos a continuación.
-` +
-    `3. ${isPrim ? 'Activa la consola como Consola Principal y descarga el juego desde la biblioteca. ¡Luego cámbiate a tu usuario personal y juega con tus propios trofeos!' : 'Descarga el juego y disfrútalo desde este usuario con conexión a internet.'}
-
-` +
-    `¿Confirmas recepción para enviarte credenciales?`
+  const msg = `¡Hola ${order.customerName || 'Gamer'}! 🎮 Tu juego digital en *StreamePro* ${acc?.email ? 'ya está despachado ✅' : 'está listo para instalar'}:\n\n` +
+    `🎯 *Juego:* ${order.gameTitle || order.platform || 'Juego Digital'}\n` +
+    `🔑 *Modalidad:* ${isPrim ? '⭐️ Cuenta Primaria (Juegas con tu usuario personal)' : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)'}\n` +
+    `🛡️ *Entrega:* Licencia Digital Oficial StreamePro\n\n` +
+    credsBlock +
+    `📋 *Instrucciones Rápidas de Instalación:*\n` +
+    `1. Enciende tu consola y crea un *Nuevo Usuario*.\n` +
+    `2. Inicia sesión con el correo y contraseña entregados.\n` +
+    `3. ${isPrim ? 'Activa la consola como Principal / Uso compartido y descarga el juego desde Biblioteca. ¡Luego vuelve a tu usuario personal!' : 'Descarga el juego y disfrútalo directamente desde este usuario con conexión a internet.'}\n\n` +
+    `📱 También puedes ver tus accesos e instrucciones completas aquí:\n${portalUrl}` +
+    (acc?.email ? '' : '\n\n¿Confirmas recepción para enviarte las credenciales?')
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 // ==========================================
-// GESTIÓN AVANZADA DE VENTAS Y PEDIDOS GAMER
+// GESTIÓN AVANZADA DE VENTAS, POS, CUPONES, SALUD Y DESPACHO GAMER
 // ==========================================
+const flyerInitialProduct = ref(null)
+const openFlyerForGaming = (game) => {
+  if (!game) {
+    showFlyerModal.value = true
+    return
+  }
+  flyerInitialProduct.value = {
+    itemType: 'gaming',
+    gameId: game.id,
+    id: game.id,
+    title: game.title,
+    category: 'Videojuegos Digitales',
+    licenseType: 'primary',
+    platform: game.platform,
+    image: game.image,
+    effectivePrimaryPrice: game.effectivePrimaryPrice,
+    effectiveSecondaryPrice: game.effectiveSecondaryPrice,
+    priceNumeric: game.effectivePrimaryPrice
+  }
+  showFlyerModal.value = true
+}
+
 const gamingOrderSearch = ref('')
 const gamingOrderStatusFilter = ref('ALL') // 'ALL' | 'PENDING' | 'DISPATCHED'
-const gamingOrderProviderFilter = ref('ALL') // 'ALL' | 'argentinaplay' | 'juegosdigitalesargentina'
+const gamingOrderProviderFilter = ref('ALL')
 const gamingOrderLicenseFilter = ref('ALL') // 'ALL' | 'primary' | 'secondary'
 const gamingOrderCurrentPage = ref(1)
 const gamingOrderPageSize = ref(15)
@@ -1936,6 +1961,19 @@ watch([gamingOrderSearch, gamingOrderStatusFilter, gamingOrderProviderFilter, ga
   gamingOrderCurrentPage.value = 1
 })
 
+const resolveAdminProviderLabel = (order) => {
+  const site = (adminStore.gamingProviderSites || []).find(s => s.key === order.fulfillmentProvider)
+  return site?.name || order.fulfillmentProviderName || order.fulfillmentProvider || 'Sin asignar'
+}
+
+const handleQuickChangeGamingProvider = (order, newProviderKey) => {
+  if (!order || !newProviderKey) return
+  const ok = adminStore.setGamingFulfillmentProvider(order.id, newProviderKey)
+  if (ok) {
+    toast.add(`Proveedor de orden #${order.id} actualizado a ${resolveAdminProviderLabel(order)}`, 'success')
+  }
+}
+
 const handleToggleGamingOrderStatus = (order) => {
   const isDelivered = order.status === 'Dispatched' || order.status === 'Entregado'
   const newStatus = isDelivered ? 'Waiting Provider' : 'Dispatched'
@@ -1964,7 +2002,7 @@ const copyGamingOrderDetails = async (order) => {
 👤 Cliente: ${order.customerName || 'Cliente'} (${order.customerPhone || 'S/N'})
 🎯 Juego: ${order.gameTitle || order.platform || 'PlayStation'}
 🔑 Modalidad: ${isPrim ? 'Cuenta Primaria' : 'Cuenta Secundaria'}
-🏢 Proveedor: ${order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina')}
+🏢 Proveedor: ${resolveAdminProviderLabel(order)}
 💰 Cobrado: $${(order.clientPrice || order.totalAmount || 0).toLocaleString()} ARS
 📦 Estado: ${order.status === 'Dispatched' ? 'Entregado' : 'Pendiente'}`
 
@@ -1974,6 +2012,424 @@ const copyGamingOrderDetails = async (order) => {
   } catch {
     toast.add('Error al copiar datos', 'error')
   }
+}
+
+const copyGamingOrderCredentials = async (order) => {
+  const acc = order?.accountDetails
+  if (!acc || !acc.email) return
+  const text = `🎮 ${order.gameTitle || order.platform}\n📧 Correo: ${acc.email}\n🔑 Contraseña: ${acc.pass || '-'}` +
+    (acc.pin ? `\n📌 PIN/2FA: ${acc.pin}` : '') +
+    (acc.notes ? `\n📝 Nota: ${acc.notes}` : '')
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add('Credenciales del juego copiadas', 'success')
+  } catch {
+    toast.add('Error al copiar credenciales', 'error')
+  }
+}
+
+// MODAL DE DESPACHO DE CREDENCIALES GAMER
+const showGamingDispatchModal = ref(false)
+const dispatchingGamingOrder = ref(null)
+const gamingDispatchForm = ref({
+  providerKey: 'argentinaplay',
+  providerCost: 0,
+  email: '',
+  pass: '',
+  pin: '',
+  notes: '',
+  sendWhatsApp: true
+})
+
+const openGamingDispatchModal = (order) => {
+  if (!order) return
+  dispatchingGamingOrder.value = order
+  const acc = order.accountDetails || {}
+  gamingDispatchForm.value = {
+    providerKey: order.fulfillmentProvider || 'argentinaplay',
+    providerCost: Number(order.providerCost || 0),
+    email: acc.email || '',
+    pass: acc.pass || '',
+    pin: acc.pin || '',
+    notes: acc.notes || '',
+    sendWhatsApp: true
+  }
+  showGamingDispatchModal.value = true
+}
+
+const confirmGamingDispatch = () => {
+  if (!dispatchingGamingOrder.value) return
+  if (!gamingDispatchForm.value.email.trim() || !gamingDispatchForm.value.pass.trim()) {
+    toast.add('Ingresa al menos el correo y la contraseña PSN', 'error')
+    return
+  }
+  const res = adminStore.dispatchGamingOrder(dispatchingGamingOrder.value.id, {
+    email: gamingDispatchForm.value.email,
+    pass: gamingDispatchForm.value.pass,
+    pin: gamingDispatchForm.value.pin,
+    notes: gamingDispatchForm.value.notes,
+    providerKey: gamingDispatchForm.value.providerKey,
+    providerCost: gamingDispatchForm.value.providerCost
+  })
+  if (res.success) {
+    toast.add(`✅ Credenciales de ${dispatchingGamingOrder.value.gameTitle || 'Videojuego'} enviadas a la Bóveda`, 'success')
+    const dispatchedOrder = res.order
+    const shouldSendWa = gamingDispatchForm.value.sendWhatsApp && dispatchedOrder?.customerPhone
+    showGamingDispatchModal.value = false
+    if (shouldSendWa) {
+      sendWhatsAppGameDelivery(dispatchedOrder)
+    }
+  } else {
+    toast.add(res.error || 'Error al despachar pedido', 'error')
+  }
+}
+
+// POS VENTA RÁPIDA & COTIZADOR GAMER
+const posGameSearch = ref('')
+const posSelectedGame = ref(null)
+const isSubmittingPosSale = ref(false)
+const posForm = ref({
+  licenseType: 'primary',
+  quantity: 1,
+  providerKey: 'argentinaplay',
+  customClientPrice: 0,
+  discountAmount: 0,
+  customerName: '',
+  customerPhone: '',
+  pin: '1234',
+  resellerId: 'DIRECT',
+  paymentMethod: 'Transferencia Bancaria',
+  markDispatched: false,
+  accountEmail: '',
+  accountPass: '',
+  accountPin: '',
+  deliveryNotes: ''
+})
+
+const filteredPosGames = computed(() => {
+  const list = adminStore.processedGamingProducts || []
+  const q = posGameSearch.value.trim().toLowerCase()
+  if (!q) return list.slice(0, 20)
+  return list.filter(g =>
+    (g.title && g.title.toLowerCase().includes(q)) ||
+    (g.platform && g.platform.toLowerCase().includes(q)) ||
+    (g.category && g.category.toLowerCase().includes(q)) ||
+    (g.id && g.id.toLowerCase().includes(q))
+  ).slice(0, 25)
+})
+
+const posSelectedGameSupportsSecondary = computed(() => {
+  const g = posSelectedGame.value
+  if (!g || !g.effectiveSecondaryPrice || Number(g.effectiveSecondaryPrice) <= 0) return false
+  const p = String(g.platform || '').toLowerCase()
+  return !p.includes('pc') && !p.includes('steam') && !p.includes('ps3')
+})
+
+const selectPosGame = (game) => {
+  posSelectedGame.value = game
+  posForm.value.licenseType = 'primary'
+  posForm.value.providerKey = game.bestFulfillmentPrimary || (game.activeProvidersList?.[0]?.key) || 'argentinaplay'
+  posForm.value.customClientPrice = 0
+  posForm.value.discountAmount = 0
+}
+
+const clearPosGame = () => {
+  posSelectedGame.value = null
+}
+
+const posSelectedGameQuotes = computed(() => {
+  const g = posSelectedGame.value
+  if (!g) return []
+  const isPrim = posForm.value.licenseType === 'primary'
+  const quotesMap = new Map((g.activeProvidersList || []).map(p => [p.key, p]))
+  return (adminStore.gamingProviderSites || []).map(site => {
+    const q = quotesMap.get(site.key)
+    const costUnit = q ? (isPrim ? Number(q.costPrimary || 0) : Number(q.costSecondary || q.costPrimary || 0)) : 0
+    return {
+      key: site.key,
+      name: site.name,
+      badge: site.badge || site.name,
+      url: site.url || '',
+      costUnit
+    }
+  }).sort((a, b) => (a.costUnit || 9999999) - (b.costUnit || 9999999))
+})
+
+watch(() => posForm.value.licenseType, (lic) => {
+  const g = posSelectedGame.value
+  if (!g) return
+  if (lic === 'secondary' && g.bestFulfillmentSecondary) {
+    posForm.value.providerKey = g.bestFulfillmentSecondary
+  } else if (g.bestFulfillmentPrimary) {
+    posForm.value.providerKey = g.bestFulfillmentPrimary
+  }
+})
+
+const posSummary = computed(() => {
+  const g = posSelectedGame.value
+  if (!g) return { unitPvp: 0, qty: 1, discount: 0, finalTotal: 0, costTotal: 0, resellerCut: 0, netProfit: 0 }
+  const isPrim = posForm.value.licenseType === 'primary'
+  const unitPvp = Number(posForm.value.customClientPrice) > 0
+    ? Number(posForm.value.customClientPrice)
+    : (isPrim ? Number(g.effectivePrimaryPrice || 0) : Number(g.effectiveSecondaryPrice || 0))
+  const qty = Math.max(1, Number(posForm.value.quantity) || 1)
+  const discount = Math.max(0, Number(posForm.value.discountAmount) || 0)
+  const finalTotal = Math.max(0, (unitPvp * qty) - discount)
+
+  const quote = posSelectedGameQuotes.value.find(q => q.key === posForm.value.providerKey)
+  const unitCost = quote?.costUnit || (isPrim ? Number(g.actualPurchaseCostPrimary || g.baseCostPrimary || 0) : Number(g.actualPurchaseCostSecondary || g.baseCostSecondary || 0))
+  const costTotal = unitCost * qty
+
+  const pct = Number(adminStore.gamingResellerCommissionPercent ?? 10) / 100
+  const minProf = Number(adminStore.gamingMinResellerProfit ?? 1000)
+  const singleResCut = isPrim ? Math.max(minProf, Math.round(unitPvp * pct)) : Math.max(Math.round(minProf * 0.75), Math.round(unitPvp * pct))
+  const resellerCut = posForm.value.resellerId !== 'DIRECT' ? singleResCut * qty : 0
+  const netProfit = finalTotal - costTotal - resellerCut
+
+  return { unitPvp, qty, discount, finalTotal, costTotal, resellerCut, netProfit }
+})
+
+const submitAdminPosGamingSale = async () => {
+  if (!posSelectedGame.value) return
+  if (!posForm.value.customerName.trim()) {
+    toast.add('Ingresa el nombre del cliente para registrar la venta', 'warning')
+    return
+  }
+  if (posForm.value.markDispatched && (!posForm.value.accountEmail.trim() || !posForm.value.accountPass.trim())) {
+    toast.add('Completa Correo y Contraseña PSN para despacho inmediato', 'warning')
+    return
+  }
+  isSubmittingPosSale.value = true
+  try {
+    const res = await adminStore.createAdminManualGamingSale({
+      customerName: posForm.value.customerName,
+      customerPhone: posForm.value.customerPhone,
+      pin: posForm.value.pin || '1234',
+      game: posSelectedGame.value,
+      licenseType: posForm.value.licenseType,
+      quantity: posForm.value.quantity,
+      providerKey: posForm.value.providerKey,
+      customClientPrice: posForm.value.customClientPrice,
+      discountAmount: posForm.value.discountAmount,
+      resellerId: posForm.value.resellerId,
+      paymentMethod: posForm.value.paymentMethod,
+      markDispatched: posForm.value.markDispatched,
+      accountEmail: posForm.value.accountEmail,
+      accountPass: posForm.value.accountPass,
+      accountPin: posForm.value.accountPin,
+      deliveryNotes: posForm.value.deliveryNotes
+    })
+    if (res?.success) {
+      toast.add(`✅ Venta POS #${res.order.id} registrada ($${posSummary.value.finalTotal.toLocaleString()} ARS)`, 'success')
+      posForm.value.customerName = ''
+      posForm.value.customerPhone = ''
+      posForm.value.discountAmount = 0
+      posForm.value.accountEmail = ''
+      posForm.value.accountPass = ''
+      posForm.value.accountPin = ''
+      gamingAdminSubTab.value = 'orders'
+    } else {
+      toast.add(res?.error || 'Error al registrar venta manual', 'error')
+    }
+  } finally {
+    isSubmittingPosSale.value = false
+  }
+}
+
+const sendPosGamingQuoteWhatsApp = () => {
+  const g = posSelectedGame.value
+  if (!g) return
+  const refPart = posForm.value.resellerId && posForm.value.resellerId !== 'DIRECT'
+    ? `/${encodeURIComponent(posForm.value.resellerId)}`
+    : ''
+  const link = `https://streamepro.me/juego/${encodeURIComponent(g.id)}${refPart}?lic=${posForm.value.licenseType}`
+  const msg = `🎮 *${g.title} (${g.platform || 'PlayStation'})* — *StreamePro Oficial*\n\n` +
+    (g.effectivePrimaryPrice ? `⭐️ *Cuenta Primaria:* $${g.effectivePrimaryPrice.toLocaleString()} ARS\n` : '') +
+    (posSelectedGameSupportsSecondary.value ? `⚡️ *Cuenta Secundaria:* $${g.effectiveSecondaryPrice.toLocaleString()} ARS\n` : '') +
+    (posForm.value.discountAmount > 0 ? `🏷️ *Tu Promo Final (${posForm.value.licenseType === 'primary' ? 'Primaria' : 'Secundaria'}):* $${posSummary.value.finalTotal.toLocaleString()} ARS\n` : '') +
+    `\n⏱️ Entrega digital garantizada (60/90 min)\n💳 Transferencia, MP o Tarjeta\n\n👉 *Ver ficha y pedir aquí:*\n${link}`
+
+  const phone = formatWaPhone(posForm.value.customerPhone)
+  const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`
+  window.open(url, '_blank')
+}
+
+// GESTOR DE CUPONES PROMOCIONALES
+const newPromoForm = ref({
+  code: '',
+  type: 'percent',
+  value: 10,
+  scope: 'all',
+  minAmount: 0,
+  maxUses: 100,
+  description: ''
+})
+
+const handleCreatePromoCode = () => {
+  const res = adminStore.addPromoCode({ ...newPromoForm.value })
+  if (res.success) {
+    toast.add(`🏷️ Cupón ${res.coupon.code} creado y sincronizado con la tienda`, 'success')
+    newPromoForm.value.code = ''
+    newPromoForm.value.description = ''
+  } else {
+    toast.add(res.error || 'Error al crear cupón', 'error')
+  }
+}
+
+const handleTogglePromoCode = (code) => {
+  adminStore.togglePromoCode(code)
+  toast.add(`Estado del cupón ${code} actualizado`, 'info')
+}
+
+const handleDeletePromoCode = (code) => {
+  if (!confirm(`¿Eliminar definitivamente el cupón ${code}?`)) return
+  adminStore.deletePromoCode(code)
+  toast.add(`Cupón ${code} eliminado`, 'info')
+}
+
+const copyPromoCodeBanner = async (coupon) => {
+  const discountTxt = coupon.type === 'fixed' ? `$${Number(coupon.value).toLocaleString()} ARS OFF` : `${coupon.value}% OFF`
+  const text = `🎁 *CUPÓN EXCLUSIVO STREAMEPRO: ${coupon.code}*\n🔥 Aprovecha *${discountTxt}* en tu próxima compra.\n` +
+    (coupon.minAmount > 0 ? `💳 Válido desde $${Number(coupon.minAmount).toLocaleString()} ARS\n` : '') +
+    `👉 Canjéalo en el carrito: https://streamepro.me/juegos`
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add(`Mensaje promo del cupón ${coupon.code} copiado`, 'success')
+  } catch {
+    toast.add('No se pudo copiar al portapapeles', 'error')
+  }
+}
+
+// GENERADOR DE LISTAS VIRALES WHATSAPP / TELEGRAM
+const marketingListConfig = ref({
+  platform: 'ALL',
+  maxPrice: 0,
+  limit: 12,
+  resellerId: 'DIRECT',
+  sortMode: 'popular'
+})
+
+const marketingDealsPreviewText = computed(() => {
+  let list = [...(adminStore.processedGamingProducts || [])]
+  if (marketingListConfig.value.platform !== 'ALL') {
+    list = list.filter(g => g.platform && g.platform.includes(marketingListConfig.value.platform))
+  }
+  if (marketingListConfig.value.maxPrice > 0) {
+    list = list.filter(g => Number(g.effectivePrimaryPrice || 0) > 0 && Number(g.effectivePrimaryPrice) <= marketingListConfig.value.maxPrice)
+  }
+  if (marketingListConfig.value.sortMode === 'lowest_price') {
+    list.sort((a, b) => Number(a.effectivePrimaryPrice || 9999999) - Number(b.effectivePrimaryPrice || 9999999))
+  }
+  const picked = list.slice(0, marketingListConfig.value.limit || 12)
+  const platTitle = marketingListConfig.value.platform === 'ALL' ? 'PS4 / PS5' : marketingListConfig.value.platform
+  const header = `🔥 *OFERTAS DIGITALES ${platTitle} — STREAMEPRO* 🎮\nEntrega garantizada y soporte en consola.\n\n`
+  const rows = picked.map((g, idx) => {
+    const secStr = g.effectiveSecondaryPrice && !String(g.platform || '').match(/PC|Steam|PS3/i)
+      ? ` | Sec $${g.effectiveSecondaryPrice.toLocaleString()}`
+      : ''
+    return `${idx + 1}. *${g.title}* (${g.platform || platTitle})\n   💰 Pri $${(g.effectivePrimaryPrice || 0).toLocaleString()}${secStr}\n   👉 https://streamepro.me/juego/${g.id}`
+  }).join('\n')
+  return header + (rows || 'Sin títulos en este filtro.') + `\n\n🛒 Ver catálogo completo (+${(adminStore.processedGamingProducts || []).length} juegos): https://streamepro.me/juegos`
+})
+
+const copyMarketingDealsList = async () => {
+  try {
+    await navigator.clipboard.writeText(marketingDealsPreviewText.value)
+    toast.add('📋 Lista viral copiada al portapapeles', 'success')
+  } catch {
+    toast.add('Error al copiar lista', 'error')
+  }
+}
+
+const openMarketingDealsWhatsApp = () => {
+  window.open(`https://wa.me/?text=${encodeURIComponent(marketingDealsPreviewText.value)}`, '_blank')
+}
+
+// SALUD DEL CATÁLOGO GAMER, DEPENDENCIAS Y EXPORTACIONES CSV
+const healthInspectMode = ref('missing_covers')
+const coverUrlEdits = ref({})
+
+const handleAutoFixSecondaryPrices = () => {
+  const res = adminStore.autoFixMissingSecondaryPrices(0.55)
+  toast.add(res.updatedCount > 0 ? `⚡ Se calcularon ${res.updatedCount} cotizaciones Secundarias (55%)` : 'Todos los juegos PS4/PS5 ya tienen secundaria', res.updatedCount > 0 ? 'success' : 'info')
+}
+
+const handleResetAllCustomPrices = () => {
+  if (!confirm('¿Restaurar todos los precios PVP manuales a cálculo automático de margen?')) return
+  const res = adminStore.resetAllCustomGamingPrices()
+  toast.add(`🔄 ${res.resetCount} PVP manuales restaurados a fórmula`, 'info')
+}
+
+const handleSaveGameCoverUrl = (gameId) => {
+  const url = coverUrlEdits.value[gameId]
+  const res = adminStore.updateGameCoverImage(gameId, url)
+  if (res.success) {
+    toast.add(`🖼️ Portada actualizada para ${res.game.title}`, 'success')
+    coverUrlEdits.value[gameId] = ''
+  } else {
+    toast.add(res.error || 'URL inválida', 'error')
+  }
+}
+
+const downloadCsvFile = (filename, headers, rows) => {
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const exportGamingCatalogCsv = () => {
+  const list = adminStore.processedGamingProducts || []
+  const headers = ['ID', 'Titulo', 'Plataforma', 'Categoria', 'Subcategoria', 'PVP_Primaria', 'PVP_Secundaria', 'Costo_Optimo_Pri', 'Proveedor_Optimo_Pri', 'Sitios_Activos', 'Portada']
+  const rows = list.map(g => [
+    g.id, g.title, g.platform, g.category, g.subcategory,
+    g.effectivePrimaryPrice || 0, g.effectiveSecondaryPrice || 0,
+    g.actualPurchaseCostPrimary || 0, g.bestFulfillmentPrimary || '',
+    (g.activeProvidersList || []).map(p => p.name).join(' | '), g.image || ''
+  ])
+  downloadCsvFile(`catalogo_gamer_streamepro_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+  toast.add(`📥 Exportados ${list.length} videojuegos a CSV`, 'success')
+}
+
+const exportGamingOrdersCsv = () => {
+  const list = adminStore.gamingOrders || []
+  const headers = ['ID', 'Fecha', 'Cliente', 'WhatsApp', 'Juego', 'Licencia', 'Canal', 'Proveedor_Compra', 'Cobrado_ARS', 'Costo_ARS', 'Estado']
+  const rows = list.map(o => [
+    o.id, o.createdAt || o.createdDate || '', o.customerName || '', o.customerPhone || '',
+    o.gameTitle || o.platform || '', o.licenseType || '', o.resellerId || 'DIRECT',
+    resolveAdminProviderLabel(o), o.clientPrice || 0, o.providerCost || 0, o.status || ''
+  ])
+  downloadCsvFile(`pedidos_gamer_streamepro_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows)
+  toast.add(`📥 Exportados ${list.length} pedidos gamer a CSV`, 'success')
+}
+
+// TICKETS / REPORTES DE FALLAS DE CLIENTES
+const supportTicketReplies = ref({})
+const supportTicketFilter = ref('OPEN')
+
+const filteredSupportTicketsForAdmin = computed(() => {
+  const all = adminStore.supportTickets || []
+  if (supportTicketFilter.value === 'OPEN') return all.filter(t => t.status !== 'Resuelto')
+  return all
+})
+
+const handleResolveSupportTicket = (ticket) => {
+  const reply = supportTicketReplies.value[ticket.id] || 'Solucionado por Soporte Técnico StreamePro.'
+  const res = adminStore.resolveSupportTicket(ticket.id, reply)
+  if (res.success) {
+    toast.add(`✅ Ticket #${ticket.id} marcado como resuelto`, 'success')
+  }
+}
+
+const sendTicketReplyWhatsApp = (ticket) => {
+  const reply = supportTicketReplies.value[ticket.id] || ticket.adminReply || 'Ya revisamos tu reporte y está solucionado.'
+  const msg = `¡Hola ${ticket.clientName || 'Cliente'}! 🛟 Sobre tu reporte *${ticket.subject}* (#${ticket.id}):\n\n${reply}\n\nPuedes verificar tus accesos en: https://streamepro.me/portal`
+  window.open(`https://wa.me/${formatWaPhone(ticket.phone)}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 // ==========================================
@@ -2657,7 +3113,7 @@ const confirmRenewalUpdateByProvider = () => {
       toast.add('Completa correo y contraseña válidos', 'error')
       return
     }
-    adminStore.updateRenewalByProvider(selectedRenewal.value.id, renewalFormData.value)
+    adminStore.updateRenewalCredentials(selectedRenewal.value.id, renewalFormData.value)
     toast.add(`Nuevas credenciales asignadas a ${selectedRenewal.value.clientName}. Se alertó al revendedor [YA FUE AVISADO] para confirmación.`, 'success')
     showRenewalEditModal.value = false
   }
@@ -2677,13 +3133,27 @@ const availableAccountsForOrder = computed(() => {
   )
 })
 
-// GESTIÓN Y CONTROL ORDENADO DE PEDIDOS STREAMING
+// GESTIÓN Y CONTROL ORDENADO DE PEDIDOS STREAMING (Excluye videojuegos digitales para evitar contaminación)
 const streamingOrderSearch = ref('')
 const streamingOrderStatusFilter = ref('All') // 'All' | 'Waiting Provider' | 'Dispatched' | 'Cancelado'
 const streamingOrderResellerFilter = ref('All')
 
+const isOrderGamingType = (o) => {
+  if (!o) return false
+  return o.orderType === 'gaming' ||
+    o.category === 'Videojuegos Digitales' ||
+    Boolean(o.gameTitle) ||
+    Boolean(o.licenseType) ||
+    (o.planKey && String(o.planKey).startsWith('gaming_')) ||
+    (o.platform && (o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PlayStation')))
+}
+
+const streamingBaseOrders = computed(() => {
+  return (adminStore.orders || []).filter(o => !isOrderGamingType(o))
+})
+
 const filteredStreamingOrdersForAdmin = computed(() => {
-  let list = adminStore.orders || []
+  let list = streamingBaseOrders.value
   if (streamingOrderStatusFilter.value !== 'All') {
     if (streamingOrderStatusFilter.value === 'Waiting Provider') {
       list = list.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente')
@@ -2715,7 +3185,7 @@ const filteredStreamingOrdersForAdmin = computed(() => {
 })
 
 const streamingStats = computed(() => {
-  const all = adminStore.orders || []
+  const all = streamingBaseOrders.value
   const pending = all.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente').length
   const dispatched = all.filter(o => o.status === 'Dispatched').length
   const cancelled = all.filter(o => o.status === 'Cancelado').length
@@ -3735,7 +4205,10 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'orders'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'orders' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          🚚 Despachos ({{ adminStore.pendingOrders.length }})
+          🚚 Despachos ({{ streamingStats.pending }})
+          <span v-if="adminStore.openSupportTickets?.length > 0" class="bg-rose-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Tickets de soporte abiertos">
+            🆘 {{ adminStore.openSupportTickets.length }}
+          </span>
         </button>
         <button 
           @click="adminTab = 'renewals'"
@@ -3783,8 +4256,11 @@ const deletePackageItem = (pkgId) => {
           @click="adminTab = 'gaming'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
-          🎮 Proveedores Gaming ({{ adminStore.processedGamingProducts.length }})
-          <span v-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
+          🎮 Juegos Digitales ({{ adminStore.processedGamingProducts.length }})
+          <span v-if="adminStore.gamingSalesStats?.pendingCount > 0" class="bg-amber-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Pedidos gamer pendientes">
+            {{ adminStore.gamingSalesStats.pendingCount }} pend.
+          </span>
+          <span v-else-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
             {{ adminStore.gamingOrders.length }}
           </span>
         </button>
@@ -3984,6 +4460,107 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
+      <!-- AVISO DE PEDIDOS GAMER PENDIENTES (SEPARACIÓN LIMPIA STREAMING / VIDEOJUEGOS) -->
+      <div
+        v-if="(adminStore.gamingSalesStats?.pendingCount || 0) > 0"
+        class="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex flex-wrap items-center justify-between gap-3"
+      >
+        <div class="flex items-center gap-2 text-xs text-indigo-200">
+          <span class="text-lg">🎮</span>
+          <span>Hay <strong class="text-white">{{ adminStore.gamingSalesStats.pendingCount }} pedido(s) de Videojuegos Digitales</strong> pendientes de despacho en la sección Gaming.</span>
+        </div>
+        <button
+          type="button"
+          @click="adminTab = 'gaming'; gamingAdminSubTab = 'orders'"
+          class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition cursor-pointer shrink-0"
+        >
+          Ir a Pedidos Gamer →
+        </button>
+      </div>
+
+      <!-- BANDEJA DE TICKETS / FALLAS REPORTADAS POR CLIENTES -->
+      <div v-if="(adminStore.supportTickets || []).length > 0" class="bg-[#020617] border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🆘</span>
+            <div>
+              <h3 class="text-sm font-black text-white">
+                Tickets de Soporte & Fallas Reportadas ({{ adminStore.openSupportTickets.length }} abiertos)
+              </h3>
+              <p class="text-[11px] text-slate-400">Reportes enviados por clientes desde Mis Juegos / Bóveda Portal.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              @click="supportTicketFilter = 'OPEN'"
+              :class="['px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer', supportTicketFilter === 'OPEN' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              Pendientes ({{ adminStore.openSupportTickets.length }})
+            </button>
+            <button
+              type="button"
+              @click="supportTicketFilter = 'ALL'"
+              :class="['px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer', supportTicketFilter === 'ALL' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              Todos ({{ adminStore.supportTickets.length }})
+            </button>
+          </div>
+        </div>
+
+        <div v-if="filteredSupportTicketsForAdmin.length === 0" class="text-xs text-emerald-400 font-bold py-2">
+          ✅ Todos los tickets han sido resueltos.
+        </div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto custom-scrollbar">
+          <div
+            v-for="t in filteredSupportTicketsForAdmin"
+            :key="t.id"
+            :class="['p-3 rounded-xl border text-xs space-y-2', t.status === 'Resuelto' ? 'bg-slate-950/60 border-emerald-500/20 opacity-75' : 'bg-slate-950 border-rose-500/30']"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-mono font-bold text-indigo-300">#{{ t.id }}</span>
+                <span class="font-black text-white">{{ t.clientName }}</span>
+                <span class="text-[10px] text-slate-400 font-mono">({{ t.phone || t.clientNumber }})</span>
+              </div>
+              <span :class="['text-[10px] px-2 py-0.5 rounded-full font-bold', t.status === 'Resuelto' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
+                {{ t.status }}
+              </span>
+            </div>
+            <p class="text-amber-300 font-bold">{{ t.subject }} <span v-if="t.orderId" class="font-mono text-slate-400">· Orden #{{ t.orderId }}</span></p>
+            <p class="text-slate-300 bg-slate-900/70 p-2 rounded-lg">{{ t.message }}</p>
+
+            <div v-if="t.status !== 'Resuelto'" class="flex flex-wrap gap-1.5 pt-1">
+              <input
+                v-model="supportTicketReplies[t.id]"
+                type="text"
+                placeholder="Respuesta para el cliente (Bóveda)..."
+                class="flex-1 min-w-[140px] bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none"
+              >
+              <button
+                type="button"
+                @click="handleResolveSupportTicket(t)"
+                class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer"
+              >
+                ✅ Resolver
+              </button>
+              <button
+                v-if="t.phone"
+                type="button"
+                @click="sendTicketReplyWhatsApp(t)"
+                class="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-[11px] cursor-pointer"
+                title="Responder por WhatsApp"
+              >
+                💬 WA
+              </button>
+            </div>
+            <p v-else-if="t.adminReply" class="text-[11px] text-emerald-300 italic">
+              Respuesta: {{ t.adminReply }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- MÉTRICAS Y RESUMEN DE GESTIÓN ORDENADA -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="bg-[#020617] p-4 rounded-2xl border border-amber-500/30">
@@ -4022,7 +4599,7 @@ const deletePackageItem = (pkgId) => {
             v-model="streamingOrderStatusFilter" 
             class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-brand-accent cursor-pointer"
           >
-            <option value="All">Todos los Estados ({{ adminStore.orders.length }})</option>
+            <option value="All">Todos los Estados ({{ streamingStats.all }})</option>
             <option value="Waiting Provider">⏳ Pendientes ({{ streamingStats.pending }})</option>
             <option value="Dispatched">✅ Despachados ({{ streamingStats.dispatched }})</option>
             <option value="Cancelado">❌ Cancelados ({{ streamingStats.cancelled }})</option>
@@ -7055,7 +7632,31 @@ const deletePackageItem = (pkgId) => {
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white']"
         >
           <span>📦</span>
-          <span>Pedidos Gamer & Proveedor Elegido ({{ adminStore.gamingOrders.length }})</span>
+          <span>Pedidos Gamer ({{ adminStore.gamingOrders.length }})</span>
+          <span v-if="adminStore.gamingSalesStats?.pendingCount > 0" class="bg-amber-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
+            {{ adminStore.gamingSalesStats.pendingCount }}
+          </span>
+        </button>
+
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'marketing_pos'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer', gamingAdminSubTab === 'marketing_pos' ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-pink-500/20' : 'text-slate-400 hover:text-white']"
+        >
+          <span>📢</span>
+          <span>POS, Cupones & Marketing</span>
+        </button>
+
+        <button 
+          type="button"
+          @click="gamingAdminSubTab = 'health_deps'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer', gamingAdminSubTab === 'health_deps' ? 'bg-gradient-to-r from-cyan-600 to-sky-600 text-white shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white']"
+        >
+          <span>🩺</span>
+          <span>Salud & Dependencias</span>
+          <span v-if="(adminStore.gamingCatalogHealth?.healthScore || 100) < 95" class="bg-amber-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
+            {{ adminStore.gamingCatalogHealth.healthScore }}%
+          </span>
         </button>
       </div>
 
@@ -9133,11 +9734,35 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                     </button>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-2 text-xs pt-0.5">
-                    <span class="text-slate-400">Proveedor sugerido:</span>
-                    <span class="font-bold flex items-center gap-1 text-indigo-300">
-                      {{ adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.badge || order.fulfillmentProviderName || order.fulfillmentProvider || 'Proveedor Óptimo' }}
-                    </span>
+                  <div class="flex flex-wrap items-center gap-2 text-xs pt-1">
+                    <span class="text-slate-400">Proveedor de compra:</span>
+                    <select
+                      :value="order.fulfillmentProvider || 'argentinaplay'"
+                      @change="handleQuickChangeGamingProvider(order, $event.target.value)"
+                      class="bg-slate-900 border border-indigo-500/40 rounded-lg px-2 py-1 text-[11px] font-bold text-indigo-300 outline-none focus:border-indigo-400 cursor-pointer"
+                      title="Cambiar sitio web donde comprar este pedido y recalcular costo"
+                    >
+                      <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">
+                        {{ site.badge || site.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Credenciales Gamer Entregadas (si existen) -->
+                  <div v-if="order.accountDetails && order.accountDetails.email" class="mt-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-black text-emerald-300 uppercase text-[10px]">🔑 Credenciales Despachadas</span>
+                      <button
+                        type="button"
+                        @click="copyGamingOrderCredentials(order)"
+                        class="text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded font-bold cursor-pointer"
+                      >
+                        📋 Copiar Acceso
+                      </button>
+                    </div>
+                    <p class="text-slate-200 font-mono truncate">Correo: <strong>{{ order.accountDetails.email }}</strong></p>
+                    <p class="text-slate-200 font-mono">Clave: <strong>{{ order.accountDetails.pass || '-' }}</strong> <span v-if="order.accountDetails.pin" class="text-amber-300 ml-2">PIN/2FA: <strong>{{ order.accountDetails.pin }}</strong></span></p>
+                    <p v-if="order.accountDetails.notes" class="text-slate-400 italic">{{ order.accountDetails.notes }}</p>
                   </div>
                 </div>
 
@@ -9172,6 +9797,17 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               <!-- Fila Inferior: Botones de Acción -->
               <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
                 <div class="flex flex-wrap items-center gap-2">
+                  <!-- Botón Despachar Credenciales en Nube -->
+                  <button
+                    type="button"
+                    @click="openGamingDispatchModal(order)"
+                    class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs transition flex items-center gap-1 shadow cursor-pointer"
+                    title="Cargar correo, clave PSN/2FA y despachar a la Bóveda del cliente"
+                  >
+                    <span>🔑</span>
+                    <span>{{ order.accountDetails?.email ? 'Editar Credenciales' : 'Despachar Juego' }}</span>
+                  </button>
+
                   <!-- Botón de Alternar Estado (Entregado / Pendiente) -->
                   <button 
                     type="button"
@@ -9183,7 +9819,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                         : 'bg-emerald-600 hover:bg-emerald-500 text-white'
                     ]"
                   >
-                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '🔄 Marcar como Pendiente' : '✅ Marcar como Entregado' }}</span>
+                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '🔄 Pendiente' : '✅ Entregado' }}</span>
                   </button>
 
                   <!-- Botón de Ver Comprobante si existe -->
@@ -9283,6 +9919,546 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA 6: POS VENTA RÁPIDA, CUPONES Y MARKETING ==================== -->
+      <div v-if="gamingAdminSubTab === 'marketing_pos'" class="space-y-6">
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <!-- COLUMNA IZQUIERDA: POS VENTA DIRECTA & COTIZADOR (xl:col-span-7) -->
+          <div class="xl:col-span-7 bg-[#020617] border border-indigo-500/30 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <div>
+                <h3 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>🛒 POS Venta Rápida & Cotizador Gamer</span>
+                </h3>
+                <p class="text-[11px] text-slate-400">
+                  Registra ventas manuales (WhatsApp / Instagram / Revendedor) o genera cotizaciones limpias sin exponer proveedores.
+                </p>
+              </div>
+              <button
+                v-if="posSelectedGame"
+                type="button"
+                @click="clearPosGame"
+                class="text-[11px] font-bold text-slate-400 hover:text-white bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 cursor-pointer"
+              >
+                ↺ Cambiar Juego
+              </button>
+            </div>
+
+            <!-- Buscador / Selector de Juego -->
+            <div v-if="!posSelectedGame" class="space-y-3">
+              <div class="relative">
+                <span class="absolute left-3.5 top-3 text-slate-500 text-xs">🔍</span>
+                <input
+                  v-model="posGameSearch"
+                  type="text"
+                  placeholder="Busca el juego por título, PS5, PS4 o categoría..."
+                  class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-400 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white outline-none"
+                >
+              </div>
+              <div class="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-slate-800/70 bg-slate-950/60 border border-slate-800 rounded-2xl">
+                <button
+                  v-for="g in filteredPosGames"
+                  :key="g.id"
+                  type="button"
+                  @click="selectPosGame(g)"
+                  class="w-full p-3 flex items-center justify-between gap-3 text-left hover:bg-indigo-500/10 transition cursor-pointer"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <img :src="g.image" class="w-10 h-12 rounded-lg object-cover bg-slate-800 shrink-0" />
+                    <div class="min-w-0">
+                      <p class="text-xs sm:text-sm font-black text-white truncate">{{ g.title }}</p>
+                      <p class="text-[10px] text-slate-400 font-mono">{{ g.platform }} · {{ g.category }}</p>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0 font-mono">
+                    <span class="text-xs font-black text-emerald-400 block">${{ (g.effectivePrimaryPrice || 0).toLocaleString() }}</span>
+                    <span v-if="g.effectiveSecondaryPrice" class="text-[10px] text-indigo-300 block">Sec: ${{ g.effectiveSecondaryPrice.toLocaleString() }}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Configurador de Venta / Cotización para el Juego Elegido -->
+            <div v-else class="space-y-4">
+              <div class="flex items-center gap-3 bg-slate-900/70 p-3 rounded-2xl border border-slate-800">
+                <img :src="posSelectedGame.image" class="w-12 h-14 rounded-xl object-cover shrink-0" />
+                <div class="min-w-0 flex-1">
+                  <span class="text-[10px] font-mono text-indigo-300 uppercase font-bold">{{ posSelectedGame.platform }} · {{ posSelectedGame.id }}</span>
+                  <h4 class="text-sm sm:text-base font-black text-white truncate">{{ posSelectedGame.title }}</h4>
+                </div>
+                <button
+                  type="button"
+                  @click="openFlyerForGaming(posSelectedGame)"
+                  class="px-3 py-2 rounded-xl bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-black transition cursor-pointer shrink-0"
+                >
+                  🎨 Flyer
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Licencia</label>
+                  <select v-model="posForm.licenseType" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none">
+                    <option value="primary">⭐️ Primaria (${{ (posSelectedGame.effectivePrimaryPrice || 0).toLocaleString() }})</option>
+                    <option v-if="posSelectedGameSupportsSecondary" value="secondary">⚡️ Secundaria (${{ (posSelectedGame.effectiveSecondaryPrice || 0).toLocaleString() }})</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Proveedor de Compra</label>
+                  <select v-model="posForm.providerKey" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none">
+                    <option v-for="q in posSelectedGameQuotes" :key="q.key" :value="q.key">
+                      {{ q.badge || q.name }} ({{ q.costUnit > 0 ? '$' + q.costUnit.toLocaleString() : 'Sin cotiz.' }})
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Cantidad / Canal</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <input v-model.number="posForm.quantity" type="number" min="1" max="20" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none">
+                    <select v-model="posForm.resellerId" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none">
+                      <option value="DIRECT">Directa</option>
+                      <option v-for="r in adminStore.resellers" :key="r.id" :value="r.id">{{ r.name }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Nombre Cliente</label>
+                  <input v-model="posForm.customerName" type="text" placeholder="Ej: Juan Pérez" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                </div>
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">WhatsApp Cliente</label>
+                  <input v-model="posForm.customerPhone" type="text" placeholder="Ej: 54911..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none">
+                </div>
+                <div>
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Descuento (ARS) / PIN Bóveda</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <input v-model.number="posForm.discountAmount" type="number" min="0" placeholder="$ Desc." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-amber-300 font-mono outline-none">
+                    <input v-model="posForm.pin" type="text" maxlength="4" placeholder="1234" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none">
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-slate-900/70 border border-slate-800 rounded-2xl space-y-2.5">
+                <label class="flex items-center gap-2 text-xs font-bold text-emerald-300 cursor-pointer">
+                  <input v-model="posForm.markDispatched" type="checkbox" class="rounded text-emerald-500">
+                  <span>✅ Cargar credenciales y despachar al instante a la Bóveda del cliente</span>
+                </label>
+                <div v-if="posForm.markDispatched" class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <input v-model="posForm.accountEmail" type="email" placeholder="Correo PSN" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
+                  <input v-model="posForm.accountPass" type="text" placeholder="Contraseña PSN" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white font-mono outline-none">
+                  <input v-model="posForm.accountPin" type="text" placeholder="PIN / 2FA (opcional)" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-amber-300 font-mono outline-none">
+                </div>
+              </div>
+
+              <!-- Resumen Financiero Vivo -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+                <div>
+                  <span class="text-[9px] text-slate-500 uppercase font-bold block">Total Cliente</span>
+                  <span class="text-sm font-black text-emerald-400 font-mono">${{ posSummary.finalTotal.toLocaleString() }}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-500 uppercase font-bold block">Costo Mayorista</span>
+                  <span class="text-sm font-bold text-slate-300 font-mono">${{ posSummary.costTotal.toLocaleString() }}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-500 uppercase font-bold block">Comisión Rev.</span>
+                  <span class="text-sm font-bold text-amber-300 font-mono">${{ posSummary.resellerCut.toLocaleString() }}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-500 uppercase font-bold block">Ganancia Neta</span>
+                  <span class="text-sm font-black text-purple-400 font-mono">+${{ posSummary.netProfit.toLocaleString() }}</span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2.5 pt-1">
+                <button
+                  type="button"
+                  @click="submitAdminPosGamingSale"
+                  :disabled="isSubmittingPosSale"
+                  class="flex-1 min-w-[180px] bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs py-3 px-4 rounded-xl shadow-lg transition cursor-pointer disabled:opacity-50"
+                >
+                  {{ isSubmittingPosSale ? '⏳ Registrando...' : '✅ Registrar Venta POS' }}
+                </button>
+                <button
+                  type="button"
+                  @click="sendPosGamingQuoteWhatsApp"
+                  class="flex-1 min-w-[180px] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs py-3 px-4 rounded-xl shadow transition cursor-pointer"
+                >
+                  📲 Enviar Cotización WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUMNA DERECHA: CUPONES PROMOCIONALES + LISTAS VIRALES (xl:col-span-5) -->
+          <div class="xl:col-span-5 space-y-5">
+            <!-- Gestor de Cupones Promocionales -->
+            <div class="bg-[#020617] border border-amber-500/30 rounded-3xl p-5 space-y-4 shadow-xl">
+              <div>
+                <h3 class="text-base font-black text-white flex items-center gap-2">
+                  <span>🏷️ Cupones Promocionales ({{ (adminStore.promoCodes || []).length }})</span>
+                </h3>
+                <p class="text-[11px] text-slate-400">Se sincronizan con Firebase Firestore para el carrito web.</p>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input v-model="newPromoForm.code" type="text" placeholder="CÓDIGO (Ej: GAMER15)" class="col-span-2 bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-mono uppercase outline-none">
+                <select v-model="newPromoForm.type" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-bold outline-none">
+                  <option value="percent">% OFF</option>
+                  <option value="fixed">$ ARS</option>
+                </select>
+                <input v-model.number="newPromoForm.value" type="number" min="1" placeholder="Valor" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-emerald-300 font-mono outline-none">
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <select v-model="newPromoForm.scope" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
+                  <option value="all">Toda la tienda</option>
+                  <option value="gaming">Solo Juegos</option>
+                  <option value="streaming">Solo Streaming</option>
+                  <option value="physical">Solo Físicos</option>
+                </select>
+                <input v-model.number="newPromoForm.minAmount" type="number" min="0" placeholder="Mínimo $" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-mono outline-none">
+                <button
+                  type="button"
+                  @click="handleCreatePromoCode"
+                  class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl px-3 py-2 transition cursor-pointer"
+                >
+                  ➕ Crear
+                </button>
+              </div>
+
+              <div class="max-h-52 overflow-y-auto custom-scrollbar space-y-2">
+                <div
+                  v-for="coupon in (adminStore.promoCodes || [])"
+                  :key="coupon.code"
+                  class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between gap-2 text-xs"
+                >
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-mono font-black text-amber-300">{{ coupon.code }}</span>
+                      <span :class="['text-[9px] px-1.5 py-0.5 rounded font-bold', coupon.active !== false ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500']">
+                        {{ coupon.active !== false ? 'Activo' : 'Pausado' }}
+                      </span>
+                      <span class="text-[10px] text-slate-400 font-mono">{{ coupon.uses || 0 }}/{{ coupon.maxUses || '∞' }}</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 truncate">{{ coupon.description }} · Alcance: {{ coupon.scope }}</p>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" @click="copyPromoCodeBanner(coupon)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white text-[10px] cursor-pointer" title="Copiar mensaje promo">📲</button>
+                    <button type="button" @click="handleTogglePromoCode(coupon.code)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] cursor-pointer" title="Pausar/Activar">{{ coupon.active !== false ? '⏸️' : '▶️' }}</button>
+                    <button type="button" @click="handleDeletePromoCode(coupon.code)" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 text-[10px] cursor-pointer" title="Eliminar">🗑️</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Generador de Listas Promocionales WhatsApp / Telegram -->
+            <div class="bg-[#020617] border border-pink-500/30 rounded-3xl p-5 space-y-3 shadow-xl">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-black text-white">📢 Generador Lista Viral WhatsApp / TG</h3>
+                  <p class="text-[11px] text-slate-400">Enlaces directos /juego/:id listos para estados, grupos y Telegram.</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <select v-model="marketingListConfig.platform" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
+                  <option value="ALL">Todas</option>
+                  <option value="PS5">PS5</option>
+                  <option value="PS4">PS4</option>
+                </select>
+                <select v-model.number="marketingListConfig.maxPrice" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
+                  <option :value="0">Cualquier $</option>
+                  <option :value="15000">&le; $15.000</option>
+                  <option :value="25000">&le; $25.000</option>
+                  <option :value="35000">&le; $35.000</option>
+                </select>
+                <select v-model="marketingListConfig.sortMode" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
+                  <option value="popular">Destacados</option>
+                  <option value="lowest_price">Más Baratos</option>
+                </select>
+                <select v-model.number="marketingListConfig.limit" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-mono outline-none">
+                  <option :value="8">8 juegos</option>
+                  <option :value="12">12 juegos</option>
+                  <option :value="20">20 juegos</option>
+                </select>
+              </div>
+
+              <textarea
+                :value="marketingDealsPreviewText"
+                readonly
+                rows="8"
+                class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-[11px] text-slate-200 font-mono outline-none resize-none custom-scrollbar"
+              ></textarea>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  @click="copyMarketingDealsList"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs py-2.5 px-3 rounded-xl transition cursor-pointer"
+                >
+                  📋 Copiar Lista Completa
+                </button>
+                <button
+                  type="button"
+                  @click="openMarketingDealsWhatsApp"
+                  class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl transition cursor-pointer"
+                >
+                  📲 Enviar por WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA 7: SALUD DEL CATÁLOGO, DEPENDENCIAS Y EXPORTACIÓN ==================== -->
+      <div v-if="gamingAdminSubTab === 'health_deps'" class="space-y-6">
+        <!-- Estado de Dependencias Técnicas Gaming -->
+        <div class="bg-[#020617] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-black text-white">🩺 Salud de Dependencias & Integridad del Catálogo</h3>
+              <p class="text-[11px] text-slate-400">
+                Audita proveedores, enlaces OG, sincronización Firebase Firestore y corrige faltantes de costos o portadas en 1 clic.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" @click="testFirebaseConnectionHandler" :disabled="isTestingFirebase" class="px-3 py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 text-xs font-bold transition cursor-pointer">
+                {{ isTestingFirebase ? '⏳ Probando...' : '🔥 Test Firebase Cloud' }}
+              </button>
+              <button type="button" @click="manualCloudSync" :disabled="isSyncingCloud" class="px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition cursor-pointer">
+                {{ isSyncingCloud ? '⏳ Sincronizando...' : '☁️ Sincronizar Nube' }}
+              </button>
+              <button type="button" @click="adminTab = 'database'" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer">
+                💾 Ir a Backup / DB
+              </button>
+            </div>
+          </div>
+
+          <!-- KPIs de Salud -->
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div class="bg-slate-950 p-4 rounded-2xl border border-emerald-500/30">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Puntaje de Salud</span>
+              <span class="text-2xl font-black text-emerald-400 font-mono">{{ adminStore.gamingCatalogHealth?.healthScore || 0 }}%</span>
+              <span class="text-[10px] text-slate-500 block">{{ adminStore.gamingCatalogHealth?.total || 0 }} títulos totales</span>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-2xl border border-sky-500/30">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Portadas Oficiales</span>
+              <span class="text-2xl font-black text-sky-400 font-mono">{{ adminStore.gamingCatalogHealth?.officialCoverRate || 0 }}%</span>
+              <span class="text-[10px] text-amber-300 block">{{ adminStore.gamingCatalogHealth?.noOfficialImageCount || 0 }} sin portada oficial</span>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-2xl border border-indigo-500/30">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Cobertura Multi-Sitio</span>
+              <span class="text-2xl font-black text-indigo-400 font-mono">{{ adminStore.gamingCatalogHealth?.multiSiteRate || 0 }}%</span>
+              <span class="text-[10px] text-slate-500 block">{{ adminStore.gamingCatalogHealth?.singleProviderCount || 0 }} en 1 solo proveedor</span>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-2xl border border-amber-500/30">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Falta Costo Secundaria</span>
+              <span class="text-2xl font-black text-amber-400 font-mono">{{ adminStore.gamingCatalogHealth?.missingSecondaryCount || 0 }}</span>
+              <span class="text-[10px] text-slate-500 block">PS4/PS5 sin precio Sec.</span>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-2xl border border-purple-500/30">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block">Precios PVP Manuales</span>
+              <span class="text-2xl font-black text-purple-400 font-mono">{{ adminStore.gamingCatalogHealth?.customPvpCount || 0 }}</span>
+              <span class="text-[10px] text-slate-500 block">Con override activo</span>
+            </div>
+          </div>
+
+          <!-- Botones de Reparación Masiva y Exportación -->
+          <div class="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800/80">
+            <button
+              type="button"
+              @click="handleAutoFixSecondaryPrices"
+              class="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-black text-xs transition cursor-pointer"
+            >
+              ⚡ Auto-Calcular Secundarias Faltantes (55%)
+            </button>
+            <button
+              v-if="(adminStore.gamingCatalogHealth?.customPvpCount || 0) > 0"
+              type="button"
+              @click="handleResetAllCustomPrices"
+              class="px-4 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white border border-purple-500/40 font-black text-xs transition cursor-pointer"
+            >
+              🔄 Resetear {{ adminStore.gamingCatalogHealth.customPvpCount }} PVP Manuales a Fórmula
+            </button>
+            <button
+              type="button"
+              @click="exportGamingCatalogCsv"
+              class="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 font-black text-xs transition cursor-pointer"
+            >
+              📥 Exportar Catálogo Gamer CSV
+            </button>
+            <button
+              type="button"
+              @click="exportGamingOrdersCsv"
+              class="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 font-black text-xs transition cursor-pointer"
+            >
+              📥 Exportar Pedidos Gamer CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Inspector Interactivo de Hallazgos -->
+        <div class="bg-[#020617] border border-slate-800 rounded-3xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              @click="healthInspectMode = 'missing_covers'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition', healthInspectMode === 'missing_covers' ? 'bg-sky-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              🖼️ Portadas Faltantes ({{ adminStore.gamingCatalogHealth?.noOfficialImageCount || 0 }})
+            </button>
+            <button
+              type="button"
+              @click="healthInspectMode = 'missing_sec'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition', healthInspectMode === 'missing_sec' ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              ⚡️ Sin Secundaria ({{ adminStore.gamingCatalogHealth?.missingSecondaryCount || 0 }})
+            </button>
+            <button
+              type="button"
+              @click="healthInspectMode = 'custom_pvp'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition', healthInspectMode === 'custom_pvp' ? 'bg-purple-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              💎 PVP Manuales ({{ adminStore.gamingCatalogHealth?.customPvpCount || 0 }})
+            </button>
+          </div>
+
+          <div v-if="healthInspectMode === 'missing_covers'" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+            <div v-if="!(adminStore.gamingCatalogHealth?.noOfficialImageList || []).length" class="p-6 text-center text-xs text-emerald-400 font-bold">
+              ✅ Todos los títulos cuentan con portada oficial verificada.
+            </div>
+            <div
+              v-for="g in (adminStore.gamingCatalogHealth?.noOfficialImageList || [])"
+              :key="g.id"
+              class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center gap-2.5"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-black text-white truncate">{{ g.title }}</p>
+                <span class="text-[10px] font-mono text-slate-500">{{ g.id }} · {{ g.platform }}</span>
+              </div>
+              <div class="flex items-center gap-2 sm:w-1/2">
+                <input
+                  v-model="coverUrlEdits[g.id]"
+                  type="url"
+                  placeholder="https://image.api.playstation.com/..."
+                  class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                >
+                <button
+                  type="button"
+                  @click="handleSaveGameCoverUrl(g.id)"
+                  class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer shrink-0"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="healthInspectMode === 'missing_sec'" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+            <div v-if="!(adminStore.gamingCatalogHealth?.missingSecondaryList || []).length" class="p-6 text-center text-xs text-emerald-400 font-bold">
+              ✅ Todos los títulos PS4/PS5 tienen cotización Secundaria configurada.
+            </div>
+            <div
+              v-for="g in (adminStore.gamingCatalogHealth?.missingSecondaryList || [])"
+              :key="g.id"
+              class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2 text-xs"
+            >
+              <div>
+                <p class="font-bold text-white">{{ g.title }}</p>
+                <span class="text-[10px] font-mono text-slate-500">{{ g.id }} · {{ g.platform }} · Primaria PVP: ${{ (g.effectivePrimaryPrice || 0).toLocaleString() }}</span>
+              </div>
+              <button type="button" @click="openGamingPriceEdit(g)" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-bold cursor-pointer">
+                ✏️ Editar Precios
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+            <div v-if="!(adminStore.gamingCatalogHealth?.customPvpList || []).length" class="p-6 text-center text-xs text-slate-400">
+              No hay videojuegos con override manual de PVP en este momento.
+            </div>
+            <div
+              v-for="g in (adminStore.gamingCatalogHealth?.customPvpList || [])"
+              :key="g.id"
+              class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2 text-xs"
+            >
+              <div>
+                <p class="font-bold text-white">{{ g.title }}</p>
+                <span class="text-[10px] font-mono text-purple-300">PVP Manual Pri: ${{ (g.customPrimaryPrice || g.effectivePrimaryPrice || 0).toLocaleString() }} / Sec: ${{ (g.customSecondaryPrice || g.effectiveSecondaryPrice || 0).toLocaleString() }}</span>
+              </div>
+              <button type="button" @click="adminStore.resetGameCustomPrices(g.id); toast.add('PVP restaurado a fórmula', 'info')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer">
+                🔄 Restaurar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MODAL DE DESPACHO REAL DE CREDENCIALES GAMER ==================== -->
+    <div v-if="showGamingDispatchModal && dispatchingGamingOrder" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
+      <div class="bg-[#0b0f19] border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 space-y-4 shadow-2xl">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-[10px] font-mono uppercase text-emerald-400 font-bold">Despacho Bóveda Cliente</span>
+            <h3 class="text-lg font-black text-white">🔑 {{ dispatchingGamingOrder.gameTitle || dispatchingGamingOrder.platform }}</h3>
+            <p class="text-xs text-slate-400">Cliente: <strong class="text-white">{{ dispatchingGamingOrder.customerName }}</strong> · #{{ dispatchingGamingOrder.id }}</p>
+          </div>
+          <button type="button" @click="showGamingDispatchModal = false" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold cursor-pointer">✕</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Sitio de Compra</label>
+            <select v-model="gamingDispatchForm.providerKey" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+              <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">{{ site.badge || site.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Costo Real (ARS)</label>
+            <input v-model.number="gamingDispatchForm.providerCost" type="number" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-emerald-300 font-mono outline-none">
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Correo de Cuenta PSN *</label>
+            <input v-model="gamingDispatchForm.email" type="email" placeholder="cuenta.psn@ejemplo.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Contraseña *</label>
+              <input v-model="gamingDispatchForm.pass" type="text" placeholder="Clave PSN" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white font-mono outline-none">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Código 2FA / PIN (Opcional)</label>
+              <input v-model="gamingDispatchForm.pin" type="text" placeholder="Ej: 482910" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-amber-300 font-mono outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Notas de Instalación (Opcional)</label>
+            <input v-model="gamingDispatchForm.notes" type="text" placeholder="Ej: Activar consola principal al iniciar..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+          </div>
+          <label class="flex items-center gap-2 text-xs text-emerald-300 font-bold cursor-pointer">
+            <input v-model="gamingDispatchForm.sendWhatsApp" type="checkbox" class="rounded text-emerald-500">
+            <span>📲 Abrir WhatsApp con el cliente al guardar</span>
+          </label>
+        </div>
+
+        <div class="flex gap-2.5 pt-2">
+          <button type="button" @click="showGamingDispatchModal = false" class="w-1/3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer">Cancelar</button>
+          <button type="button" @click="confirmGamingDispatch" class="w-2/3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-lg cursor-pointer">
+            ✅ Guardar y Enviar a Bóveda
+          </button>
         </div>
       </div>
     </div>
@@ -9903,6 +11079,14 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
         <div class="flex flex-wrap gap-2">
           <button 
+            type="button"
+            @click="adminTab = 'gaming'; gamingAdminSubTab = 'health_deps'"
+            class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 font-black text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🩺</span>
+            <span>Salud Catálogo Gamer ({{ adminStore.gamingCatalogHealth?.healthScore || 100 }}%)</span>
+          </button>
+          <button 
             @click="handleResetToCleanDatabase"
             :disabled="isResettingDb"
             class="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-2 cursor-pointer"
@@ -9932,12 +11116,22 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
         </div>
       </div>
 
-      <!-- ESTADO Y DIAGNÓSTICO EN TIEMPO REAL DE LAS 16 COLECCIONES -->
+      <!-- ESTADO Y DIAGNÓSTICO EN TIEMPO REAL DE LAS COLECCIONES -->
       <div class="space-y-4">
-        <h3 class="text-sm font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <span>🛡️</span>
-          <span>Estado de las 16 Dependencias del Ecosistema</span>
-        </h3>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-sm font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <span>🛡️</span>
+            <span>Estado de las Dependencias del Ecosistema</span>
+          </h3>
+          <div class="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+            <span class="px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-300 border border-purple-500/30">
+              🏷️ Cupones: {{ (adminStore.promoCodes || []).length }}
+            </span>
+            <span class="px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30">
+              🆘 Tickets Abiertos: {{ (adminStore.openSupportTickets || []).length }}
+            </span>
+          </div>
+        </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <div class="bg-[#020617] p-3.5 rounded-xl border border-slate-800 space-y-1">
@@ -11201,9 +12395,10 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
     <!-- MODAL: GENERADOR DE FLYERS Y BANNERS PUBLICITARIOS -->
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
-      @close="showFlyerModal = false" 
+      @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
+      :initial-product="flyerInitialProduct"
     />
 
     <!-- MODAL DE GESTIÓN: CREAR / EDITAR PRODUCTO FÍSICO O PÁGINA (ADMIN) -->

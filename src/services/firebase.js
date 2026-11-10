@@ -294,6 +294,7 @@ export async function saveStoreSettingsToFirebase(settings) {
       gamingStoreMarginPercent: Number(settings.gamingStoreMarginPercent ?? 20),
       gamingResellerCommissionPercent: Number(settings.gamingResellerCommissionPercent ?? 10),
       gamingMinResellerProfit: Number(settings.gamingMinResellerProfit ?? 1000),
+      ...(Array.isArray(settings.promoCodes) ? { promoCodes: JSON.parse(JSON.stringify(settings.promoCodes)) } : {}),
       updatedAt: new Date().toISOString()
     }
     await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })
@@ -524,6 +525,53 @@ export function listenToStoreSettings(callback) {
     })
   } catch (err) {
     console.warn('[Firebase] Listener error store_settings:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Guarda o actualiza un ticket / reporte de falla en Firestore
+ */
+export async function saveSupportTicketToFirebase(ticketData) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanTicket = JSON.parse(JSON.stringify(ticketData))
+    cleanTicket.updatedAt = new Date().toISOString()
+    const docId = String(cleanTicket.id || `TCK-${Date.now()}`)
+    await setDoc(doc(dbInstance, 'support_tickets', docId), cleanTicket, { merge: true })
+    return { success: true, id: docId }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando ticket de soporte:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Escucha cambios en tiempo real en 'support_tickets'
+ */
+export function listenToSupportTickets(callback) {
+  if (!dbInstance) {
+    initFirebase()
+  }
+  if (!dbInstance) return () => {}
+
+  try {
+    const q = query(collection(dbInstance, 'support_tickets'), limit(150))
+    return onSnapshot(q, (snapshot) => {
+      const tickets = []
+      snapshot.forEach((docSnap) => {
+        tickets.push({ id: docSnap.id, ...docSnap.data() })
+      })
+      callback(tickets)
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error en support_tickets:', err)
+    })
+  } catch (err) {
+    console.warn('[Firebase] Listener error support_tickets:', err)
     return () => {}
   }
 }

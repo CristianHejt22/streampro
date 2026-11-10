@@ -113,8 +113,8 @@ export default async function handler(req, res) {
     .trim()
 
   const cleanDesc = plainDesc
-    ? `🎮 ${product.price}. ${plainDesc.slice(0, 160)}... Garantía Oficial StreamePro.`
-    : `🎮 Precio: ${product.price}. Entrega inmediata garantizada por PlayStation Store & StreamePro.`
+    ? `${isGame ? '🎮' : '🛍️'} ${product.price}. ${plainDesc.slice(0, 160)}... Garantía Oficial StreamePro.`
+    : `${isGame ? '🎮 Precio' : '🛍️ Oferta'}: ${product.price}. ${isGame ? 'Entrega digital oficial garantizada por PlayStation Store & StreamePro.' : 'Tienda Oficial StreamePro con garantía y atención rápida.'}`
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -168,9 +168,9 @@ export default async function handler(req, res) {
   </script>
 
   <!-- Redirección Inmediata para Navegadores Humanos -->
-  <meta http-equiv="refresh" content="0;url=${targetRedirectUrl}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(targetRedirectUrl)}">
   <script>
-    window.location.replace('${targetRedirectUrl}');
+    window.location.replace(${JSON.stringify(targetRedirectUrl)});
   </script>
 </head>
 <body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box;">
@@ -180,8 +180,8 @@ export default async function handler(req, res) {
     </div>
     <h1 style="font-size:18px;margin:0 0 10px;color:#ffffff;font-weight:900;">${escapeHtml(product.name)}</h1>
     <div style="font-size:22px;color:#38bdf8;font-weight:900;margin-bottom:15px;">${escapeHtml(product.price)}</div>
-    <p style="font-size:12px;color:#94a3b8;margin:0 0 20px;">Redirigiendo a PlayStation Store Oficial en StreamePro...</p>
-    <a href="${targetRedirectUrl}" style="display:inline-block;background:linear-gradient(to right,#38bdf8,#2563eb);color:#020617;text-decoration:none;font-weight:900;font-size:13px;padding:12px 24px;border-radius:12px;">Ver en StreamePro</a>
+    <p style="font-size:12px;color:#94a3b8;margin:0 0 20px;">${isGame ? 'Redirigiendo a PlayStation Store Oficial en StreamePro...' : 'Redirigiendo al catálogo oficial de StreamePro...'}</p>
+    <a href="${escapeHtml(targetRedirectUrl)}" style="display:inline-block;background:linear-gradient(to right,#38bdf8,#2563eb);color:#020617;text-decoration:none;font-weight:900;font-size:13px;padding:12px 24px;border-radius:12px;">Ver en StreamePro</a>
   </div>
 </body>
 </html>`

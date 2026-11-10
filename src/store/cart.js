@@ -1,11 +1,37 @@
 import { defineStore } from 'pinia'
 import { parseArgentinePrice } from '../utils/pricing'
 
+const CART_STORAGE_KEY = 'streamepro_cart_v1'
+
+function loadStoredCart() {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        items: Array.isArray(parsed.items) ? parsed.items : [],
+        appliedCoupon: parsed.appliedCoupon || null
+      }
+    }
+  } catch {}
+  return { items: [], appliedCoupon: null }
+}
+
+function saveStoredCart(items, appliedCoupon) {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items, appliedCoupon }))
+  } catch {}
+}
+
 export const useCartStore = defineStore('cart', {
-  state: () => ({
-    items: [],
-    isDrawerOpen: false
-  }),
+  state: () => {
+    const initial = loadStoredCart()
+    return {
+      items: initial.items,
+      appliedCoupon: initial.appliedCoupon,
+      isDrawerOpen: false
+    }
+  },
   getters: {
     totalItems: (state) => {
       // Suma total de unidades
@@ -25,6 +51,24 @@ export const useCartStore = defineStore('cart', {
       if (streamingUnits >= 2) return 5
       return 0
     },
+    couponDiscountAmount(state) {
+      const coupon = state.appliedCoupon
+      if (!coupon || coupon.active === false) return 0
+      const scope = coupon.scope || 'all'
+      const eligibleSubtotal = state.items.reduce((acc, item) => {
+        if (scope === 'all') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'gaming' && item.itemType === 'gaming') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'streaming' && item.itemType !== 'physical' && item.itemType !== 'gaming') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'physical' && item.itemType === 'physical') return acc + (item.clientPrice * item.quantity)
+        return acc
+      }, 0)
+      if (eligibleSubtotal <= 0) return 0
+      if (coupon.minAmount && eligibleSubtotal < Number(coupon.minAmount)) return 0
+      const val = Number(coupon.value || 0)
+      if (val <= 0) return 0
+      const rawDiscount = coupon.type === 'fixed' ? val : Math.round(eligibleSubtotal * (val / 100))
+      return Math.min(eligibleSubtotal, Math.max(0, rawDiscount))
+    },
     total(state) {
       const streamingSubtotal = state.items
         .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming')
@@ -36,14 +80,26 @@ export const useCartStore = defineStore('cart', {
         .filter(i => i.itemType === 'physical')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       
-      const discount = streamingSubtotal * (this.discountPercentage / 100)
-      return (streamingSubtotal - discount) + gamingSubtotal + physicalSubtotal
+      const volumeDiscount = Math.round(streamingSubtotal * (this.discountPercentage / 100))
+      const rawTotal = (streamingSubtotal - volumeDiscount) + gamingSubtotal + physicalSubtotal
+      return Math.max(0, rawTotal - this.couponDiscountAmount)
     },
     hasPhysicalItems: (state) => state.items.some(i => i.itemType === 'physical'),
     hasGamingItems: (state) => state.items.some(i => i.itemType === 'gaming'),
     hasDigitalItems: (state) => state.items.some(i => i.itemType !== 'physical')
   },
   actions: {
+    persistCart() {
+      saveStoredCart(this.items, this.appliedCoupon)
+    },
+    applyCoupon(coupon) {
+      this.appliedCoupon = coupon ? { ...coupon } : null
+      this.persistCart()
+    },
+    removeCoupon() {
+      this.appliedCoupon = null
+      this.persistCart()
+    },
     openDrawer() {
       this.isDrawerOpen = true
     },
@@ -60,16 +116,16 @@ export const useCartStore = defineStore('cart', {
           : `DISPOSITIVO ${idx + 1} - ${product.platform.toUpperCase()}`
       }))
 
-      // Comprobar si ya existe un item idéntico (mismo producto y misma opción de plan)
+      // Comprobar si ya existe un item idéntico (mismo producto, plan y correo de activación)
       const existingItem = this.items.find(i => 
         i.id === product.id && 
         i.planKey === planKey &&
-        i.itemType !== 'physical'
+        i.itemType !== 'physical' &&
+        (i.activationEmail || '') === (activationEmail || '')
       )
 
       if (existingItem) {
         existingItem.quantity++
-        if (activationEmail) existingItem.activationEmail = activationEmail
       } else {
         this.items.push({ 
           id: product.id,
@@ -89,6 +145,7 @@ export const useCartStore = defineStore('cart', {
           itemType: 'digital'
         })
       }
+      this.persistCart()
     },
     // AGREGAR PRODUCTO FÍSICO DEL CATÁLOGO (revende.com.ar con soporte de SKU y variantes)
     addPhysicalItem(product, quantity = 1, selectedVariant = null) {
@@ -131,6 +188,7 @@ export const useCartStore = defineStore('cart', {
           itemType: 'physical'
         })
       }
+      this.persistCart()
     },
     // AGREGAR PAQUETE / COMBO PROMOCIONAL
     addPackageItem(pkg) {
@@ -162,21 +220,28 @@ export const useCartStore = defineStore('cart', {
           packageDetails: pkg
         })
       }
+      this.persistCart()
     },
     // AGREGAR VIDEOJUEGO DIGITAL (PS4 / PS5 - Primaria o Secundaria con Mayor Precio)
     addGamingItem(game, licenseType = 'primary', quantity = 1) {
-      const isPrimary = licenseType === 'primary'
+      const platLower = String(game.platform || '').toLowerCase()
+      const isSingleMode = platLower.includes('pc') || platLower.includes('steam') || platLower.includes('ps3')
+      const resolvedLicense = isSingleMode ? 'primary' : licenseType
+      const isPrimary = resolvedLicense === 'primary'
       const effectivePrice = isPrimary ? (game.effectivePrimaryPrice || 25000) : (game.effectiveSecondaryPrice || 12000)
       const priceLeaderKey = 'streamepro'
       const priceLeaderName = 'StreamePro'
-      // REGLA: Usar proveedor público oficial (PlayStation Store Oficial) sin filtrar nombres de terceros
-      const assignedProviderKey = game.visibleProviderKey || (isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary)
+      // Proveedor conveniente interno para el Admin, manteniendo la fachada pública como PlayStation Store Oficial
+      const assignedProviderKey = (isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary) || game.visibleProviderKey || 'argentinaplay'
+      const assignedProviderInternalName = (isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName) || ''
       const assignedProviderName = 'PlayStation Store Oficial'
       
       const providerData = game.providers?.[assignedProviderKey] || {}
-      const providerCost = isPrimary ? (providerData.costPrimary || providerData.primaryPrice || effectivePrice) : (providerData.costSecondary || providerData.secondaryPrice || effectivePrice)
+      const providerCost = isPrimary
+        ? (game.actualPurchaseCostPrimary || providerData.costPrimary || providerData.primaryPrice || game.minCostPrimary || game.baseCostPrimary || effectivePrice)
+        : (game.actualPurchaseCostSecondary || providerData.costSecondary || providerData.secondaryPrice || game.minCostSecondary || game.baseCostSecondary || effectivePrice)
 
-      const cartItemKey = `gaming_${game.id}_${licenseType}`
+      const cartItemKey = `gaming_${game.id}_${resolvedLicense}`
       const existingItem = this.items.find(i => i.cartItemKey === cartItemKey)
 
       if (existingItem) {
@@ -191,12 +256,14 @@ export const useCartStore = defineStore('cart', {
           title: game.title,
           platform: game.platform,
           category: 'Videojuegos Digitales',
-          planKey: `gaming_${licenseType}`,
-          planLabel: isPrimary 
-            ? '⭐️ Cuenta Primaria (Juegas con tu usuario personal)' 
-            : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)',
-          licenseType: licenseType, // 'primary' | 'secondary'
-          licenseLabel: isPrimary ? 'Cuenta Primaria' : 'Cuenta Secundaria',
+          planKey: `gaming_${resolvedLicense}`,
+          planLabel: isSingleMode
+            ? `🔑 Edición Digital Oficial (${game.platform})`
+            : (isPrimary 
+                ? '⭐️ Cuenta Primaria (Juegas con tu usuario personal)' 
+                : '⚡️ Cuenta Secundaria (Juegas con usuario provisto)'),
+          licenseType: resolvedLicense,
+          licenseLabel: isSingleMode ? 'Licencia Digital Oficial' : (isPrimary ? 'Cuenta Primaria' : 'Cuenta Secundaria'),
           units: 1,
           clientPrice: effectivePrice,
           originalPrice: Math.round(effectivePrice * 1.25),
@@ -204,34 +271,39 @@ export const useCartStore = defineStore('cart', {
           resellerProfit: isPrimary 
             ? (game.resellerPrimaryProfit || Math.max(1000, Math.round(effectivePrice * 0.10))) 
             : (game.resellerSecondaryProfit || Math.max(800, Math.round(effectivePrice * 0.10))),
-          storeProfit: isPrimary 
-            ? (game.storeGrossMarginPrimary || Math.max(0, effectivePrice - providerCost)) 
-            : (game.storeGrossMarginSecondary || Math.max(0, effectivePrice - providerCost)),
+          storeProfit: Math.max(0, effectivePrice - providerCost),
           image: game.image,
           priceFormatted: `$${effectivePrice.toLocaleString()} ARS`,
           providerKey: assignedProviderKey,
           providerName: assignedProviderName,
+          fulfillmentProviderName: assignedProviderInternalName || providerData.providerName || '',
           priceLeaderKey: priceLeaderKey,
           priceLeaderName: 'PlayStation Store Oficial',
-          providerUrl: '',
+          providerUrl: providerData.providerUrl || '',
           quantity: quantity,
           itemType: 'gaming'
         })
       }
+      this.persistCart()
     },
     updateItemQuantity(index, delta) {
       if (this.items[index]) {
         this.items[index].quantity += delta
         if (this.items[index].quantity <= 0) {
           this.removeItem(index)
+          return
         }
+        this.persistCart()
       }
     },
     removeItem(index) {
       this.items.splice(index, 1)
+      this.persistCart()
     },
     clearCart() {
       this.items = []
+      this.appliedCoupon = null
+      this.persistCart()
     }
   }
 })

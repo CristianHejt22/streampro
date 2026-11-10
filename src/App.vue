@@ -75,6 +75,7 @@ const isClientArea = computed(() => {
   return [
     '/', '/suscripciones', '/streaming', '/digital',
     '/combos', '/paquetes', '/ofertas',
+    '/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j',
     '/tienda', '/catalogo', '/productos', '/p',
     '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente',
     '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'

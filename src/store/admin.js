@@ -33,6 +33,8 @@ import {
   fetchResellersFromFirebase,
   listenToResellers,
   deleteResellerFromFirebase,
+  saveSupportTicketToFirebase,
+  listenToSupportTickets,
   testFirebaseConnection 
 } from '../services/firebase'
 
@@ -639,7 +641,18 @@ export const useAdminStore = defineStore('admin', {
       }
       saveDb(DB_KEYS.GAMING_PROVIDER_SITES, defaults)
       return defaults
-    })()
+    })(),
+    promoCodes: (() => {
+      const stored = loadDb(DB_KEYS.PROMO_CODES, null)
+      if (Array.isArray(stored) && stored.length > 0) return stored
+      const defaults = [
+        { code: 'BIENVENIDO10', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 150, uses: 0, active: true, description: '10% OFF bienvenida en toda la tienda' },
+        { code: 'GAMER5', type: 'percent', value: 5, scope: 'gaming', minAmount: 10000, maxUses: 300, uses: 0, active: true, description: '5% OFF extra en Videojuegos PS5/PS4/PS3' }
+      ]
+      saveDb(DB_KEYS.PROMO_CODES, defaults)
+      return defaults
+    })(),
+    supportTickets: loadDb(DB_KEYS.SUPPORT_TICKETS, [])
   }},
   getters: {
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
@@ -919,6 +932,63 @@ export const useAdminStore = defineStore('admin', {
         }
       })
       return summary
+    },
+
+    openSupportTickets: (state) => (state.supportTickets || []).filter(t => t.status !== 'Resuelto'),
+
+    gamingCatalogHealth: (state) => {
+      const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
+      const list = deduplicateGamingProducts(
+        (state.gamingProducts || []).map(p => processGamingProduct(
+          p,
+          Number(state.gamingStoreMarginPercent ?? 20),
+          Number(state.gamingResellerCommissionPercent ?? 10),
+          Number(state.gamingMinResellerProfit ?? 1000),
+          sites
+        ))
+      )
+      const noOfficialImageList = []
+      const missingSecondaryList = []
+      const singleProviderList = []
+      const customPvpList = []
+
+      list.forEach(g => {
+        const img = String(g.image || '')
+        if (!img || img.includes('unsplash.com') || img.includes('placeholder')) {
+          noOfficialImageList.push(g)
+        }
+        const plat = String(g.platform || '').toLowerCase()
+        const isSingleLic = plat.includes('pc') || plat.includes('steam') || plat.includes('ps3')
+        const hasRealSec = (g.activeProvidersList || []).some(p => Number(p.costSecondary) > 0)
+        if (!isSingleLic && !hasRealSec) {
+          missingSecondaryList.push(g)
+        }
+        if ((g.providerCount || 0) <= 1) {
+          singleProviderList.push(g)
+        }
+        if (g.pvpMode === 'custom' || g.customPrimaryPrice || g.customSecondaryPrice) {
+          customPvpList.push(g)
+        }
+      })
+
+      const total = list.length || 1
+      const officialCoverRate = Math.round(((list.length - noOfficialImageList.length) / total) * 100)
+      const multiSiteRate = Math.round(((list.length - singleProviderList.length) / total) * 100)
+      const healthScore = Math.max(0, Math.min(100, Math.round((officialCoverRate * 0.5) + (multiSiteRate * 0.35) + (missingSecondaryList.length === 0 ? 15 : 8))))
+
+      return {
+        total: list.length,
+        noOfficialImageCount: noOfficialImageList.length,
+        missingSecondaryCount: missingSecondaryList.length,
+        singleProviderCount: singleProviderList.length,
+        customPvpCount: customPvpList.length,
+        officialCoverRate,
+        multiSiteRate,
+        healthScore,
+        noOfficialImageList: noOfficialImageList.slice(0, 25),
+        missingSecondaryList: missingSecondaryList.slice(0, 25),
+        customPvpList: customPvpList.slice(0, 25)
+      }
     }
   },
   actions: {
@@ -946,6 +1016,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else if (key === DB_KEYS.GAMING_PROVIDER_SITES) {
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
+      } else if (key === DB_KEYS.PROMO_CODES) {
+        saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
+      } else if (key === DB_KEYS.SUPPORT_TICKETS) {
+        saveDb(DB_KEYS.SUPPORT_TICKETS, this.supportTickets)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -969,12 +1043,17 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
-          isPhysicalStoreVisible: this.isPhysicalStoreVisible
+          isPhysicalStoreVisible: this.isPhysicalStoreVisible,
+          gamingStoreMarginPercent: Number(this.gamingStoreMarginPercent ?? 20),
+          gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
+          gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000)
         })
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
+        saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
+        saveDb(DB_KEYS.SUPPORT_TICKETS, this.supportTickets)
       }
     },
 
@@ -1063,7 +1142,12 @@ export const useAdminStore = defineStore('admin', {
           if (idx === -1) {
             this.orders.unshift(rem)
             updatedStreaming++
-          } else if (this.orders[idx].status !== rem.status) {
+          } else if (
+            this.orders[idx].status !== rem.status ||
+            this.orders[idx].updatedAt !== rem.updatedAt ||
+            this.orders[idx].gameTitle !== rem.gameTitle ||
+            Boolean(rem.accountDetails && !this.orders[idx].accountDetails)
+          ) {
             this.orders[idx] = { ...this.orders[idx], ...rem }
             updatedStreaming++
           }
@@ -1141,7 +1225,7 @@ export const useAdminStore = defineStore('admin', {
       // Carga inicial directa de la nube
       this.syncFromCloud().catch(() => {})
 
-      // Escucha en tiempo real de pedidos de Streaming
+      // Escucha en tiempo real de pedidos de Streaming y Videojuegos
       listenToStreamingOrders((remoteOrders) => {
         if (!remoteOrders || remoteOrders.length === 0) return
         let updated = false
@@ -1150,13 +1234,40 @@ export const useAdminStore = defineStore('admin', {
           if (idx === -1) {
             this.orders.unshift(rem)
             updated = true
-          } else if (this.orders[idx].status !== rem.status) {
-            this.orders[idx] = { ...this.orders[idx], ...rem }
-            updated = true
+          } else {
+            const loc = this.orders[idx]
+            const changed = loc.status !== rem.status ||
+              loc.updatedAt !== rem.updatedAt ||
+              loc.gameTitle !== rem.gameTitle ||
+              loc.fulfillmentProvider !== rem.fulfillmentProvider ||
+              Boolean(rem.accountDetails && !loc.accountDetails)
+            if (changed) {
+              this.orders[idx] = { ...loc, ...rem }
+              updated = true
+            }
           }
         })
         if (updated) {
           this.persist(DB_KEYS.ORDERS)
+        }
+      })
+
+      // Escucha en tiempo real de tickets de soporte y reportes de clientes
+      listenToSupportTickets((remoteTickets) => {
+        if (!remoteTickets || remoteTickets.length === 0) return
+        let updated = false
+        remoteTickets.forEach(rem => {
+          const idx = (this.supportTickets || []).findIndex(t => t.id === rem.id)
+          if (idx === -1) {
+            this.supportTickets.unshift(rem)
+            updated = true
+          } else if (this.supportTickets[idx].status !== rem.status || this.supportTickets[idx].updatedAt !== rem.updatedAt) {
+            this.supportTickets[idx] = { ...this.supportTickets[idx], ...rem }
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.SUPPORT_TICKETS)
         }
       })
 
@@ -1261,7 +1372,8 @@ export const useAdminStore = defineStore('admin', {
         isPhysicalStoreVisible: this.isPhysicalStoreVisible,
         gamingStoreMarginPercent: Number(this.gamingStoreMarginPercent ?? 20),
         gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
-        gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000)
+        gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000),
+        promoCodes: Array.isArray(this.promoCodes) ? this.promoCodes : []
       }
       saveDb(DB_KEYS.STORE_SETTINGS, settings)
       // Sincronización en la nube Firebase Firestore para todos los clientes en tiempo real
@@ -1291,37 +1403,7 @@ export const useAdminStore = defineStore('admin', {
     async initStoreSettingsSync() {
       initFirebase(this.firebaseConfig)
 
-      // Carga inicial directa desde Firestore
-      try {
-        const cloudSettings = await fetchStoreSettingsFromFirebase()
-        if (cloudSettings) {
-          if (typeof cloudSettings.isStoreVisible === 'boolean') {
-            this.isStoreVisible = cloudSettings.isStoreVisible
-          }
-          if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
-            this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
-          }
-          if (typeof cloudSettings.gamingStoreMarginPercent === 'number') {
-            this.gamingStoreMarginPercent = cloudSettings.gamingStoreMarginPercent
-          }
-          if (typeof cloudSettings.gamingResellerCommissionPercent === 'number') {
-            this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
-          }
-          if (typeof cloudSettings.gamingMinResellerProfit === 'number') {
-            this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
-          }
-          saveDb(DB_KEYS.STORE_SETTINGS, {
-            isStoreVisible: this.isStoreVisible,
-            isPhysicalStoreVisible: this.isPhysicalStoreVisible,
-            gamingStoreMarginPercent: this.gamingStoreMarginPercent,
-            gamingResellerCommissionPercent: this.gamingResellerCommissionPercent,
-            gamingMinResellerProfit: this.gamingMinResellerProfit
-          })
-        }
-      } catch (e) {}
-
-      // Escucha en tiempo real de cambios en la configuración (activa/desactiva para todos en vivo)
-      listenToStoreSettings((cloudSettings) => {
+      const applyCloudSettings = (cloudSettings) => {
         if (!cloudSettings) return
         if (typeof cloudSettings.isStoreVisible === 'boolean') {
           this.isStoreVisible = cloudSettings.isStoreVisible
@@ -1338,6 +1420,10 @@ export const useAdminStore = defineStore('admin', {
         if (typeof cloudSettings.gamingMinResellerProfit === 'number') {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
         }
+        if (Array.isArray(cloudSettings.promoCodes)) {
+          this.promoCodes = cloudSettings.promoCodes
+          saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
+        }
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
           isPhysicalStoreVisible: this.isPhysicalStoreVisible,
@@ -1345,6 +1431,17 @@ export const useAdminStore = defineStore('admin', {
           gamingResellerCommissionPercent: this.gamingResellerCommissionPercent,
           gamingMinResellerProfit: this.gamingMinResellerProfit
         })
+      }
+
+      // Carga inicial directa desde Firestore
+      try {
+        const cloudSettings = await fetchStoreSettingsFromFirebase()
+        applyCloudSettings(cloudSettings)
+      } catch (e) {}
+
+      // Escucha en tiempo real de cambios en la configuración (activa/desactiva para todos en vivo)
+      listenToStoreSettings((cloudSettings) => {
+        applyCloudSettings(cloudSettings)
       })
     },
 
@@ -2099,6 +2196,16 @@ export const useAdminStore = defineStore('admin', {
       }
       this.renewalRequests.unshift(newRenewal)
       this.persist(DB_KEYS.RENEWAL_REQUESTS)
+      this.createSupportTicket({
+        orderId: renewalId,
+        clientNumber: newRenewal.clientNumber,
+        clientName: newRenewal.clientName,
+        phone: currentCredentials?.phone || '',
+        category: 'renovacion',
+        subject: `🔄 Renovación ${newRenewal.platform} (${newRenewal.planName})`,
+        message: `El cliente ${newRenewal.clientName} (${newRenewal.clientNumber}) solicitó renovación para ${newRenewal.platform}.`,
+        resellerId: newRenewal.resellerId
+      })
       return { success: true, renewal: newRenewal }
     },
 
@@ -2615,6 +2722,7 @@ export const useAdminStore = defineStore('admin', {
     // Solicitud de Actualización de Hogar Netflix
     requestHogarUpdate({ account, profileName, clientName, clientNumber, tvModel = '', phone = '', resellerId = 'DIRECT' }) {
       const alertId = `HOG-${Date.now().toString().slice(-4)}`
+      const msg = `El cliente solicitó actualización de Hogar con Netflix para la cuenta ${account} (Perfil: ${profileName || 'Principal'}${tvModel ? `, TV: ${tvModel}` : ''}). Contacto: ${phone || 'No especificado'}.`
       this.resellerAlerts.unshift({
         id: alertId,
         resellerId: resellerId || 'DIRECT',
@@ -2622,12 +2730,22 @@ export const useAdminStore = defineStore('admin', {
         clientName: clientName || 'Cliente',
         type: 'hogar_netflix',
         title: '🏠 Solicitud de Hogar Netflix',
-        message: `El cliente solicitó actualización de Hogar con Netflix para la cuenta ${account} (Perfil: ${profileName || 'Principal'}${tvModel ? `, TV: ${tvModel}` : ''}). Contacto: ${phone || 'No especificado'}.`,
+        message: msg,
         date: new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
         read: false,
         urgent: true
       })
       this.persist(DB_KEYS.RESELLER_ALERTS)
+      this.createSupportTicket({
+        orderId: alertId,
+        clientNumber: clientNumber || 'CLI',
+        clientName: clientName || 'Cliente',
+        phone: phone || '',
+        category: 'hogar_netflix',
+        subject: `🏠 Actualizar Hogar Netflix (${account})`,
+        message: msg,
+        resellerId: resellerId || 'DIRECT'
+      })
       return { success: true, id: alertId }
     },
 
@@ -2655,10 +2773,12 @@ export const useAdminStore = defineStore('admin', {
         customerNumber: orderData.customerNumber || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: orderData.customerName || 'Cliente',
         customerPhone: orderData.customerPhone || '',
+        email: orderData.email || orderData.customerEmail || '',
         pin: orderData.pin || null,
         platform: resolvedPlatform,
         activationEmail: orderData.activationEmail || null,
         devices: orderData.devices || 1,
+        quantity: Math.max(1, Number(orderData.quantity || 1)),
         pinPreference: orderData.pinPreference || 'same',
         planKey: orderData.planKey,
         planLabel: orderData.planLabel,
@@ -2675,6 +2795,7 @@ export const useAdminStore = defineStore('admin', {
         receiptStatus: orderData.hasReceipt ? 'pending_verification' : 'no_receipt',
         paymentMethod: orderData.paymentMethod || 'Transferencia Bancaria',
         orderType: isGaming ? 'gaming' : (orderData.orderType || 'streaming'),
+        gameId: orderData.gameId || null,
         gameTitle: cleanGameTitle || (isGaming ? 'Videojuego PS4 / PS5' : null),
         gamePlatform: isGaming ? gamePlatform : null,
         licenseType: orderData.licenseType || null,
@@ -2705,6 +2826,7 @@ export const useAdminStore = defineStore('admin', {
       this.registerOrUpdateUser({
         name: newOrder.customerName,
         phone: newOrder.customerPhone,
+        email: newOrder.email,
         clientNumber: newOrder.customerNumber,
         pin: orderData.pin,
         resellerId: newOrder.resellerId,
@@ -3618,17 +3740,314 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
       return { success: true }
     },
-    setGamingFulfillmentProvider(orderId, providerKey) {
-      const order = this.orders.find(o => o.id === orderId)
-      if (order) {
-        this.ensureGamingProviderSitesLoaded()
-        const site = (this.gamingProviderSites || []).find(s => s.key === providerKey)
-        order.fulfillmentProvider = providerKey
-        order.fulfillmentProviderName = site?.name || GAMING_PROVIDERS[providerKey]?.name || providerKey
-        this.persist(DB_KEYS.ORDERS)
-        return true
+    setGamingFulfillmentProvider(orderId, providerKey, customCost = null) {
+      const order = (this.orders || []).find(o => o.id === orderId)
+      if (!order) return false
+      this.ensureGamingProviderSitesLoaded()
+      const site = (this.gamingProviderSites || []).find(s => s.key === providerKey)
+      order.fulfillmentProvider = providerKey
+      order.fulfillmentProviderName = site?.name || GAMING_PROVIDERS[providerKey]?.name || providerKey
+      if (site?.url) order.providerUrl = site.url
+
+      if (customCost !== null && customCost !== undefined && Number(customCost) >= 0) {
+        order.providerCost = Number(customCost)
+      } else {
+        const matchedGame = (this.processedGamingProducts || []).find(
+          g => (order.gameId && g.id === order.gameId) || (order.gameTitle && g.title?.toLowerCase() === order.gameTitle.toLowerCase())
+        )
+        const provQuote = matchedGame?.activeProvidersList?.find(p => p.key === providerKey)
+        if (provQuote) {
+          const isSec = order.licenseType === 'secondary' || (order.planLabel && order.planLabel.toLowerCase().includes('secundaria'))
+          const resolvedCost = isSec ? (provQuote.costSecondary || provQuote.costPrimary) : provQuote.costPrimary
+          if (resolvedCost > 0) order.providerCost = resolvedCost
+        }
       }
-      return false
+
+      this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
+      return true
+    },
+
+    dispatchGamingOrder(orderId, { email = '', pass = '', pin = '', notes = '', providerKey = '', providerCost = null } = {}) {
+      const order = (this.orders || []).find(o => o.id === orderId)
+      if (!order) return { error: 'Orden no encontrada' }
+
+      if (providerKey) {
+        this.setGamingFulfillmentProvider(orderId, providerKey, providerCost)
+      } else if (providerCost !== null && providerCost !== undefined && Number(providerCost) >= 0) {
+        order.providerCost = Number(providerCost)
+      }
+
+      order.accountDetails = {
+        email: String(email || '').trim(),
+        pass: String(pass || '').trim(),
+        pin: String(pin || '').trim(),
+        notes: String(notes || '').trim(),
+        licenseType: order.licenseType || 'primary',
+        gameTitle: order.gameTitle || order.platform,
+        dispatchedAt: new Date().toISOString()
+      }
+      order.status = 'Dispatched'
+      order.dispatchedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+
+      if (order.hasReceipt || order.receiptStatus === 'pending_verification') {
+        order.receiptStatus = 'verified'
+        deleteReceipt(order.id).catch(() => {})
+      }
+
+      this.persist(DB_KEYS.ORDERS)
+      saveStreamingOrderToFirebase(order).catch(() => {})
+      return { success: true, order }
+    },
+
+    async createAdminManualGamingSale({
+      customerName,
+      customerPhone,
+      pin = '1234',
+      game,
+      licenseType = 'primary',
+      quantity = 1,
+      providerKey = '',
+      customClientPrice = null,
+      discountAmount = 0,
+      resellerId = 'DIRECT',
+      paymentMethod = 'Efectivo / Transferencia (POS Admin)',
+      markDispatched = false,
+      accountEmail = '',
+      accountPass = '',
+      accountPin = '',
+      deliveryNotes = ''
+    }) {
+      if (!game) return { error: 'Selecciona un videojuego del catálogo.' }
+      const qty = Math.max(1, Number(quantity) || 1)
+      const isPrim = licenseType === 'primary'
+      const unitPvp = Number(customClientPrice) > 0
+        ? Number(customClientPrice)
+        : (isPrim ? Number(game.effectivePrimaryPrice || 25000) : Number(game.effectiveSecondaryPrice || 12000))
+      const grossTotal = Math.max(0, (unitPvp * qty) - Math.max(0, Number(discountAmount) || 0))
+
+      const chosenKey = providerKey || (isPrim ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary) || 'argentinaplay'
+      this.ensureGamingProviderSitesLoaded()
+      const site = (this.gamingProviderSites || []).find(s => s.key === chosenKey)
+      const provQuote = (game.activeProvidersList || []).find(p => p.key === chosenKey)
+      const unitCost = provQuote
+        ? (isPrim ? (provQuote.costPrimary || 0) : (provQuote.costSecondary || provQuote.costPrimary || 0))
+        : (isPrim ? Number(game.actualPurchaseCostPrimary || game.baseCostPrimary || 0) : Number(game.actualPurchaseCostSecondary || game.baseCostSecondary || 0))
+
+      const resellerCommissionPct = Number(this.gamingResellerCommissionPercent ?? 10) / 100
+      const minResProfit = Number(this.gamingMinResellerProfit ?? 1000)
+      const singleResProfit = isPrim
+        ? Math.max(minResProfit, Math.round(unitPvp * resellerCommissionPct))
+        : Math.max(Math.round(minResProfit * 0.75), Math.round(unitPvp * resellerCommissionPct))
+
+      const uniqueId = `POS-${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`
+      const createRes = await this.createStreamingOrder({
+        id: uniqueId,
+        customerName: (customerName || 'Cliente Directo').trim(),
+        customerPhone: (customerPhone || '').trim(),
+        pin: String(pin || '1234').slice(0, 4),
+        platform: `${game.title} (${game.platform || 'PS4 / PS5'})`,
+        devices: qty,
+        quantity: qty,
+        planKey: `gaming_${licenseType}`,
+        planLabel: isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria',
+        providerCost: unitCost * qty,
+        resellerProfit: resellerId && resellerId !== 'DIRECT' ? singleResProfit * qty : 0,
+        clientPrice: grossTotal,
+        resellerId: resellerId || 'DIRECT',
+        voucher: `Venta Manual Admin (${paymentMethod})`,
+        paymentMethod,
+        orderType: 'gaming',
+        gameId: game.id,
+        gameTitle: game.title,
+        gamePlatform: game.platform || 'PS4 / PS5',
+        licenseType,
+        licenseLabel: isPrim ? 'Cuenta Primaria' : 'Cuenta Secundaria',
+        fulfillmentProvider: chosenKey,
+        fulfillmentProviderName: site?.name || provQuote?.name || chosenKey,
+        providerUrl: site?.url || provQuote?.url || ''
+      })
+
+      if (createRes?.success && createRes.order && markDispatched) {
+        this.dispatchGamingOrder(createRes.order.id, {
+          email: accountEmail,
+          pass: accountPass,
+          pin: accountPin,
+          notes: deliveryNotes,
+          providerKey: chosenKey,
+          providerCost: unitCost * qty
+        })
+      }
+      return createRes
+    },
+
+    autoFixMissingSecondaryPrices(ratio = 0.55) {
+      let updatedCount = 0
+      const pct = Math.min(0.95, Math.max(0.15, Number(ratio) || 0.55))
+      ;(this.gamingProducts || []).forEach(g => {
+        const plat = String(g.platform || '').toLowerCase()
+        if (plat.includes('pc') || plat.includes('steam') || plat.includes('ps3')) return
+        if (!g.providers || typeof g.providers !== 'object') return
+
+        let touchedGame = false
+        Object.values(g.providers).forEach(p => {
+          if (!p || p.available === false) return
+          const cPri = Number(p.costPrimary || p.primaryPrice || 0)
+          const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
+          if (cPri > 0 && cSec <= 0) {
+            const calcSec = Math.round((cPri * pct) / 100) * 100
+            p.costSecondary = calcSec
+            p.secondaryPrice = calcSec
+            touchedGame = true
+          }
+        })
+        if (touchedGame) updatedCount++
+      })
+      if (updatedCount > 0) this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, updatedCount }
+    },
+
+    resetAllCustomGamingPrices() {
+      let resetCount = 0
+      ;(this.gamingProducts || []).forEach(g => {
+        if (g.customPrimaryPrice || g.customSecondaryPrice) {
+          delete g.customPrimaryPrice
+          delete g.customSecondaryPrice
+          resetCount++
+        }
+      })
+      if (resetCount > 0) this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, resetCount }
+    },
+
+    updateGameCoverImage(gameId, imageUrl) {
+      const game = (this.gamingProducts || []).find(g => g.id === gameId)
+      if (!game) return { error: 'Juego no encontrado' }
+      const clean = String(imageUrl || '').trim()
+      if (!clean.startsWith('http')) return { error: 'Ingresa una URL válida http(s)' }
+      game.image = clean
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, game }
+    },
+
+    // ==========================================
+    // CUPONES PROMOCIONALES (VENTAS & MARKETING)
+    // ==========================================
+    validatePromoCode(rawCode, cartItems = []) {
+      const clean = String(rawCode || '').trim().toUpperCase()
+      if (!clean) return { error: 'Ingresa un código de descuento.' }
+      const coupon = (this.promoCodes || []).find(c => String(c.code || '').toUpperCase() === clean)
+      if (!coupon) return { error: 'El cupón ingresado no existe o expiró.' }
+      if (coupon.active === false) return { error: 'Este cupón está pausado.' }
+      if (coupon.maxUses && Number(coupon.uses || 0) >= Number(coupon.maxUses)) {
+        return { error: 'Este cupón alcanzó el límite máximo de usos.' }
+      }
+      const scope = coupon.scope || 'all'
+      const eligibleSubtotal = (cartItems || []).reduce((acc, item) => {
+        if (scope === 'all') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'gaming' && item.itemType === 'gaming') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'streaming' && item.itemType !== 'physical' && item.itemType !== 'gaming') return acc + (item.clientPrice * item.quantity)
+        if (scope === 'physical' && item.itemType === 'physical') return acc + (item.clientPrice * item.quantity)
+        return acc
+      }, 0)
+      if (eligibleSubtotal <= 0) {
+        const scopeLabel = scope === 'gaming' ? 'Videojuegos Digitales' : scope === 'streaming' ? 'Streaming' : 'Tienda Física'
+        return { error: `Este cupón aplica únicamente a ${scopeLabel}.` }
+      }
+      if (coupon.minAmount && eligibleSubtotal < Number(coupon.minAmount)) {
+        return { error: `Compra mínima requerida para este cupón: $${Number(coupon.minAmount).toLocaleString()} ARS.` }
+      }
+      return { success: true, coupon }
+    },
+    addPromoCode({ code, type = 'percent', value = 10, scope = 'all', minAmount = 0, maxUses = 100, description = '' }) {
+      const clean = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+      if (!clean) return { error: 'Ingresa un código alfanumérico válido (Ej: GAMER10).' }
+      if (!Array.isArray(this.promoCodes)) this.promoCodes = []
+      if (this.promoCodes.some(c => c.code === clean)) return { error: 'Ya existe un cupón con ese código.' }
+      const entry = {
+        code: clean,
+        type: type === 'fixed' ? 'fixed' : 'percent',
+        value: Math.max(1, Number(value) || 10),
+        scope: scope || 'all',
+        minAmount: Math.max(0, Number(minAmount) || 0),
+        maxUses: Math.max(1, Number(maxUses) || 100),
+        uses: 0,
+        active: true,
+        description: String(description || '').trim() || (type === 'fixed' ? `$${Number(value).toLocaleString()} ARS OFF` : `${value}% OFF`),
+        createdAt: new Date().toISOString()
+      }
+      this.promoCodes.unshift(entry)
+      this.persist(DB_KEYS.PROMO_CODES)
+      this.persistStoreSettings()
+      return { success: true, coupon: entry }
+    },
+    togglePromoCode(code) {
+      const target = (this.promoCodes || []).find(c => c.code === code)
+      if (!target) return false
+      target.active = target.active === false
+      this.persist(DB_KEYS.PROMO_CODES)
+      this.persistStoreSettings()
+      return true
+    },
+    deletePromoCode(code) {
+      this.promoCodes = (this.promoCodes || []).filter(c => c.code !== code)
+      this.persist(DB_KEYS.PROMO_CODES)
+      this.persistStoreSettings()
+      return true
+    },
+    incrementPromoUse(code) {
+      const target = (this.promoCodes || []).find(c => c.code === String(code || '').toUpperCase())
+      if (!target) return
+      target.uses = Number(target.uses || 0) + 1
+      this.persist(DB_KEYS.PROMO_CODES)
+      this.persistStoreSettings()
+    },
+
+    // ==========================================
+    // TICKETS DE SOPORTE / REPORTES DE FALLA CLIENTE
+    // ==========================================
+    createSupportTicket({ orderId = '', clientNumber = '', clientName = 'Cliente', phone = '', category = 'gaming', subject = 'Reporte de Servicio', message = '', resellerId = 'DIRECT' }) {
+      const ticket = {
+        id: `TCK-${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`,
+        orderId: orderId || '',
+        clientNumber: clientNumber || 'CLI',
+        clientName: clientName || 'Cliente',
+        phone: phone || '',
+        category: category || 'general',
+        subject: subject || 'Soporte Técnico',
+        message: message || '',
+        resellerId: resellerId || 'DIRECT',
+        status: 'Pendiente',
+        adminReply: '',
+        createdAt: new Date().toISOString(),
+        dateLabel: new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      }
+      if (!Array.isArray(this.supportTickets)) this.supportTickets = []
+      this.supportTickets.unshift(ticket)
+      this.persist(DB_KEYS.SUPPORT_TICKETS)
+      saveSupportTicketToFirebase(ticket).catch(() => {})
+
+      if (resellerId && resellerId !== 'DIRECT') {
+        this.sendAlertToReseller({
+          resellerId,
+          clientNumber: ticket.clientNumber,
+          clientName: ticket.clientName,
+          type: 'support_ticket',
+          title: `🆘 Reporte de Soporte (${ticket.subject})`,
+          message: `${ticket.clientName}: ${ticket.message}`.slice(0, 220)
+        })
+      }
+      return { success: true, ticket }
+    },
+    resolveSupportTicket(ticketId, adminReply = '') {
+      const t = (this.supportTickets || []).find(x => x.id === ticketId)
+      if (!t) return { error: 'Ticket no encontrado' }
+      t.status = 'Resuelto'
+      t.adminReply = String(adminReply || '').trim()
+      t.resolvedAt = new Date().toISOString()
+      this.persist(DB_KEYS.SUPPORT_TICKETS)
+      saveSupportTicketToFirebase(t).catch(() => {})
+      return { success: true, ticket: t }
     },
 
     ensureGamingProductsLoaded() {

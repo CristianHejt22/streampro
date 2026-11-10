@@ -903,24 +903,31 @@ const getResellerGameProfit = (price, game = null, isPrimary = true) => {
   return Math.max(minProfit, Math.round(Number(price || 0) * pct))
 }
 
+const gameSupportsSecondary = (game) => {
+  if (!game || !game.effectiveSecondaryPrice || Number(game.effectiveSecondaryPrice) <= 0) return false
+  const plat = String(game.platform || '').toLowerCase()
+  return !plat.includes('pc') && !plat.includes('steam') && !plat.includes('ps3')
+}
+
 const copyGamingReferralLink = (game, licenseType = 'primary') => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
-  const url = `${origin}/?ref=${currentResellerId.value}&game=${game.id}&lic=${licenseType}`
+  const origin = getBaseOrigin()
+  const url = `${origin}/juego/${encodeURIComponent(game.id)}/${encodeURIComponent(currentResellerId.value)}?lic=${licenseType}`
   navigator.clipboard.writeText(url).then(() => {
     toast.add(`🔗 Enlace copiado: ${game.title} (${licenseType === 'primary' ? 'Primaria' : 'Secundaria'})`, 'success')
   })
 }
 
 const shareGamingOnWhatsApp = (game) => {
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
-  const refLink = `${origin}/?ref=${currentResellerId.value}&game=${game.id}`
+  const origin = getBaseOrigin()
+  const refLink = `${origin}/juego/${encodeURIComponent(game.id)}/${encodeURIComponent(currentResellerId.value)}`
   const myStore = resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Distribuidor Oficial'
-  
+  const hasSecondary = gameSupportsSecondary(game)
+
   const text = 
-    `🎮 *¡${game.title.toUpperCase()} (${game.platform})!* 🔥\n\n` +
+    `🎮 *¡${game.title.toUpperCase()} (${game.platform || 'PlayStation'})!* 🔥\n\n` +
     `Disponible con entrega digital garantizada en *${myStore}*:\n` +
-    (game.effectivePrimaryPrice ? `⭐️ *Cuenta Primaria:* $${game.effectivePrimaryPrice.toLocaleString()} ARS (Juegas con tu usuario personal)\n` : '') +
-    (game.effectiveSecondaryPrice ? `⚡️ *Cuenta Secundaria:* $${game.effectiveSecondaryPrice.toLocaleString()} ARS (Juegas con usuario provisto)\n` : '') +
+    (game.effectivePrimaryPrice ? `⭐️ *Cuenta Primaria:* ${game.effectivePrimaryPrice.toLocaleString()} ARS (Juegas con tu usuario personal)\n` : '') +
+    (hasSecondary ? `⚡️ *Cuenta Secundaria:* ${game.effectiveSecondaryPrice.toLocaleString()} ARS (Juegas con usuario provisto)\n` : '') +
     `\n⏱️ *Entrega Digital:* 60/90 min con Garantía Oficial\n` +
     `💳 *Medios de Pago:* Mercado Pago, Billeteras Virtuales y Transferencia Bancaria\n\n` +
     `👉 *Pide tu juego online directamente aquí:*\n${refLink}`
@@ -2813,7 +2820,7 @@ const shareGamingOnWhatsApp = (game) => {
                 </div>
 
                 <!-- Secundaria -->
-                <div v-if="game.effectiveSecondaryPrice" class="flex justify-between items-center text-xs pt-1.5 border-t border-slate-800/80">
+                <div v-if="gameSupportsSecondary(game)" class="flex justify-between items-center text-xs pt-1.5 border-t border-slate-800/80">
                   <div>
                     <span class="text-white font-bold block text-[11px]">⚡️ Cuenta Secundaria</span>
                     <span class="text-[10px] text-slate-500 font-mono">PVP: ${{ game.effectiveSecondaryPrice.toLocaleString() }}</span>
@@ -2831,7 +2838,7 @@ const shareGamingOnWhatsApp = (game) => {
 
           <!-- Acciones Rápidas -->
           <div class="p-4 pt-0 space-y-2">
-            <div class="grid grid-cols-2 gap-2">
+            <div :class="['grid gap-2', gameSupportsSecondary(game) ? 'grid-cols-2' : 'grid-cols-1']">
               <button 
                 @click="copyGamingReferralLink(game, 'primary')" 
                 class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
@@ -2840,7 +2847,7 @@ const shareGamingOnWhatsApp = (game) => {
                 <span>🔗 Link Primaria</span>
               </button>
               <button 
-                v-if="game.effectiveSecondaryPrice"
+                v-if="gameSupportsSecondary(game)"
                 @click="copyGamingReferralLink(game, 'secondary')" 
                 class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
                 title="Copiar enlace para cuenta secundaria"
