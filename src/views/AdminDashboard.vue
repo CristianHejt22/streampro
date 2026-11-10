@@ -874,14 +874,14 @@ const openUserVault = (user) => {
 const showFlyerModal = ref(false)
 
 // ==========================================
-// GESTIÓN DE PROVEEDORES GAMING (ARGENTINA PLAY & JDA)
+// GESTIÓN DE PROVEEDORES GAMING MULTI-SITIO & ARBITRAJE
 // ==========================================
-const gamingAdminSubTab = ref('comparison') // 'comparison' | 'argentinaplay' | 'juegosdigitalesargentina' | 'orders'
+const gamingAdminSubTab = ref('comparison') // 'comparison' | 'margins' | 'sites' | 'argentinaplay' | 'juegosdigitalesargentina' | 'bulk_loader' | 'orders'
 const gamingAdminSearch = ref('')
 const gamingAdminCategoryFilter = ref('Todas')
 const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
-const gamingAdminProviderFilter = ref('ALL') // 'ALL' | 'argentinaplay' | 'juegosdigitalesargentina' | 'digitalgamesshop' | 'tutiendagamer' | 'fusiongames' | 'mayorista_txt'
+const gamingAdminProviderFilter = ref('ALL')
 const onlyHighestCostProvider = ref(true)
 const gamingComparisonViewMode = ref('table') // 'table' | 'cards'
 const gamingAdminDifferenceFilter = ref('ALL') // 'ALL' | 'with_diff' | 'conveyed' | 'single'
@@ -890,6 +890,99 @@ const gamingAdminDifferenceFilter = ref('ALL') // 'ALL' | 'with_diff' | 'conveye
 const gamingAdminPriceSort = ref('default') // 'default' | 'diff_desc' | 'price_desc' | 'price_asc' | 'cost_desc' | 'margin_desc'
 const gamingAdminMinPrice = ref('')
 const gamingAdminMaxPrice = ref('')
+
+// ==========================================
+// ADMINISTRACIÓN DE SITIOS WEB Y PROVEEDORES AGREGADOS
+// ==========================================
+const newSiteForm = ref({
+  name: '',
+  shortName: '',
+  url: '',
+  whatsapp: '',
+  badge: '',
+  includeInPvp: true,
+  notes: ''
+})
+const editingSiteKey = ref(null)
+const editingSiteForm = ref({
+  name: '',
+  shortName: '',
+  url: '',
+  whatsapp: '',
+  badge: '',
+  includeInPvp: true,
+  enabled: true,
+  notes: ''
+})
+
+const handleAddGamingSite = () => {
+  if (!newSiteForm.value.name.trim()) {
+    toast.add('Ingresa el nombre del sitio web o proveedor', 'error')
+    return
+  }
+  const res = adminStore.addGamingProviderSite({ ...newSiteForm.value })
+  if (res?.error) {
+    toast.add(res.error, 'error')
+    return
+  }
+  toast.add(`✓ Sitio proveedor "${res.site.name}" agregado${res.site.includeInPvp ? ' e incluido en el cálculo de Mayor Costo para PVP' : ''}.`, 'success')
+  newSiteForm.value = { name: '', shortName: '', url: '', whatsapp: '', badge: '', includeInPvp: true, notes: '' }
+}
+
+const startEditGamingSite = (site) => {
+  editingSiteKey.value = site.key
+  editingSiteForm.value = {
+    name: site.name || '',
+    shortName: site.shortName || '',
+    url: site.url || '',
+    whatsapp: site.whatsapp || '',
+    badge: site.badge || '',
+    includeInPvp: site.includeInPvp !== false,
+    enabled: site.enabled !== false,
+    notes: site.notes || ''
+  }
+}
+
+const saveEditGamingSite = () => {
+  if (!editingSiteKey.value) return
+  const res = adminStore.updateGamingProviderSite(editingSiteKey.value, { ...editingSiteForm.value })
+  if (res?.success) {
+    toast.add(`✓ Configuración actualizada para "${res.site.name}".`, 'success')
+    editingSiteKey.value = null
+  }
+}
+
+const toggleSiteEnabled = (site) => {
+  const next = site.enabled === false
+  adminStore.updateGamingProviderSite(site.key, { enabled: next })
+  toast.add(`${next ? '✓ Sitio activado' : '⚠️ Sitio desactivado'}: ${site.name}`, next ? 'success' : 'info')
+}
+
+const toggleSiteIncludeInPvp = (site) => {
+  const next = site.includeInPvp === false
+  adminStore.updateGamingProviderSite(site.key, { includeInPvp: next })
+  toast.add(
+    next
+      ? `📈 "${site.name}" ahora participa en el cálculo de MAYOR COSTO para fijar PVP público.`
+      : `🏷️ "${site.name}" quedó solo como proveedor de compra (excluido del Mayor Costo PVP).`,
+    'info'
+  )
+}
+
+const handleDeleteGamingSite = (site) => {
+  const res = adminStore.deleteGamingProviderSite(site.key)
+  if (res?.error) {
+    toast.add(res.error, 'error')
+    return
+  }
+  toast.add(`✓ Sitio "${site.name}" eliminado de la lista de proveedores.`, 'info')
+}
+
+const jumpToSiteInComparison = (siteKey) => {
+  gamingAdminProviderFilter.value = siteKey
+  gamingAdminSubTab.value = 'comparison'
+  onlyHighestCostProvider.value = false
+}
 
 // ==========================================
 // GESTIÓN RÁPIDA DE PROVEEDOR POR JUEGO (BOTÓN DE PROVEEDOR)
@@ -909,6 +1002,7 @@ const openProviderModalFromBulk = (item) => {
     shortName: 'Lista Actual',
     url: bulkProviderConfig.value.url || '',
     whatsapp: bulkProviderConfig.value.whatsapp || '',
+    includeInPvp: true,
     costPrimary: item.newWholesaleCost,
     costSecondary: Math.round(item.newWholesaleCost * 0.55),
     stock: 'En Lista'
@@ -923,17 +1017,35 @@ const openProviderModalFromBulk = (item) => {
     const diffP = Math.max(0, maxC - minC)
     const diffPct = minC > 0 ? Math.round((diffP / minC) * 100) : 0
     const cheapest = mergedList[0]
+    const highest = mergedList.find(p => p.costPrimary === maxC) || mergedList[mergedList.length - 1]
+    const marginPct = Number(adminStore.gamingStoreMarginPercent ?? 20)
+    const autoPvp = maxC > 0 ? Math.ceil((maxC * (1 + marginPct / 100)) / 100) * 100 : (item.matchedGame.effectivePrimaryPrice || item.proposedPvp)
+    mergedList.forEach(p => {
+      p.realProfitPrimary = Math.max(0, autoPvp - (p.costPrimary || 0))
+      p.extraArbitrage = Math.max(0, maxC - (p.costPrimary || 0))
+      p.isHighestPvpDriver = p.costPrimary === maxC
+      p.isCheapest = p.costPrimary === minC
+    })
 
     selectedGameForProvider.value = {
       ...item.matchedGame,
       baseCostPrimary: maxC,
+      minCostPrimary: minC,
+      effectivePrimaryPrice: autoPvp,
       diffPrimary: diffP,
       diffPrimaryPercent: diffPct,
+      highestProviderName: highest?.name || 'Mayor Costo Web',
       bestFulfillmentPrimary: cheapest?.key || item.matchedGame.bestFulfillmentPrimary,
       bestFulfillmentPrimaryName: cheapest?.name || item.matchedGame.bestFulfillmentPrimaryName,
+      actualPurchaseCostPrimary: cheapest?.costPrimary || minC,
+      actualStoreProfitPrimary: Math.max(0, autoPvp - (cheapest?.costPrimary || minC)),
       activeProvidersList: mergedList
     }
   } else {
+    listProvEntry.realProfitPrimary = Math.max(0, (item.proposedPvp || 0) - (item.newWholesaleCost || 0))
+    listProvEntry.extraArbitrage = 0
+    listProvEntry.isHighestPvpDriver = true
+    listProvEntry.isCheapest = true
     selectedGameForProvider.value = {
       id: item.id,
       title: item.cleanTitle || item.rawTitle,
@@ -944,6 +1056,10 @@ const openProviderModalFromBulk = (item) => {
       effectivePrimaryPrice: item.proposedPvp,
       effectiveSecondaryPrice: Math.round(item.proposedPvp * 0.55),
       baseCostPrimary: item.newWholesaleCost,
+      minCostPrimary: item.newWholesaleCost,
+      highestProviderName: listProvEntry.name,
+      actualPurchaseCostPrimary: item.newWholesaleCost,
+      actualStoreProfitPrimary: Math.max(0, (item.proposedPvp || 0) - (item.newWholesaleCost || 0)),
       diffPrimary: 0,
       diffPrimaryPercent: 0,
       bestFulfillmentPrimary: 'lista_txt_actual',
@@ -957,9 +1073,10 @@ const openProviderModalFromBulk = (item) => {
 const selectPreferredProvider = (game, providerKey) => {
   if (!game || !providerKey) return
   adminStore.setPreferredGamingProvider(game.id, providerKey)
-  toast.add(`✓ Proveedor asignado como preferido para "${game.title}".`, 'success')
+  toast.add(`✓ Proveedor de compra fijado para "${game.title}". Rentabilidad actualizada.`, 'success')
+  const refreshed = (adminStore.processedGamingProducts || []).find(g => g.id === game.id)
   if (selectedGameForProvider.value && selectedGameForProvider.value.id === game.id) {
-    selectedGameForProvider.value.preferredFulfillmentProvider = providerKey
+    selectedGameForProvider.value = refreshed || { ...selectedGameForProvider.value, preferredFulfillmentProvider: providerKey }
   }
 }
 
@@ -987,23 +1104,26 @@ const conveneForm = ref({
   targetLicense: 'primary',
   agreedCost: 0,
   customPvp: 0,
+  lockCustomPvp: false,
   customProviderName: 'Proveedor Convenio'
 })
 
 const openConvenePriceModal = (game, specificProviderKey = null) => {
   conveningGame.value = game
-  const pKey = specificProviderKey || game.preferredFulfillmentProvider || game.visibleProviderKey || 'argentinaplay'
-  const pData = game.providers?.[pKey] || {}
-  const pArgCost = game.providers?.argentinaplay?.costPrimary || game.providers?.argentinaplay?.primaryPrice || 0
-  const pJdaCost = game.providers?.juegosdigitalesargentina?.costPrimary || game.providers?.juegosdigitalesargentina?.primaryPrice || 0
-  const agreedCost = pData.costPrimary || pData.primaryPrice || game.baseCostPrimary || Math.max(pArgCost, pJdaCost) || 20000
-  
+  const activeList = game.activeProvidersList || []
+  const pKey = specificProviderKey || game.preferredFulfillmentProvider || game.cheapestProviderKey || activeList[0]?.key || game.visibleProviderKey || 'argentinaplay'
+  const pData = game.providers?.[pKey] || activeList.find(p => p.key === pKey) || {}
+  const costsAll = activeList.map(p => Number(p.costPrimary || 0)).filter(c => c > 0)
+  const agreedCost = pData.costPrimary || pData.primaryPrice || game.actualPurchaseCostPrimary || (costsAll.length ? Math.min(...costsAll) : 0) || game.baseCostPrimary || 20000
+  const hasLockedCustom = Boolean(game.customPrimaryPrice && Number(game.customPrimaryPrice) > 0)
+
   conveneForm.value = {
     providerKey: pKey,
     targetLicense: 'primary',
-    agreedCost: agreedCost,
+    agreedCost,
     customPvp: game.effectivePrimaryPrice || 0,
-    customProviderName: pData.providerName || game.visibleProviderName || 'Proveedor Convenio'
+    lockCustomPvp: hasLockedCustom,
+    customProviderName: pData.providerName || pData.name || 'Proveedor Convenio'
   }
   showConvenePriceModal.value = true
 }
@@ -1011,25 +1131,39 @@ const openConvenePriceModal = (game, specificProviderKey = null) => {
 const quickAdoptProviderCost = (providerKey) => {
   if (!conveningGame.value) return
   conveneForm.value.providerKey = providerKey
-  const pData = conveningGame.value.providers?.[providerKey] || {}
-  const cost = conveneForm.value.targetLicense === 'primary' 
+  const pListItem = (conveningGame.value.activeProvidersList || []).find(p => p.key === providerKey)
+  const pData = conveningGame.value.providers?.[providerKey] || pListItem || {}
+  const cost = conveneForm.value.targetLicense === 'primary'
     ? (pData.costPrimary || pData.primaryPrice || 0)
     : (pData.costSecondary || pData.secondaryPrice || 0)
-  
+
   conveneForm.value.agreedCost = cost
-  const markup = Math.ceil((cost * ((adminStore.gamingStoreMarginPercent || 20) / 100)) / 100) * 100
-  conveneForm.value.customPvp = cost + markup
+  conveneForm.value.customProviderName = pListItem?.name || pData.providerName || providerKey
+  const highestBase = Math.max(Number(cost) || 0, Number(conveningGame.value.baseCostPrimary) || 0)
+  const calcBase = conveneForm.value.lockCustomPvp ? Number(cost || 0) : highestBase
+  const markup = Math.ceil((calcBase * ((adminStore.gamingStoreMarginPercent || 20) / 100)) / 100) * 100
+  conveneForm.value.customPvp = calcBase + markup
 }
 
 const saveConvenePrice = () => {
   if (!conveningGame.value) return
-  adminStore.conveyGamingProductPrice(conveningGame.value.id, {
+  const gameId = conveningGame.value.id
+  adminStore.conveyGamingProductPrice(gameId, {
     providerKey: conveneForm.value.providerKey,
     agreedCost: Number(conveneForm.value.agreedCost) || 0,
     targetLicense: conveneForm.value.targetLicense,
-    customPvp: Number(conveneForm.value.customPvp) || 0
+    customPvp: conveneForm.value.lockCustomPvp ? (Number(conveneForm.value.customPvp) || 0) : null,
+    resetCustomPvp: !conveneForm.value.lockCustomPvp
   })
-  toast.add(`✓ Precio convenido guardado para "${conveningGame.value.title}" (${Number(conveneForm.value.agreedCost).toLocaleString()} costo / ${Number(conveneForm.value.customPvp).toLocaleString()} PVP).`, 'success')
+  adminStore.setPreferredGamingProvider(gameId, conveneForm.value.providerKey)
+  if (selectedGameForProvider.value && selectedGameForProvider.value.id === gameId) {
+    const refreshed = (adminStore.processedGamingProducts || []).find(g => g.id === gameId)
+    if (refreshed) selectedGameForProvider.value = refreshed
+  }
+  toast.add(
+    `✓ Precio convenido con ${conveneForm.value.customProviderName} para "${conveningGame.value.title}" ($${Number(conveneForm.value.agreedCost).toLocaleString()} costo${conveneForm.value.lockCustomPvp ? ` / $${Number(conveneForm.value.customPvp).toLocaleString()} PVP fijo` : ' • PVP auto Mayor Costo'}).`,
+    'success'
+  )
   showConvenePriceModal.value = false
 }
 
@@ -1329,7 +1463,7 @@ const saveGamingMarginSettings = async () => {
       resellerCommission: Number(gamingMarginForm.value.resellerCommission) || 0,
       minResellerProfit: Number(gamingMarginForm.value.minResellerProfit) || 0
     })
-    toast.add(`✓ Estrategia guardada: +${gamingMarginForm.value.storeMargin}% Ganancia Tienda y ${gamingMarginForm.value.resellerCommission}% Comisión Revendedor aplicados a los 960 juegos.`, 'success')
+    toast.add(`✓ Estrategia guardada: +${gamingMarginForm.value.storeMargin}% Ganancia Tienda y ${gamingMarginForm.value.resellerCommission}% Comisión Revendedor aplicados a los ${adminStore.processedGamingProducts.length} juegos.`, 'success')
   } catch (err) {
     console.error('Error saving gaming margins:', err)
     toast.add('Error al guardar la configuración de márgenes', 'error')
@@ -1372,14 +1506,11 @@ const gamingEditForm = ref({
   title: '',
   platform: 'PS4 / PS5',
   category: 'Acción & Aventura',
-  arg_primaryPrice: 0,
-  arg_secondaryPrice: 0,
-  arg_costPrimary: 0,
-  arg_costSecondary: 0,
-  jda_primaryPrice: 0,
-  jda_secondaryPrice: 0,
-  jda_costPrimary: 0,
-  jda_costSecondary: 0
+  preferredFulfillmentProvider: '',
+  useCustomPvp: false,
+  customPrimaryPrice: 0,
+  customSecondaryPrice: 0,
+  providersQuotes: []
 })
 
 const gamingNewForm = ref({
@@ -1389,14 +1520,12 @@ const gamingNewForm = ref({
   badge: '🔥 LANZAMIENTO',
   image: '',
   description: '',
-  arg_primaryPrice: 28000,
-  arg_secondaryPrice: 14000,
-  arg_costPrimary: 20000,
-  arg_costSecondary: 10000,
-  jda_primaryPrice: 29900,
-  jda_secondaryPrice: 13500,
-  jda_costPrimary: 21000,
-  jda_costSecondary: 9500
+  primarySiteKey: 'argentinaplay',
+  costPrimary: 20000,
+  costSecondary: 10000,
+  secondarySiteKey: 'juegosdigitalesargentina',
+  altCostPrimary: 21000,
+  altCostSecondary: 9500
 })
 
 const filteredGamingForAdmin = computed(() => {
@@ -1457,7 +1586,7 @@ const filteredGamingForAdmin = computed(() => {
   } else if (gamingAdminPriceSort.value === 'cost_desc') {
     filtered.sort((a, b) => (Number(b.baseCostPrimary || 0) - Number(a.baseCostPrimary || 0)))
   } else if (gamingAdminPriceSort.value === 'margin_desc') {
-    filtered.sort((a, b) => (Number(b.storeGrossMarginPrimary || 0) - Number(a.storeGrossMarginPrimary || 0)))
+    filtered.sort((a, b) => (Number(b.actualStoreProfitPrimary ?? b.storeGrossMarginPrimary ?? 0) - Number(a.actualStoreProfitPrimary ?? a.storeGrossMarginPrimary ?? 0)))
   }
 
   return filtered
@@ -1478,48 +1607,158 @@ watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilte
   gamingAdminCurrentPage.value = 1
 })
 
+const gamingEditLivePreview = computed(() => {
+  const quotes = (gamingEditForm.value.providersQuotes || []).filter(
+    q => q.available !== false && (Number(q.costPrimary) > 0 || Number(q.costSecondary) > 0)
+  )
+  const pvpCandidates = quotes.filter(q => q.enabled !== false && q.includeInPvp !== false)
+  const effPvpList = pvpCandidates.length > 0 ? pvpCandidates : quotes.filter(q => q.enabled !== false)
+
+  const priCostsPvp = effPvpList.map(q => Number(q.costPrimary) || 0).filter(c => c > 0)
+  const secCostsPvp = effPvpList.map(q => Number(q.costSecondary) || 0).filter(c => c > 0)
+  const priCostsAll = quotes.filter(q => q.enabled !== false).map(q => Number(q.costPrimary) || 0).filter(c => c > 0)
+  const secCostsAll = quotes.filter(q => q.enabled !== false).map(q => Number(q.costSecondary) || 0).filter(c => c > 0)
+
+  const maxCostPrimary = priCostsPvp.length > 0 ? Math.max(...priCostsPvp) : 0
+  const minCostPrimary = priCostsAll.length > 0 ? Math.min(...priCostsAll) : maxCostPrimary
+  const maxCostSecondary = secCostsPvp.length > 0 ? Math.max(...secCostsPvp) : 0
+  const minCostSecondary = secCostsAll.length > 0 ? Math.min(...secCostsAll) : maxCostSecondary
+
+  const storeMarginPct = Number(adminStore.gamingStoreMarginPercent ?? 20)
+  const autoPvpPrimary = maxCostPrimary > 0 ? Math.ceil((maxCostPrimary * (1 + storeMarginPct / 100)) / 100) * 100 : 0
+  const autoPvpSecondary = maxCostSecondary > 0 ? Math.ceil((maxCostSecondary * (1 + storeMarginPct / 100)) / 100) * 100 : 0
+
+  const finalPvpPrimary = (gamingEditForm.value.useCustomPvp && Number(gamingEditForm.value.customPrimaryPrice) > 0)
+    ? Number(gamingEditForm.value.customPrimaryPrice)
+    : autoPvpPrimary
+  const finalPvpSecondary = (gamingEditForm.value.useCustomPvp && Number(gamingEditForm.value.customSecondaryPrice) > 0)
+    ? Number(gamingEditForm.value.customSecondaryPrice)
+    : autoPvpSecondary
+
+  const highestQuote = effPvpList.find(q => Number(q.costPrimary) === maxCostPrimary)
+  const cheapestQuote = quotes.filter(q => q.enabled !== false && Number(q.costPrimary) > 0).sort((a, b) => Number(a.costPrimary) - Number(b.costPrimary))[0]
+  const prefQuote = gamingEditForm.value.preferredFulfillmentProvider
+    ? quotes.find(q => q.key === gamingEditForm.value.preferredFulfillmentProvider && Number(q.costPrimary) > 0)
+    : null
+  const buyerQuote = prefQuote || cheapestQuote
+  const buyCostPrimary = buyerQuote ? Number(buyerQuote.costPrimary) : minCostPrimary
+  const realProfitPrimary = Math.max(0, finalPvpPrimary - buyCostPrimary)
+  const arbitrageExtra = Math.max(0, maxCostPrimary - buyCostPrimary)
+
+  return {
+    maxCostPrimary,
+    minCostPrimary,
+    maxCostSecondary,
+    minCostSecondary,
+    autoPvpPrimary,
+    autoPvpSecondary,
+    finalPvpPrimary,
+    finalPvpSecondary,
+    highestSiteName: highestQuote?.name || 'Mayor Costo',
+    cheapestSiteName: cheapestQuote?.name || 'Menor Costo',
+    chosenBuyerName: buyerQuote?.name || 'Automático',
+    buyCostPrimary,
+    realProfitPrimary,
+    arbitrageExtra,
+    quotedCount: quotes.length
+  }
+})
+
 const openGamingPriceEdit = (game) => {
+  adminStore.ensureGamingProviderSitesLoaded()
   editingGamingProduct.value = game
-  const pArg = game.providers?.argentinaplay || {}
-  const pJda = game.providers?.juegosdigitalesargentina || {}
+  const sites = adminStore.gamingProviderSites || []
+  const rawProviders = game.providers || {}
+  const quotes = []
+  const seenKeys = new Set()
+
+  sites.forEach(site => {
+    seenKeys.add(site.key)
+    const p = rawProviders[site.key] || {}
+    const cPri = Number(p.costPrimary || p.primaryPrice || 0)
+    const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
+    quotes.push({
+      key: site.key,
+      name: site.name,
+      shortName: site.shortName || site.name,
+      badge: site.badge || site.name,
+      url: site.url || p.providerUrl || '',
+      whatsapp: site.whatsapp || p.providerWhatsapp || '',
+      tagColor: site.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      enabled: site.enabled !== false,
+      includeInPvp: site.includeInPvp !== false,
+      available: p.available !== false && (cPri > 0 || cSec > 0),
+      costPrimary: cPri,
+      costSecondary: cSec,
+      stock: p.stock || 'Inmediato'
+    })
+  })
+
+  Object.entries(rawProviders).forEach(([k, p]) => {
+    if (seenKeys.has(k) || !p) return
+    const cPri = Number(p.costPrimary || p.primaryPrice || 0)
+    const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
+    quotes.push({
+      key: k,
+      name: p.providerName || k,
+      shortName: (p.providerName || k).slice(0, 12),
+      badge: p.providerName || k,
+      url: p.providerUrl || '',
+      whatsapp: p.providerWhatsapp || '',
+      tagColor: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+      enabled: true,
+      includeInPvp: true,
+      available: p.available !== false && (cPri > 0 || cSec > 0),
+      costPrimary: cPri,
+      costSecondary: cSec,
+      stock: p.stock || 'Inmediato'
+    })
+  })
+
   gamingEditForm.value = {
     id: game.id,
     title: game.title,
     platform: game.platform,
     category: game.category,
-    arg_primaryPrice: pArg.primaryPrice || 0,
-    arg_secondaryPrice: pArg.secondaryPrice || 0,
-    arg_costPrimary: pArg.costPrimary || 0,
-    arg_costSecondary: pArg.costSecondary || 0,
-    jda_primaryPrice: pJda.primaryPrice || 0,
-    jda_secondaryPrice: pJda.secondaryPrice || 0,
-    jda_costPrimary: pJda.costPrimary || 0,
-    jda_costSecondary: pJda.costSecondary || 0
+    preferredFulfillmentProvider: game.preferredFulfillmentProvider || '',
+    useCustomPvp: Boolean(game.customPrimaryPrice || game.customSecondaryPrice),
+    customPrimaryPrice: Number(game.customPrimaryPrice || game.effectivePrimaryPrice || 0),
+    customSecondaryPrice: Number(game.customSecondaryPrice || game.effectiveSecondaryPrice || 0),
+    providersQuotes: quotes
   }
   showGamingPriceEditModal.value = true
 }
 
 const saveGamingPriceEdit = () => {
   if (!editingGamingProduct.value) return
-  const game = adminStore.gamingProducts.find(g => g.id === editingGamingProduct.value.id)
-  if (game) {
-    if (!game.providers) game.providers = {}
-    if (!game.providers.argentinaplay) game.providers.argentinaplay = { providerName: 'Argentina Play', providerUrl: 'https://www.argentinaplay.com.ar/' }
-    if (!game.providers.juegosdigitalesargentina) game.providers.juegosdigitalesargentina = { providerName: 'Juegos Digitales Argentina', providerUrl: 'https://juegosdigitalesargentina.com/' }
+  const providersMap = {}
+  ;(gamingEditForm.value.providersQuotes || []).forEach(q => {
+    const cPri = Math.max(0, Number(q.costPrimary) || 0)
+    const cSec = Math.max(0, Number(q.costSecondary) || 0)
+    providersMap[q.key] = {
+      providerName: q.name,
+      providerUrl: q.url || '',
+      providerWhatsapp: q.whatsapp || '',
+      available: q.available !== false && (cPri > 0 || cSec > 0),
+      costPrimary: cPri,
+      costSecondary: cSec,
+      stock: q.stock || 'Inmediato'
+    }
+  })
 
-    game.providers.argentinaplay.primaryPrice = Number(gamingEditForm.value.arg_primaryPrice) || 0
-    game.providers.argentinaplay.secondaryPrice = Number(gamingEditForm.value.arg_secondaryPrice) || 0
-    game.providers.argentinaplay.costPrimary = Number(gamingEditForm.value.arg_costPrimary) || 0
-    game.providers.argentinaplay.costSecondary = Number(gamingEditForm.value.arg_costSecondary) || 0
+  adminStore.updateGameMultiProviders(editingGamingProduct.value.id, {
+    providersMap,
+    preferredFulfillmentProvider: gamingEditForm.value.preferredFulfillmentProvider || '',
+    customPrimaryPrice: gamingEditForm.value.useCustomPvp ? Number(gamingEditForm.value.customPrimaryPrice) || 0 : 0,
+    customSecondaryPrice: gamingEditForm.value.useCustomPvp ? Number(gamingEditForm.value.customSecondaryPrice) || 0 : 0,
+    resetCustomPvp: !gamingEditForm.value.useCustomPvp
+  })
 
-    game.providers.juegosdigitalesargentina.primaryPrice = Number(gamingEditForm.value.jda_primaryPrice) || 0
-    game.providers.juegosdigitalesargentina.secondaryPrice = Number(gamingEditForm.value.jda_secondaryPrice) || 0
-    game.providers.juegosdigitalesargentina.costPrimary = Number(gamingEditForm.value.jda_costPrimary) || 0
-    game.providers.juegosdigitalesargentina.costSecondary = Number(gamingEditForm.value.jda_costSecondary) || 0
-
-    adminStore.persist('gaming_products')
-    toast.add(`✓ Precios actualizados para "${game.title}". La plataforma ajustó automáticamente el mayor precio.`, 'success')
-  }
+  const preview = gamingEditLivePreview.value
+  toast.add(
+    `✓ Cotizaciones guardadas para "${gamingEditForm.value.title}". PVP Web (Mayor Costo): $${(preview.finalPvpPrimary || 0).toLocaleString()} ARS • Compra en: ${preview.chosenBuyerName}.`,
+    'success'
+  )
   showGamingPriceEditModal.value = false
 }
 
@@ -1528,6 +1767,47 @@ const saveNewGamingProduct = () => {
     toast.add('Ingresa el título del videojuego', 'error')
     return
   }
+  adminStore.ensureGamingProviderSitesLoaded()
+  const sites = adminStore.gamingProviderSites || []
+  const site1 = sites.find(s => s.key === gamingNewForm.value.primarySiteKey) || { key: gamingNewForm.value.primarySiteKey || 'argentinaplay', name: 'Argentina Play', url: 'https://www.argentinaplay.com.ar/' }
+  const site2 = sites.find(s => s.key === gamingNewForm.value.secondarySiteKey)
+
+  const c1Pri = Math.max(0, Number(gamingNewForm.value.costPrimary) || 0)
+  const c1Sec = Math.max(0, Number(gamingNewForm.value.costSecondary) || 0)
+  const c2Pri = Math.max(0, Number(gamingNewForm.value.altCostPrimary) || 0)
+  const c2Sec = Math.max(0, Number(gamingNewForm.value.altCostSecondary) || 0)
+
+  const providers = {}
+  if (c1Pri > 0 || c1Sec > 0) {
+    providers[site1.key] = {
+      providerName: site1.name,
+      providerUrl: site1.url || '',
+      providerWhatsapp: site1.whatsapp || '',
+      available: true,
+      primaryPrice: c1Pri,
+      secondaryPrice: c1Sec,
+      costPrimary: c1Pri,
+      costSecondary: c1Sec,
+      stock: 'Inmediato'
+    }
+  }
+  if (site2 && site2.key !== site1.key && (c2Pri > 0 || c2Sec > 0)) {
+    providers[site2.key] = {
+      providerName: site2.name,
+      providerUrl: site2.url || '',
+      providerWhatsapp: site2.whatsapp || '',
+      available: true,
+      primaryPrice: c2Pri,
+      secondaryPrice: c2Sec,
+      costPrimary: c2Pri,
+      costSecondary: c2Sec,
+      stock: 'Inmediato'
+    }
+  }
+
+  const maxPri = Math.max(c1Pri, c2Pri, 20000)
+  const maxSec = Math.max(c1Sec, c2Sec, 10000)
+  const marginPct = Number(adminStore.gamingStoreMarginPercent ?? 20)
   const newGame = {
     id: `GAME-${Date.now().toString().slice(-4)}`,
     title: gamingNewForm.value.title.trim(),
@@ -1538,32 +1818,21 @@ const saveNewGamingProduct = () => {
     image: gamingNewForm.value.image || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
     description: gamingNewForm.value.description || 'Juego digital oficial para consolas PlayStation Network.',
     features: ['Audio Español Latino', 'Entrega 60/90min', 'Garantía Total'],
-    providers: {
-      argentinaplay: {
-        providerName: 'Argentina Play',
-        providerUrl: 'https://www.argentinaplay.com.ar/',
-        available: true,
-        primaryPrice: Number(gamingNewForm.value.arg_primaryPrice) || 0,
-        secondaryPrice: Number(gamingNewForm.value.arg_secondaryPrice) || 0,
-        costPrimary: Number(gamingNewForm.value.arg_costPrimary) || 0,
-        costSecondary: Number(gamingNewForm.value.arg_costSecondary) || 0,
-        stock: 'Inmediato'
-      },
-      juegosdigitalesargentina: {
-        providerName: 'Juegos Digitales Argentina',
-        providerUrl: 'https://juegosdigitalesargentina.com/',
-        available: true,
-        primaryPrice: Number(gamingNewForm.value.jda_primaryPrice) || 0,
-        secondaryPrice: Number(gamingNewForm.value.jda_secondaryPrice) || 0,
-        costPrimary: Number(gamingNewForm.value.jda_costPrimary) || 0,
-        costSecondary: Number(gamingNewForm.value.jda_costSecondary) || 0,
-        stock: 'Inmediato'
-      }
-    }
+    baseCostPrimary: maxPri,
+    baseCostSecondary: maxSec,
+    effectivePrimaryPrice: Math.ceil((maxPri * (1 + marginPct / 100)) / 100) * 100,
+    effectiveSecondaryPrice: Math.ceil((maxSec * (1 + marginPct / 100)) / 100) * 100,
+    visibleProviderKey: site1.key,
+    visibleProviderName: 'PlayStation Store Oficial',
+    visibleProviderShortName: 'PS Store',
+    visibleProviderBadge: '🎮 PlayStation Store Oficial',
+    primaryPriceLeaderName: 'PlayStation Store Oficial',
+    secondaryPriceLeaderName: 'PlayStation Store Oficial',
+    providers
   }
 
   adminStore.addGamingProduct(newGame)
-  toast.add(`✓ Videojuego "${newGame.title}" agregado exitosamente a ambos proveedores`, 'success')
+  toast.add(`✓ Videojuego "${newGame.title}" agregado exitosamente y calculado con Mayor Costo para PVP.`, 'success')
   showGamingNewModal.value = false
   gamingNewForm.value.title = ''
 }
@@ -1616,15 +1885,16 @@ const filteredGamingOrdersForAdmin = computed(() => {
   }
 
   // Filtro por Proveedor
-  if (gamingOrderProviderFilter.value === 'argentinaplay') {
+  if (gamingOrderProviderFilter.value !== 'ALL') {
+    const filterKey = gamingOrderProviderFilter.value
+    const siteMeta = (adminStore.gamingProviderSites || []).find(s => s.key === filterKey)
+    const siteNameLower = (siteMeta?.name || '').toLowerCase()
     list = list.filter(o => {
+      if (o.fulfillmentProvider === filterKey) return true
       const prov = (o.fulfillmentProvider || o.fulfillmentProviderName || '').toLowerCase()
-      return prov.includes('argentina') || prov.includes('arg')
-    })
-  } else if (gamingOrderProviderFilter.value === 'juegosdigitalesargentina') {
-    list = list.filter(o => {
-      const prov = (o.fulfillmentProvider || o.fulfillmentProviderName || '').toLowerCase()
-      return prov.includes('juegos') || prov.includes('jda')
+      if (filterKey === 'argentinaplay') return prov.includes('argentina') || prov.includes('arg')
+      if (filterKey === 'juegosdigitalesargentina') return prov.includes('juegos') || prov.includes('jda')
+      return (siteNameLower && prov.includes(siteNameLower)) || prov.includes(filterKey)
     })
   }
 
@@ -2767,8 +3037,9 @@ const manualCloudSync = async () => {
 }
 
 onMounted(async () => {
-  // Asegurar catálogo de productos físicos y gaming disponible
+  // Asegurar catálogo de productos físicos, sitios y gaming disponibles
   adminStore.ensurePhysicalProductsLoaded()
+  adminStore.ensureGamingProviderSitesLoaded()
   adminStore.ensureGamingProductsLoaded()
 
   // Sincronización automática de órdenes y postulaciones en la nube
@@ -6615,14 +6886,14 @@ const deletePackageItem = (pkgId) => {
             🎮
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h2 class="text-2xl font-black text-white">Proveedores Gaming: Argentina Play & JDA</h2>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-2xl font-black text-white">Proveedores Gaming & Arbitraje Multi-Sitio</h2>
               <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full uppercase">
-                Arbitraje de Precios Activo
+                Mayor Costo → PVP Público
               </span>
             </div>
             <p class="text-xs sm:text-sm text-slate-400 mt-0.5">
-              Similitudes de catálogo entre ambos proveedores. La plataforma exhibe automáticamente el <strong>MAYOR PRECIO</strong> entre ambos para garantizar el margen máximo.
+              Consolidado entre todos los sitios scrapeados y agregados. La tienda exhibe el <strong class="text-amber-300">MAYOR COSTO</strong> (+{{ adminStore.gamingStoreMarginPercent }}% margen) como PVP oficial y tú decides a qué proveedor conviene comprar.
             </p>
           </div>
         </div>
@@ -6637,16 +6908,16 @@ const deletePackageItem = (pkgId) => {
             class="hidden"
           >
 
-          <!-- Sincronización en 1 Clic desde Scraper en Vivo de Argentina Play & JDA -->
+          <!-- Sincronización en 1 Clic desde Scrapers Multi-Sitio -->
           <button 
             type="button"
             @click="handleSyncGamingCatalog"
             :disabled="isSyncingGaming"
             class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
-            title="Sincronizar en vivo catálogos y precios desde Argentina Play y Juegos Digitales Argentina"
+            title="Sincronizar en vivo catálogos y precios desde todos los sitios gaming configurados"
           >
             <span :class="{'animate-spin inline-block': isSyncingGaming}">🔄</span>
-            <span>{{ isSyncingGaming ? 'Sincronizando Gaming...' : 'Sincronizar Proveedores Gaming' }}</span>
+            <span>{{ isSyncingGaming ? 'Sincronizando Gaming...' : 'Sincronizar Sitios Gaming' }}</span>
           </button>
 
           <!-- Importar JSON -->
@@ -6681,25 +6952,33 @@ const deletePackageItem = (pkgId) => {
         <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
           <span class="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Títulos en Catálogo</span>
           <div class="text-2xl font-black text-white font-mono">{{ adminStore.processedGamingProducts.length }} Juegos</div>
-          <span class="text-[10px] text-indigo-400 font-bold">PS4 & PlayStation 5</span>
+          <span class="text-[10px] text-amber-300 font-bold">
+            ⚡ {{ adminStore.gamingPricingSummary?.withDiffCount || 0 }} con brecha entre sitios
+          </span>
         </div>
 
         <div class="bg-[#020617] border border-blue-500/30 p-4 rounded-2xl space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-blue-300 uppercase tracking-wider">🇦🇷 Argentina Play</span>
-            <a href="https://www.argentinaplay.com.ar/" target="_blank" class="text-[10px] text-blue-400 hover:underline">Sitio Oficial ↗</a>
+            <span class="text-[11px] font-bold text-blue-300 uppercase tracking-wider">🏢 Sitios & Proveedores</span>
+            <button type="button" @click="gamingAdminSubTab = 'sites'" class="text-[10px] text-blue-400 hover:underline font-bold cursor-pointer">Administrar →</button>
           </div>
-          <div class="text-2xl font-black text-blue-300 font-mono">argentinaplay.com.ar</div>
-          <span class="text-[10px] text-slate-400">Slots Primarios y Secundarios</span>
+          <div class="text-2xl font-black text-blue-300 font-mono">{{ adminStore.gamingPricingSummary?.activeSitesCount || (adminStore.gamingProviderSites || []).length }} Sitios</div>
+          <span class="text-[10px] text-slate-400">
+            📈 {{ adminStore.gamingPricingSummary?.pvpSitesCount || 0 }} activos fijando Mayor Costo PVP
+          </span>
         </div>
 
         <div class="bg-[#020617] border border-amber-500/30 p-4 rounded-2xl space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-amber-300 uppercase tracking-wider">🎮 Juegos Digitales Arg</span>
-            <a href="https://juegosdigitalesargentina.com/" target="_blank" class="text-[10px] text-amber-400 hover:underline">Sitio Oficial ↗</a>
+            <span class="text-[11px] font-bold text-amber-300 uppercase tracking-wider">💰 Ganancia Real Prom.</span>
+            <span class="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full font-mono">
+              +{{ adminStore.gamingStoreMarginPercent }}% PVP
+            </span>
           </div>
-          <div class="text-2xl font-black text-amber-300 font-mono">juegosdigitalesargentina.com</div>
-          <span class="text-[10px] text-slate-400">Slots Primarios y Secundarios</span>
+          <div class="text-2xl font-black text-amber-300 font-mono">+${{ (adminStore.gamingPricingSummary?.avgRealProfitPrimary || 0).toLocaleString() }} ARS</div>
+          <span class="text-[10px] text-slate-400">
+            Ahorro extra arbitraje: <strong class="text-emerald-300">+${{ (adminStore.gamingPricingSummary?.avgArbitrageExtra || 0).toLocaleString() }} ARS</strong>
+          </span>
         </div>
 
         <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
@@ -6727,6 +7006,15 @@ const deletePackageItem = (pkgId) => {
 
         <button 
           type="button"
+          @click="gamingAdminSubTab = 'sites'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer', gamingAdminSubTab === 'sites' ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-white']"
+        >
+          <span>🏢</span>
+          <span>Sitios & Proveedores ({{ (adminStore.gamingProviderSites || []).length }})</span>
+        </button>
+
+        <button 
+          type="button"
           @click="gamingAdminSubTab = 'margins'"
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'margins' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white']"
         >
@@ -6740,7 +7028,7 @@ const deletePackageItem = (pkgId) => {
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'argentinaplay' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white']"
         >
           <span>🇦🇷</span>
-          <span>Catálogo Argentina Play</span>
+          <span>Catálogo ArgPlay</span>
         </button>
 
         <button 
@@ -6749,7 +7037,7 @@ const deletePackageItem = (pkgId) => {
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'juegosdigitalesargentina' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
         >
           <span>🎮</span>
-          <span>Catálogo Juegos Digitales Argentina (JDA)</span>
+          <span>Catálogo JDA</span>
         </button>
 
         <button 
@@ -6758,7 +7046,7 @@ const deletePackageItem = (pkgId) => {
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'bulk_loader' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white']"
         >
           <span>📋</span>
-          <span>Carga Masiva por Lista / TXT</span>
+          <span>Carga Masiva TXT</span>
         </button>
 
         <button 
@@ -6852,19 +7140,16 @@ const deletePackageItem = (pkgId) => {
                 <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único (Mayor Costo)' : '👁️ Comparando Webs Scrapeadas' }}</span>
               </button>
 
-              <!-- Filtrar por Web Scrapeada o Lista TXT -->
+              <!-- Filtrar por Web Scrapeada, Agregada o Lista TXT -->
               <select 
                 v-model="gamingAdminProviderFilter" 
                 class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold cursor-pointer"
-                title="Filtrar por web scrapeada o lista TXT"
+                title="Filtrar por web scrapeada, sitio agregado o lista TXT"
               >
-                <option value="ALL">🌐 Todas las Fuentes</option>
-                <option value="argentinaplay">🇦🇷 Argentina Play</option>
-                <option value="juegosdigitalesargentina">🎮 JDA</option>
-                <option value="digitalgamesshop">⚡ Digital Games Shop</option>
-                <option value="tutiendagamer">🕹️ Tu Tienda Gamer</option>
-                <option value="fusiongames">🔥 Fusion Games</option>
-                <option value="mayorista_txt">📋 Lista Ofertas .TXT</option>
+                <option value="ALL">🌐 Todas las Fuentes ({{ (adminStore.gamingProviderSites || []).length }})</option>
+                <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">
+                  {{ site.badge || site.name }}
+                </option>
               </select>
 
               <!-- Ordenar por Precio / Margen / Diferencia -->
@@ -6974,12 +7259,12 @@ const deletePackageItem = (pkgId) => {
               <tr>
                 <th class="p-3.5">Videojuego & Plataforma</th>
                 <th class="p-3.5 text-indigo-300 bg-indigo-950/20 border-x border-slate-800">
-                  {{ onlyHighestCostProvider ? '🏢 Proveedor, Webs Scrapeadas & Brecha' : '🌐 Comparativa Todas las Webs Scrapeadas & Lista .TXT' }}
+                  {{ onlyHighestCostProvider ? '🏢 Proveedor, Mayor Costo & Brecha' : '🌐 Comparativa Todos los Sitios Agregados & Scrapeados' }}
                 </th>
                 <th class="p-3.5 text-emerald-400 bg-emerald-950/30 border-r border-slate-800">
-                  ⭐️ Precio Plataforma (Mayor Precio)
+                  ⭐️ PVP Web (Mayor Costo)
                 </th>
-                <th class="p-3.5 text-purple-300">Margen & Ganancia</th>
+                <th class="p-3.5 text-purple-300">Ganancia Real & Conveniencia</th>
                 <th class="p-3.5 text-right">Botón de Proveedor & Acciones</th>
               </tr>
             </thead>
@@ -7011,15 +7296,15 @@ const deletePackageItem = (pkgId) => {
                     type="button" 
                     @click="openProviderModal(game)"
                     class="w-full text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 transition cursor-pointer group shadow-sm space-y-1.5"
-                    title="Clic para abrir el Botón Proveedor y ver todas las webs scrapeadas"
+                    title="Clic para abrir el Botón Proveedor y elegir a quién comprar"
                   >
                     <div class="flex items-center justify-between gap-1">
                       <span class="text-[10px] font-bold text-white flex items-center gap-1.5 truncate">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                        <span class="truncate">{{ game.bestFulfillmentPrimaryName || 'PlayStation Store Oficial' }}</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                        <span class="truncate">Compras en: {{ game.bestFulfillmentPrimaryName || 'Proveedor Óptimo' }}</span>
                       </span>
                       <span class="text-[9px] text-indigo-400 group-hover:text-indigo-300 font-bold shrink-0 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-500/30">
-                        {{ (game.activeProvidersList || []).length }} webs ⚙️
+                        {{ (game.activeProvidersList || []).length }} sitios ⚙️
                       </span>
                     </div>
 
@@ -7030,23 +7315,27 @@ const deletePackageItem = (pkgId) => {
                         :key="p.key"
                         :class="[
                           'text-[9px] px-1.5 py-0.5 rounded border font-mono',
-                          p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
+                          p.isCheapest && game.diffPrimary > 0
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-black'
-                            : 'bg-slate-900 text-slate-300 border-slate-700'
+                            : p.isHighestPvpDriver && game.diffPrimary > 0
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 font-bold'
+                              : 'bg-slate-900 text-slate-300 border-slate-700'
                         ]"
                       >
+                        <span v-if="p.isHighestPvpDriver && game.diffPrimary > 0">📈</span>
+                        <span v-else-if="p.isCheapest && game.diffPrimary > 0">🏆</span>
                         {{ p.shortName }}: ${{ (p.costPrimary || 0).toLocaleString() }}
                       </span>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80 text-[10px]">
-                      <div>
-                        <span class="text-slate-400 block text-[9px]">Mayor Costo:</span>
+                      <div class="min-w-0">
+                        <span class="text-amber-300 block text-[9px] truncate" :title="game.highestProviderName">📈 Mayor ({{ game.highestProviderName || 'Base' }}):</span>
                         <strong class="text-white font-black">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
                       </div>
-                      <div>
-                        <span class="text-slate-400 block text-[9px]">Menor Costo:</span>
-                        <strong class="text-emerald-400 font-black">${{ (game.minCostPrimary || game.baseCostPrimary || 0).toLocaleString() }}</strong>
+                      <div class="min-w-0">
+                        <span class="text-emerald-300 block text-[9px] truncate" :title="game.bestFulfillmentPrimaryName">🏆 Compra ({{ game.bestFulfillmentPrimaryName }}):</span>
+                        <strong class="text-emerald-400 font-black">${{ (game.actualPurchaseCostPrimary ?? game.minCostPrimary ?? game.baseCostPrimary ?? 0).toLocaleString() }}</strong>
                       </div>
                     </div>
 
@@ -7066,40 +7355,60 @@ const deletePackageItem = (pkgId) => {
                   </button>
                 </td>
 
-                <!-- Comparativa Completa de TODAS las Webs Scrapeadas & Lista .TXT -->
-                <td v-else class="p-3 bg-slate-900/50 border-x border-slate-800 font-mono min-w-[290px]">
+                <!-- Comparativa Completa de TODAS las Webs Agregadas, Scrapeadas & Lista .TXT -->
+                <td v-else class="p-3 bg-slate-900/50 border-x border-slate-800 font-mono min-w-[330px]">
                   <div class="space-y-1.5">
                     <div 
                       v-for="p in (game.activeProvidersList || [])" 
                       :key="p.key"
                       :class="[
                         'p-2 rounded-xl border flex items-center justify-between gap-2 text-[10px]',
-                        p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
-                          ? 'bg-emerald-950/30 border-emerald-500/40'
-                          : 'bg-slate-950/80 border-slate-800'
+                        (game.preferredFulfillmentProvider === p.key || (p.isCheapest && !game.preferredFulfillmentProvider && game.diffPrimary > 0))
+                          ? 'bg-emerald-950/35 border-emerald-500/50'
+                          : p.isHighestPvpDriver && game.diffPrimary > 0
+                            ? 'bg-amber-950/20 border-amber-500/35'
+                            : 'bg-slate-950/80 border-slate-800'
                       ]"
                     >
-                      <div class="min-w-0">
-                        <div class="flex items-center gap-1">
+                      <div class="min-w-0 space-y-0.5">
+                        <div class="flex items-center gap-1 flex-wrap">
                           <span class="font-bold text-white truncate">{{ p.name }}</span>
-                          <span v-if="p.costPrimary === game.minCostPrimary && game.diffPrimary > 0" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1.5 py-0.2 rounded border border-emerald-500/30 shrink-0">
-                            🏆 Más Barato
+                          <span v-if="game.preferredFulfillmentProvider === p.key" class="text-[8px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded shrink-0">✓ Elegido</span>
+                          <span v-else-if="p.isCheapest && game.diffPrimary > 0" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1.5 py-0.2 rounded border border-emerald-500/30 shrink-0">🏆 +Barato</span>
+                          <span v-if="p.isHighestPvpDriver" class="text-[8px] bg-amber-500/20 text-amber-300 font-black px-1.5 py-0.2 rounded border border-amber-500/30 shrink-0">📈 Base PVP</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[9px] text-slate-400">
+                          <span>Sec: ${{ (p.costSecondary || 0).toLocaleString() }}</span>
+                          <span class="text-emerald-300 font-bold">Ganas: +${{ (p.realProfitPrimary || 0).toLocaleString() }}</span>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <div class="text-right">
+                          <strong :class="['font-black text-xs block', p.isCheapest ? 'text-emerald-400' : 'text-white']">
+                            ${{ (p.costPrimary || 0).toLocaleString() }}
+                          </strong>
+                          <span v-if="p.costPrimary > game.minCostPrimary" class="text-[8px] text-amber-400 block">
+                            +${{ (p.costPrimary - game.minCostPrimary).toLocaleString() }}
                           </span>
                         </div>
-                        <span class="text-[9px] text-slate-400">Sec: ${{ (p.costSecondary || 0).toLocaleString() }}</span>
-                      </div>
-                      <div class="text-right shrink-0">
-                        <strong :class="['font-black text-xs block', p.costPrimary === game.minCostPrimary ? 'text-emerald-400' : 'text-white']">
-                          ${{ (p.costPrimary || 0).toLocaleString() }}
-                        </strong>
-                        <span v-if="p.costPrimary > game.minCostPrimary" class="text-[8px] text-amber-400 block">
-                          +${{ (p.costPrimary - game.minCostPrimary).toLocaleString() }} dif.
-                        </span>
+                        <button
+                          type="button"
+                          @click="selectPreferredProvider(game, p.key)"
+                          :class="[
+                            'px-2 py-1 rounded-lg text-[9px] font-black transition cursor-pointer',
+                            (game.preferredFulfillmentProvider === p.key || (!game.preferredFulfillmentProvider && game.bestFulfillmentPrimary === p.key))
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white'
+                          ]"
+                          title="Elegir este proveedor para comprar este juego"
+                        >
+                          {{ (game.preferredFulfillmentProvider === p.key || (!game.preferredFulfillmentProvider && game.bestFulfillmentPrimary === p.key)) ? '✓ Activo' : 'Elegir' }}
+                        </button>
                       </div>
                     </div>
 
                     <div v-if="game.diffPrimary > 0" class="flex items-center justify-between px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[10px]">
-                      <span class="text-amber-300 font-bold">⚡ Brecha Total entre Webs:</span>
+                      <span class="text-amber-300 font-bold">⚡ Brecha Total (Mayor vs Barato):</span>
                       <strong class="text-amber-300 font-black">+${{ game.diffPrimary.toLocaleString() }} (+{{ game.diffPrimaryPercent }}%)</strong>
                     </div>
                   </div>
@@ -7112,8 +7421,8 @@ const deletePackageItem = (pkgId) => {
                       <span class="text-slate-400 text-[10px]">Primaria:</span>
                       <div class="text-right">
                         <strong class="text-emerald-400 text-sm font-black">${{ game.effectivePrimaryPrice?.toLocaleString() }}</strong>
-                        <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
-                          Líder: StreamePro
+                        <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-amber-300 block font-normal">
+                          {{ game.pvpMode === 'custom' ? 'PVP Manual Fijo' : `📈 Base: ${game.highestProviderName || 'Mayor Costo'}` }}
                         </span>
                       </div>
                     </div>
@@ -7122,33 +7431,37 @@ const deletePackageItem = (pkgId) => {
                       <div class="text-right">
                         <strong class="text-emerald-300 text-xs font-bold">${{ game.effectiveSecondaryPrice?.toLocaleString() }}</strong>
                         <span class="text-[8px] bg-slate-900 px-1 py-0.2 rounded text-slate-400 block font-normal">
-                          Líder: StreamePro
+                          Público: PS Store Oficial
                         </span>
                       </div>
                     </div>
                   </div>
                 </td>
 
-                <!-- Margen & Desglose Financiero -->
+                <!-- Margen Real & Desglose Financiero -->
                 <td class="p-3.5 font-mono text-[11px]">
                   <div class="space-y-1.5">
                     <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800 space-y-1">
                       <div class="flex items-center justify-between text-[10px]">
-                        <span class="text-slate-400">Ganancia Tienda:</span>
-                        <strong class="text-emerald-400 font-black">+${{ (game.storeGrossMarginPrimary || 0).toLocaleString() }} ARS</strong>
+                        <span class="text-slate-400">Ganancia Real Tienda:</span>
+                        <strong class="text-emerald-400 font-black">+${{ (game.actualStoreProfitPrimary ?? game.storeGrossMarginPrimary ?? 0).toLocaleString() }} ARS</strong>
+                      </div>
+                      <div v-if="game.arbitrageExtraProfit > 0" class="flex items-center justify-between text-[9px] text-amber-300">
+                        <span>⚡ Ahorro Arbitraje:</span>
+                        <strong>+${{ game.arbitrageExtraProfit.toLocaleString() }} ARS</strong>
                       </div>
                       <div class="flex items-center justify-between text-[10px]">
                         <span class="text-slate-400">Comisión Revendedor:</span>
                         <span class="text-indigo-300 font-bold">+${{ (game.resellerPrimaryProfit || 0).toLocaleString() }} ARS</span>
                       </div>
                       <div class="flex items-center justify-between text-[9px] pt-1 border-t border-slate-800/80 text-slate-400">
-                        <span>Neto Tienda (c/ Rev.):</span>
-                        <span class="text-emerald-300 font-bold">+${{ (game.storeNetPrimaryWithReseller || 0).toLocaleString() }} ARS</span>
+                        <span>Neto Real Tienda c/ Rev:</span>
+                        <span class="text-emerald-300 font-bold">+${{ (game.actualNetProfitWithReseller ?? game.storeNetPrimaryWithReseller ?? 0).toLocaleString() }} ARS</span>
                       </div>
                     </div>
-                    <div class="text-[9px] text-slate-400 flex items-center justify-between px-1">
+                    <div class="text-[9px] text-slate-400 flex items-center justify-between px-1 gap-1">
                       <span>Comprar en:</span>
-                      <span class="font-bold text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</span>
+                      <span class="font-bold text-indigo-300 truncate">{{ game.bestFulfillmentPrimaryName }}</span>
                     </div>
                   </div>
                 </td>
@@ -7159,7 +7472,7 @@ const deletePackageItem = (pkgId) => {
                     type="button" 
                     @click="openProviderModal(game)"
                     class="w-full px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition flex items-center justify-center gap-1 shadow cursor-pointer active:scale-95"
-                    title="Abrir panel del proveedor y cotizaciones"
+                    title="Abrir panel del proveedor y elegir a quién comprar"
                   >
                     <span>🏢 Proveedor</span>
                   </button>
@@ -7176,12 +7489,13 @@ const deletePackageItem = (pkgId) => {
                       type="button" 
                       @click="openGamingPriceEdit(game)"
                       class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] transition cursor-pointer"
-                      title="Editar costos"
+                      title="Editar cotizaciones multi-sitio"
                     >
                       ✏️
                     </button>
                     <a 
-                      :href="game.visibleProviderUrl || (game.visibleProviderKey === 'argentinaplay' ? (game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/') : (game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'))" 
+                      v-if="adminStore.gamingProviderSites?.find(s => s.key === game.bestFulfillmentPrimary)?.url || game.visibleProviderUrl || game.activeProvidersList?.[0]?.url"
+                      :href="adminStore.gamingProviderSites?.find(s => s.key === game.bestFulfillmentPrimary)?.url || game.visibleProviderUrl || game.activeProvidersList?.[0]?.url" 
                       target="_blank"
                       class="text-[10px] text-indigo-400 hover:underline"
                     >
@@ -7226,11 +7540,15 @@ const deletePackageItem = (pkgId) => {
                 :key="p.key"
                 :class="[
                   'text-[10px] px-2 py-0.5 rounded-lg border font-mono',
-                  p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
+                  p.isCheapest && game.diffPrimary > 0
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-black'
-                    : 'bg-slate-950 text-slate-300 border-slate-700'
+                    : p.isHighestPvpDriver && game.diffPrimary > 0
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 font-bold'
+                      : 'bg-slate-950 text-slate-300 border-slate-700'
                 ]"
               >
+                <span v-if="p.isHighestPvpDriver && game.diffPrimary > 0">📈 </span>
+                <span v-else-if="p.isCheapest && game.diffPrimary > 0">🏆 </span>
                 {{ p.shortName }}: ${{ (p.costPrimary || 0).toLocaleString() }}
               </span>
             </div>
@@ -7250,10 +7568,10 @@ const deletePackageItem = (pkgId) => {
               <span>Sin brecha de costos</span>
             </div>
 
-            <!-- Caja Comparativa: Costo Proveedor vs PVP Plataforma -->
+            <!-- Caja Comparativa: Mayor Costo Base & Compra vs PVP Plataforma -->
             <div class="grid grid-cols-2 gap-2 text-xs font-mono">
               <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span class="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Costo Proveedor</span>
+                <span class="text-[9px] text-amber-300 font-bold block uppercase tracking-wider truncate" :title="game.highestProviderName">📈 Mayor Costo ({{ game.highestProviderName || 'Base' }})</span>
                 <div class="flex justify-between text-[11px]">
                   <span class="text-slate-400">Prim:</span>
                   <strong class="text-white font-black">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
@@ -7262,13 +7580,13 @@ const deletePackageItem = (pkgId) => {
                   <span class="text-slate-400">Sec:</span>
                   <span class="text-indigo-300 font-bold">${{ (game.baseCostSecondary || 0).toLocaleString() }}</span>
                 </div>
-                <div class="text-[9px] text-slate-400 pt-1 border-t border-slate-800/80 truncate">
-                  Compra: <strong class="text-indigo-300">{{ game.bestFulfillmentPrimaryName }}</strong>
+                <div class="text-[9px] text-emerald-300 pt-1 border-t border-slate-800/80 truncate" :title="game.bestFulfillmentPrimaryName">
+                  Compras a: <strong>${{ (game.actualPurchaseCostPrimary ?? game.minCostPrimary ?? game.baseCostPrimary ?? 0).toLocaleString() }} ({{ game.bestFulfillmentPrimaryName }})</strong>
                 </div>
               </div>
 
               <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-1">
-                <span class="text-[9px] text-emerald-400 font-bold block uppercase tracking-wider">PVP Público</span>
+                <span class="text-[9px] text-emerald-400 font-bold block uppercase tracking-wider">PVP Público (Mayor Costo)</span>
                 <div class="flex justify-between text-[11px]">
                   <span class="text-slate-400">Prim:</span>
                   <strong class="text-emerald-400 font-black">${{ (game.effectivePrimaryPrice || 0).toLocaleString() }}</strong>
@@ -7278,7 +7596,7 @@ const deletePackageItem = (pkgId) => {
                   <strong class="text-emerald-300 font-bold">${{ (game.effectiveSecondaryPrice || 0).toLocaleString() }}</strong>
                 </div>
                 <div class="text-[9px] text-emerald-300 pt-1 border-t border-emerald-500/20">
-                  Ganancia: <strong>+${{ (game.storeGrossMarginPrimary || 0).toLocaleString() }}</strong>
+                  Ganancia Real: <strong>+${{ (game.actualStoreProfitPrimary ?? game.storeGrossMarginPrimary ?? 0).toLocaleString() }}</strong>
                 </div>
               </div>
             </div>
@@ -7387,7 +7705,7 @@ const deletePackageItem = (pkgId) => {
               Gestión Integral de Ganancias y Comisiones Gaming
             </h3>
             <p class="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-              Configura el porcentaje de ganancia neta para StreamePro sobre el costo de adquisición de los proveedores mayoristas (Argentina Play y Juegos Digitales Argentina), y el porcentaje de comisión líquida asignado a tus revendedores por cada venta concretada. Los precios de venta al público (PVP) se calculan y redondean a la centena superior automáticamente.
+              Configura el porcentaje de ganancia de StreamePro aplicado sobre el <strong class="text-amber-300">MAYOR COSTO</strong> detectado entre todos los sitios proveedores agregados y scrapeados (ArgPlay, JDA, DGS, Tu Tienda Gamer, Fusion Games, Lista .TXT y tus sitios propios), más la comisión líquida para revendedores. El precio público (PVP) se redondea automáticamente a la centena superior mientras compras en el proveedor más barato.
             </p>
           </div>
         </div>
@@ -7395,11 +7713,11 @@ const deletePackageItem = (pkgId) => {
         <!-- Métricas Promedio del Catálogo Global -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
-            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Costo Mayorista Prom.</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mayor Costo Prom. (Base PVP)</span>
             <div class="text-lg font-black text-slate-200 font-mono">
               ${{ (adminStore.gamingPricingSummary?.avgPrimaryCost || 0).toLocaleString() }} ARS
             </div>
-            <span class="text-[9px] text-slate-400">Base Cuenta Primaria</span>
+            <span class="text-[9px] text-slate-400">Máximo entre sitios activos</span>
           </div>
 
           <div class="bg-[#020617] border border-indigo-500/30 p-4 rounded-2xl space-y-1">
@@ -7411,11 +7729,11 @@ const deletePackageItem = (pkgId) => {
           </div>
 
           <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
-            <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Ganancia Tienda Directa</span>
+            <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Ganancia Real Tienda Prom.</span>
             <div class="text-lg font-black text-emerald-400 font-mono">
-              +${{ (adminStore.gamingPricingSummary?.avgPrimaryStoreProfit || 0).toLocaleString() }} ARS
+              +${{ (adminStore.gamingPricingSummary?.avgRealProfitPrimary || adminStore.gamingPricingSummary?.avgPrimaryStoreProfit || 0).toLocaleString() }} ARS
             </div>
-            <span class="text-[9px] text-emerald-400/80">Venta sin revendedor</span>
+            <span class="text-[9px] text-emerald-400/80">Incl. +${{ (adminStore.gamingPricingSummary?.avgArbitrageExtra || 0).toLocaleString() }} arbitraje</span>
           </div>
 
           <div class="bg-[#020617] border border-purple-500/30 p-4 rounded-2xl space-y-1">
@@ -7427,11 +7745,11 @@ const deletePackageItem = (pkgId) => {
           </div>
 
           <div class="bg-[#020617] border border-teal-500/30 p-4 rounded-2xl space-y-1">
-            <span class="text-[10px] uppercase font-bold text-teal-300 tracking-wider">Ganancia Tienda c/ Rev.</span>
+            <span class="text-[10px] uppercase font-bold text-teal-300 tracking-wider">Neto Real Tienda c/ Rev.</span>
             <div class="text-lg font-black text-teal-300 font-mono">
-              +${{ (adminStore.gamingPricingSummary?.avgPrimaryNetStore || 0).toLocaleString() }} ARS
+              +${{ (adminStore.gamingPricingSummary?.avgRealNetPrimary || adminStore.gamingPricingSummary?.avgPrimaryNetStore || 0).toLocaleString() }} ARS
             </div>
-            <span class="text-[9px] text-teal-300/80">Margen neto de StreamePro</span>
+            <span class="text-[9px] text-teal-300/80">Margen neto real de StreamePro</span>
           </div>
         </div>
 
@@ -7445,7 +7763,7 @@ const deletePackageItem = (pkgId) => {
                 <span>Configurar Reglas de Precios</span>
               </h4>
               <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                Afecta 960 juegos
+                Afecta {{ adminStore.processedGamingProducts.length }} juegos
               </span>
             </div>
 
@@ -7557,7 +7875,7 @@ const deletePackageItem = (pkgId) => {
                 class="w-full py-3.5 px-4 rounded-xl font-black text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>💾</span>
-                <span>{{ isSavingGamingMargins ? 'Guardando y Aplicando...' : 'Guardar y Aplicar a Todo el Catálogo (960 Juegos)' }}</span>
+                <span>{{ isSavingGamingMargins ? 'Guardando y Aplicando...' : `Guardar y Aplicar a Todo el Catálogo (${adminStore.processedGamingProducts.length} Juegos)` }}</span>
               </button>
             </div>
           </div>
@@ -7659,7 +7977,7 @@ const deletePackageItem = (pkgId) => {
               @click="gamingAdminSubTab = 'comparison'"
               class="text-xs font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer flex items-center gap-1"
             >
-              <span>Ver los 960 juegos en Comparador</span>
+              <span>Ver los {{ adminStore.processedGamingProducts.length }} juegos en Comparador</span>
               <span>→</span>
             </button>
           </div>
@@ -8330,6 +8648,207 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
         </div>
       </div>
 
+      <!-- ==================== SUB-VISTA: ADMINISTRAR SITIOS WEB & PROVEEDORES ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'sites'" class="space-y-6">
+        <!-- Explicación del Regimen Multi-Sitio Mayor Costo PVP -->
+        <div class="bg-gradient-to-br from-indigo-950/60 via-slate-900 to-amber-950/30 border border-indigo-500/30 rounded-3xl p-6 flex flex-col lg:flex-row justify-between gap-4">
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                Control Maestro Multi-Sitio
+              </span>
+              <span class="text-xs font-mono text-slate-400">
+                {{ adminStore.gamingPricingSummary?.activeSitesCount || 0 }} activos · {{ adminStore.gamingPricingSummary?.pvpSitesCount || 0 }} fijan Mayor Costo PVP
+              </span>
+            </div>
+            <h3 class="text-xl font-black text-white">Sitios Web Scrapeados & Proveedores Agregados</h3>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+              Administra todas las fuentes agregadas y scrapeadas (ArgPlay, JDA, Digital Games Shop, Tu Tienda Gamer, Fusion Games, Lista .TXT y tus nuevos sitios). El sistema toma automáticamente el <strong class="text-amber-300">MAYOR COSTO</strong> entre los sitios habilitados para calcular el <strong class="text-emerald-300">PVP visible público</strong> (siempre bajo marca oficial StreamePro / PS Store) y te marca el proveedor más económico para comprar.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              @click="gamingAdminSubTab = 'comparison'; onlyHighestCostProvider = false"
+              class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition shadow cursor-pointer"
+            >
+              ⚖️ Comparar Todos los Sitios
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulario para Agregar Nuevo Sitio Web / Proveedor -->
+        <div class="bg-[#020617] border border-teal-500/30 rounded-3xl p-5 sm:p-6 space-y-4">
+          <h4 class="text-sm font-black text-white flex items-center gap-2">
+            <span>➕</span>
+            <span>Agregar Nuevo Sitio Web o Proveedor Mayorista</span>
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nombre del Sitio / Proveedor *</label>
+              <input v-model="newSiteForm.name" type="text" placeholder="Ej: Eneba / G2A / Proveedor Norte" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none focus:border-teal-500">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Alias Corto</label>
+              <input v-model="newSiteForm.shortName" type="text" placeholder="Ej: Eneba / Norte" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-teal-500">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sitio Web (URL)</label>
+              <input v-model="newSiteForm.url" type="text" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-teal-500">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">WhatsApp Contacto (Opcional)</label>
+              <input v-model="newSiteForm.whatsapp" type="text" placeholder="+54 9 11 ..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-teal-500">
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <label class="flex items-center gap-2 text-xs text-slate-200 font-semibold cursor-pointer">
+              <input v-model="newSiteForm.includeInPvp" type="checkbox" class="accent-amber-500 w-4 h-4 rounded">
+              <span>📈 Incluir costos de este sitio al calcular el <strong>MAYOR COSTO</strong> para PVP en tienda pública</span>
+            </label>
+
+            <button
+              type="button"
+              @click="handleAddGamingSite"
+              class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-black text-xs shadow transition cursor-pointer shrink-0"
+            >
+              ➕ Guardar Sitio Proveedor
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid de Todos los Sitios Scrapeados y Agregados -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div
+            v-for="site in (adminStore.gamingSitesStats || [])"
+            :key="site.key"
+            :class="[
+              'bg-[#020617] border rounded-3xl p-5 flex flex-col justify-between space-y-4 transition-all',
+              site.enabled === false ? 'border-slate-800/60 opacity-60' : 'border-slate-800 hover:border-indigo-500/40 shadow-lg'
+            ]"
+          >
+            <div class="space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span :class="['text-xs font-black px-2.5 py-1 rounded-xl border', site.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30']">
+                      {{ site.badge || site.name }}
+                    </span>
+                    <span v-if="!site.isDefault" class="text-[9px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-bold border border-teal-500/30">Custom</span>
+                  </div>
+                  <h4 class="text-base font-black text-white mt-2 truncate">{{ site.name }}</h4>
+                  <p class="text-[11px] text-slate-400 line-clamp-1" :title="site.notes">{{ site.notes || 'Sitio proveedor gaming' }}</p>
+                </div>
+
+                <div class="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    @click="editingSiteKey === site.key ? (editingSiteKey = null) : startEditGamingSite(site)"
+                    class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+                    title="Editar datos del sitio"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    v-if="!site.isDefault"
+                    type="button"
+                    @click="handleDeleteGamingSite(site)"
+                    class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white text-xs font-bold cursor-pointer"
+                    title="Eliminar sitio custom"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <!-- Editor Inline si está seleccionado -->
+              <div v-if="editingSiteKey === site.key" class="p-3 bg-slate-900 rounded-2xl border border-indigo-500/40 space-y-2 text-xs">
+                <input v-model="editingSiteForm.name" type="text" placeholder="Nombre" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-bold">
+                <div class="grid grid-cols-2 gap-2">
+                  <input v-model="editingSiteForm.shortName" type="text" placeholder="Alias corto" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                  <input v-model="editingSiteForm.whatsapp" type="text" placeholder="WhatsApp" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                </div>
+                <input v-model="editingSiteForm.url" type="text" placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                <div class="flex justify-end gap-2 pt-1">
+                  <button type="button" @click="editingSiteKey = null" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold cursor-pointer">Cancelar</button>
+                  <button type="button" @click="saveEditGamingSite" class="px-3 py-1 rounded-lg bg-emerald-600 text-white font-black cursor-pointer">Guardar</button>
+                </div>
+              </div>
+
+              <!-- Estadísticas de Catálogo y Arbitraje de este Sitio -->
+              <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+                  <span class="text-[9px] text-slate-400 uppercase block">Títulos Cotizados</span>
+                  <strong class="text-sm font-black text-white">{{ site.count }}</strong>
+                </div>
+                <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+                  <span class="text-[9px] text-slate-400 uppercase block">Costo Prom. Prim.</span>
+                  <strong class="text-sm font-black text-indigo-300">${{ (site.avgCostPrimary || 0).toLocaleString() }}</strong>
+                </div>
+                <div class="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30">
+                  <span class="text-[9px] text-amber-300 uppercase block">📈 Fija Mayor PVP</span>
+                  <strong class="text-sm font-black text-amber-400">{{ site.highestLeaderCount }} juegos</strong>
+                </div>
+                <div class="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+                  <span class="text-[9px] text-emerald-300 uppercase block">🏆 Más Barato Compra</span>
+                  <strong class="text-sm font-black text-emerald-400">{{ site.cheapestBuyerCount }} juegos</strong>
+                </div>
+              </div>
+
+              <!-- Toggles de Activación y Participación en PVP -->
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  @click="toggleSiteEnabled(site)"
+                  :class="[
+                    'flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold border transition cursor-pointer',
+                    site.enabled !== false
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25'
+                  ]"
+                >
+                  {{ site.enabled !== false ? '✓ Sitio Activo' : '⛔ Desactivado' }}
+                </button>
+
+                <button
+                  type="button"
+                  @click="toggleSiteIncludeInPvp(site)"
+                  :class="[
+                    'flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold border transition cursor-pointer',
+                    site.includeInPvp !== false
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                  ]"
+                  title="Define si los costos de este sitio suben el Mayor Costo para PVP público"
+                >
+                  {{ site.includeInPvp !== false ? '📈 Cuenta p/ PVP' : '🛒 Solo Compra' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Pie de Tarjeta -->
+            <div class="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                @click="jumpToSiteInComparison(site.key)"
+                class="flex-1 py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition cursor-pointer"
+              >
+                🔍 Ver {{ site.count }} juegos
+              </button>
+              <a
+                v-if="site.url"
+                :href="site.url"
+                target="_blank"
+                class="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition"
+              >
+                Web ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SUB-VISTA 4: PEDIDOS GAMER & PROVEEDOR ELEGIDO ==================== -->
       <div v-else-if="gamingAdminSubTab === 'orders'" class="space-y-6">
         
@@ -8459,8 +8978,9 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="ALL">Todos los Proveedores</option>
-              <option value="argentinaplay">🇦🇷 Argentina Play</option>
-              <option value="juegosdigitalesargentina">🎮 Juegos Digitales Arg</option>
+              <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">
+                {{ site.badge || site.name }}
+              </option>
             </select>
 
             <!-- Filtro por Licencia -->
@@ -8615,9 +9135,8 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
                   <div class="flex flex-wrap items-center gap-2 text-xs pt-0.5">
                     <span class="text-slate-400">Proveedor sugerido:</span>
-                    <span :class="['font-bold flex items-center gap-1', (order.fulfillmentProvider === 'argentinaplay' || (order.fulfillmentProviderName && order.fulfillmentProviderName.includes('Argentina'))) ? 'text-blue-300' : 'text-amber-300']">
-                      <span>{{ (order.fulfillmentProvider === 'argentinaplay' || (order.fulfillmentProviderName && order.fulfillmentProviderName.includes('Argentina'))) ? '🇦🇷' : '🎮' }}</span>
-                      {{ order.fulfillmentProviderName || (order.fulfillmentProvider === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina') }}
+                    <span class="font-bold flex items-center gap-1 text-indigo-300">
+                      {{ adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.badge || order.fulfillmentProviderName || order.fulfillmentProvider || 'Proveedor Óptimo' }}
                     </span>
                   </div>
                 </div>
@@ -8680,7 +9199,8 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
                   <!-- Botón Comprar en Proveedor -->
                   <a 
-                    :href="order.providerUrl || (order.fulfillmentProvider === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : 'https://juegosdigitalesargentina.com/')" 
+                    v-if="order.providerUrl || adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.url"
+                    :href="order.providerUrl || adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.url" 
                     target="_blank"
                     class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
                   >
@@ -8811,32 +9331,35 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
         </div>
 
-        <!-- Panel de Análisis de Brecha / Diferencia de Precios -->
-        <div v-if="selectedGameForProvider.diffPrimary > 0" class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-black text-amber-300 flex items-center gap-1.5">
-              <span>⚡</span> Brecha de Arbitraje Mayorista Detectada
-            </span>
-            <span class="text-xs font-mono font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
-              +${{ selectedGameForProvider.diffPrimary.toLocaleString() }} ARS (+{{ selectedGameForProvider.diffPrimaryPercent }}%)
-            </span>
+        <!-- Resumen Mayor Costo PVP vs Compra Conveniente -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-mono">
+          <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black text-amber-300 uppercase">📈 Marca Mayor Costo (PVP Web)</span>
+            </div>
+            <div class="text-sm font-black text-white">{{ selectedGameForProvider.highestProviderName || 'Sitio Base' }}</div>
+            <div class="text-[11px] text-slate-300">
+              Costo: <strong class="text-white">${{ (selectedGameForProvider.baseCostPrimary || 0).toLocaleString() }}</strong> → PVP: <strong class="text-emerald-400">${{ (selectedGameForProvider.effectivePrimaryPrice || 0).toLocaleString() }}</strong>
+            </div>
           </div>
-          <p class="text-[11px] text-slate-300 leading-relaxed">
-            Comprando a través del proveedor más económico (<strong class="text-white">{{ selectedGameForProvider.bestFulfillmentPrimaryName }}</strong>) maximizas la rentabilidad neta de StreamePro con un ahorro de <strong>${{ selectedGameForProvider.diffPrimary.toLocaleString() }} ARS</strong> por cuenta primaria vendida.
-          </p>
-        </div>
-        <div v-else class="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span class="flex items-center gap-1.5">
-            <span>🔹</span> Proveedor Único o Precio Convenido
-          </span>
-          <span class="text-slate-300 font-mono">Costo base: ${{ (selectedGameForProvider.baseCostPrimary || 0).toLocaleString() }} ARS</span>
+
+          <div class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black text-emerald-300 uppercase">🏆 Tu Proveedor para Comprar</span>
+              <span v-if="selectedGameForProvider.diffPrimary > 0" class="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full">+${{ selectedGameForProvider.diffPrimary.toLocaleString() }} brecha</span>
+            </div>
+            <div class="text-sm font-black text-white">{{ selectedGameForProvider.bestFulfillmentPrimaryName }}</div>
+            <div class="text-[11px] text-slate-300">
+              Compras a: <strong class="text-emerald-300">${{ (selectedGameForProvider.actualPurchaseCostPrimary ?? selectedGameForProvider.minCostPrimary ?? selectedGameForProvider.baseCostPrimary ?? 0).toLocaleString() }}</strong> · Ganas: <strong class="text-emerald-400">+${{ (selectedGameForProvider.actualStoreProfitPrimary ?? selectedGameForProvider.storeGrossMarginPrimary ?? 0).toLocaleString() }}</strong>
+            </div>
+          </div>
         </div>
 
         <!-- Lista de Cotizaciones por Proveedor -->
         <div class="space-y-3">
           <div class="flex items-center justify-between text-xs font-bold text-slate-300">
-            <span>Cotizaciones de Mayoristas Disponibles:</span>
-            <span class="text-slate-400 text-[11px] font-mono">{{ (selectedGameForProvider.activeProvidersList || []).length }} cotizaciones</span>
+            <span>Cotizaciones por Sitio Web / Proveedor:</span>
+            <span class="text-slate-400 text-[11px] font-mono">{{ (selectedGameForProvider.activeProvidersList || []).length }} sitios</span>
           </div>
 
           <div class="space-y-2.5">
@@ -8850,42 +9373,52 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
               ]"
             >
-              <div class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="text-sm font-black text-white">{{ prov.name }}</span>
                   <span 
-                    v-if="selectedGameForProvider.preferredFulfillmentProvider === prov.key || selectedGameForProvider.bestFulfillmentPrimary === prov.key"
+                    v-if="selectedGameForProvider.preferredFulfillmentProvider === prov.key || (selectedGameForProvider.bestFulfillmentPrimary === prov.key && !selectedGameForProvider.preferredFulfillmentProvider)"
                     class="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1"
                   >
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>✓ Proveedor Activo Asignado</span>
+                    <span>✓ Asignado para Compra</span>
                   </span>
                   <span 
-                    v-else-if="selectedGameForProvider.diffPrimary > 0 && prov.costPrimary === (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))"
+                    v-if="prov.isCheapest && (selectedGameForProvider.diffPrimary || 0) > 0"
                     class="text-[9px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/40"
                   >
-                    🏆 Mejor Costo (-${{ selectedGameForProvider.diffPrimary.toLocaleString() }})
+                    🏆 Más Conveniente
                   </span>
                   <span 
-                    v-else-if="selectedGameForProvider.diffPrimary > 0 && prov.costPrimary > (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))"
+                    v-if="prov.isHighestPvpDriver"
+                    class="text-[9px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40"
+                  >
+                    📈 Fija Mayor Costo PVP
+                  </span>
+                  <span 
+                    v-else-if="(selectedGameForProvider.diffPrimary || 0) > 0 && prov.costPrimary > (selectedGameForProvider.minCostPrimary || 0)"
                     class="text-[9px] bg-rose-500/15 text-rose-300 font-mono px-2 py-0.5 rounded-full border border-rose-500/30"
                   >
-                    +${{ (prov.costPrimary - (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))).toLocaleString() }} más caro
+                    +${{ (prov.costPrimary - (selectedGameForProvider.minCostPrimary || 0)).toLocaleString() }} vs más barato
                   </span>
                 </div>
 
                 <span class="text-[10px] text-slate-400 font-mono">{{ prov.stock }}</span>
               </div>
 
-              <!-- Costos del Proveedor -->
-              <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+              <!-- Costos y Ganancia Real del Proveedor -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
                 <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <span class="text-slate-400 text-[10px]">Costo Primaria:</span>
+                  <span class="text-slate-400 text-[10px]">Costo Prim:</span>
                   <strong class="text-white font-black">${{ (prov.costPrimary || 0).toLocaleString() }}</strong>
                 </div>
                 <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <span class="text-slate-400 text-[10px]">Costo Secundaria:</span>
+                  <span class="text-slate-400 text-[10px]">Costo Sec:</span>
                   <span class="text-indigo-300 font-bold">${{ (prov.costSecondary || 0).toLocaleString() }}</span>
+                </div>
+                <div class="p-2 rounded-xl bg-emerald-950/25 border border-emerald-500/30 flex items-center justify-between">
+                  <span class="text-emerald-300 text-[10px]">Ganancia Real:</span>
+                  <strong class="text-emerald-400 font-black">+${{ (prov.realProfitPrimary ?? Math.max(0, (selectedGameForProvider.effectivePrimaryPrice || 0) - (prov.costPrimary || 0))).toLocaleString() }}</strong>
                 </div>
               </div>
 
@@ -8902,7 +9435,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow'
                   ]"
                 >
-                  <span>{{ (selectedGameForProvider.preferredFulfillmentProvider === prov.key || selectedGameForProvider.bestFulfillmentPrimary === prov.key) ? '✓ Asignado' : 'Asignar como Activo' }}</span>
+                  <span>{{ (selectedGameForProvider.preferredFulfillmentProvider === prov.key || (selectedGameForProvider.bestFulfillmentPrimary === prov.key && !selectedGameForProvider.preferredFulfillmentProvider)) ? '✓ Asignado' : 'Elegir para Comprar' }}</span>
                 </button>
 
                 <button 
@@ -8911,7 +9444,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   class="py-1.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
                   title="Convenir costo acordado para este proveedor"
                 >
-                  <span>🤝 Convenir Precio</span>
+                  <span>🤝 Convenir Costo</span>
                 </button>
 
                 <a 
@@ -8937,14 +9470,24 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
         </div>
 
         <!-- Botones Inferiores -->
-        <div class="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
-          <button 
-            type="button" 
-            @click="openConvenePriceModal(selectedGameForProvider)"
-            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition shadow cursor-pointer active:scale-95 flex items-center gap-1.5"
-          >
-            <span>🤝 Convenir Nuevo Precio</span>
-          </button>
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button" 
+              @click="openConvenePriceModal(selectedGameForProvider)"
+              class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition shadow cursor-pointer active:scale-95 flex items-center gap-1.5"
+            >
+              <span>🤝 Convenir Nuevo Precio</span>
+            </button>
+
+            <button 
+              type="button" 
+              @click="showProviderQuickModal = false; openGamingPriceEdit(selectedGameForProvider)"
+              class="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+            >
+              <span>✏️ Editar / Agregar Sitios</span>
+            </button>
+          </div>
 
           <button 
             type="button" 
@@ -8995,38 +9538,48 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
         </div>
 
-        <!-- Adopción Rápida con 1 Clic desde Proveedores Actuales -->
+        <!-- Adopción Rápida con 1 Clic desde TODOS los Sitios Cotizados -->
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-300">Adopción Rápida con 1 Clic:</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button 
-              type="button" 
-              @click="quickAdoptProviderCost('argentinaplay')"
-              class="p-2.5 rounded-xl border border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/40 text-left transition cursor-pointer space-y-0.5"
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-300">Adopción Rápida con 1 Clic (Todos los Sitios Cotizados):</label>
+            <span class="text-[10px] font-mono text-slate-400">Mayor Costo Web: ${{ (conveningGame.baseCostPrimary || 0).toLocaleString() }}</span>
+          </div>
+          <div v-if="conveningGame.activeProvidersList && conveningGame.activeProvidersList.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+            <button
+              v-for="prov in conveningGame.activeProvidersList"
+              :key="prov.key"
+              type="button"
+              @click="quickAdoptProviderCost(prov.key)"
+              :class="[
+                'p-2.5 rounded-xl border text-left transition cursor-pointer space-y-0.5',
+                conveneForm.providerKey === prov.key
+                  ? 'border-emerald-400 bg-emerald-950/35 shadow'
+                  : prov.isCheapest
+                    ? 'border-emerald-500/30 bg-emerald-950/15 hover:bg-emerald-950/30'
+                    : 'border-slate-700 bg-slate-900/70 hover:bg-slate-800/80'
+              ]"
             >
-              <span class="text-[10px] font-bold text-blue-300 block">🇦🇷 Argentina Play</span>
-              <div class="text-xs font-black text-white font-mono">
-                ${{ (conveningGame.providers?.argentinaplay?.costPrimary || conveningGame.providers?.argentinaplay?.primaryPrice || 0).toLocaleString() }} ARS
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] font-bold text-white truncate">{{ prov.name }}</span>
+                <span v-if="prov.isCheapest" class="text-[8px] px-1.5 rounded bg-emerald-500/20 text-emerald-300 font-black">🏆 Barato</span>
+                <span v-else-if="prov.isHighestPvpDriver" class="text-[8px] px-1.5 rounded bg-amber-500/20 text-amber-300 font-black">📈 PVP Web</span>
               </div>
-              <span class="text-[9px] text-slate-400 block">Adoptar como costo base</span>
-            </button>
-
-            <button 
-              type="button" 
-              @click="quickAdoptProviderCost('juegosdigitalesargentina')"
-              class="p-2.5 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:bg-amber-950/40 text-left transition cursor-pointer space-y-0.5"
-            >
-              <span class="text-[10px] font-bold text-amber-300 block">🎮 Juegos Digitales Arg</span>
               <div class="text-xs font-black text-white font-mono">
-                ${{ (conveningGame.providers?.juegosdigitalesargentina?.costPrimary || conveningGame.providers?.juegosdigitalesargentina?.primaryPrice || 0).toLocaleString() }} ARS
+                ${{ (prov.costPrimary || 0).toLocaleString() }} ARS
+                <span class="text-[9px] text-slate-400 font-normal">· Sec ${{ (prov.costSecondary || 0).toLocaleString() }}</span>
               </div>
-              <span class="text-[9px] text-slate-400 block">Adoptar como costo base</span>
+              <span class="text-[9px] text-emerald-300/90 block">Ganancia real aquí: +${{ (prov.realProfitPrimary || 0).toLocaleString() }} ARS</span>
             </button>
           </div>
         </div>
 
         <!-- Formulario de Acuerdo de Precio -->
         <div class="space-y-3 pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between gap-2 text-[11px]">
+            <span class="text-slate-400">Sitio asignado para compra:</span>
+            <strong class="text-emerald-300 font-black">{{ conveneForm.customProviderName }}</strong>
+          </div>
+
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1">
               <label class="text-[11px] font-bold text-slate-300">Costo Acordado ($ ARS):</label>
@@ -9038,20 +9591,33 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               >
             </div>
             <div class="space-y-1">
-              <label class="text-[11px] font-bold text-slate-300">PVP Plataforma ($ ARS):</label>
+              <label class="text-[11px] font-bold text-slate-300">
+                {{ conveneForm.lockCustomPvp ? 'PVP Manual Fijo ($ ARS):' : 'PVP Automático Mayor Costo:' }}
+              </label>
               <input 
                 v-model.number="conveneForm.customPvp" 
+                :disabled="!conveneForm.lockCustomPvp"
                 type="number" 
                 step="500" 
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-emerald-400 font-mono font-black text-xs outline-none focus:border-emerald-500"
+                :class="[
+                  'w-full border rounded-xl p-2.5 font-mono font-black text-xs outline-none',
+                  conveneForm.lockCustomPvp
+                    ? 'bg-slate-900 border-amber-500/50 text-emerald-400 focus:border-emerald-500'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 cursor-not-allowed'
+                ]"
               >
             </div>
           </div>
 
+          <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+            <input v-model="conveneForm.lockCustomPvp" type="checkbox" class="accent-amber-500 rounded">
+            <span>Fijar PVP manual (si no se marca, la tienda sigue usando el Mayor Costo de todos los sitios +{{ adminStore.gamingStoreMarginPercent }}%)</span>
+          </label>
+
           <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-[11px]">
-            <span class="text-slate-400">Margen Tienda resultante:</span>
+            <span class="text-slate-400">Ganancia Real Tienda estimada:</span>
             <strong class="text-emerald-400 font-mono font-black">
-              +${{ Math.max(0, (conveneForm.customPvp || 0) - (conveneForm.agreedCost || 0)).toLocaleString() }} ARS
+              +${{ Math.max(0, ((conveneForm.lockCustomPvp ? conveneForm.customPvp : (conveningGame.effectivePrimaryPrice || conveneForm.customPvp)) || 0) - (conveneForm.agreedCost || 0)).toLocaleString() }} ARS
             </strong>
           </div>
         </div>
@@ -9077,80 +9643,155 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
     </div>
 
     <div v-if="showGamingPriceEditModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md">
-      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar p-6 space-y-5 shadow-2xl">
+      <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar p-6 space-y-5 shadow-2xl">
         <div class="flex justify-between items-center pb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-lg font-black text-white">Editar Precios de Proveedores: {{ gamingEditForm.title }}</h3>
-            <p class="text-xs text-slate-400">Actualiza los precios de Argentina Play y JDA. La tienda exhibirá automáticamente el mayor precio.</p>
+            <h3 class="text-lg font-black text-white">Editar Costos Multi-Sitio & Proveedor: {{ gamingEditForm.title }}</h3>
+            <p class="text-xs text-slate-400">Administra cotizaciones de todos los sitios scrapeados/agregados. El <strong class="text-amber-300">Mayor Costo</strong> fija el PVP Web y tú eliges el sitio más conveniente para comprar.</p>
           </div>
           <button @click="showGamingPriceEditModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- Columna Argentina Play -->
-          <div class="p-3.5 bg-blue-950/20 border border-blue-500/30 rounded-2xl space-y-2.5">
-            <h4 class="font-black text-blue-300 text-xs flex items-center gap-1">
-              <span>🇦🇷</span> Argentina Play
-            </h4>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Primaria (ARS)</label>
-              <input v-model="gamingEditForm.arg_primaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Secundaria (ARS)</label>
-              <input v-model="gamingEditForm.arg_secondaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Primaria</label>
-              <input v-model="gamingEditForm.arg_costPrimary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Secundaria</label>
-              <input v-model="gamingEditForm.arg_costSecondary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
-            </div>
+        <!-- Resumen Live de Cálculo Mayor Costo -> PVP vs Compra Conveniente -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-mono">
+          <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-0.5">
+            <span class="text-[9px] text-amber-300 font-bold uppercase block">📈 Base Mayor Costo → PVP</span>
+            <div class="text-sm font-black text-white">${{ (gamingEditLivePreview.maxCostPrimary || 0).toLocaleString() }} → <span class="text-emerald-400">${{ (gamingEditLivePreview.finalPvpPrimary || 0).toLocaleString() }}</span></div>
+            <span class="text-[10px] text-slate-400 block truncate">Líder: {{ gamingEditLivePreview.highestSiteName }}</span>
           </div>
 
-          <!-- Columna Juegos Digitales Argentina -->
-          <div class="p-3.5 bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2.5">
-            <h4 class="font-black text-amber-300 text-xs flex items-center gap-1">
-              <span>🎮</span> Juegos Digitales Arg (JDA)
-            </h4>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Primaria (ARS)</label>
-              <input v-model="gamingEditForm.jda_primaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Precio Secundaria (ARS)</label>
-              <input v-model="gamingEditForm.jda_secondaryPrice" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-bold text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Primaria</label>
-              <input v-model="gamingEditForm.jda_costPrimary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-400 uppercase font-bold">Costo Proveedor Secundaria</label>
-              <input v-model="gamingEditForm.jda_costSecondary" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-slate-300 text-xs">
+          <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 space-y-0.5">
+            <span class="text-[9px] text-indigo-300 font-bold uppercase block">🏢 Tu Compra Elegida</span>
+            <div class="text-sm font-black text-white">${{ (gamingEditLivePreview.buyCostPrimary || 0).toLocaleString() }} ARS</div>
+            <span class="text-[10px] text-indigo-200 block truncate">En: {{ gamingEditLivePreview.chosenBuyerName }}</span>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-0.5">
+            <span class="text-[9px] text-emerald-300 font-bold uppercase block">💰 Tu Ganancia Real</span>
+            <div class="text-sm font-black text-emerald-400">+${{ (gamingEditLivePreview.realProfitPrimary || 0).toLocaleString() }} ARS</div>
+            <span class="text-[10px] text-emerald-200/80 block">
+              {{ gamingEditLivePreview.arbitrageExtra > 0 ? `Incluye +$${gamingEditLivePreview.arbitrageExtra.toLocaleString()} arbitraje` : 'Margen directo catálogo' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Lista Editable de Todos los Sitios & Proveedores -->
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+            <span>Cotizaciones por Sitio Web / Proveedor ({{ (gamingEditForm.providersQuotes || []).length }})</span>
+            <button
+              v-if="gamingEditForm.preferredFulfillmentProvider"
+              type="button"
+              @click="gamingEditForm.preferredFulfillmentProvider = ''"
+              class="text-[10px] text-indigo-400 hover:text-indigo-300 cursor-pointer underline"
+            >
+              Volver a Compra Automática (Más Barato)
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div
+              v-for="q in gamingEditForm.providersQuotes"
+              :key="q.key"
+              :class="[
+                'p-3.5 rounded-2xl border space-y-2.5 transition-all',
+                gamingEditForm.preferredFulfillmentProvider === q.key
+                  ? 'bg-emerald-950/25 border-emerald-500/50'
+                  : (q.available && (Number(q.costPrimary) > 0 || Number(q.costSecondary) > 0))
+                    ? 'bg-slate-900/70 border-slate-700'
+                    : 'bg-slate-950/60 border-slate-800/80 opacity-80'
+              ]"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-black text-white text-xs truncate">{{ q.badge || q.name }}</span>
+                    <span v-if="q.available && q.includeInPvp !== false && Number(q.costPrimary) > 0 && Number(q.costPrimary) === gamingEditLivePreview.maxCostPrimary" class="text-[8px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">📈 Fija PVP</span>
+                    <span v-if="q.available && Number(q.costPrimary) > 0 && Number(q.costPrimary) === gamingEditLivePreview.minCostPrimary" class="text-[8px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">🏆 Menor Costo</span>
+                  </div>
+                  <span v-if="q.enabled === false" class="text-[9px] text-rose-400 block">Sitio desactivado globalmente</span>
+                  <span v-else-if="q.includeInPvp === false" class="text-[9px] text-slate-400 block">Excluido del Mayor Costo PVP</span>
+                </div>
+
+                <label class="flex items-center gap-1 text-[10px] text-slate-300 cursor-pointer shrink-0">
+                  <input v-model="q.available" type="checkbox" class="accent-indigo-500 rounded">
+                  <span>Cotizado</span>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[9px] text-slate-400 uppercase font-bold mb-0.5">Costo Primaria</label>
+                  <input
+                    v-model.number="q.costPrimary"
+                    @input="Number(q.costPrimary) > 0 && (q.available = true)"
+                    type="number"
+                    step="100"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white font-mono font-bold text-xs outline-none focus:border-indigo-500"
+                  >
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-400 uppercase font-bold mb-0.5">Costo Secundaria</label>
+                  <input
+                    v-model.number="q.costSecondary"
+                    @input="Number(q.costSecondary) > 0 && (q.available = true)"
+                    type="number"
+                    step="100"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-slate-300 font-mono text-xs outline-none focus:border-indigo-500"
+                  >
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  :disabled="!q.available || Number(q.costPrimary) <= 0"
+                  @click="gamingEditForm.preferredFulfillmentProvider = (gamingEditForm.preferredFulfillmentProvider === q.key ? '' : q.key)"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+                    gamingEditForm.preferredFulfillmentProvider === q.key
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  ]"
+                >
+                  {{ gamingEditForm.preferredFulfillmentProvider === q.key ? '✓ Proveedor Compra Elegido' : 'Elegir para Compra' }}
+                </button>
+                <a v-if="q.url" :href="q.url" target="_blank" class="text-[10px] text-indigo-400 hover:underline">Web ↗</a>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1">
-          <div class="flex justify-between font-bold">
-            <span>Mayor Precio Primaria en Tienda:</span>
-            <span class="text-emerald-400 font-mono">${Math.max(Number(gamingEditForm.arg_primaryPrice) || 0, Number(gamingEditForm.jda_primaryPrice) || 0).toLocaleString()} ARS</span>
+        <!-- Opcional: Fijar PVP Manual vs Automático por Mayor Costo -->
+        <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <label class="flex items-center gap-2 text-xs font-bold text-white cursor-pointer">
+              <input v-model="gamingEditForm.useCustomPvp" type="checkbox" class="accent-amber-500 w-4 h-4 rounded">
+              <span>Fijar PVP público manual personalizado (si se desmarca, usa Automático Mayor Costo +{{ adminStore.gamingStoreMarginPercent }}%)</span>
+            </label>
+            <span class="text-[11px] font-mono font-bold text-emerald-400">
+              Auto PVP Sec: ${{ (gamingEditLivePreview.autoPvpSecondary || 0).toLocaleString() }} ARS
+            </span>
           </div>
-          <div class="flex justify-between font-bold">
-            <span>Mayor Precio Secundaria en Tienda:</span>
-            <span class="text-emerald-400 font-mono">${Math.max(Number(gamingEditForm.arg_secondaryPrice) || 0, Number(gamingEditForm.jda_secondaryPrice) || 0).toLocaleString()} ARS</span>
+
+          <div v-if="gamingEditForm.useCustomPvp" class="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block text-[10px] text-slate-400 font-bold mb-1">PVP Público Primaria Manual</label>
+              <input v-model.number="gamingEditForm.customPrimaryPrice" type="number" step="100" class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-emerald-400 font-mono font-black text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-400 font-bold mb-1">PVP Público Secundaria Manual</label>
+              <input v-model.number="gamingEditForm.customSecondaryPrice" type="number" step="100" class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-emerald-300 font-mono font-bold text-xs">
+            </div>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" @click="showGamingPriceEditModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold">
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <button type="button" @click="showGamingPriceEditModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">
             Cancelar
           </button>
-          <button type="button" @click="saveGamingPriceEdit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow">
-            Guardar y Aplicar Precios
+          <button type="button" @click="saveGamingPriceEdit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow cursor-pointer">
+            💾 Guardar Cotizaciones y Aplicar PVP
           </button>
         </div>
       </div>
@@ -9198,17 +9839,40 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             <textarea v-model="gamingNewForm.description" rows="2" placeholder="Sinopsis del juego..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs"></textarea>
           </div>
 
-          <div class="grid grid-cols-2 gap-3 pt-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div class="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2">
-              <span class="text-xs font-black text-blue-300 block">Precios Argentina Play</span>
-              <input v-model="gamingNewForm.arg_primaryPrice" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
-              <input v-model="gamingNewForm.arg_secondaryPrice" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+              <label class="text-[10px] font-black text-blue-300 uppercase block">Sitio Proveedor #1 *</label>
+              <select v-model="gamingNewForm.primarySiteKey" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-xs font-bold">
+                <option v-for="s in (adminStore.gamingProviderSites || [])" :key="s.key" :value="s.key">{{ s.badge || s.name }}</option>
+              </select>
+              <div class="grid grid-cols-2 gap-1.5">
+                <div>
+                  <span class="text-[9px] text-slate-400 block">Costo Prim.</span>
+                  <input v-model.number="gamingNewForm.costPrimary" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono">
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-400 block">Costo Sec.</span>
+                  <input v-model.number="gamingNewForm.costSecondary" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono">
+                </div>
+              </div>
             </div>
 
             <div class="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2">
-              <span class="text-xs font-black text-amber-300 block">Precios Juegos Digitales Arg</span>
-              <input v-model="gamingNewForm.jda_primaryPrice" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
-              <input v-model="gamingNewForm.jda_secondaryPrice" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs">
+              <label class="text-[10px] font-black text-amber-300 uppercase block">Sitio Proveedor #2 (Comparativa)</label>
+              <select v-model="gamingNewForm.secondarySiteKey" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white text-xs font-bold">
+                <option value="">-- Ninguno --</option>
+                <option v-for="s in (adminStore.gamingProviderSites || [])" :key="s.key" :value="s.key">{{ s.badge || s.name }}</option>
+              </select>
+              <div class="grid grid-cols-2 gap-1.5">
+                <div>
+                  <span class="text-[9px] text-slate-400 block">Costo Prim.</span>
+                  <input v-model.number="gamingNewForm.altCostPrimary" type="number" placeholder="Primaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono">
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-400 block">Costo Sec.</span>
+                  <input v-model.number="gamingNewForm.altCostSecondary" type="number" placeholder="Secundaria" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono">
+                </div>
+              </div>
             </div>
           </div>
         </div>

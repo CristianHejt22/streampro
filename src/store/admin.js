@@ -8,7 +8,7 @@ import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
-import { GAMING_PROVIDERS, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
+import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { 
@@ -625,7 +625,21 @@ export const useAdminStore = defineStore('admin', {
       saveDb(DB_KEYS.GAMING_SUBCATEGORIES, initial)
       return initial
     })(),
-    gamingProviders: GAMING_PROVIDERS
+    gamingProviders: GAMING_PROVIDERS,
+    gamingProviderSites: (() => {
+      const stored = loadDb(DB_KEYS.GAMING_PROVIDER_SITES, null)
+      const defaults = (DEFAULT_GAMING_PROVIDER_SITES || []).map(s => ({ ...s }))
+      if (Array.isArray(stored) && stored.length > 0) {
+        const storedMap = new Map(stored.filter(Boolean).map(s => [s.key, s]))
+        const merged = defaults.map(def => storedMap.has(def.key) ? { ...def, ...storedMap.get(def.key), key: def.key, isDefault: true } : def)
+        stored.forEach(s => {
+          if (s && s.key && !defaults.some(d => d.key === s.key)) merged.push(s)
+        })
+        return merged
+      }
+      saveDb(DB_KEYS.GAMING_PROVIDER_SITES, defaults)
+      return defaults
+    })()
   }},
   getters: {
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
@@ -647,7 +661,8 @@ export const useAdminStore = defineStore('admin', {
       const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
       const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
       const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
-      const processed = list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit))
+      const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
+      const processed = list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites))
       return deduplicateGamingProducts(processed)
     },
 
@@ -656,7 +671,8 @@ export const useAdminStore = defineStore('admin', {
       const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
       const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
       const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
-      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit)))
+      const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
+      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites)))
 
       let totalPrimaryCost = 0
       let totalSecondaryCost = 0
@@ -664,6 +680,11 @@ export const useAdminStore = defineStore('admin', {
       let totalSecondaryPVP = 0
       let totalPrimaryResellerProfit = 0
       let totalSecondaryResellerProfit = 0
+      let totalRealProfitPrimary = 0
+      let totalRealNetPrimary = 0
+      let totalArbitrageExtra = 0
+      let withDiffCount = 0
+      let multiSiteCount = 0
       let count = Math.max(1, processed.length)
 
       processed.forEach(g => {
@@ -673,6 +694,11 @@ export const useAdminStore = defineStore('admin', {
         totalSecondaryPVP += Number(g.effectiveSecondaryPrice || 0)
         totalPrimaryResellerProfit += Number(g.resellerPrimaryProfit || 0)
         totalSecondaryResellerProfit += Number(g.resellerSecondaryProfit || 0)
+        totalRealProfitPrimary += Number(g.actualStoreProfitPrimary ?? g.storeGrossMarginPrimary ?? 0)
+        totalRealNetPrimary += Number(g.actualNetProfitWithReseller ?? g.storeNetPrimaryWithReseller ?? 0)
+        totalArbitrageExtra += Number(g.arbitrageExtraProfit || 0)
+        if ((g.diffPrimary || 0) > 0) withDiffCount++
+        if ((g.providerCount || 0) >= 2) multiSiteCount++
       })
 
       const avgPrimaryCost = Math.round(totalPrimaryCost / count)
@@ -680,12 +706,18 @@ export const useAdminStore = defineStore('admin', {
       const avgPrimaryStoreProfit = Math.max(0, avgPrimaryPVP - avgPrimaryCost)
       const avgPrimaryResellerProfit = Math.round(totalPrimaryResellerProfit / count)
       const avgPrimaryNetStore = Math.max(0, avgPrimaryStoreProfit - avgPrimaryResellerProfit)
+      const avgRealProfitPrimary = Math.round(totalRealProfitPrimary / count)
+      const avgRealNetPrimary = Math.round(totalRealNetPrimary / count)
+      const avgArbitrageExtra = Math.round(totalArbitrageExtra / count)
 
       const avgSecondaryCost = Math.round(totalSecondaryCost / count)
       const avgSecondaryPVP = Math.round(totalSecondaryPVP / count)
       const avgSecondaryStoreProfit = Math.max(0, avgSecondaryPVP - avgSecondaryCost)
       const avgSecondaryResellerProfit = Math.round(totalSecondaryResellerProfit / count)
       const avgSecondaryNetStore = Math.max(0, avgSecondaryStoreProfit - avgSecondaryResellerProfit)
+
+      const activeSitesCount = (sites || []).filter(s => s.enabled !== false).length
+      const pvpSitesCount = (sites || []).filter(s => s.enabled !== false && s.includeInPvp !== false).length
 
       return {
         totalGames: processed.length,
@@ -697,12 +729,76 @@ export const useAdminStore = defineStore('admin', {
         avgPrimaryStoreProfit,
         avgPrimaryResellerProfit,
         avgPrimaryNetStore,
+        avgRealProfitPrimary,
+        avgRealNetPrimary,
+        avgArbitrageExtra,
+        withDiffCount,
+        multiSiteCount,
+        activeSitesCount,
+        pvpSitesCount,
         avgSecondaryCost,
         avgSecondaryPVP,
         avgSecondaryStoreProfit,
         avgSecondaryResellerProfit,
         avgSecondaryNetStore
       }
+    },
+
+    gamingSitesStats: (state) => {
+      const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
+      const list = state.gamingProducts || []
+      const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
+      const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
+      const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
+      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites)))
+
+      const statsMap = new Map()
+      sites.forEach(s => {
+        statsMap.set(s.key, {
+          ...s,
+          count: 0,
+          sumCostPrimary: 0,
+          avgCostPrimary: 0,
+          highestLeaderCount: 0,
+          cheapestBuyerCount: 0
+        })
+      })
+
+      processed.forEach(g => {
+        const listProvs = g.activeProvidersList || []
+        listProvs.forEach(p => {
+          if (!statsMap.has(p.key)) {
+            statsMap.set(p.key, {
+              key: p.key,
+              name: p.name,
+              shortName: p.shortName,
+              badge: p.name,
+              url: p.url || '',
+              whatsapp: p.whatsapp || '',
+              tagColor: p.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+              enabled: true,
+              includeInPvp: p.includeInPvp !== false,
+              isDefault: false,
+              notes: 'Sitio detectado en catálogo',
+              count: 0,
+              sumCostPrimary: 0,
+              avgCostPrimary: 0,
+              highestLeaderCount: 0,
+              cheapestBuyerCount: 0
+            })
+          }
+          const entry = statsMap.get(p.key)
+          entry.count++
+          entry.sumCostPrimary += Number(p.costPrimary || 0)
+          if (p.isHighestPvpDriver) entry.highestLeaderCount++
+          if (p.isCheapest) entry.cheapestBuyerCount++
+        })
+      })
+
+      return Array.from(statsMap.values()).map(s => ({
+        ...s,
+        avgCostPrimary: s.count > 0 ? Math.round(s.sumCostPrimary / s.count) : 0
+      }))
     },
     gamingOrders: (state) => (state.orders || []).filter(o => 
       o.orderType === 'gaming' || 
@@ -848,6 +944,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
       } else if (key === DB_KEYS.GAMING_SUBCATEGORIES) {
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
+      } else if (key === DB_KEYS.GAMING_PROVIDER_SITES) {
+        saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -876,6 +974,7 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
+        saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
       }
     },
 
@@ -3266,10 +3365,39 @@ export const useAdminStore = defineStore('admin', {
       if (!Array.isArray(analyzedItems) || analyzedItems.length === 0) {
         return { error: 'No hay elementos para aplicar.' }
       }
+      this.ensureGamingProviderSitesLoaded()
+
+      const pKey = (providerInfo?.providerKey || providerInfo?.name || 'mayorista_txt')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+      if (pKey && pKey !== 'custom_provider') {
+        const existingSite = this.gamingProviderSites.find(s => s.key === pKey)
+        if (!existingSite && providerInfo?.name) {
+          this.gamingProviderSites.push({
+            key: pKey,
+            name: providerInfo.name,
+            shortName: providerInfo.name.slice(0, 12),
+            badge: `🏷️ ${providerInfo.name.slice(0, 14)}`,
+            url: providerInfo.url || '',
+            whatsapp: providerInfo.whatsapp || '',
+            tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+            enabled: true,
+            includeInPvp: true,
+            isDefault: false,
+            notes: 'Agregado desde carga masiva TXT'
+          })
+          this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+        } else if (existingSite) {
+          if (providerInfo?.url && !existingSite.url) existingSite.url = providerInfo.url
+          if (providerInfo?.whatsapp && !existingSite.whatsapp) existingSite.whatsapp = providerInfo.whatsapp
+          this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+        }
+      }
+
       const result = applyGamingBatchUpdate(
         analyzedItems,
         this.gamingProducts,
-        providerInfo,
+        { ...providerInfo, providerKey: pKey },
         {
           storeMarginPercent: this.gamingStoreMarginPercent,
           resellerCommissionPercent: this.gamingResellerCommissionPercent,
@@ -3290,15 +3418,19 @@ export const useAdminStore = defineStore('admin', {
     /**
      * Convenir o pactar rápidamente el precio de un juego con un proveedor o precio personalizado
      */
-    conveyGamingProductPrice(gameId, { providerKey, agreedCost, targetLicense = 'primary', customPvp = null }) {
+    conveyGamingProductPrice(gameId, { providerKey, agreedCost, targetLicense = 'primary', customPvp = null, resetCustomPvp = false }) {
       const game = this.gamingProducts.find(g => g.id === gameId)
       if (!game) return { error: 'Juego no encontrado' }
+
+      this.ensureGamingProviderSitesLoaded()
+      const siteMeta = (this.gamingProviderSites || []).find(s => s.key === providerKey)
 
       if (!game.providers) game.providers = {}
       if (providerKey && !game.providers[providerKey]) {
         game.providers[providerKey] = {
-          providerName: providerKey === 'argentinaplay' ? 'Argentina Play' : (providerKey === 'juegosdigitalesargentina' ? 'Juegos Digitales Argentina' : 'Proveedor Acordado'),
-          providerUrl: providerKey === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : (providerKey === 'juegosdigitalesargentina' ? 'https://juegosdigitalesargentina.com/' : ''),
+          providerName: siteMeta?.name || GAMING_PROVIDERS[providerKey]?.name || 'Proveedor Acordado',
+          providerUrl: siteMeta?.url || GAMING_PROVIDERS[providerKey]?.url || '',
+          providerWhatsapp: siteMeta?.whatsapp || '',
           available: true
         }
       }
@@ -3308,6 +3440,8 @@ export const useAdminStore = defineStore('admin', {
 
       if (pObj) {
         pObj.available = true
+        if (siteMeta?.name && !pObj.providerName) pObj.providerName = siteMeta.name
+        if (siteMeta?.url && !pObj.providerUrl) pObj.providerUrl = siteMeta.url
         if (targetLicense === 'primary') {
           pObj.costPrimary = costNum
           pObj.primaryPrice = costNum
@@ -3317,7 +3451,10 @@ export const useAdminStore = defineStore('admin', {
         }
       }
 
-      if (customPvp && Number(customPvp) > 0) {
+      if (resetCustomPvp) {
+        delete game.customPrimaryPrice
+        delete game.customSecondaryPrice
+      } else if (customPvp && Number(customPvp) > 0) {
         if (targetLicense === 'primary') {
           game.customPrimaryPrice = Number(customPvp)
         } else {
@@ -3340,11 +3477,154 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
+    /**
+     * Actualiza múltiples cotizaciones de sitios/proveedores en un juego, preferencia de compra y override opcional de PVP
+     */
+    updateGameMultiProviders(gameId, { providersMap = {}, preferredFulfillmentProvider = '', customPrimaryPrice = 0, customSecondaryPrice = 0, resetCustomPvp = false }) {
+      const game = this.gamingProducts.find(g => g.id === gameId)
+      if (!game) return { error: 'Juego no encontrado' }
+
+      this.ensureGamingProviderSitesLoaded()
+      const sites = this.gamingProviderSites || []
+      if (!game.providers) game.providers = {}
+
+      for (const [key, quote] of Object.entries(providersMap)) {
+        if (!quote) continue
+        const siteMeta = sites.find(s => s.key === key)
+        const cPri = Math.max(0, Number(quote.costPrimary || quote.primaryPrice || 0))
+        const cSec = Math.max(0, Number(quote.costSecondary || quote.secondaryPrice || 0))
+        const isAvail = quote.available !== false && (cPri > 0 || cSec > 0)
+
+        if (isAvail) {
+          game.providers[key] = {
+            ...(game.providers[key] || {}),
+            providerName: quote.providerName || siteMeta?.name || GAMING_PROVIDERS[key]?.name || key,
+            providerUrl: quote.providerUrl || siteMeta?.url || GAMING_PROVIDERS[key]?.url || '',
+            providerWhatsapp: quote.providerWhatsapp || siteMeta?.whatsapp || '',
+            available: true,
+            costPrimary: cPri,
+            primaryPrice: cPri,
+            costSecondary: cSec,
+            secondaryPrice: cSec,
+            stock: quote.stock || 'Inmediato'
+          }
+        } else if (game.providers[key]) {
+          game.providers[key].available = false
+          game.providers[key].costPrimary = 0
+          game.providers[key].primaryPrice = 0
+          game.providers[key].costSecondary = 0
+          game.providers[key].secondaryPrice = 0
+        }
+      }
+
+      if (preferredFulfillmentProvider) {
+        game.preferredFulfillmentProvider = preferredFulfillmentProvider
+      } else {
+        delete game.preferredFulfillmentProvider
+      }
+
+      if (resetCustomPvp) {
+        delete game.customPrimaryPrice
+        delete game.customSecondaryPrice
+      } else {
+        if (Number(customPrimaryPrice) > 0) game.customPrimaryPrice = Number(customPrimaryPrice)
+        else delete game.customPrimaryPrice
+        if (Number(customSecondaryPrice) > 0) game.customSecondaryPrice = Number(customSecondaryPrice)
+        else delete game.customSecondaryPrice
+      }
+
+      game.lastConveyedDate = new Date().toISOString()
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, game }
+    },
+    resetGameCustomPrices(gameId) {
+      const game = this.gamingProducts.find(g => g.id === gameId)
+      if (!game) return { error: 'Juego no encontrado' }
+      delete game.customPrimaryPrice
+      delete game.customSecondaryPrice
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, game }
+    },
+    ensureGamingProviderSitesLoaded() {
+      const defaults = (DEFAULT_GAMING_PROVIDER_SITES || []).map(s => ({ ...s }))
+      if (!Array.isArray(this.gamingProviderSites) || this.gamingProviderSites.length === 0) {
+        const stored = loadDb(DB_KEYS.GAMING_PROVIDER_SITES, null)
+        if (Array.isArray(stored) && stored.length > 0) {
+          this.gamingProviderSites = stored
+        } else {
+          this.gamingProviderSites = defaults
+        }
+      }
+      const map = new Map(this.gamingProviderSites.filter(Boolean).map(s => [s.key, s]))
+      let changed = false
+      defaults.forEach(def => {
+        if (!map.has(def.key)) {
+          this.gamingProviderSites.push(def)
+          changed = true
+        }
+      })
+      if (changed || !loadDb(DB_KEYS.GAMING_PROVIDER_SITES, null)) {
+        this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+      }
+      return this.gamingProviderSites
+    },
+    addGamingProviderSite({ name, shortName = '', url = '', whatsapp = '', badge = '', includeInPvp = true, enabled = true, notes = '' }) {
+      if (!name || !String(name).trim()) {
+        return { error: 'Ingresa el nombre del sitio o proveedor.' }
+      }
+      this.ensureGamingProviderSitesLoaded()
+      const cleanName = String(name).trim()
+      const baseSlug = cleanName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'sitio_custom'
+      let key = baseSlug
+      let suffix = 2
+      while (this.gamingProviderSites.some(s => s.key === key)) {
+        key = `${baseSlug}_${suffix++}`
+      }
+      const newSite = {
+        key,
+        name: cleanName,
+        shortName: (shortName && String(shortName).trim()) || cleanName.slice(0, 12),
+        badge: (badge && String(badge).trim()) || `🌐 ${cleanName.slice(0, 16)}`,
+        url: String(url || '').trim(),
+        whatsapp: String(whatsapp || '').trim(),
+        tagColor: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+        enabled: enabled !== false,
+        includeInPvp: includeInPvp !== false,
+        isDefault: false,
+        notes: String(notes || 'Sitio proveedor agregado por administrador').trim()
+      }
+      this.gamingProviderSites.push(newSite)
+      this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+      return { success: true, site: newSite }
+    },
+    updateGamingProviderSite(key, updates = {}) {
+      this.ensureGamingProviderSitesLoaded()
+      const idx = this.gamingProviderSites.findIndex(s => s.key === key)
+      if (idx === -1) return { error: 'Sitio proveedor no encontrado' }
+      this.gamingProviderSites[idx] = {
+        ...this.gamingProviderSites[idx],
+        ...updates,
+        key
+      }
+      this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+      return { success: true, site: this.gamingProviderSites[idx] }
+    },
+    deleteGamingProviderSite(key) {
+      this.ensureGamingProviderSitesLoaded()
+      const target = this.gamingProviderSites.find(s => s.key === key)
+      if (!target) return { error: 'Sitio proveedor no encontrado' }
+      if (target.isDefault) return { error: 'Los sitios base no pueden eliminarse; puedes desactivarlos.' }
+      this.gamingProviderSites = this.gamingProviderSites.filter(s => s.key !== key)
+      this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
+      return { success: true }
+    },
     setGamingFulfillmentProvider(orderId, providerKey) {
       const order = this.orders.find(o => o.id === orderId)
       if (order) {
+        this.ensureGamingProviderSitesLoaded()
+        const site = (this.gamingProviderSites || []).find(s => s.key === providerKey)
         order.fulfillmentProvider = providerKey
-        order.fulfillmentProviderName = GAMING_PROVIDERS[providerKey]?.name || providerKey
+        order.fulfillmentProviderName = site?.name || GAMING_PROVIDERS[providerKey]?.name || providerKey
         this.persist(DB_KEYS.ORDERS)
         return true
       }
@@ -3352,6 +3632,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     ensureGamingProductsLoaded() {
+      this.ensureGamingProviderSitesLoaded()
       const hasCorruptData = Array.isArray(this.gamingProducts) && this.gamingProducts.some(g => 
         (typeof g.title === 'string' && (g.title.includes('&#') || g.title.includes('&amp;') || g.title.includes('…') || g.title.endsWith('...'))) ||
         (typeof g.description === 'string' && (g.description.includes('&#') || g.description.includes('inmediata'))) ||

@@ -53,6 +53,87 @@ export const GAMING_PROVIDERS = {
   }
 }
 
+export const DEFAULT_GAMING_PROVIDER_SITES = [
+  {
+    key: 'argentinaplay',
+    name: 'Argentina Play',
+    shortName: 'ArgPlay',
+    badge: '🇦🇷 Argentina Play',
+    url: 'https://www.argentinaplay.com.ar/',
+    whatsapp: '+54 9 11 4050-6070',
+    tagColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Catálogo base PS4 / PS5 Primarias & Secundarias'
+  },
+  {
+    key: 'juegosdigitalesargentina',
+    name: 'Juegos Digitales Argentina',
+    shortName: 'JDA',
+    badge: '🎮 JDA',
+    url: 'https://juegosdigitalesargentina.com/',
+    whatsapp: '+54 9 11 4050-6070',
+    tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Catálogo mayorista JDA Primarias & Secundarias'
+  },
+  {
+    key: 'digitalgamesshop',
+    name: 'Digital Games Shop',
+    shortName: 'DGS',
+    badge: '⚡ Digital Games',
+    url: 'https://digitalgamesshop.ar/',
+    whatsapp: '',
+    tagColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Snapshot masivo PSN + Portadas oficiales Vulcan'
+  },
+  {
+    key: 'tutiendagamer',
+    name: 'Tu Tienda Gamer',
+    shortName: 'TTG',
+    badge: '🕹️ Tu Tienda Gamer',
+    url: 'https://tutiendagamer.com.ar/juegos-ps5',
+    whatsapp: '',
+    tagColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Videojuegos digitales PS5 / PS4 / PS3 (sin consolas/accesorios)'
+  },
+  {
+    key: 'fusiongames',
+    name: 'Fusion Games',
+    shortName: 'Fusion',
+    badge: '🔥 Fusion Games',
+    url: 'https://fusiongames.com.ar/tienda/',
+    whatsapp: '',
+    tagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Catálogo digital PS3 / PS4 / PS5'
+  },
+  {
+    key: 'mayorista_txt',
+    name: 'Lista Ofertas TXT',
+    shortName: 'Lista TXT',
+    badge: '📋 Lista TXT',
+    url: '',
+    whatsapp: '+54 9 11 4050-6070',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Ofertas cargadas desde archivos .txt y listas WhatsApp'
+  }
+]
+
 export const INITIAL_GAMING_PRODUCTS = [
   {
     id: 'GAME-001',
@@ -816,36 +897,46 @@ export const INITIAL_GAMING_PRODUCTS = [
 ]
 
 // Función de procesamiento y arbitraje:
-// Calcula el MAYOR PRECIO entre ambos proveedores para Primaria y Secundaria,
-// e identifica el proveedor que fija el precio y el proveedor con mayor costo ("Colocar solo el de un proveedor visible, los mas altos en costo").
-// El costo del proveedor es EXACTAMENTE lo extraído de las plataformas (precio real del proveedor).
-export function processGamingProduct(product, storeMarginPercent = 20, resellerCommissionPercent = 10, minResellerProfit = 1000) {
+// Calcula el MAYOR PRECIO entre TODOS los sitios agregados y scrapeados habilitados para PVP,
+// e identifica tanto el sitio de mayor costo (base del PVP público) como el proveedor más conveniente para comprar.
+export function processGamingProduct(product, storeMarginPercent = 20, resellerCommissionPercent = 10, minResellerProfit = 1000, gamingSitesConfig = null) {
   const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
   const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
 
   const hasArg = Boolean(pArg.available && (Number(pArg.primaryPrice) > 0 || Number(pArg.costPrimary) > 0))
   const hasJda = Boolean(pJda.available && (Number(pJda.primaryPrice) > 0 || Number(pJda.costPrimary) > 0))
 
-  // Costos de adquisición REALES (exactamente lo extraído de las plataformas)
-  const costPrimaryArg = hasArg ? (Number(pArg.costPrimary) || Number(pArg.primaryPrice) || 0) : 0
-  const costPrimaryJda = hasJda ? (Number(pJda.costPrimary) || Number(pJda.primaryPrice) || 0) : 0
-  // 1. Recopilar todos los proveedores cotizados y disponibles para este juego
+  // Mapa de configuración de sitios del administrador
+  const siteCfgMap = {}
+  if (Array.isArray(gamingSitesConfig)) {
+    gamingSitesConfig.forEach(s => {
+      if (s && s.key) siteCfgMap[s.key] = s
+    })
+  } else if (gamingSitesConfig && typeof gamingSitesConfig === 'object') {
+    Object.assign(siteCfgMap, gamingSitesConfig)
+  }
+
+  // 1. Recopilar todos los proveedores activos y cotizados (respetando sitios desactivados por admin)
   const providersMap = product.providers || {}
   const activeProvidersList = []
 
   for (const [key, p] of Object.entries(providersMap)) {
     if (!p) continue
+    const siteCfg = siteCfgMap[key]
+    if (siteCfg && siteCfg.enabled === false) continue
+
     const cPri = Number(p.costPrimary || p.primaryPrice || 0)
     const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
     if (p.available !== false && (cPri > 0 || cSec > 0)) {
-      const meta = GAMING_PROVIDERS[key]
+      const meta = siteCfg || GAMING_PROVIDERS[key]
       activeProvidersList.push({
         key,
-        name: p.providerName || meta?.name || 'Proveedor Acordado',
-        shortName: meta?.shortName || (p.providerName ? p.providerName.slice(0, 10) : 'Mayorista'),
-        tagColor: meta?.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-        url: p.providerUrl || meta?.url || '',
-        whatsapp: p.providerWhatsapp || '',
+        name: siteCfg?.name || p.providerName || meta?.name || 'Proveedor Acordado',
+        shortName: siteCfg?.shortName || meta?.shortName || (p.providerName ? p.providerName.slice(0, 10) : 'Mayorista'),
+        tagColor: siteCfg?.tagColor || meta?.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        url: siteCfg?.url || p.providerUrl || meta?.url || '',
+        whatsapp: siteCfg?.whatsapp || p.providerWhatsapp || '',
+        includeInPvp: siteCfg ? siteCfg.includeInPvp !== false : true,
         costPrimary: cPri,
         costSecondary: cSec,
         stock: p.stock || 'Inmediato'
@@ -854,31 +945,34 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   }
   activeProvidersList.sort((a, b) => (a.costPrimary || 9999999) - (b.costPrimary || 9999999))
 
-  // Costos primarios y secundarios válidos
-  const primaryCosts = activeProvidersList.map(p => p.costPrimary).filter(c => c > 0)
-  const secondaryCosts = activeProvidersList.map(p => p.costSecondary).filter(c => c > 0)
+  // 2. Sitios habilitados para fijar el MAYOR COSTO en PVP web
+  const pvpCandidates = activeProvidersList.filter(p => p.includeInPvp !== false)
+  const effectivePvpList = pvpCandidates.length > 0 ? pvpCandidates : activeProvidersList
+
+  const pvpPrimaryCosts = effectivePvpList.map(p => p.costPrimary).filter(c => c > 0)
+  const pvpSecondaryCosts = effectivePvpList.map(p => p.costSecondary).filter(c => c > 0)
+  const allPrimaryCosts = activeProvidersList.map(p => p.costPrimary).filter(c => c > 0)
+  const allSecondaryCosts = activeProvidersList.map(p => p.costSecondary).filter(c => c > 0)
 
   let baseCostPrimary = 0
   let minCostPrimary = 0
-  if (primaryCosts.length > 0) {
-    baseCostPrimary = Math.max(...primaryCosts)
-    minCostPrimary = Math.min(...primaryCosts)
+  if (pvpPrimaryCosts.length > 0) {
+    baseCostPrimary = Math.max(...pvpPrimaryCosts)
   } else {
     baseCostPrimary = Number(product.baseCostPrimary || product.effectivePrimaryPrice) || 20000
-    minCostPrimary = baseCostPrimary
   }
+  minCostPrimary = allPrimaryCosts.length > 0 ? Math.min(...allPrimaryCosts) : baseCostPrimary
 
   let baseCostSecondary = 0
   let minCostSecondary = 0
-  if (secondaryCosts.length > 0) {
-    baseCostSecondary = Math.max(...secondaryCosts)
-    minCostSecondary = Math.min(...secondaryCosts)
+  if (pvpSecondaryCosts.length > 0) {
+    baseCostSecondary = Math.max(...pvpSecondaryCosts)
   } else {
     baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 10000
-    minCostSecondary = baseCostSecondary
   }
+  minCostSecondary = allSecondaryCosts.length > 0 ? Math.min(...allSecondaryCosts) : baseCostSecondary
 
-  // Diferencia / Arbitraje de Costo entre Proveedores
+  // Diferencia / Arbitraje de Costo entre el sitio más alto (PVP) y el más barato (Compra)
   const diffPrimary = Math.max(0, baseCostPrimary - minCostPrimary)
   const diffSecondary = Math.max(0, baseCostSecondary - minCostSecondary)
   const diffPrimaryPercent = minCostPrimary > 0 ? Math.round((diffPrimary / minCostPrimary) * 100) : 0
@@ -890,11 +984,13 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   const resellerRate = Number(resellerCommissionPercent || 10) / 100
   const minProfit = Number(minResellerProfit || 1000)
 
-  // Precios efectivos en plataforma (PVP al Cliente):
+  // Precios efectivos visibles en la Web (PVP al Cliente = MAYOR COSTO + Margen Tienda):
   let effectivePrimaryPrice = 0
   let effectiveSecondaryPrice = 0
+  const hasCustomPrimary = Boolean(product.customPrimaryPrice && Number(product.customPrimaryPrice) > 0)
+  const hasCustomSecondary = Boolean(product.customSecondaryPrice && Number(product.customSecondaryPrice) > 0)
 
-  if (product.customPrimaryPrice && Number(product.customPrimaryPrice) > 0) {
+  if (hasCustomPrimary) {
     effectivePrimaryPrice = Number(product.customPrimaryPrice)
   } else if (baseCostPrimary > 0) {
     const raw = baseCostPrimary * (1 + marginRate)
@@ -903,7 +999,7 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     effectivePrimaryPrice = Number(product.effectivePrimaryPrice) || 25000
   }
 
-  if (product.customSecondaryPrice && Number(product.customSecondaryPrice) > 0) {
+  if (hasCustomSecondary) {
     effectiveSecondaryPrice = Number(product.customSecondaryPrice)
   } else if (baseCostSecondary > 0) {
     const raw = baseCostSecondary * (1 + marginRate)
@@ -911,6 +1007,14 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   } else {
     effectiveSecondaryPrice = Number(product.effectiveSecondaryPrice) || 12000
   }
+
+  // Enriquecer cada proveedor con ganancia real si se compra ahí
+  activeProvidersList.forEach(p => {
+    p.realProfitPrimary = Math.max(0, effectivePrimaryPrice - (p.costPrimary || 0))
+    p.extraArbitrage = Math.max(0, baseCostPrimary - (p.costPrimary || 0))
+    p.isHighestPvpDriver = pvpCandidates.some(pp => pp.key === p.key) && p.costPrimary === baseCostPrimary
+    p.isCheapest = p.costPrimary === minCostPrimary
+  })
 
   // Comisión / Ganancia del Revendedor:
   const resellerPrimaryProfit = effectivePrimaryPrice > 0 
@@ -920,53 +1024,39 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     ? Math.max(Math.round(minProfit * 0.75), Math.round(effectiveSecondaryPrice * resellerRate)) 
     : 0
 
-  // Margen Bruto de la Tienda (Venta Directa Oficial):
+  // Margen Bruto Teórico (PVP - Mayor Costo) y Neto (c/ Revendedor):
   const storeGrossMarginPrimary = Math.max(0, effectivePrimaryPrice - baseCostPrimary)
   const storeGrossMarginSecondary = Math.max(0, effectiveSecondaryPrice - baseCostSecondary)
-
-  // Margen Neto de la Tienda (cuando vende el revendedor, descontando su comisión):
   const storeNetPrimaryWithReseller = Math.max(0, storeGrossMarginPrimary - resellerPrimaryProfit)
   const storeNetSecondaryWithReseller = Math.max(0, storeGrossMarginSecondary - resellerSecondaryProfit)
 
-  // Proveedor visible único (el de mayor costo):
-  let visibleProviderKey = product.visibleProviderKey || 'argentinaplay'
-  const highestProvider = activeProvidersList.find(p => p.costPrimary === baseCostPrimary)
-  if (highestProvider) {
-    visibleProviderKey = highestProvider.key
-  }
-
+  // Proveedor que marca el MAYOR COSTO (para el cálculo de PVP en web):
+  const highestProvider = effectivePvpList.find(p => p.costPrimary === baseCostPrimary) || activeProvidersList[activeProvidersList.length - 1]
+  const visibleProviderKey = highestProvider?.key || product.visibleProviderKey || 'argentinaplay'
   const visibleProvider = product.providers?.[visibleProviderKey] || pArg || pJda || {}
 
-  // Proveedor óptimo de compra (el más barato) o el preferido por el admin
-  let bestFulfillmentPrimary = product.preferredFulfillmentProvider || null
-  let bestFulfillmentPrimaryName = ''
-  const cheapestP = activeProvidersList.find(p => p.costPrimary === minCostPrimary)
-  if (bestFulfillmentPrimary && product.providers?.[bestFulfillmentPrimary]) {
-    bestFulfillmentPrimaryName = product.providers[bestFulfillmentPrimary].providerName || bestFulfillmentPrimary
-  } else {
-    bestFulfillmentPrimary = cheapestP ? cheapestP.key : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
-    bestFulfillmentPrimaryName = cheapestP ? cheapestP.name : 'Proveedor Óptimo'
-  }
+  // Proveedor MÁS CONVENIENTE para comprar (preferido por admin si está activo, sino el de menor costo):
+  const cheapestP = activeProvidersList.find(p => p.costPrimary === minCostPrimary) || activeProvidersList[0]
+  const preferredActive = product.preferredFulfillmentProvider
+    ? activeProvidersList.find(p => p.key === product.preferredFulfillmentProvider)
+    : null
 
-  let bestFulfillmentSecondary = product.preferredFulfillmentProvider || null
-  let bestFulfillmentSecondaryName = ''
-  const cheapestSecP = activeProvidersList.find(p => p.costSecondary === minCostSecondary)
-  if (bestFulfillmentSecondary && product.providers?.[bestFulfillmentSecondary]) {
-    bestFulfillmentSecondaryName = product.providers[bestFulfillmentSecondary].providerName || bestFulfillmentSecondary
-  } else {
-    bestFulfillmentSecondary = cheapestSecP ? cheapestSecP.key : bestFulfillmentPrimary
-    bestFulfillmentSecondaryName = cheapestSecP ? cheapestSecP.name : bestFulfillmentPrimaryName
-  }
+  const chosenBuyer = preferredActive || cheapestP
+  const bestFulfillmentPrimary = chosenBuyer ? chosenBuyer.key : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
+  const bestFulfillmentPrimaryName = chosenBuyer ? chosenBuyer.name : 'Proveedor Óptimo'
+
+  const actualPurchaseCostPrimary = chosenBuyer ? chosenBuyer.costPrimary : minCostPrimary
+  const actualPurchaseCostSecondary = chosenBuyer ? chosenBuyer.costSecondary : minCostSecondary
+  const actualStoreProfitPrimary = Math.max(0, effectivePrimaryPrice - actualPurchaseCostPrimary)
+  const actualNetProfitWithReseller = Math.max(0, actualStoreProfitPrimary - resellerPrimaryProfit)
+  const arbitrageExtraProfit = Math.max(0, baseCostPrimary - actualPurchaseCostPrimary)
+
+  const cheapestSecP = activeProvidersList.find(p => p.costSecondary === minCostSecondary) || chosenBuyer
+  const bestFulfillmentSecondary = preferredActive ? preferredActive.key : (cheapestSecP ? cheapestSecP.key : bestFulfillmentPrimary)
+  const bestFulfillmentSecondaryName = preferredActive ? preferredActive.name : (cheapestSecP ? cheapestSecP.name : bestFulfillmentPrimaryName)
 
   const bestMarginPrimary = Math.max(0, effectivePrimaryPrice - minCostPrimary)
   const bestMarginSecondary = Math.max(0, effectiveSecondaryPrice - minCostSecondary)
-  const visibleProviderMeta = {
-    id: visibleProviderKey,
-    name: 'PlayStation Store Oficial',
-    shortName: 'PS Store',
-    badge: '🎮 PlayStation Store Oficial',
-    tagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-  }
 
   // Proveedor que marca el precio más alto en la plataforma
   const primaryPriceLeaderKey = visibleProviderKey
@@ -978,19 +1068,25 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     baseCostSecondary,
     effectivePrimaryPrice,
     effectiveSecondaryPrice,
+    pvpMode: hasCustomPrimary ? 'custom' : 'auto_max',
     resellerPrimaryProfit,
     resellerSecondaryProfit,
     storeGrossMarginPrimary,
     storeGrossMarginSecondary,
     storeNetPrimaryWithReseller,
     storeNetSecondaryWithReseller,
+    actualPurchaseCostPrimary,
+    actualPurchaseCostSecondary,
+    actualStoreProfitPrimary,
+    actualNetProfitWithReseller,
+    arbitrageExtraProfit,
     storeMarginPercent,
     resellerCommissionPercent,
     primaryPriceLeaderKey,
     primaryPriceLeaderName: 'PlayStation Store Oficial',
     secondaryPriceLeaderKey,
     secondaryPriceLeaderName: 'PlayStation Store Oficial',
-    // Proveedor visible único (el de mayor costo):
+    // Proveedor visible público estrictamente anónimo: PlayStation Store Oficial
     visibleProviderKey,
     visibleProviderName: 'PlayStation Store Oficial',
     visibleProviderShortName: 'PS Store',
@@ -1003,10 +1099,10 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     visibleSecondaryPrice: visibleProvider.secondaryPrice || baseCostSecondary,
     visibleProviderUrl: visibleProvider.providerUrl || '',
     bestFulfillmentPrimary,
-    bestFulfillmentPrimaryName: bestFulfillmentPrimaryName || GAMING_PROVIDERS[bestFulfillmentPrimary]?.name || bestFulfillmentPrimary,
+    bestFulfillmentPrimaryName,
     bestMarginPrimary,
     bestFulfillmentSecondary,
-    bestFulfillmentSecondaryName: bestFulfillmentSecondaryName || GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
+    bestFulfillmentSecondaryName,
     bestMarginSecondary,
     minCostPrimary,
     minCostSecondary,

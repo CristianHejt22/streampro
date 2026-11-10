@@ -540,19 +540,34 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
 
         // Guardar o actualizar datos del proveedor convenido (uso interno de admin)
         game.providers[providerKey] = {
+          ...(game.providers[providerKey] || {}),
           providerName,
           providerUrl,
           providerWhatsapp,
-          available: true,
-          ...(game.providers[providerKey] || {})
+          available: true
         }
 
         if (licenseType === 'primary') {
           game.providers[providerKey].costPrimary = item.newWholesaleCost
-          game.providers[providerKey].primaryPrice = item.proposedPvp
+          game.providers[providerKey].primaryPrice = item.newWholesaleCost
         } else {
           game.providers[providerKey].costSecondary = item.newWholesaleCost
-          game.providers[providerKey].secondaryPrice = item.proposedPvp
+          game.providers[providerKey].secondaryPrice = item.newWholesaleCost
+        }
+
+        // Recalcular MAYOR COSTO entre todos los sitios/proveedores del juego para PVP público
+        const validProvEntries = Object.values(game.providers).filter(p => p && p.available !== false)
+        const priCosts = validProvEntries.map(p => Number(p.costPrimary || p.primaryPrice || 0)).filter(c => c > 0)
+        const secCosts = validProvEntries.map(p => Number(p.costSecondary || p.secondaryPrice || 0)).filter(c => c > 0)
+        if (priCosts.length > 0) {
+          const maxPri = Math.max(...priCosts)
+          game.baseCostPrimary = maxPri
+          game.effectivePrimaryPrice = maxPri + (Math.ceil((maxPri * (storeMargin / 100)) / 100) * 100)
+        }
+        if (secCosts.length > 0) {
+          const maxSec = Math.max(...secCosts)
+          game.baseCostSecondary = maxSec
+          game.effectiveSecondaryPrice = maxSec + (Math.ceil((maxSec * (storeMargin / 100)) / 100) * 100)
         }
 
         // Marcar proveedor convenido en admin y preservar marca pública PlayStation Store Oficial
@@ -603,8 +618,8 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
             available: true,
             costPrimary: pArgCost,
             costSecondary: pSecCost,
-            primaryPrice: pvpPrimary,
-            secondaryPrice: pvpSec
+            primaryPrice: pArgCost,
+            secondaryPrice: pSecCost
           }
         },
         effectivePrimaryPrice: pvpPrimary,

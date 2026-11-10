@@ -693,8 +693,9 @@ export async function scrapeAndSyncGamingCatalog() {
   })
   log(`✓ Digital Games Shop: ${dgsMerged} coincidencias vinculadas con precio`)
 
-  // 2.5 Fusionar precios de Tu Tienda Gamer en todo el catálogo
+  // 2.5 Fusionar precios de Tu Tienda Gamer en todo el catálogo (y agregar faltantes)
   let ttgMerged = 0
+  let ttgAdded = 0
   ttgGames.forEach(item => {
     const target = findConsolidatedMatch(item.norm, item.title, consolidatedMap, tokenIndex)
     if (target && item.price > 0) {
@@ -708,12 +709,49 @@ export async function scrapeAndSyncGamingCatalog() {
         secondaryPrice: Math.round(item.price * 0.55)
       }
       ttgMerged++
+    } else if (item.price > 0 && item.norm) {
+      const { category, subcategory } = inferTaxonomy(item.title)
+      const badge = inferBadge(item.title)
+      const bestImage = psImageMap.get(item.norm) || 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'
+      const newProduct = {
+        id: `GAME-TTG-${item.norm.slice(0, 12)}`,
+        title: item.title,
+        slug: item.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        platform: item.platform || 'PS5',
+        category,
+        subcategory,
+        badge,
+        image: bestImage,
+        description: `Videojuego digital oficial para consolas PlayStation Network (${item.platform}). Licencia oficial garantizada con entrega inmediata.`,
+        features: ['Audio Español Oficial', 'Entrega Digital Inmediata', 'Garantía Total StreamePro'],
+        providers: {
+          tutiendagamer: {
+            providerName: 'Tu Tienda Gamer',
+            providerUrl: item.url,
+            available: true,
+            costPrimary: item.price,
+            costSecondary: Math.round(item.price * 0.55),
+            primaryPrice: item.price,
+            secondaryPrice: Math.round(item.price * 0.55)
+          }
+        },
+        visibleProviderName: 'PlayStation Store Oficial',
+        visibleProviderShortName: 'PS Store',
+        visibleProviderBadge: '🎮 PlayStation Store Oficial',
+        visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        primaryPriceLeaderName: 'PlayStation Store Oficial',
+        secondaryPriceLeaderName: 'PlayStation Store Oficial'
+      }
+      consolidatedMap.set(item.norm, newProduct)
+      tokenIndex.push({ norm: item.norm, tokenSet: new Set(cleanTokens(item.title)), game: newProduct })
+      ttgAdded++
     }
   })
-  log(`✓ Tu Tienda Gamer: ${ttgMerged} coincidencias vinculadas con precio`)
+  log(`✓ Tu Tienda Gamer: ${ttgMerged} coincidencias vinculadas + ${ttgAdded} añadidos`)
 
-  // 2.6 Fusionar precios de Fusion Games en todo el catálogo
+  // 2.6 Fusionar precios de Fusion Games en todo el catálogo (y agregar faltantes)
   let fusMerged = 0
+  let fusAdded = 0
   fusionGames.forEach(item => {
     const target = findConsolidatedMatch(item.norm, item.title, consolidatedMap, tokenIndex)
     if (target && item.price > 0) {
@@ -727,12 +765,106 @@ export async function scrapeAndSyncGamingCatalog() {
         secondaryPrice: Math.round(item.price * 0.55)
       }
       fusMerged++
+    } else if (item.price > 0 && item.norm) {
+      const { category, subcategory } = inferTaxonomy(item.title)
+      const badge = inferBadge(item.title)
+      const bestImage = psImageMap.get(item.norm) || 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'
+      const newProduct = {
+        id: `GAME-FUS-${item.norm.slice(0, 12)}`,
+        title: item.title,
+        slug: item.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        platform: item.platform || 'PS4 / PS5',
+        category,
+        subcategory,
+        badge,
+        image: bestImage,
+        description: `Videojuego digital oficial para consolas PlayStation Network (${item.platform}). Licencia oficial garantizada con entrega inmediata.`,
+        features: ['Audio Español Oficial', 'Entrega Digital Inmediata', 'Garantía Total StreamePro'],
+        providers: {
+          fusiongames: {
+            providerName: 'Fusion Games',
+            providerUrl: item.url,
+            available: true,
+            costPrimary: item.price,
+            costSecondary: Math.round(item.price * 0.55),
+            primaryPrice: item.price,
+            secondaryPrice: Math.round(item.price * 0.55)
+          }
+        },
+        visibleProviderName: 'PlayStation Store Oficial',
+        visibleProviderShortName: 'PS Store',
+        visibleProviderBadge: '🎮 PlayStation Store Oficial',
+        visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        primaryPriceLeaderName: 'PlayStation Store Oficial',
+        secondaryPriceLeaderName: 'PlayStation Store Oficial'
+      }
+      consolidatedMap.set(item.norm, newProduct)
+      tokenIndex.push({ norm: item.norm, tokenSet: new Set(cleanTokens(item.title)), game: newProduct })
+      fusAdded++
     }
   })
-  log(`✓ Fusion Games: ${fusMerged} coincidencias vinculadas con precio`)
+  log(`✓ Fusion Games: ${fusMerged} coincidencias vinculadas + ${fusAdded} añadidos`)
 
-  const consolidatedList = Array.from(consolidatedMap.values())
-  log(`✓ Catálogo final consolidado: ${consolidatedList.length} videojuegos con multi-proveedores scrapeados`)
+  // 2.7 Pasada final obligatoria: Recalcular MAYOR COSTO entre todos los sitios para fijar PVP público
+  const consolidatedList = Array.from(consolidatedMap.values()).map(game => {
+    const entries = Object.entries(game.providers || {})
+      .filter(([, p]) => p && p.available !== false && (Number(p.costPrimary || p.primaryPrice || 0) > 0))
+      .map(([k, p]) => ({
+        key: k,
+        name: p.providerName || k,
+        url: p.providerUrl || '',
+        costPrimary: Number(p.costPrimary || p.primaryPrice || 0),
+        costSecondary: Number(p.costSecondary || p.secondaryPrice || Math.round(Number(p.costPrimary || p.primaryPrice || 0) * 0.55))
+      }))
+
+    if (entries.length > 0) {
+      const priCosts = entries.map(e => e.costPrimary).filter(c => c > 0)
+      const secCosts = entries.map(e => e.costSecondary).filter(c => c > 0)
+      const maxPri = priCosts.length ? Math.max(...priCosts) : (game.baseCostPrimary || 20000)
+      const minPri = priCosts.length ? Math.min(...priCosts) : maxPri
+      const maxSec = secCosts.length ? Math.max(...secCosts) : (game.baseCostSecondary || 10000)
+      const minSec = secCosts.length ? Math.min(...secCosts) : maxSec
+
+      const highestEntry = entries.find(e => e.costPrimary === maxPri) || entries[0]
+      const cheapestEntry = entries.find(e => e.costPrimary === minPri) || entries[0]
+
+      const pvpPrimary = Math.ceil((maxPri * 1.20) / 100) * 100
+      const pvpSecondary = Math.ceil((maxSec * 1.20) / 100) * 100
+
+      return {
+        ...game,
+        baseCostPrimary: maxPri,
+        baseCostSecondary: maxSec,
+        effectivePrimaryPrice: pvpPrimary,
+        effectiveSecondaryPrice: pvpSecondary,
+        visibleCostPrimary: maxPri,
+        visibleCostSecondary: maxSec,
+        visiblePrimaryPrice: maxPri,
+        visibleSecondaryPrice: maxSec,
+        visibleProviderKey: highestEntry.key,
+        visibleProviderUrl: highestEntry.url || game.visibleProviderUrl || '',
+        primaryPriceLeaderKey: highestEntry.key,
+        secondaryPriceLeaderKey: highestEntry.key,
+        primaryPriceLeaderName: 'PlayStation Store Oficial',
+        secondaryPriceLeaderName: 'PlayStation Store Oficial',
+        visibleProviderName: 'PlayStation Store Oficial',
+        visibleProviderShortName: 'PS Store',
+        visibleProviderBadge: '🎮 PlayStation Store Oficial',
+        bestFulfillmentPrimary: cheapestEntry.key,
+        bestFulfillmentPrimaryName: cheapestEntry.name,
+        bestMarginPrimary: Math.max(0, pvpPrimary - minPri),
+        bestFulfillmentSecondary: cheapestEntry.key,
+        bestFulfillmentSecondaryName: cheapestEntry.name,
+        bestMarginSecondary: Math.max(0, pvpSecondary - minSec),
+        diffPrimary: Math.max(0, maxPri - minPri),
+        diffSecondary: Math.max(0, maxSec - minSec),
+        similarityScore: entries.length >= 2 ? 100 : 70
+      }
+    }
+    return game
+  })
+
+  log(`✓ Catálogo final consolidado: ${consolidatedList.length} videojuegos con MAYOR COSTO → PVP web actualizado`)
 
   // 3. Generar Categorías y Subcategorías Ordenadas
   const categoryOrder = [
