@@ -2,14 +2,49 @@ import fs from 'fs'
 
 export default async function handler(req, res) {
   const prodId = req.query.prod || req.query.id || req.query.p || ''
+  const gameId = req.query.game || req.query.g || ''
   const refCode = req.query.ref || ''
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400')
 
   let product = null
+  let isGame = false
 
-  if (prodId) {
+  // 1. Si se consulta por Videojuego Gamer
+  if (gameId) {
+    try {
+      const gamingUrl = new URL('../src/assets/gamingProducts.json', import.meta.url)
+      const gamingList = JSON.parse(fs.readFileSync(gamingUrl, 'utf8'))
+      const foundGame = gamingList.find(g => 
+        String(g.id).toLowerCase() === String(gameId).toLowerCase() ||
+        String(g.slug).toLowerCase() === String(gameId).toLowerCase() ||
+        g.title.toLowerCase().replace(/[^a-z0-9]/g, '') === String(gameId).toLowerCase().replace(/[^a-z0-9]/g, '')
+      )
+
+      if (foundGame) {
+        isGame = true
+        const pvpPrimary = foundGame.effectivePrimaryPrice || 25000
+        const pvpSecondary = foundGame.effectiveSecondaryPrice || Math.round(pvpPrimary * 0.55)
+
+        product = {
+          id: foundGame.id,
+          name: `${foundGame.title} (${foundGame.platform}) — PlayStation Store Oficial`,
+          price: `$${pvpPrimary.toLocaleString('es-AR')} ARS`,
+          priceNumeric: pvpPrimary,
+          description: `🎮 Videojuego oficial digital para consolas ${foundGame.platform}. Cuenta Primaria ($${pvpPrimary.toLocaleString('es-AR')} ARS) y Cuenta Secundaria ($${pvpSecondary.toLocaleString('es-AR')} ARS). Entrega digital inmediata 24/7 con garantía oficial StreamePro.`,
+          image: foundGame.image || 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80',
+          platform: foundGame.platform,
+          category: foundGame.category || 'Videojuegos Digitales'
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading gamingProducts.json in api/product-preview.js:', e)
+    }
+  }
+
+  // 2. Si se consulta por Producto Físico o no es juego
+  if (!product && prodId) {
     try {
       const productsUrl = new URL('../src/assets/physicalProducts.json', import.meta.url)
       const products = JSON.parse(fs.readFileSync(productsUrl, 'utf8'))
@@ -39,11 +74,11 @@ export default async function handler(req, res) {
   // Producto por defecto si no se encuentra
   if (!product) {
     product = {
-      id: prodId,
-      name: 'Catálogo de Tecnología & Suscripciones StreamePro',
+      id: prodId || gameId,
+      name: 'PlayStation Store Oficial & Catálogo StreamePro',
       price: 'Precios Exclusivos',
       priceNumeric: 0,
-      description: 'Catálogo oficial de tecnología, accesorios y cuentas de streaming en StreamePro. Compra directa con entrega rápida, garantía oficial y despacho seguro a todo el país.',
+      description: 'Catálogo oficial de videojuegos digitales PlayStation 5, PS4, cuentas de streaming y tecnología en StreamePro. Compra directa con entrega rápida, garantía oficial y despacho seguro a todo el país.',
       image: 'https://streamepro.me/og-banner.png'
     }
   }
@@ -56,14 +91,21 @@ export default async function handler(req, res) {
   // Imagen en alta definición 1200x630 para WhatsApp / Facebook / Telegram / Twitter
   const focusedOgImage = rawImg.startsWith('https://streamepro.me/og-banner')
     ? 'https://streamepro.me/og-banner.png'
-    : `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=ffffff&output=jpg`
+    : (rawImg.includes('playstation.com') 
+        ? rawImg 
+        : `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=ffffff&output=jpg`)
 
-  const targetRedirectUrl = refCode 
-    ? `/?prod=${encodeURIComponent(prodId)}&ref=${encodeURIComponent(refCode)}&sec=physical` 
-    : `/?prod=${encodeURIComponent(prodId)}&sec=physical`
+  const targetRedirectUrl = isGame
+    ? (refCode ? `/?game=${encodeURIComponent(product.id)}&ref=${encodeURIComponent(refCode)}` : `/?game=${encodeURIComponent(product.id)}`)
+    : (refCode ? `/?prod=${encodeURIComponent(prodId)}&ref=${encodeURIComponent(refCode)}&sec=physical` : `/?prod=${encodeURIComponent(prodId)}&sec=physical`)
 
-  const canonicalUrl = `https://streamepro.me/p/${encodeURIComponent(prodId)}`
-  const cleanTitle = `${product.name} (${product.price}) | StreamePro Oficial`
+  const canonicalUrl = isGame
+    ? `https://streamepro.me/?game=${encodeURIComponent(product.id)}`
+    : `https://streamepro.me/p/${encodeURIComponent(prodId)}`
+
+  const cleanTitle = isGame
+    ? `${product.name} | StreamePro Oficial`
+    : `${product.name} (${product.price}) | StreamePro Oficial`
 
   const plainDesc = (product.description || '')
     .replace(/<[^>]*>/g, ' ')
@@ -71,8 +113,8 @@ export default async function handler(req, res) {
     .trim()
 
   const cleanDesc = plainDesc
-    ? `💰 Oferta: ${product.price}. ${plainDesc.slice(0, 160)}... Garantía Oficial StreamePro y Envíos a Todo el País.`
-    : `💰 Precio: ${product.price}. Envío seguro a todo el país y garantía oficial. Pide online en StreamePro.`
+    ? `🎮 ${product.price}. ${plainDesc.slice(0, 160)}... Garantía Oficial StreamePro.`
+    : `🎮 Precio: ${product.price}. Entrega inmediata garantizada por PlayStation Store & StreamePro.`
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -83,10 +125,10 @@ export default async function handler(req, res) {
   <meta name="description" content="${escapeHtml(cleanDesc)}">
   <link rel="canonical" href="${canonicalUrl}">
 
-  <!-- Open Graph / WhatsApp / Facebook / Telegram Previews -->
+  <!-- Open Graph / WhatsApp / Facebook / Telegram Previews (1200x630) -->
   <meta property="og:type" content="product">
-  <meta property="og:site_name" content="StreamePro Oficial">
-  <meta property="og:title" content="📦 ${escapeHtml(product.name)} — ${escapeHtml(product.price)}">
+  <meta property="og:site_name" content="PlayStation Store Oficial | StreamePro">
+  <meta property="og:title" content="${escapeHtml(product.name)} — ${escapeHtml(product.price)}">
   <meta property="og:description" content="${escapeHtml(cleanDesc)}">
   <meta property="og:image" content="${focusedOgImage}">
   <meta property="og:image:secure_url" content="${focusedOgImage}">
@@ -100,7 +142,7 @@ export default async function handler(req, res) {
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@StreamePro">
-  <meta name="twitter:title" content="📦 ${escapeHtml(product.name)} — ${escapeHtml(product.price)}">
+  <meta name="twitter:title" content="${escapeHtml(product.name)} — ${escapeHtml(product.price)}">
   <meta name="twitter:description" content="${escapeHtml(cleanDesc)}">
   <meta name="twitter:image" content="${focusedOgImage}">
 
@@ -108,7 +150,7 @@ export default async function handler(req, res) {
   <script type="application/ld+json">
   {
     "@context": "https://schema.org/",
-    "@type": "Product",
+    "@type": "${isGame ? 'VideoGame' : 'Product'}",
     "name": ${JSON.stringify(product.name)},
     "image": [${JSON.stringify(focusedOgImage)}, ${JSON.stringify(rawImg)}],
     "description": ${JSON.stringify(plainDesc || cleanDesc)},
@@ -137,8 +179,8 @@ export default async function handler(req, res) {
       <img src="${focusedOgImage}" alt="${escapeHtml(product.name)}" style="max-width:100%;max-height:100%;object-fit:contain;">
     </div>
     <h1 style="font-size:18px;margin:0 0 10px;color:#ffffff;font-weight:900;">${escapeHtml(product.name)}</h1>
-    <div style="font-size:22px;color:#fbbf24;font-weight:900;margin-bottom:15px;">${escapeHtml(product.price)}</div>
-    <p style="font-size:12px;color:#94a3b8;margin:0 0 20px;">Redirigiendo a la tienda oficial StreamePro...</p>
+    <div style="font-size:22px;color:#38bdf8;font-weight:900;margin-bottom:15px;">${escapeHtml(product.price)}</div>
+    <p style="font-size:12px;color:#94a3b8;margin:0 0 20px;">Redirigiendo a PlayStation Store Oficial en StreamePro...</p>
     <a href="${targetRedirectUrl}" style="display:inline-block;background:linear-gradient(to right,#38bdf8,#2563eb);color:#020617;text-decoration:none;font-weight:900;font-size:13px;padding:12px 24px;border-radius:12px;">Ver en StreamePro</a>
   </div>
 </body>

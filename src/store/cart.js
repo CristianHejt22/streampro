@@ -169,9 +169,9 @@ export const useCartStore = defineStore('cart', {
       const effectivePrice = isPrimary ? (game.effectivePrimaryPrice || 25000) : (game.effectiveSecondaryPrice || 12000)
       const priceLeaderKey = 'streamepro'
       const priceLeaderName = 'StreamePro'
-      // REGLA: Usar el proveedor visible (el de mayor costo asignado)
+      // REGLA: Usar proveedor público oficial (PlayStation Store Oficial) sin filtrar nombres de terceros
       const assignedProviderKey = game.visibleProviderKey || (isPrimary ? game.bestFulfillmentPrimary : game.bestFulfillmentSecondary)
-      const assignedProviderName = game.visibleProviderName || (isPrimary ? game.bestFulfillmentPrimaryName : game.bestFulfillmentSecondaryName)
+      const assignedProviderName = 'PlayStation Store Oficial'
       
       const providerData = game.providers?.[assignedProviderKey] || {}
       const providerCost = isPrimary ? (providerData.costPrimary || providerData.primaryPrice || effectivePrice) : (providerData.costSecondary || providerData.secondaryPrice || effectivePrice)
@@ -212,8 +212,8 @@ export const useCartStore = defineStore('cart', {
           providerKey: assignedProviderKey,
           providerName: assignedProviderName,
           priceLeaderKey: priceLeaderKey,
-          priceLeaderName: priceLeaderName,
-          providerUrl: providerData.providerUrl || '',
+          priceLeaderName: 'PlayStation Store Oficial',
+          providerUrl: '',
           quantity: quantity,
           itemType: 'gaming'
         })

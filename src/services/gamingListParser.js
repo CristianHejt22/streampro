@@ -269,6 +269,101 @@ export function matchGamingListWithCatalog(parsedGames, catalog, options = {}) {
   })
 }
 
+// Clasificación taxonómica automática de videojuegos
+export function inferGamingTaxonomy(title) {
+  const t = (title || '').toLowerCase()
+  let category = 'Acción & Aventura'
+  let subcategory = 'Aventura Cinematográfica'
+
+  // Deportes
+  if (t.includes('fc 2') || t.includes('fifa') || t.includes('pes') || t.includes('turismo') || t.includes('nba') || t.includes('f1') || t.includes('wwe') || t.includes('madden') || t.includes('deporte') || t.includes('racing') || t.includes('rally') || t.includes('forza') || t.includes('motogp') || t.includes('mx vs atv') || t.includes('wrc')) {
+    category = 'Deportes'
+    if (t.includes('fc') || t.includes('fifa') || t.includes('pes') || t.includes('tsubasa')) subcategory = 'Fútbol (FC / FIFA)'
+    else if (t.includes('turismo') || t.includes('f1') || t.includes('carrera') || t.includes('racing') || t.includes('rally') || t.includes('wrc') || t.includes('motogp')) subcategory = 'Carreras & Conducción'
+    else subcategory = 'Básquet & Lucha Libre'
+  }
+  // Lucha
+  else if (t.includes('kombat') || t.includes('dragon ball') || t.includes('sparking') || t.includes('tekken') || t.includes('street fighter') || t.includes('naruto') || t.includes('lucha') || t.includes('fight') || t.includes('budokai') || t.includes('guilty') || t.includes('ufc') || t.includes('king of fighters')) {
+    category = 'Lucha'
+    if (t.includes('dragon ball') || t.includes('naruto') || t.includes('sparking') || t.includes('anime')) subcategory = 'Anime Fighting'
+    else if (t.includes('kombat')) subcategory = 'Torneo & Mortal Kombat'
+    else subcategory = 'Combate 3D'
+  }
+  // Survival Horror
+  else if (t.includes('resident evil') || t.includes('silent hill') || t.includes('dead space') || t.includes('alan wake') || t.includes('terror') || t.includes('horror') || t.includes('outlast') || t.includes('evil within') || t.includes('dead island') || t.includes('dayz') || t.includes('the forest') || t.includes('quarry')) {
+    category = 'Survival Horror'
+    if (t.includes('silent hill') || t.includes('alan wake') || t.includes('evil within')) subcategory = 'Terror Psicológico'
+    else if (t.includes('resident evil') || t.includes('dead space') || t.includes('dead island') || t.includes('dayz')) subcategory = 'Zombies & Survival'
+    else subcategory = 'Misterio & Terror'
+  }
+  // Rol & Aventura
+  else if (t.includes('elden ring') || t.includes('hogwarts') || t.includes('wukong') || t.includes('cyberpunk') || t.includes('witcher') || t.includes('souls') || t.includes('final fantasy') || t.includes('baldurs') || t.includes('dune') || t.includes('skyrim') || t.includes('diablo') || t.includes('dragon age') || t.includes('blasphemous')) {
+    category = 'Rol & Aventura'
+    if (t.includes('elden ring') || t.includes('souls') || t.includes('wukong') || t.includes('blasphemous')) subcategory = 'Fantasía Oscura & Souls'
+    else if (t.includes('cyberpunk') || t.includes('dune') || t.includes('starfield')) subcategory = 'Sci-Fi RPG'
+    else subcategory = 'Mundos de Fantasía'
+  }
+  // Membresías
+  else if (t.includes('ps plus') || t.includes('playstation plus') || t.includes('membres') || t.includes('gift card') || t.includes('suscripcion') || t.includes('psn')) {
+    category = 'Membresías'
+    if (t.includes('deluxe')) subcategory = 'PlayStation Plus Deluxe'
+    else if (t.includes('extra')) subcategory = 'PlayStation Plus Extra'
+    else if (t.includes('essential')) subcategory = 'PlayStation Plus Essential'
+    else subcategory = 'Suscripciones Anuales'
+  }
+  // Plataformas
+  else if (t.includes('astro bot') || t.includes('crash') || t.includes('mario') || t.includes('sonic') || t.includes('minecraft') || t.includes('lego') || t.includes('rayman') || t.includes('sackboy') || t.includes('ratchet') || t.includes('overcooked') || t.includes('little nightmares')) {
+    category = 'Plataformas'
+    if (t.includes('lego')) subcategory = 'Lego & Animación'
+    else if (t.includes('minecraft') || t.includes('overcooked')) subcategory = 'Familiar & Coop'
+    else subcategory = 'Aventuras 3D'
+  }
+  // Acción & Aventura
+  else {
+    category = 'Acción & Aventura'
+    if (t.includes('gta') || t.includes('grand theft auto') || t.includes('red dead') || t.includes('mafia') || t.includes('yakuza') || t.includes('judgment') || t.includes('far cry') || t.includes('just cause')) subcategory = 'Mundo Abierto'
+    else if (t.includes('call of duty') || t.includes('battlefield') || t.includes('ghost recon') || t.includes('wolfenstein') || t.includes('doom') || t.includes('arma')) subcategory = 'Shooters & Bélico'
+    else if (t.includes('spider-man') || t.includes('batman') || t.includes('wolverine') || t.includes('marvel')) subcategory = 'Superhéroes'
+    else if (t.includes('god of war') || t.includes('last of us') || t.includes('death stranding') || t.includes('assassin') || t.includes('007') || t.includes('hitman') || t.includes('metal gear')) subcategory = 'Aventura Cinematográfica'
+    else subcategory = 'Acción General'
+  }
+
+  return { category, subcategory }
+}
+
+export function inferGamingBadge(cleanTitle) {
+  const t = (cleanTitle || '').toLowerCase()
+  if (t.includes('fc 27') || t.includes('fc 25') || t.includes('gta 5') || t.includes('gta v') || t.includes('wukong') || t.includes('black ops 6')) return '⚽ MÁS VENDIDO'
+  if (t.includes('astro bot') || t.includes('elden ring') || t.includes('god of war') || t.includes('last of us') || t.includes('silent hill 2')) return '🏆 JUEGO DEL AÑO'
+  if (t.includes('007') || t.includes('death stranding 2') || t.includes('wolverine') || t.includes('silent hill f') || t.includes('gta 6')) return '🔥 LANZAMIENTO EXCLUSIVO'
+  return '⭐️ PLAYSTATION OFICIAL'
+}
+
+export function resolveOfficialGameImage(title, existingCatalog = []) {
+  if (!title) return 'https://image.api.playstation.com/vulcan/ap/rnd/202010/0222/b3Dea2fUuO0wFp8W5hJj2bQx.png'
+
+  const normTarget = normalizeStrictTitle(title)
+  // 1. Buscar en el catálogo existente
+  for (const g of existingCatalog) {
+    if (g.image && g.image.includes('playstation.com')) {
+      const normG = normalizeStrictTitle(g.title)
+      if (normG && (normG === normTarget || (normTarget.length > 5 && normG.includes(normTarget)) || (normG.length > 5 && normTarget.includes(normG)))) {
+        return g.image
+      }
+    }
+  }
+
+  // 2. Fallbacks de alta calidad oficiales de PlayStation según categoría
+  const t = title.toLowerCase()
+  if (t.includes('fc') || t.includes('fifa')) return 'https://image.api.playstation.com/vulcan/ap/rnd/202503/2520/09767c0f0551c8a3edf9ab4727eb084c7cae88fecef16a09.png'
+  if (t.includes('gta')) return 'https://image.api.playstation.com/vulcan/ap/rnd/202203/0302/bZ1JTRXzoyl3hkcsloKcCgdB.jpg'
+  if (t.includes('spider')) return 'https://image.api.playstation.com/vulcan/ap/rnd/202306/1219/1c7b75d8b4e3f4e1f7c3cb7a5e8f5044a8fbbf111624b423.png'
+  if (t.includes('god of war')) return 'https://image.api.playstation.com/vulcan/ap/rnd/202207/1210/4xJ8tPPddCompleteArtwork.png'
+  if (t.includes('silent hill')) return 'https://image.api.playstation.com/vulcan/ap/rnd/202405/2912/4eaeb4968fb17726cb75b119102c7f4bb7f5f9a65675402f.png'
+
+  return 'https://image.api.playstation.com/vulcan/ap/rnd/202010/0222/b3Dea2fUuO0wFp8W5hJj2bQx.png'
+}
+
 /**
  * Aplica en lote los precios acordados y crea los nuevos juegos en el catálogo
  * @param {Array} analyzedItems Lista de elementos evaluados y aprobados por el admin
@@ -298,7 +393,7 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
         const game = { ...updatedCatalog[gameIdx] }
         if (!game.providers) game.providers = {}
 
-        // Guardar o actualizar datos del proveedor convenido
+        // Guardar o actualizar datos del proveedor convenido (uso interno de admin)
         game.providers[providerKey] = {
           providerName,
           providerUrl,
@@ -315,9 +410,14 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
           game.providers[providerKey].secondaryPrice = item.proposedPvp
         }
 
-        // Marcar el proveedor con el precio convenido
+        // Marcar proveedor convenido en admin y preservar marca pública PlayStation Store Oficial
         game.lastConveyedProvider = providerName
         game.lastConveyedDate = new Date().toISOString()
+        game.visibleProviderName = 'PlayStation Store Oficial'
+        game.visibleProviderShortName = 'PS Store'
+        game.visibleProviderBadge = '🎮 PlayStation Store Oficial'
+        game.primaryPriceLeaderName = 'PlayStation Store Oficial'
+        game.secondaryPriceLeaderName = 'PlayStation Store Oficial'
 
         updatedCatalog[gameIdx] = game
         updatedMatchesCount++
@@ -327,6 +427,9 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
       const newId = `GAME-OFFER-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 900 + 100)}`
       const title = item.cleanTitle || item.rawTitle
       const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '-')
+      const taxonomy = inferGamingTaxonomy(title)
+      const officialImage = resolveOfficialGameImage(title, existingGamingProducts)
+      const dynamicBadge = inferGamingBadge(title)
 
       const pArgCost = licenseType === 'primary' ? item.newWholesaleCost : Math.round(item.newWholesaleCost * 1.5)
       const pSecCost = licenseType === 'secondary' ? item.newWholesaleCost : Math.round(item.newWholesaleCost * 0.5)
@@ -341,11 +444,12 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
         title,
         slug,
         platform: item.platform || 'PS4 / PS5',
-        category: 'Acción & Aventura',
-        badge: '🔥 OFERTA MAYORISTA',
-        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-        description: `Videojuego digital oficial para consolas PlayStation Network provisto por ${providerName}.`,
-        features: ['Audio Español', 'Entrega Digital Garantizada', 'Soporte Post-Venta'],
+        category: taxonomy.category,
+        subcategory: taxonomy.subcategory,
+        badge: dynamicBadge,
+        image: officialImage,
+        description: `Videojuego digital oficial original para consolas PlayStation (${item.platform || 'PS4 / PS5'}). Descarga directa y activación garantizada desde PlayStation Store.`,
+        features: ['Audio Español Oficial', 'Entrega Inmediata Garantizada 24/7', 'Soporte y Asistencia Post-Venta'],
         providers: {
           [providerKey]: {
             providerName,
@@ -362,6 +466,13 @@ export function applyGamingBatchUpdate(analyzedItems, existingGamingProducts, pr
         effectiveSecondaryPrice: pvpSec,
         baseCostPrimary: pArgCost,
         baseCostSecondary: pSecCost,
+        visibleProviderKey: providerKey,
+        visibleProviderName: 'PlayStation Store Oficial',
+        visibleProviderShortName: 'PS Store',
+        visibleProviderBadge: '🎮 PlayStation Store Oficial',
+        visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        primaryPriceLeaderName: 'PlayStation Store Oficial',
+        secondaryPriceLeaderName: 'PlayStation Store Oficial',
         lastConveyedProvider: providerName,
         lastConveyedDate: new Date().toISOString()
       }

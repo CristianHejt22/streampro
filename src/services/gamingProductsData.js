@@ -877,12 +877,12 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   }
 
   const visibleProvider = visibleProviderKey === 'argentinaplay' ? pArg : pJda
-  const visibleProviderMeta = GAMING_PROVIDERS[visibleProviderKey] || {
+  const visibleProviderMeta = {
     id: visibleProviderKey,
-    name: visibleProviderKey === 'argentinaplay' ? 'Argentina Play' : 'Juegos Digitales Argentina',
-    shortName: visibleProviderKey === 'argentinaplay' ? 'ArgPlay' : 'JDA',
-    badge: visibleProviderKey === 'argentinaplay' ? '🇦🇷 Argentina Play Oficial' : '🎮 Juegos Digitales Arg (JDA)',
-    tagColor: visibleProviderKey === 'argentinaplay' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+    name: 'PlayStation Store Oficial',
+    shortName: 'PS Store',
+    badge: '🎮 PlayStation Store Oficial',
+    tagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
   }
 
   // Proveedor que marca el precio más alto en la plataforma
@@ -923,15 +923,15 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     storeMarginPercent,
     resellerCommissionPercent,
     primaryPriceLeaderKey,
-    primaryPriceLeaderName: 'StreamePro',
+    primaryPriceLeaderName: 'PlayStation Store Oficial',
     secondaryPriceLeaderKey,
-    secondaryPriceLeaderName: 'StreamePro',
+    secondaryPriceLeaderName: 'PlayStation Store Oficial',
     // Proveedor visible único (el de mayor costo):
     visibleProviderKey,
-    visibleProviderName: visibleProviderMeta.name,
-    visibleProviderShortName: visibleProviderMeta.shortName,
-    visibleProviderBadge: visibleProviderMeta.badge,
-    visibleProviderTagColor: visibleProviderMeta.tagColor,
+    visibleProviderName: 'PlayStation Store Oficial',
+    visibleProviderShortName: 'PS Store',
+    visibleProviderBadge: '🎮 PlayStation Store Oficial',
+    visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
     visibleProvider,
     visibleCostPrimary: visibleProvider.costPrimary || visibleProvider.primaryPrice,
     visibleCostSecondary: visibleProvider.costSecondary || visibleProvider.secondaryPrice,
