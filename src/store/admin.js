@@ -3329,6 +3329,17 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
+    /**
+     * Fija el proveedor preferido para el cumplimiento de un videojuego en 1 clic
+     */
+    setPreferredGamingProvider(gameId, providerKey) {
+      const game = this.gamingProducts.find(g => g.id === gameId)
+      if (!game) return { error: 'Juego no encontrado' }
+      game.preferredFulfillmentProvider = providerKey
+      game.lastConveyedDate = new Date().toISOString()
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, game }
+    },
     setGamingFulfillmentProvider(orderId, providerKey) {
       const order = this.orders.find(o => o.id === orderId)
       if (order) {

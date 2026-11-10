@@ -797,26 +797,58 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   // Costos de adquisición REALES (exactamente lo extraído de las plataformas)
   const costPrimaryArg = hasArg ? (Number(pArg.costPrimary) || Number(pArg.primaryPrice) || 0) : 0
   const costPrimaryJda = hasJda ? (Number(pJda.costPrimary) || Number(pJda.primaryPrice) || 0) : 0
-  const costSecondaryArg = hasArg ? (Number(pArg.costSecondary) || Number(pArg.secondaryPrice) || 0) : 0
-  const costSecondaryJda = hasJda ? (Number(pJda.costSecondary) || Number(pJda.secondaryPrice) || 0) : 0
+  // 1. Recopilar todos los proveedores cotizados y disponibles para este juego
+  const providersMap = product.providers || {}
+  const activeProvidersList = []
 
-  // Costo base mayor entre ambos proveedores (o el del único disponible)
+  for (const [key, p] of Object.entries(providersMap)) {
+    if (!p) continue
+    const cPri = Number(p.costPrimary || p.primaryPrice || 0)
+    const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
+    if (p.available !== false || cPri > 0 || cSec > 0) {
+      activeProvidersList.push({
+        key,
+        name: p.providerName || (key === 'argentinaplay' ? 'Argentina Play' : key === 'juegosdigitalesargentina' ? 'Juegos Digitales Argentina' : 'Proveedor Acordado'),
+        shortName: key === 'argentinaplay' ? 'ArgPlay' : key === 'juegosdigitalesargentina' ? 'JDA' : 'Mayorista',
+        url: p.providerUrl || '',
+        whatsapp: p.providerWhatsapp || '',
+        costPrimary: cPri,
+        costSecondary: cSec,
+        stock: p.stock || 'Inmediato'
+      })
+    }
+  }
+
+  // Costos primarios y secundarios válidos
+  const primaryCosts = activeProvidersList.map(p => p.costPrimary).filter(c => c > 0)
+  const secondaryCosts = activeProvidersList.map(p => p.costSecondary).filter(c => c > 0)
+
   let baseCostPrimary = 0
-  let baseCostSecondary = 0
-
-  if (hasArg && hasJda) {
-    baseCostPrimary = Math.max(costPrimaryArg, costPrimaryJda)
-    baseCostSecondary = Math.max(costSecondaryArg, costSecondaryJda)
-  } else if (hasArg) {
-    baseCostPrimary = costPrimaryArg
-    baseCostSecondary = costSecondaryArg
-  } else if (hasJda) {
-    baseCostPrimary = costPrimaryJda
-    baseCostSecondary = costSecondaryJda
+  let minCostPrimary = 0
+  if (primaryCosts.length > 0) {
+    baseCostPrimary = Math.max(...primaryCosts)
+    minCostPrimary = Math.min(...primaryCosts)
   } else {
     baseCostPrimary = Number(product.baseCostPrimary || product.effectivePrimaryPrice) || 20000
-    baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 10000
+    minCostPrimary = baseCostPrimary
   }
+
+  let baseCostSecondary = 0
+  let minCostSecondary = 0
+  if (secondaryCosts.length > 0) {
+    baseCostSecondary = Math.max(...secondaryCosts)
+    minCostSecondary = Math.min(...secondaryCosts)
+  } else {
+    baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 10000
+    minCostSecondary = baseCostSecondary
+  }
+
+  // Diferencia / Arbitraje de Costo entre Proveedores
+  const diffPrimary = Math.max(0, baseCostPrimary - minCostPrimary)
+  const diffSecondary = Math.max(0, baseCostSecondary - minCostSecondary)
+  const diffPrimaryPercent = minCostPrimary > 0 ? Math.round((diffPrimary / minCostPrimary) * 100) : 0
+  const diffSecondaryPercent = minCostSecondary > 0 ? Math.round((diffSecondary / minCostSecondary) * 100) : 0
+  const providerCount = activeProvidersList.length
 
   // Margen de ganancia de la tienda (% markup sobre costo) y comisión del revendedor (% de PVP)
   const marginRate = Number(storeMarginPercent || 0) / 100
@@ -824,8 +856,6 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   const minProfit = Number(minResellerProfit || 1000)
 
   // Precios efectivos en plataforma (PVP al Cliente):
-  // Si el producto tiene un precio manual personalizado fijado por el admin, se respeta;
-  // de lo contrario, se suma el % de ganancia de tienda sobre el costo del proveedor.
   let effectivePrimaryPrice = 0
   let effectiveSecondaryPrice = 0
 
@@ -863,20 +893,38 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   const storeNetPrimaryWithReseller = Math.max(0, storeGrossMarginPrimary - resellerPrimaryProfit)
   const storeNetSecondaryWithReseller = Math.max(0, storeGrossMarginSecondary - resellerSecondaryProfit)
 
-  // REGLA SOLICITADA POR EL USUARIO:
-  // "Colocar solo el de un proveedor visible, los mas altos en costo."
-  let visibleProviderKey = 'argentinaplay'
-  if (hasArg && hasJda) {
-    const totalCostArg = costPrimaryArg + costSecondaryArg
-    const totalCostJda = costPrimaryJda + costSecondaryJda
-    visibleProviderKey = (totalCostArg >= totalCostJda) ? 'argentinaplay' : 'juegosdigitalesargentina'
-  } else if (hasJda) {
-    visibleProviderKey = 'juegosdigitalesargentina'
-  } else {
-    visibleProviderKey = 'argentinaplay'
+  // Proveedor visible único (el de mayor costo):
+  let visibleProviderKey = product.visibleProviderKey || 'argentinaplay'
+  const highestProvider = activeProvidersList.find(p => p.costPrimary === baseCostPrimary)
+  if (highestProvider) {
+    visibleProviderKey = highestProvider.key
   }
 
-  const visibleProvider = visibleProviderKey === 'argentinaplay' ? pArg : pJda
+  const visibleProvider = product.providers?.[visibleProviderKey] || pArg || pJda || {}
+
+  // Proveedor óptimo de compra (el más barato) o el preferido por el admin
+  let bestFulfillmentPrimary = product.preferredFulfillmentProvider || null
+  let bestFulfillmentPrimaryName = ''
+  const cheapestP = activeProvidersList.find(p => p.costPrimary === minCostPrimary)
+  if (bestFulfillmentPrimary && product.providers?.[bestFulfillmentPrimary]) {
+    bestFulfillmentPrimaryName = product.providers[bestFulfillmentPrimary].providerName || bestFulfillmentPrimary
+  } else {
+    bestFulfillmentPrimary = cheapestP ? cheapestP.key : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
+    bestFulfillmentPrimaryName = cheapestP ? cheapestP.name : 'Proveedor Óptimo'
+  }
+
+  let bestFulfillmentSecondary = product.preferredFulfillmentProvider || null
+  let bestFulfillmentSecondaryName = ''
+  const cheapestSecP = activeProvidersList.find(p => p.costSecondary === minCostSecondary)
+  if (bestFulfillmentSecondary && product.providers?.[bestFulfillmentSecondary]) {
+    bestFulfillmentSecondaryName = product.providers[bestFulfillmentSecondary].providerName || bestFulfillmentSecondary
+  } else {
+    bestFulfillmentSecondary = cheapestSecP ? cheapestSecP.key : bestFulfillmentPrimary
+    bestFulfillmentSecondaryName = cheapestSecP ? cheapestSecP.name : bestFulfillmentPrimaryName
+  }
+
+  const bestMarginPrimary = Math.max(0, effectivePrimaryPrice - minCostPrimary)
+  const bestMarginSecondary = Math.max(0, effectiveSecondaryPrice - minCostSecondary)
   const visibleProviderMeta = {
     id: visibleProviderKey,
     name: 'PlayStation Store Oficial',
@@ -888,25 +936,6 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   // Proveedor que marca el precio más alto en la plataforma
   const primaryPriceLeaderKey = visibleProviderKey
   const secondaryPriceLeaderKey = visibleProviderKey
-
-  // Proveedor óptimo de compra
-  const bestFulfillmentPrimary = (hasArg && hasJda)
-    ? (costPrimaryArg <= costPrimaryJda ? 'argentinaplay' : 'juegosdigitalesargentina')
-    : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
-
-  const minCostPrimary = (hasArg && hasJda) ? Math.min(costPrimaryArg, costPrimaryJda) : (costPrimaryArg || costPrimaryJda)
-  const bestMarginPrimary = Math.max(0, effectivePrimaryPrice - minCostPrimary)
-
-  const bestFulfillmentSecondary = (hasArg && hasJda)
-    ? (costSecondaryArg <= costSecondaryJda ? 'argentinaplay' : 'juegosdigitalesargentina')
-    : (hasArg ? 'argentinaplay' : 'juegosdigitalesargentina')
-
-  const minCostSecondary = (hasArg && hasJda) ? Math.min(costSecondaryArg, costSecondaryJda) : (costSecondaryArg || costSecondaryJda)
-  const bestMarginSecondary = Math.max(0, effectiveSecondaryPrice - minCostSecondary)
-
-  // Diferencia de precio en $
-  const diffPrimary = (hasArg && hasJda) ? Math.abs(costPrimaryArg - costPrimaryJda) : 0
-  const diffSecondary = (hasArg && hasJda) ? Math.abs(costSecondaryArg - costSecondaryJda) : 0
 
   return {
     ...product,
@@ -933,20 +962,24 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     visibleProviderBadge: '🎮 PlayStation Store Oficial',
     visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
     visibleProvider,
-    visibleCostPrimary: visibleProvider.costPrimary || visibleProvider.primaryPrice,
-    visibleCostSecondary: visibleProvider.costSecondary || visibleProvider.secondaryPrice,
-    visiblePrimaryPrice: visibleProvider.primaryPrice,
-    visibleSecondaryPrice: visibleProvider.secondaryPrice,
-    visibleProviderUrl: visibleProvider.providerUrl,
+    visibleCostPrimary: visibleProvider.costPrimary || visibleProvider.primaryPrice || baseCostPrimary,
+    visibleCostSecondary: visibleProvider.costSecondary || visibleProvider.secondaryPrice || baseCostSecondary,
+    visiblePrimaryPrice: visibleProvider.primaryPrice || baseCostPrimary,
+    visibleSecondaryPrice: visibleProvider.secondaryPrice || baseCostSecondary,
+    visibleProviderUrl: visibleProvider.providerUrl || '',
     bestFulfillmentPrimary,
-    bestFulfillmentPrimaryName: GAMING_PROVIDERS[bestFulfillmentPrimary]?.name || bestFulfillmentPrimary,
+    bestFulfillmentPrimaryName: bestFulfillmentPrimaryName || GAMING_PROVIDERS[bestFulfillmentPrimary]?.name || bestFulfillmentPrimary,
     bestMarginPrimary,
     bestFulfillmentSecondary,
-    bestFulfillmentSecondaryName: GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
+    bestFulfillmentSecondaryName: bestFulfillmentSecondaryName || GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
     bestMarginSecondary,
     diffPrimary,
     diffSecondary,
-    similarityScore: (hasArg && hasJda) ? 100 : 70
+    diffPrimaryPercent,
+    diffSecondaryPercent,
+    providerCount,
+    activeProvidersList,
+    similarityScore: providerCount >= 2 ? 100 : 70
   }
 }
 
