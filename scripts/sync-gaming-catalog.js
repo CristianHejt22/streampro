@@ -35,18 +35,66 @@ function log(msg) {
   console.log(`[SCRAPER GAMING] ${msg}`)
 }
 
+function decodeHtmlEntities(str) {
+  if (!str) return ''
+  return str
+    .replace(/&#039;|&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+}
+
 function cleanTitleNormalization(raw) {
   if (!raw) return ''
-  return raw
+  return decodeHtmlEntities(raw)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[™®©\uFFFD?]/g, '')
-    .replace(/\b(ps5|ps4|ps3|digital|original|cuenta|primaria|secundaria|edicion|edition|remastered|remake|standard|deluxe|bundle|espanol|latino)\b/gi, ' ')
-    .replace(/grand theft auto\s*v?\s*5?/gi, 'gta 5')
-    .replace(/fifa\s*(\d+)/gi, 'fc $1')
+    .replace(/mas alla de gotham/gi, 'beyond gotham')
+    .replace(/\b(ii)\b/gi, '2')
+    .replace(/\b(iii)\b/gi, '3')
+    .replace(/\b(iv)\b/gi, '4')
+    .replace(/\b(v)\b/gi, '5')
+    .replace(/\b(vi)\b/gi, '6')
+    .replace(/grand theft auto\s*(v|5)?/gi, 'gta 5')
+    .replace(/(?:ea\s*sports\s*)?(?:fifa|fc)\s*(\d+)/gi, 'fc$1')
+    .replace(/the\s+last\s+of\s+us\s+part(?:e)?\s*(i|1)\b/gi, 'the last of us 1')
+    .replace(/the\s+last\s+of\s+us\s+part(?:e)?\s*(ii|2)\b/gi, 'the last of us 2')
+    .replace(/\b(ps5|ps4|ps3|digital|original|cuenta|primaria|secundaria|edicion|edition|remastered|remake|standard|deluxe|gold|ultimate|complete|definitive|directors?\s*cut|next\s*gea?n|retro|bundle|pack|espanol|latino|subtitulado)\b/gi, ' ')
     .replace(/[^a-z0-9]/g, '')
     .trim()
+}
+
+function cleanTokens(raw) {
+  if (!raw) return []
+  return decodeHtmlEntities(raw)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[™®©\uFFFD?]/g, '')
+    .replace(/\b(ii)\b/gi, '2')
+    .replace(/\b(iii)\b/gi, '3')
+    .replace(/\b(iv)\b/gi, '4')
+    .replace(/\b(v)\b/gi, '5')
+    .replace(/\b(vi)\b/gi, '6')
+    .replace(/grand theft auto/gi, 'gta')
+    .replace(/(?:ea\s*sports\s*)?(?:fifa|fc)\s*(\d+)/gi, 'fc$1')
+    .replace(/\b(ps5|ps4|ps3|digital|original|cuenta|primaria|secundaria|edicion|edition|remastered|remake|standard|deluxe|gold|ultimate|complete|definitive|directors?\s*cut|next\s*gea?n|retro|bundle|pack|espanol|latino|subtitulado)\b/gi, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 2)
+}
+
+function parseArsPrice(str) {
+  if (!str) return 0
+  // Extraer formato "$21.900,00" o "$21.900"
+  const m = String(str).match(/\$?\s*([\d]{1,3}(?:\.[\d]{3})+|\d{4,7})(?:,\d{1,2})?/)
+  if (!m) return 0
+  return Number(m[1].replace(/\./g, '')) || 0
 }
 
 function inferTaxonomy(title) {
@@ -187,98 +235,153 @@ async function scrapeDigitalGamesShop() {
 }
 
 /**
- * Scrapea Tu Tienda Gamer evitando consolas y accesorios
+ * Scrapea Tu Tienda Gamer evitando consolas y accesorios, extrayendo título real, precio ARS y enlace
  */
 async function scrapeTuTiendaGamer() {
-  log('Scrapeando Tu Tienda Gamer (excluyendo consolas y accesorios)...')
-  const categoriesToFetch = [
-    'https://tutiendagamer.com.ar/juegos-ps5',
-    'https://tutiendagamer.com.ar/juegos-ps4',
-    'https://tutiendagamer.com.ar/juegos-ps3'
+  log('Scrapeando Tu Tienda Gamer con precios (excluyendo consolas y accesorios)...')
+  const baseCategories = [
+    { base: 'https://tutiendagamer.com.ar/juegos-ps5', platform: 'PS5' },
+    { base: 'https://tutiendagamer.com.ar/juegos-ps4', platform: 'PS4' },
+    { base: 'https://tutiendagamer.com.ar/juegos-ps3', platform: 'PS3' }
   ]
-  const games = []
+  const gamesMap = new Map()
 
-  for (const url of categoriesToFetch) {
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(8000)
-      })
-      if (!res.ok) continue
-      const html = await res.text()
+  for (const cat of baseCategories) {
+    for (let page = 1; page <= 3; page++) {
+      const pageUrl = page === 1 ? cat.base : `${cat.base}?page=${page}`
+      try {
+        const res = await fetch(pageUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(8000)
+        })
+        if (!res.ok) break
+        const html = await res.text()
+        const blocks = html.split('products-feed__product-name')
+        if (blocks.length <= 1) break
 
-      const prodLinks = [...html.matchAll(/href="(https:\/\/[^"]*tutiendagamer\.com\.ar\/juegos-[^"]+)"/gi)].map(m => m[1])
-      const uniqueLinks = Array.from(new Set(prodLinks))
+        blocks.slice(1).forEach(b => {
+          const linkMatch = b.match(/href="(https:\/\/[^"]*tutiendagamer\.com\.ar\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/i)
+          if (!linkMatch) return
+          const link = linkMatch[1]
+          // Regla explícita del usuario: Evitar consolas y accesorios
+          if (/consolas?-y-accesorios|consola|accesorio|joystick|auricular|cable|funda/i.test(link)) {
+            return
+          }
 
-      uniqueLinks.forEach(link => {
-        // Regla explícita del usuario: Evitar consolas y accesorios
-        if (link.includes('consolas-y-accesorios') || link.includes('consola') || link.includes('accesorio') || link.includes('joystick')) {
-          return
-        }
+          const rawTitle = decodeHtmlEntities(linkMatch[2].replace(/<[^>]+>/g, '').trim())
+          const priceBlock = b.match(/<p class="products-feed__product-price[^>]*>([\s\S]*?)<\/p>/i)
+          const cleanPriceHtml = priceBlock ? priceBlock[1].replace(/<del>[\s\S]*?<\/del>/gi, '') : ''
+          const price = parseArsPrice(cleanPriceHtml)
 
-        const slug = link.split('/').pop().replace(/-/g, ' ')
-        const title = slug.replace(/\s*ps[345]\s*/gi, '').trim()
-        if (title.length > 2) {
-          games.push({
-            source: 'ttg',
-            title: title.toUpperCase(),
-            norm: cleanTitleNormalization(title),
-            platform: url.includes('ps5') ? 'PS5' : (url.includes('ps4') ? 'PS4' : 'PS3'),
-            url: link
-          })
-        }
-      })
-    } catch (e) {
-      log(`Fallo parcial TTG (${url}): ${e.message}`)
+          if (rawTitle.length > 2 && price > 0) {
+            const cleanTitle = rawTitle.replace(/\s*[-–]\s*ps[345]\s*$/gi, '').trim()
+            const norm = cleanTitleNormalization(cleanTitle)
+            if (!gamesMap.has(norm + '_' + cat.platform)) {
+              gamesMap.set(norm + '_' + cat.platform, {
+                source: 'tutiendagamer',
+                title: cleanTitle,
+                norm,
+                platform: cat.platform,
+                price,
+                url: link
+              })
+            }
+          }
+        })
+      } catch (e) {
+        log(`Fallo parcial TTG (${pageUrl}): ${e.message}`)
+        break
+      }
     }
   }
 
-  log(`✓ Tu Tienda Gamer: ${games.length} títulos de videojuegos detectados sin accesorios`)
+  const games = Array.from(gamesMap.values())
+  log(`✓ Tu Tienda Gamer: ${games.length} videojuegos con precio extraídos sin accesorios`)
   return games
 }
 
 /**
- * Scrapea Fusion Games para juegos de PlayStation
+ * Scrapea Fusion Games para juegos de PlayStation extrayendo título real, precio y enlace desde GTM JSON
  */
 async function scrapeFusionGames() {
-  log('Scrapeando Fusion Games para PlayStation...')
-  const games = []
-  try {
-    const res = await fetch('https://fusiongames.com.ar/tienda/', {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(8000)
-    })
-    if (!res.ok) return games
-    const html = await res.text()
+  log('Scrapeando Fusion Games con precios reales para PlayStation...')
+  const categoryUrls = [
+    { base: 'https://fusiongames.com.ar/categoria-producto/juegos-digitales-ps5/', platform: 'PS5' },
+    { base: 'https://fusiongames.com.ar/categoria-producto/juegos-digitales-ps4/', platform: 'PS4' },
+    { base: 'https://fusiongames.com.ar/categoria-producto/juegos-digitales-ps3/', platform: 'PS3' }
+  ]
+  const gamesMap = new Map()
 
-    const prodLinks = [...html.matchAll(/href="(https:\/\/fusiongames\.com\.ar\/producto\/[^"]+)"/gi)].map(m => m[1])
-    Array.from(new Set(prodLinks)).forEach(link => {
-      const slug = link.replace(/\/$/, '').split('/').pop().replace(/-/g, ' ')
-      const title = slug.replace(/\s*ps[345]\s*/gi, '').trim()
-      if (title.length > 2) {
-        games.push({
-          source: 'fusion',
-          title: title.toUpperCase(),
-          norm: cleanTitleNormalization(title),
-          platform: link.includes('ps5') ? 'PS5' : (link.includes('ps4') ? 'PS4' : 'PS3'),
-          url: link
+  for (const cat of categoryUrls) {
+    for (let page = 1; page <= 3; page++) {
+      const pageUrl = page === 1 ? cat.base : `${cat.base}page/${page}/`
+      try {
+        const res = await fetch(pageUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(8000)
         })
+        if (!res.ok) break
+        const html = await res.text()
+        const gtmMatches = [...html.matchAll(/data-gtm4wp_product_data="([^"]+)"/gi)]
+        if (gtmMatches.length === 0) break
+
+        gtmMatches.forEach(m => {
+          try {
+            const parsed = JSON.parse(decodeHtmlEntities(m[1]))
+            const rawTitle = (parsed.item_name || '').trim()
+            const price = Number(parsed.price) || 0
+            const link = parsed.productlink || ''
+            if (!rawTitle || price <= 0 || /ps-plus|plus\s+(deluxe|extra|essential)/i.test(link)) return
+
+            const cleanTitle = rawTitle.replace(/\s*\(?(ps5|ps4|ps3)\)?\s*/gi, ' ').trim()
+            const norm = cleanTitleNormalization(cleanTitle)
+            if (norm && !gamesMap.has(norm + '_' + cat.platform)) {
+              gamesMap.set(norm + '_' + cat.platform, {
+                source: 'fusiongames',
+                title: cleanTitle,
+                norm,
+                platform: cat.platform,
+                price,
+                url: link
+              })
+            }
+          } catch {}
+        })
+      } catch (e) {
+        log(`Fallo parcial Fusion Games (${pageUrl}): ${e.message}`)
+        break
       }
-    })
-    log(`✓ Fusion Games: ${games.length} videojuegos detectados`)
-  } catch (e) {
-    log(`Advertencia en Fusion Games: ${e.message}`)
+    }
   }
+
+  const games = Array.from(gamesMap.values())
+  log(`✓ Fusion Games: ${games.length} videojuegos con precio extraídos`)
   return games
 }
 
 /**
  * Parsea el archivo de ofertas .txt si existe en el escritorio
  */
+function sanitizeBrokenEncodingTitle(str) {
+  if (!str) return ''
+  return str
+    .replace(/\uFFFD\?/g, '')
+    .replace(/ESPA\uFFFDOI|ESPA\uFFFDOL/gi, 'ESPAÑOL')
+    .replace(/M\uFFFDs/gi, 'Más')
+    .replace(/Ragnar\uFFFDk/gi, 'Ragnarök')
+    .replace(/\uFFFD/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function parseTxtOffers(psImageMap) {
   if (!fs.existsSync(TXT_FILE)) return []
   try {
-    const raw = fs.readFileSync(TXT_FILE, 'utf-8')
+    const buf = fs.readFileSync(TXT_FILE)
+    let raw = buf.toString('utf-8')
+    if (raw.includes('\uFFFD')) {
+      raw = buf.toString('latin1')
+    }
     const lines = raw.split(/\r?\n/).filter(l => l.trim() && !/OFERTAS/i.test(l) && !/HASTA/i.test(l))
     const results = []
 
@@ -289,7 +392,7 @@ function parseTxtOffers(psImageMap) {
 
       const rawNum = priceMatch[1].replace(/\./g, '').replace(',', '.')
       const price = parseFloat(rawNum)
-      const rawTitle = cleanLine.slice(0, priceMatch.index).replace(/[-–—:\s]+$/, '').trim()
+      const rawTitle = sanitizeBrokenEncodingTitle(cleanLine.slice(0, priceMatch.index).replace(/[-–—:\s]+$/, '').trim())
       if (!rawTitle || price <= 0) return
 
       let platform = 'PS4 / PS5'
@@ -334,7 +437,6 @@ function loadExistingCatalog() {
   try {
     if (fs.existsSync(TARGET_GAMING_PRODUCTS_FILE)) {
       const data = JSON.parse(fs.readFileSync(TARGET_GAMING_PRODUCTS_FILE, 'utf-8'))
-      // Si el archivo ya fue inflado a 12.000 juegos, recortar a los primeros 960 base
       if (data.length > 2000) {
         return data.slice(0, 960)
       }
@@ -347,29 +449,59 @@ function loadExistingCatalog() {
 }
 
 /**
+ * Busca coincidencia inteligente de título en el mapa consolidado
+ */
+function findConsolidatedMatch(norm, rawTitle, consolidatedMap, tokenIndex) {
+  if (norm && consolidatedMap.has(norm)) {
+    return consolidatedMap.get(norm)
+  }
+  const tokens = cleanTokens(rawTitle)
+  if (tokens.length < 2) return null
+
+  let bestGame = null
+  let bestJaccard = 0
+  const setA = new Set(tokens)
+
+  for (const entry of tokenIndex) {
+    let intersection = 0
+    for (const t of setA) {
+      if (entry.tokenSet.has(t)) intersection++
+    }
+    if (intersection === 0) continue
+    const union = setA.size + entry.tokenSet.size - intersection
+    const jaccard = intersection / union
+    if (jaccard >= 0.78 && jaccard > bestJaccard) {
+      bestJaccard = jaccard
+      bestGame = entry.game
+    }
+  }
+  return bestGame
+}
+
+/**
  * Proceso Principal de Sincronización, Consolidación y Mejora Visual HD
  */
 export async function scrapeAndSyncGamingCatalog() {
   log('Iniciando sincronización profunda de catálogos gaming...')
 
-  // 1. Cargar catálogo actual y fuentes
+  // 1. Cargar catálogo actual y todas las fuentes web + .txt
   const existingCatalog = loadExistingCatalog()
   const { catalog: dgsCatalog, imageMap: psImageMap } = await scrapeDigitalGamesShop()
   const ttgGames = await scrapeTuTiendaGamer()
   const fusionGames = await scrapeFusionGames()
   const txtGames = parseTxtOffers(psImageMap)
 
-  log(`Fuentes indexadas: ${existingCatalog.length} base + ${psImageMap.size} portadas PS Store Vulcan + ${txtGames.length} ofertas TXT`)
+  log(`Fuentes indexadas: ${existingCatalog.length} base + ${psImageMap.size} portadas PS Store Vulcan + ${dgsCatalog.length} DGS + ${ttgGames.length} TTG + ${fusionGames.length} Fusion + ${txtGames.length} TXT`)
 
   // 2. Mapa consolidado por título normalizado
   const consolidatedMap = new Map()
+  const tokenIndex = []
 
-  // 2.1 Primero insertar los 960 títulos base y ACTUALIZAR sus imágenes con portadas oficiales Vulcan de PS Store
+  // 2.1 Primero insertar los títulos base y actualizar portadas oficiales Vulcan de PS Store
   let updatedImagesCount = 0
   existingCatalog.forEach(game => {
-    const norm = cleanTitleNormalization(game.title)
-    
-    // Buscar si tenemos portada oficial Vulcan en alta resolución de PlayStation Store
+    const cleanTitle = sanitizeBrokenEncodingTitle(game.title)
+    const norm = cleanTitleNormalization(cleanTitle)
     let bestImage = game.image
     if (psImageMap.has(norm)) {
       bestImage = psImageMap.get(norm)
@@ -384,17 +516,17 @@ export async function scrapeAndSyncGamingCatalog() {
       }
     }
 
-    const { category, subcategory } = inferTaxonomy(game.title)
-    const badge = game.badge || inferBadge(game.title)
+    const { category, subcategory } = inferTaxonomy(cleanTitle)
+    const badge = game.badge || inferBadge(cleanTitle)
 
-    // REGLA SOLICITADA POR EL USUARIO:
-    // "NO MOSTRAR NOMBRES DE TERCERO QUE NO SEA PS STORE, PLAYSTATIONS ENTRE OTRAS"
     const publicGame = {
       ...game,
+      title: cleanTitle,
       category,
       subcategory,
       badge,
       image: bestImage,
+      providers: { ...(game.providers || {}) },
       visibleProviderName: 'PlayStation Store Oficial',
       visibleProviderShortName: 'PS Store',
       visibleProviderBadge: '🎮 PlayStation Store Oficial',
@@ -403,15 +535,41 @@ export async function scrapeAndSyncGamingCatalog() {
       secondaryPriceLeaderName: 'PlayStation Store Oficial'
     }
 
-    consolidatedMap.set(norm, publicGame)
+    if (consolidatedMap.has(norm)) {
+      const existing = consolidatedMap.get(norm)
+      const mergedProviders = { ...(existing.providers || {}), ...(publicGame.providers || {}) }
+      const existingVal = Number(existing.effectivePrimaryPrice || existing.baseCostPrimary || 0)
+      const newVal = Number(publicGame.effectivePrimaryPrice || publicGame.baseCostPrimary || 0)
+      const winner = newVal > existingVal ? { ...existing, ...publicGame, providers: mergedProviders } : { ...publicGame, ...existing, providers: mergedProviders }
+      consolidatedMap.set(norm, winner)
+    } else {
+      consolidatedMap.set(norm, publicGame)
+    }
   })
+
+  for (const [norm, g] of consolidatedMap.entries()) {
+    tokenIndex.push({ norm, tokenSet: new Set(cleanTokens(g.title)), game: g })
+  }
 
   log(`✓ Portadas oficiales de PlayStation Store aplicadas a ${updatedImagesCount} títulos del catálogo`)
 
-  // 2.2 Incorporar las ofertas de juegos de juegos.txt.txt
+  // 2.2 Incorporar ofertas de juegos.txt.txt (TANTO actualizar coincidencias existentes COMO agregar nuevos)
   let txtAddedCount = 0
+  let txtMatchedCount = 0
   txtGames.forEach(tg => {
-    if (!consolidatedMap.has(tg.norm)) {
+    const existingTarget = findConsolidatedMatch(tg.norm, tg.title, consolidatedMap, tokenIndex)
+    if (existingTarget) {
+      existingTarget.providers.mayorista_txt = {
+        providerName: 'Lista Ofertas TXT',
+        providerUrl: '',
+        available: true,
+        costPrimary: tg.costPrimary,
+        costSecondary: tg.costSecondary,
+        primaryPrice: tg.costPrimary,
+        secondaryPrice: tg.costSecondary
+      }
+      txtMatchedCount++
+    } else {
       const { category, subcategory } = inferTaxonomy(tg.title)
       const badge = inferBadge(tg.title)
       const markup = Math.ceil((tg.costPrimary * 0.20) / 100) * 100
@@ -430,21 +588,21 @@ export async function scrapeAndSyncGamingCatalog() {
         description: `Videojuego digital oficial para consolas PlayStation Network. Licencia oficial garantizada con audio en español y entrega inmediata.`,
         features: ['Audio Español Oficial', 'Entrega Digital Inmediata', 'Garantía Total StreamePro'],
         providers: {
-          ps_store: {
-            providerName: 'PlayStation Store Oficial',
-            providerUrl: 'https://store.playstation.com/',
+          mayorista_txt: {
+            providerName: 'Lista Ofertas TXT',
+            providerUrl: '',
             available: true,
             costPrimary: tg.costPrimary,
             costSecondary: tg.costSecondary,
-            primaryPrice: pvpPrimary,
-            secondaryPrice: pvpSecondary
+            primaryPrice: tg.costPrimary,
+            secondaryPrice: tg.costSecondary
           }
         },
         baseCostPrimary: tg.costPrimary,
         baseCostSecondary: tg.costSecondary,
         effectivePrimaryPrice: pvpPrimary,
         effectiveSecondaryPrice: pvpSecondary,
-        visibleProviderKey: 'ps_store',
+        visibleProviderKey: 'mayorista_txt',
         visibleProviderName: 'PlayStation Store Oficial',
         visibleProviderShortName: 'PS Store',
         visibleProviderBadge: '🎮 PlayStation Store Oficial',
@@ -454,10 +612,11 @@ export async function scrapeAndSyncGamingCatalog() {
       }
 
       consolidatedMap.set(tg.norm, newProduct)
+      tokenIndex.push({ norm: tg.norm, tokenSet: new Set(cleanTokens(tg.title)), game: newProduct })
       txtAddedCount++
     }
   })
-  log(`✓ ${txtAddedCount} nuevos juegos de la lista .txt añadidos al catálogo`)
+  log(`✓ Lista .TXT: ${txtMatchedCount} coincidencias vinculadas + ${txtAddedCount} nuevos juegos añadidos`)
 
   // 2.3 Añadir lanzamientos top adicionales de PS Store (ASTRO BOT, 007, WOLVERINE, FC 27, etc.)
   const priorityKeywords = ['astro bot', '007', 'wolverine', 'fc 27', 'silent hill', 'death stranding', 'gta 6', 'black ops', 'sparking', 'dragon ball', 'god of war']
@@ -483,21 +642,21 @@ export async function scrapeAndSyncGamingCatalog() {
         description: `Videojuego digital oficial para consolas PlayStation Network. Licencia oficial con audio en español y entrega inmediata.`,
         features: ['Audio Español Oficial', 'Entrega Digital Inmediata', 'Garantía Total StreamePro'],
         providers: {
-          ps_store: {
-            providerName: 'PlayStation Store Oficial',
-            providerUrl: 'https://store.playstation.com/',
+          digitalgamesshop: {
+            providerName: 'Digital Games Shop',
+            providerUrl: `https://digitalgamesshop.ar/?q=${encodeURIComponent(item.title)}`,
             available: true,
             costPrimary: item.costPrimary,
             costSecondary: item.costSecondary,
-            primaryPrice: pvpPrimary,
-            secondaryPrice: pvpSecondary
+            primaryPrice: item.costPrimary,
+            secondaryPrice: item.costSecondary
           }
         },
         baseCostPrimary: item.costPrimary,
         baseCostSecondary: item.costSecondary,
         effectivePrimaryPrice: pvpPrimary,
         effectiveSecondaryPrice: pvpSecondary,
-        visibleProviderKey: 'ps_store',
+        visibleProviderKey: 'digitalgamesshop',
         visibleProviderName: 'PlayStation Store Oficial',
         visibleProviderShortName: 'PS Store',
         visibleProviderBadge: '🎮 PlayStation Store Oficial',
@@ -507,12 +666,73 @@ export async function scrapeAndSyncGamingCatalog() {
       }
 
       consolidatedMap.set(item.norm, newProduct)
+      tokenIndex.push({ norm: item.norm, tokenSet: new Set(cleanTokens(item.title)), game: newProduct })
       topPsAdded++
     }
   })
 
+  // 2.4 Fusionar precios de Digital Games Shop en todo el catálogo (incluyendo los recién agregados)
+  let dgsMerged = 0
+  dgsCatalog.forEach(item => {
+    const target = consolidatedMap.get(item.norm)
+    if (target && item.costPrimary > 0) {
+      target.providers.digitalgamesshop = {
+        providerName: 'Digital Games Shop',
+        providerUrl: `https://digitalgamesshop.ar/?q=${encodeURIComponent(item.title)}`,
+        available: true,
+        costPrimary: item.costPrimary,
+        costSecondary: item.costSecondary || Math.round(item.costPrimary * 0.55),
+        primaryPrice: item.costPrimary,
+        secondaryPrice: item.costSecondary || Math.round(item.costPrimary * 0.55)
+      }
+      if (item.image && item.image.includes('playstation.com') && (!target.image || !target.image.includes('playstation.com'))) {
+        target.image = item.image
+      }
+      dgsMerged++
+    }
+  })
+  log(`✓ Digital Games Shop: ${dgsMerged} coincidencias vinculadas con precio`)
+
+  // 2.5 Fusionar precios de Tu Tienda Gamer en todo el catálogo
+  let ttgMerged = 0
+  ttgGames.forEach(item => {
+    const target = findConsolidatedMatch(item.norm, item.title, consolidatedMap, tokenIndex)
+    if (target && item.price > 0) {
+      target.providers.tutiendagamer = {
+        providerName: 'Tu Tienda Gamer',
+        providerUrl: item.url,
+        available: true,
+        costPrimary: item.price,
+        costSecondary: Math.round(item.price * 0.55),
+        primaryPrice: item.price,
+        secondaryPrice: Math.round(item.price * 0.55)
+      }
+      ttgMerged++
+    }
+  })
+  log(`✓ Tu Tienda Gamer: ${ttgMerged} coincidencias vinculadas con precio`)
+
+  // 2.6 Fusionar precios de Fusion Games en todo el catálogo
+  let fusMerged = 0
+  fusionGames.forEach(item => {
+    const target = findConsolidatedMatch(item.norm, item.title, consolidatedMap, tokenIndex)
+    if (target && item.price > 0) {
+      target.providers.fusiongames = {
+        providerName: 'Fusion Games',
+        providerUrl: item.url,
+        available: true,
+        costPrimary: item.price,
+        costSecondary: Math.round(item.price * 0.55),
+        primaryPrice: item.price,
+        secondaryPrice: Math.round(item.price * 0.55)
+      }
+      fusMerged++
+    }
+  })
+  log(`✓ Fusion Games: ${fusMerged} coincidencias vinculadas con precio`)
+
   const consolidatedList = Array.from(consolidatedMap.values())
-  log(`✓ Catálogo final consolidado: ${consolidatedList.length} videojuegos de alta calidad`)
+  log(`✓ Catálogo final consolidado: ${consolidatedList.length} videojuegos con multi-proveedores scrapeados`)
 
   // 3. Generar Categorías y Subcategorías Ordenadas
   const categoryOrder = [

@@ -3364,12 +3364,38 @@ export const useAdminStore = defineStore('admin', {
       if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {
         this.gamingProducts = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
         this.persist(DB_KEYS.GAMING_PRODUCTS)
-      } else if (Array.isArray(this.gamingProducts)) {
+      } else if (Array.isArray(this.gamingProducts) && Array.isArray(gamingProductsData)) {
+        // Sincronizar nuevas webs scrapeadas (DGS, TTG, Fusion, TXT) y portadas PS Store manteniendo convenios del admin
         let changed = false
+        const baseMap = new Map()
+        gamingProductsData.forEach(bg => {
+          baseMap.set(bg.id, bg)
+          if (bg.slug) baseMap.set(bg.slug, bg)
+        })
+
         this.gamingProducts.forEach(g => {
-          if (g.primaryPriceLeaderName !== 'StreamePro' || g.secondaryPriceLeaderName !== 'StreamePro') {
-            g.primaryPriceLeaderName = 'StreamePro'
-            g.secondaryPriceLeaderName = 'StreamePro'
+          const fresh = baseMap.get(g.id) || (g.slug ? baseMap.get(g.slug) : null)
+          if (fresh) {
+            if (fresh.image && fresh.image.includes('playstation.com') && (!g.image || !g.image.includes('playstation.com'))) {
+              g.image = fresh.image
+              changed = true
+            }
+            if (fresh.providers && typeof fresh.providers === 'object') {
+              if (!g.providers) g.providers = {}
+              for (const [pk, pv] of Object.entries(fresh.providers)) {
+                if (pv && pv.available && (!g.providers[pk] || !g.providers[pk].available)) {
+                  g.providers[pk] = { ...pv }
+                  changed = true
+                }
+              }
+            }
+          }
+          if (g.visibleProviderName !== 'PlayStation Store Oficial' || g.primaryPriceLeaderName !== 'PlayStation Store Oficial') {
+            g.visibleProviderName = 'PlayStation Store Oficial'
+            g.visibleProviderShortName = 'PS Store'
+            g.visibleProviderBadge = '🎮 PlayStation Store Oficial'
+            g.primaryPriceLeaderName = 'PlayStation Store Oficial'
+            g.secondaryPriceLeaderName = 'PlayStation Store Oficial'
             changed = true
           }
         })

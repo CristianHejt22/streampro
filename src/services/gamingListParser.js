@@ -1,15 +1,53 @@
 // Servicio de Parsing y Similitud Inteligente de Listas de Videojuegos
 // Soporta listas en texto plano o archivos .txt de proveedores mayoristas
 
+// Expansión de siglas y alias comunes en el mundo gamer
+const GAMING_ALIASES = [
+  { regex: /\bmas\s+alla\s+de\s+gotham\b/gi, replace: () => 'beyond gotham' },
+  { regex: /\b(ea\s*sports\s*)?(fc|fifa)\s*(\d{2,4})\b/gi, replace: (m, p1, p2, p3) => `fc${p3}` },
+  { regex: /\b(gta\s*v|gta\s*5|grand\s*theft\s*auto\s*v?)\b/gi, replace: () => 'gta5' },
+  { regex: /\b(gow|god\s*of\s*war)\b/gi, replace: () => 'godofwar' },
+  { regex: /\b(cod|call\s*of\s*duty)\b/gi, replace: () => 'callofduty' },
+  { regex: /\b007\s*:?\s*first\s*light\b/gi, replace: () => '007firstlight' },
+  { regex: /\b(ac|assassin'?s?\s*creed)\b/gi, replace: () => 'assassinscreed' },
+  { regex: /\b(mk\s*1|mk1|mortal\s*kombat\s*1)\b/gi, replace: () => 'mortalkombat1' },
+  { regex: /\b(rdr\s*2|red\s*dead\s*redemption\s*2|red\s*dead\s*redemption\s*ii)\b/gi, replace: () => 'reddeadredemption2' },
+  { regex: /\b(spiderman|spider-man)\b/gi, replace: () => 'spiderman' },
+  { regex: /\b(tlou|the\s*last\s*of\s*us)\b/gi, replace: () => 'thelastofus' }
+]
+
+function normalizeRomanNumerals(str) {
+  return str
+    .replace(/\b(ii)\b/gi, '2')
+    .replace(/\b(iii)\b/gi, '3')
+    .replace(/\b(iv)\b/gi, '4')
+    .replace(/\b(v)\b/gi, '5')
+    .replace(/\b(vi)\b/gi, '6')
+    .replace(/\b(vii)\b/gi, '7')
+    .replace(/\b(viii)\b/gi, '8')
+}
+
+export function applyGamingAliases(str) {
+  if (!str) return ''
+  let s = str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[™®©]/g, '')
+  s = normalizeRomanNumerals(s)
+  for (const a of GAMING_ALIASES) {
+    if (a.regex.test(s)) {
+      s = s.replace(a.regex, a.replace)
+    }
+  }
+  return s
+}
+
 // Normalización estricta para comparaciones
 export function normalizeStrictTitle(str) {
   if (!str) return ''
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Quitar tildes y diacríticos
-    .replace(/[™®©]/g, '') // Quitar símbolos de marca registrada
-    .replace(/\b(ps5|ps4|ps3|digital|deluxe edition|standard edition|gold edition|ultimate edition|remastered|espanol|latino|subtitulado|pack|bundle)\b/gi, '')
+  return applyGamingAliases(str)
+    .replace(/\b(ps5|ps4|ps3|digital|original|deluxe edition|standard edition|gold edition|ultimate edition|complete edition|definitive edition|definitive experience|directors?\s*cut|next\s*gea?n|remastered|remake|espanol|latino|subtitulado|pack|bundle|trilogy|collection|retro|edition|edicion|the game)\b/gi, ' ')
     .replace(/[^a-z0-9]/g, '')
     .trim()
 }
@@ -17,39 +55,11 @@ export function normalizeStrictTitle(str) {
 // Normalización de tokens para búsqueda difusa
 export function cleanTokens(str) {
   if (!str) return []
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[™®©]/g, '')
-    .replace(/\b(ps5|ps4|ps3|digital|edition|edicion|remastered|espanol|latino|subtitulado)\b/gi, ' ')
+  return applyGamingAliases(str)
+    .replace(/\b(ps5|ps4|ps3|digital|original|edition|edicion|deluxe|standard|gold|ultimate|complete|definitive|remastered|remake|espanol|latino|subtitulado|pack|bundle|next|gen|gean|retro)\b/gi, ' ')
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter(t => t.length >= 2)
-}
-
-// Expansión de siglas y alias comunes en el mundo gamer
-const GAMING_ALIASES = [
-  { regex: /\b(ea\s*sports\s*fc|fc)\s*(\d{2,4})\b/i, replace: (m, p1, p2) => `fc${p2}` },
-  { regex: /\b(gta\s*v|gta\s*5|grand\s*theft\s*auto\s*v)\b/i, replace: () => 'gta5' },
-  { regex: /\b(gow|god\s*of\s*war)\b/i, replace: () => 'godofwar' },
-  { regex: /\b(cod|call\s*of\s*duty)\b/i, replace: () => 'callofduty' },
-  { regex: /\b007\s*:?\s*first\s*light\b/i, replace: () => '007firstlight' },
-  { regex: /\b(ac|assassin'?s?\s*creed)\b/i, replace: () => 'assassinscreed' },
-  { regex: /\b(mk\s*1|mk1|mortal\s*kombat\s*1)\b/i, replace: () => 'mortalkombat1' },
-  { regex: /\b(spiderman|spider-man)\b/i, replace: () => 'spiderman' },
-  { regex: /\b(tlou|the\s*last\s*of\s*us)\b/i, replace: () => 'thelastofus' }
-]
-
-export function applyGamingAliases(str) {
-  if (!str) return ''
-  let s = str.toLowerCase()
-  for (const a of GAMING_ALIASES) {
-    if (a.regex.test(s)) {
-      s = s.replace(a.regex, a.replace)
-    }
-  }
-  return s
+    .filter(t => t.length >= 2 || /^\d$/.test(t))
 }
 
 // Extrae el precio al final de la línea: ej. "- $42.500", ": $12.800", " - 15000", "$42.500"
@@ -234,6 +244,25 @@ export function matchGamingListWithCatalog(parsedGames, catalog, options = {}) {
     const isMatch = bestScore >= 70
     const matchedGame = isMatch ? bestGame : null
 
+    // Recopilar precios de todas las webs scrapeadas para comparar diferencias con la lista
+    const allProviders = matchedGame?.activeProvidersList || []
+    const webProviders = allProviders.filter(p => p.key !== 'mayorista_txt' && p.costPrimary > 0)
+    const lowestWebObj = webProviders.length > 0
+      ? webProviders.reduce((min, p) => (p.costPrimary < min.costPrimary ? p : min), webProviders[0])
+      : null
+    const highestWebObj = webProviders.length > 0
+      ? webProviders.reduce((max, p) => (p.costPrimary > max.costPrimary ? p : max), webProviders[0])
+      : null
+
+    const currentCost = matchedGame?.baseCostPrimary || highestWebObj?.costPrimary || 0
+    const lowestScrapedCost = lowestWebObj?.costPrimary || currentCost
+    const cheapestScrapedProviderName = lowestWebObj?.name || matchedGame?.bestFulfillmentPrimaryName || ''
+
+    const diffVsLowestScraped = lowestScrapedCost > 0 ? (item.price - lowestScrapedCost) : 0
+    const diffPercentVsLowest = lowestScrapedCost > 0 ? Math.round((Math.abs(diffVsLowestScraped) / lowestScrapedCost) * 100) : 0
+    const isCheaperInList = lowestScrapedCost > 0 && item.price < lowestScrapedCost
+    const isCheaperInWebs = lowestScrapedCost > 0 && item.price > lowestScrapedCost
+
     // Cálculo del PVP propuesto con el margen de la tienda
     const markup = Math.ceil((item.price * (storeMargin / 100)) / 100) * 100
     const proposedPvp = item.price + markup
@@ -253,7 +282,14 @@ export function matchGamingListWithCatalog(parsedGames, catalog, options = {}) {
       matchedGameId: matchedGame?.id || null,
       matchedGameTitle: matchedGame?.title || null,
       matchedGamePlatform: matchedGame?.platform || null,
-      currentCost: matchedGame?.baseCostPrimary || matchedGame?.providers?.argentinaplay?.costPrimary || matchedGame?.providers?.juegosdigitalesargentina?.costPrimary || 0,
+      scrapedProviders: webProviders,
+      currentCost,
+      lowestScrapedCost,
+      cheapestScrapedProviderName,
+      diffVsLowestScraped,
+      diffPercentVsLowest,
+      isCheaperInList,
+      isCheaperInWebs,
       currentPvp: matchedGame?.effectivePrimaryPrice || 0,
       similarityScore: bestScore,
       similarityReason: bestReason,
@@ -267,6 +303,115 @@ export function matchGamingListWithCatalog(parsedGames, catalog, options = {}) {
       proposedStoreNet
     }
   })
+}
+
+/**
+ * Búsqueda Inteligente para Admin:
+ * Soporta títulos con tildes/emojis/alias (FC25, GTA V, Dark Souls 3), líneas pegadas desde .txt,
+ * búsqueda por precio ($42.500 o 42500 en cualquier web scrapeada o PVP) y por nombre de proveedor/web scrapeada.
+ */
+export function smartSearchGamingMatch(game, rawQuery) {
+  if (!rawQuery || !rawQuery.trim()) return true
+  const trimmed = rawQuery.trim()
+
+  // 1. Detectar si el usuario ingresó una línea completa de .txt (ej: "🤖ASTRO BOT PS5 - $42.500")
+  const cleanedLine = trimmed.replace(/^[^a-zA-Z0-9$]+/, '').trim()
+  const extracted = extractPriceFromLine(cleanedLine)
+
+  // 2. Búsqueda numérica pura por precio (ej: "42500", "$42.500", "42.500")
+  const pureNumStr = trimmed.replace(/[$.,\s]/g, '')
+  const isPurePriceQuery = /^\d{3,7}$/.test(pureNumStr)
+
+  const allGamePrices = [
+    Number(game.effectivePrimaryPrice) || 0,
+    Number(game.effectiveSecondaryPrice) || 0,
+    Number(game.baseCostPrimary) || 0,
+    Number(game.baseCostSecondary) || 0,
+    Number(game.minCostPrimary) || 0,
+    Number(game.minCostSecondary) || 0
+  ]
+  if (game.providers && typeof game.providers === 'object') {
+    for (const p of Object.values(game.providers)) {
+      if (!p || p.available === false) continue
+      if (Number(p.costPrimary) > 0) allGamePrices.push(Number(p.costPrimary))
+      if (Number(p.costSecondary) > 0) allGamePrices.push(Number(p.costSecondary))
+      if (Number(p.primaryPrice) > 0) allGamePrices.push(Number(p.primaryPrice))
+    }
+  }
+
+  if (isPurePriceQuery) {
+    const targetNum = Number(pureNumStr)
+    const matchedByPrice = allGamePrices.some(pr => {
+      if (pr <= 0) return false
+      return pr === targetNum || String(pr).includes(pureNumStr)
+    })
+    if (matchedByPrice) return true
+    // También permitir que coincida con un juego con número en el título (ej: "2024", "007", "21")
+  }
+
+  // 3. Extraer texto de búsqueda (si pegó "Título - $Precio", tomar el título)
+  const searchTitlePart = (extracted && extracted.rawTitle && extracted.rawTitle.length >= 2)
+    ? extracted.rawTitle
+    : cleanedLine
+
+  const searchableFields = [
+    game.title || '',
+    game.id || '',
+    game.platform || '',
+    game.category || '',
+    game.subcategory || ''
+  ]
+  if (Array.isArray(game.activeProvidersList)) {
+    game.activeProvidersList.forEach(p => {
+      searchableFields.push(p.name || '', p.shortName || '', p.key || '')
+    })
+  } else if (game.providers && typeof game.providers === 'object') {
+    Object.entries(game.providers).forEach(([k, p]) => {
+      if (p && p.available !== false) searchableFields.push(k, p.providerName || '')
+    })
+  }
+
+  // 4. Búsqueda directa sin tildes ni reemplazos agresivos contra todos los campos (incluyendo nombres de webs)
+  const plainQuery = applyGamingAliases(trimmed).replace(/\s+/g, ' ').trim()
+  const combinedText = applyGamingAliases(searchableFields.join(' ')).replace(/\s+/g, ' ').trim()
+  if (plainQuery && combinedText.includes(plainQuery)) {
+    return true
+  }
+
+  // 5. Coincidencia exacta por palabras clave crudas (conservando 'digital', 'games', etc.)
+  const rawTokens = plainQuery.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(t => t.length >= 2)
+  if (rawTokens.length > 0) {
+    const combinedRawTokens = combinedText.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+    const allRawFound = rawTokens.every(rt => combinedRawTokens.some(ct => ct.includes(rt)))
+    if (allRawFound) return true
+  }
+
+  // 6. Coincidencia inteligente normalizada en título (tildes/romanos/ediciones)
+  const normQuery = normalizeStrictTitle(searchTitlePart)
+  const normGame = normalizeStrictTitle(game.title || '')
+  if (normQuery && normGame && normQuery.length >= 3 && rawTokens.some(t => !['digital', 'games', 'edition', 'edicion', 'ps5', 'ps4', 'ps3'].includes(t))) {
+    if (normGame.includes(normQuery)) return true
+  }
+
+  const queryTokens = cleanTokens(searchTitlePart)
+  if (queryTokens.length >= 2 || (queryTokens.length === 1 && !['games', 'game'].includes(queryTokens[0]))) {
+    const gameTokenSet = new Set(cleanTokens(searchableFields.join(' ')))
+    const allTokensFound = queryTokens.every(qt => {
+      for (const gt of gameTokenSet) {
+        if (gt.includes(qt) || qt.includes(gt)) return true
+      }
+      return false
+    })
+    if (allTokensFound) return true
+  }
+
+  // 6. Fallback similitud inteligente si pegó un título largo desde .txt
+  if (searchTitlePart.length >= 4) {
+    const sim = calculateGameSimilarity(searchTitlePart, '', game)
+    if (sim.score >= 70) return true
+  }
+
+  return false
 }
 
 // Clasificación taxonómica automática de videojuegos

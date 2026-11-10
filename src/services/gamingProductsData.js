@@ -8,7 +8,7 @@ export const GAMING_PROVIDERS = {
     name: 'Argentina Play',
     shortName: 'ArgPlay',
     url: 'https://www.argentinaplay.com.ar/',
-    badge: '🇦🇷 Argentina Play Oficial',
+    badge: '🇦🇷 Argentina Play',
     tagColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
   },
   juegosdigitalesargentina: {
@@ -16,8 +16,40 @@ export const GAMING_PROVIDERS = {
     name: 'Juegos Digitales Argentina',
     shortName: 'JDA',
     url: 'https://juegosdigitalesargentina.com/',
-    badge: '🎮 Juegos Digitales Arg (JDA)',
+    badge: '🎮 JDA',
     tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+  },
+  digitalgamesshop: {
+    id: 'digitalgamesshop',
+    name: 'Digital Games Shop',
+    shortName: 'DGS',
+    url: 'https://digitalgamesshop.ar/',
+    badge: '⚡ Digital Games',
+    tagColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+  },
+  tutiendagamer: {
+    id: 'tutiendagamer',
+    name: 'Tu Tienda Gamer',
+    shortName: 'TTG',
+    url: 'https://tutiendagamer.com.ar/',
+    badge: '🕹️ Tu Tienda Gamer',
+    tagColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+  },
+  fusiongames: {
+    id: 'fusiongames',
+    name: 'Fusion Games',
+    shortName: 'Fusion',
+    url: 'https://fusiongames.com.ar/',
+    badge: '🔥 Fusion Games',
+    tagColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+  },
+  mayorista_txt: {
+    id: 'mayorista_txt',
+    name: 'Lista Ofertas TXT',
+    shortName: 'Lista TXT',
+    url: '',
+    badge: '📋 Lista TXT',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
   }
 }
 
@@ -805,12 +837,14 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     if (!p) continue
     const cPri = Number(p.costPrimary || p.primaryPrice || 0)
     const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
-    if (p.available !== false || cPri > 0 || cSec > 0) {
+    if (p.available !== false && (cPri > 0 || cSec > 0)) {
+      const meta = GAMING_PROVIDERS[key]
       activeProvidersList.push({
         key,
-        name: p.providerName || (key === 'argentinaplay' ? 'Argentina Play' : key === 'juegosdigitalesargentina' ? 'Juegos Digitales Argentina' : 'Proveedor Acordado'),
-        shortName: key === 'argentinaplay' ? 'ArgPlay' : key === 'juegosdigitalesargentina' ? 'JDA' : 'Mayorista',
-        url: p.providerUrl || '',
+        name: p.providerName || meta?.name || 'Proveedor Acordado',
+        shortName: meta?.shortName || (p.providerName ? p.providerName.slice(0, 10) : 'Mayorista'),
+        tagColor: meta?.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        url: p.providerUrl || meta?.url || '',
         whatsapp: p.providerWhatsapp || '',
         costPrimary: cPri,
         costSecondary: cSec,
@@ -818,6 +852,7 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
       })
     }
   }
+  activeProvidersList.sort((a, b) => (a.costPrimary || 9999999) - (b.costPrimary || 9999999))
 
   // Costos primarios y secundarios válidos
   const primaryCosts = activeProvidersList.map(p => p.costPrimary).filter(c => c > 0)
@@ -973,6 +1008,12 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     bestFulfillmentSecondary,
     bestFulfillmentSecondaryName: bestFulfillmentSecondaryName || GAMING_PROVIDERS[bestFulfillmentSecondary]?.name || bestFulfillmentSecondary,
     bestMarginSecondary,
+    minCostPrimary,
+    minCostSecondary,
+    cheapestProviderKey: cheapestP?.key || bestFulfillmentPrimary,
+    cheapestProviderName: cheapestP?.name || bestFulfillmentPrimaryName || 'Proveedor Óptimo',
+    highestProviderKey: highestProvider?.key || visibleProviderKey,
+    highestProviderName: highestProvider?.name || 'Mayor Costo Base',
     diffPrimary,
     diffSecondary,
     diffPrimaryPercent,
@@ -1039,15 +1080,14 @@ export function deduplicateGamingProducts(productsList) {
         mergedPlatform = Array.from(platformsSet).join(' / ')
       }
 
-      // Combinar proveedores
-      const mergedProviders = {
-        argentinaplay: {
-          ...(existing.providers?.argentinaplay || {}),
-          ...(item.providers?.argentinaplay || {})
-        },
-        juegosdigitalesargentina: {
-          ...(existing.providers?.juegosdigitalesargentina || {}),
-          ...(item.providers?.juegosdigitalesargentina || {})
+      // Combinar TODOS los proveedores scrapeados y listas sin descartar ninguno
+      const mergedProviders = { ...(existing.providers || {}) }
+      if (item.providers && typeof item.providers === 'object') {
+        for (const [pKey, pVal] of Object.entries(item.providers)) {
+          mergedProviders[pKey] = {
+            ...(mergedProviders[pKey] || {}),
+            ...(pVal || {})
+          }
         }
       }
 

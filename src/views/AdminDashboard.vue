@@ -6,7 +6,7 @@ import { useToastStore } from '../store/toast'
 import { loadDb, DB_KEYS, generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { testFirebaseConnection } from '../services/firebase'
-import { parseGamingTextList, matchGamingListWithCatalog } from '../services/gamingListParser'
+import { parseGamingTextList, matchGamingListWithCatalog, smartSearchGamingMatch, resolveOfficialGameImage } from '../services/gamingListParser'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 
@@ -881,6 +881,7 @@ const gamingAdminSearch = ref('')
 const gamingAdminCategoryFilter = ref('Todas')
 const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
+const gamingAdminProviderFilter = ref('ALL') // 'ALL' | 'argentinaplay' | 'juegosdigitalesargentina' | 'digitalgamesshop' | 'tutiendagamer' | 'fusiongames' | 'mayorista_txt'
 const onlyHighestCostProvider = ref(true)
 const gamingComparisonViewMode = ref('table') // 'table' | 'cards'
 const gamingAdminDifferenceFilter = ref('ALL') // 'ALL' | 'with_diff' | 'conveyed' | 'single'
@@ -901,6 +902,58 @@ const openProviderModal = (game) => {
   showProviderQuickModal.value = true
 }
 
+const openProviderModalFromBulk = (item) => {
+  const listProvEntry = {
+    key: 'lista_txt_actual',
+    name: `${bulkProviderConfig.value.name || 'Lista TXT'} (Lista Actual)`,
+    shortName: 'Lista Actual',
+    url: bulkProviderConfig.value.url || '',
+    whatsapp: bulkProviderConfig.value.whatsapp || '',
+    costPrimary: item.newWholesaleCost,
+    costSecondary: Math.round(item.newWholesaleCost * 0.55),
+    stock: 'En Lista'
+  }
+
+  if (item.matchedGame) {
+    const baseProviders = (item.matchedGame.activeProvidersList || []).filter(p => p.key !== 'mayorista_txt')
+    const mergedList = [listProvEntry, ...baseProviders].sort((a, b) => (a.costPrimary || 9999999) - (b.costPrimary || 9999999))
+    const costs = mergedList.map(p => p.costPrimary).filter(c => c > 0)
+    const maxC = costs.length ? Math.max(...costs) : item.newWholesaleCost
+    const minC = costs.length ? Math.min(...costs) : item.newWholesaleCost
+    const diffP = Math.max(0, maxC - minC)
+    const diffPct = minC > 0 ? Math.round((diffP / minC) * 100) : 0
+    const cheapest = mergedList[0]
+
+    selectedGameForProvider.value = {
+      ...item.matchedGame,
+      baseCostPrimary: maxC,
+      diffPrimary: diffP,
+      diffPrimaryPercent: diffPct,
+      bestFulfillmentPrimary: cheapest?.key || item.matchedGame.bestFulfillmentPrimary,
+      bestFulfillmentPrimaryName: cheapest?.name || item.matchedGame.bestFulfillmentPrimaryName,
+      activeProvidersList: mergedList
+    }
+  } else {
+    selectedGameForProvider.value = {
+      id: item.id,
+      title: item.cleanTitle || item.rawTitle,
+      platform: item.platform || 'PS4 / PS5',
+      category: 'Nuevo Título (.TXT)',
+      subcategory: 'Carga Mayorista',
+      image: resolveOfficialGameImage(item.cleanTitle || item.rawTitle, adminStore.processedGamingProducts),
+      effectivePrimaryPrice: item.proposedPvp,
+      effectiveSecondaryPrice: Math.round(item.proposedPvp * 0.55),
+      baseCostPrimary: item.newWholesaleCost,
+      diffPrimary: 0,
+      diffPrimaryPercent: 0,
+      bestFulfillmentPrimary: 'lista_txt_actual',
+      bestFulfillmentPrimaryName: listProvEntry.name,
+      activeProvidersList: [listProvEntry]
+    }
+  }
+  showProviderQuickModal.value = true
+}
+
 const selectPreferredProvider = (game, providerKey) => {
   if (!game || !providerKey) return
   adminStore.setPreferredGamingProvider(game.id, providerKey)
@@ -912,7 +965,7 @@ const selectPreferredProvider = (game, providerKey) => {
 
 const openProviderWhatsApp = (game, provider) => {
   if (!provider) return
-  const wa = (provider.whatsapp || '').replace(/[^0-9]/g, '')
+  const wa = (provider.whatsapp || bulkProviderConfig.value.whatsapp || '').replace(/[^0-9]/g, '')
   const title = game?.title || 'Videojuego'
   const plat = game?.platform || 'PS5'
   const cost = (provider.costPrimary || 0).toLocaleString()
@@ -1006,7 +1059,17 @@ const handleBulkTxtFileUpload = (event) => {
 
   const reader = new FileReader()
   reader.onload = (e) => {
-    rawGamingListText.value = e.target?.result || ''
+    const text = e.target?.result || ''
+    if (text.includes('\uFFFD')) {
+      const latinReader = new FileReader()
+      latinReader.onload = (ev) => {
+        rawGamingListText.value = ev.target?.result || ''
+        toast.add(`✓ Archivo "${file.name}" cargado en formato ANSI/Latin-1 (${rawGamingListText.value.length} caracteres).`, 'info')
+      }
+      latinReader.readAsText(file, 'ISO-8859-1')
+      return
+    }
+    rawGamingListText.value = text
     toast.add(`✓ Archivo "${file.name}" cargado (${rawGamingListText.value.length} caracteres).`, 'info')
   }
   reader.onerror = () => {
@@ -1155,15 +1218,22 @@ const filteredAnalyzedBulkGames = computed(() => {
     list = list.filter(i => !i.isNewGame)
   } else if (bulkFilterStatus.value === 'new') {
     list = list.filter(i => i.isNewGame)
+  } else if (bulkFilterStatus.value === 'cheaper_list') {
+    list = list.filter(i => i.isCheaperInList)
+  } else if (bulkFilterStatus.value === 'cheaper_webs') {
+    list = list.filter(i => i.isCheaperInWebs)
   }
 
-  const q = bulkSearchQuery.value.toLowerCase().trim()
-  if (q) {
-    list = list.filter(i => 
-      i.rawTitle.toLowerCase().includes(q) || 
-      (i.matchedGameTitle && i.matchedGameTitle.toLowerCase().includes(q)) ||
-      String(i.price).includes(q)
-    )
+  const rawQ = bulkSearchQuery.value.trim()
+  if (rawQ) {
+    const cleanNum = rawQ.replace(/[$.,\s]/g, '')
+    const isNumSearch = /^\d{3,7}$/.test(cleanNum)
+    list = list.filter(i => {
+      if (isNumSearch && String(i.price).includes(cleanNum)) return true
+      if (smartSearchGamingMatch({ title: i.rawTitle, activeProvidersList: i.scrapedProviders || [], baseCostPrimary: i.price, effectivePrimaryPrice: i.proposedPvp }, rawQ)) return true
+      if (i.matchedGame && smartSearchGamingMatch(i.matchedGame, rawQ)) return true
+      return false
+    })
   }
   return list
 })
@@ -1347,14 +1417,20 @@ const filteredGamingForAdmin = computed(() => {
       matchesCat = game.category === gamingAdminCategoryFilter.value
     }
     const matchesSubcat = gamingAdminSubcategoryFilter.value === 'Todas' || !gamingAdminSubcategoryFilter.value || game.subcategory === gamingAdminSubcategoryFilter.value
-    const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || game.platform.includes(gamingAdminPlatformFilter.value)
-    const q = gamingAdminSearch.value.toLowerCase().trim()
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
+    const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingAdminPlatformFilter.value))
+    const matchesQ = smartSearchGamingMatch(game, gamingAdminSearch.value)
+
+    // Filtro por Proveedor / Web Scrapeada específica
+    if (gamingAdminProviderFilter.value !== 'ALL') {
+      const hasProv = (game.activeProvidersList || []).some(p => p.key === gamingAdminProviderFilter.value)
+      if (!hasProv) return false
+    }
     
-    // Filtro por Rango de Precios
+    // Filtro por Rango de Precios (sobre PVP o cualquier costo mayorista scrapeado)
     const price = Number(game.effectivePrimaryPrice || 0)
-    if (gamingAdminMinPrice.value && price < Number(gamingAdminMinPrice.value)) return false
-    if (gamingAdminMaxPrice.value && price > Number(gamingAdminMaxPrice.value)) return false
+    const costMin = Number(game.minCostPrimary || game.baseCostPrimary || 0)
+    if (gamingAdminMinPrice.value && price < Number(gamingAdminMinPrice.value) && costMin < Number(gamingAdminMinPrice.value)) return false
+    if (gamingAdminMaxPrice.value && price > Number(gamingAdminMaxPrice.value) && costMin > Number(gamingAdminMaxPrice.value)) return false
 
     // Filtro por Diferencias / Arbitraje
     if (gamingAdminDifferenceFilter.value === 'with_diff') {
@@ -1398,7 +1474,7 @@ const paginatedGamingForAdmin = computed(() => {
   const start = (gamingAdminCurrentPage.value - 1) * gamingAdminPageSize.value
   return list.slice(start, start + gamingAdminPageSize.value)
 })
-watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilter, gamingAdminPlatformFilter, onlyHighestCostProvider, gamingAdminSubTab, gamingAdminPriceSort, gamingAdminMinPrice, gamingAdminMaxPrice, gamingAdminDifferenceFilter, gamingComparisonViewMode], () => {
+watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilter, gamingAdminPlatformFilter, gamingAdminProviderFilter, onlyHighestCostProvider, gamingAdminSubTab, gamingAdminPriceSort, gamingAdminMinPrice, gamingAdminMaxPrice, gamingAdminDifferenceFilter, gamingComparisonViewMode], () => {
   gamingAdminCurrentPage.value = 1
 })
 
@@ -6759,22 +6835,37 @@ const deletePackageItem = (pkgId) => {
               <input 
                 v-model="gamingAdminSearch"
                 type="text" 
-                placeholder="Buscar título para comparar similitud, proveedor y diferencias..."
+                placeholder="Buscar título, alias (FC25, GTA V), precio ($42.500) o web (DGS, TTG, Fusion, ArgPlay, JDA, TXT)..."
                 class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 pl-9 text-xs text-white outline-none focus:border-indigo-400"
               >
               <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
             </div>
 
             <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
-              <!-- Toggle: Proveedor Único Visible (Mayor Costo) -->
+              <!-- Toggle: Proveedor Único Visible vs Ver Todas las Webs Scrapeadas -->
               <button 
                 type="button" 
                 @click="onlyHighestCostProvider = !onlyHighestCostProvider"
                 :class="['px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer', onlyHighestCostProvider ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white']"
-                title="Alternar entre mostrar únicamente el proveedor con mayor costo o ambos proveedores"
+                title="Alternar entre vista resumida o comparar todas las webs scrapeadas lado a lado"
               >
-                <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único Visible (Mayor Costo)' : '👁️ Ver Ambos Proveedores' }}</span>
+                <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único (Mayor Costo)' : '👁️ Comparando Webs Scrapeadas' }}</span>
               </button>
+
+              <!-- Filtrar por Web Scrapeada o Lista TXT -->
+              <select 
+                v-model="gamingAdminProviderFilter" 
+                class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold cursor-pointer"
+                title="Filtrar por web scrapeada o lista TXT"
+              >
+                <option value="ALL">🌐 Todas las Fuentes</option>
+                <option value="argentinaplay">🇦🇷 Argentina Play</option>
+                <option value="juegosdigitalesargentina">🎮 JDA</option>
+                <option value="digitalgamesshop">⚡ Digital Games Shop</option>
+                <option value="tutiendagamer">🕹️ Tu Tienda Gamer</option>
+                <option value="fusiongames">🔥 Fusion Games</option>
+                <option value="mayorista_txt">📋 Lista Ofertas .TXT</option>
+              </select>
 
               <!-- Ordenar por Precio / Margen / Diferencia -->
               <select 
@@ -6882,13 +6973,9 @@ const deletePackageItem = (pkgId) => {
             <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th class="p-3.5">Videojuego & Plataforma</th>
-                <th v-if="onlyHighestCostProvider" class="p-3.5 text-indigo-300 bg-indigo-950/20 border-x border-slate-800">
-                  🏢 Proveedor & Brecha de Costos
+                <th class="p-3.5 text-indigo-300 bg-indigo-950/20 border-x border-slate-800">
+                  {{ onlyHighestCostProvider ? '🏢 Proveedor, Webs Scrapeadas & Brecha' : '🌐 Comparativa Todas las Webs Scrapeadas & Lista .TXT' }}
                 </th>
-                <template v-else>
-                  <th class="p-3.5 text-blue-300 bg-blue-950/20 border-x border-slate-800">🇦🇷 Argentina Play</th>
-                  <th class="p-3.5 text-amber-300 bg-amber-950/20 border-r border-slate-800">🎮 Juegos Digitales Arg</th>
-                </template>
                 <th class="p-3.5 text-emerald-400 bg-emerald-950/30 border-r border-slate-800">
                   ⭐️ Precio Plataforma (Mayor Precio)
                 </th>
@@ -6918,13 +7005,13 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </td>
 
-                <!-- Columna Proveedor Único & Diferencia de Costos (Botón de Proveedor Interactivo) -->
+                <!-- Columna Proveedor, Webs Scrapeadas & Diferencia de Costos -->
                 <td v-if="onlyHighestCostProvider" class="p-3.5 bg-slate-900/60 border-x border-slate-800 font-mono">
                   <button 
                     type="button" 
                     @click="openProviderModal(game)"
                     class="w-full text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 transition cursor-pointer group shadow-sm space-y-1.5"
-                    title="Clic para gestionar cotizaciones de proveedores y fijar el activo"
+                    title="Clic para abrir el Botón Proveedor y ver todas las webs scrapeadas"
                   >
                     <div class="flex items-center justify-between gap-1">
                       <span class="text-[10px] font-bold text-white flex items-center gap-1.5 truncate">
@@ -6932,85 +7019,91 @@ const deletePackageItem = (pkgId) => {
                         <span class="truncate">{{ game.bestFulfillmentPrimaryName || 'PlayStation Store Oficial' }}</span>
                       </span>
                       <span class="text-[9px] text-indigo-400 group-hover:text-indigo-300 font-bold shrink-0 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-500/30">
-                        Gestionar ⚙️
+                        {{ (game.activeProvidersList || []).length }} webs ⚙️
+                      </span>
+                    </div>
+
+                    <!-- Mini-Pills de Todas las Webs Scrapeadas y Lista .TXT -->
+                    <div v-if="game.activeProvidersList && game.activeProvidersList.length > 0" class="flex flex-wrap gap-1 pt-0.5">
+                      <span 
+                        v-for="p in game.activeProvidersList" 
+                        :key="p.key"
+                        :class="[
+                          'text-[9px] px-1.5 py-0.5 rounded border font-mono',
+                          p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-black'
+                            : 'bg-slate-900 text-slate-300 border-slate-700'
+                        ]"
+                      >
+                        {{ p.shortName }}: ${{ (p.costPrimary || 0).toLocaleString() }}
                       </span>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80 text-[10px]">
                       <div>
-                        <span class="text-slate-400 block text-[9px]">Costo Primaria:</span>
+                        <span class="text-slate-400 block text-[9px]">Mayor Costo:</span>
                         <strong class="text-white font-black">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
                       </div>
                       <div>
-                        <span class="text-slate-400 block text-[9px]">Costo Secundaria:</span>
-                        <span class="text-indigo-300 font-bold">${{ (game.baseCostSecondary || 0).toLocaleString() }}</span>
+                        <span class="text-slate-400 block text-[9px]">Menor Costo:</span>
+                        <strong class="text-emerald-400 font-black">${{ (game.minCostPrimary || game.baseCostPrimary || 0).toLocaleString() }}</strong>
                       </div>
                     </div>
 
                     <!-- DIFERENCIA / ARBITRAJE VISIBLE -->
-                    <div v-if="game.diffPrimary > 0" class="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                    <div v-if="game.diffPrimary > 0" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
                       <span class="text-amber-400 font-bold flex items-center gap-1">
-                        <span>⚡</span> Brecha: +${{ game.diffPrimary.toLocaleString() }}
+                        <span>⚡</span> Diferencia: +${{ game.diffPrimary.toLocaleString() }}
                       </span>
                       <span class="bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded text-[9px] font-bold border border-amber-500/40">
-                        +{{ game.diffPrimaryPercent }}% Arbitraje
+                        +{{ game.diffPrimaryPercent }}% Brecha
                       </span>
                     </div>
-                    <div v-else class="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-500">
-                      <span>🔹 Proveedor Único</span>
-                      <span>Sin brecha</span>
+                    <div v-else class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-500">
+                      <span>🔹 1 Fuente Cotizada</span>
+                      <span>Sin diferencia</span>
                     </div>
                   </button>
                 </td>
 
-                <!-- Columnas Separadas Si Alterna a "Ver Ambos" -->
-                <template v-else>
-                  <!-- Columna Argentina Play -->
-                  <td class="p-3.5 bg-blue-950/10 border-x border-slate-800 font-mono">
-                    <div v-if="game.providers?.argentinaplay?.available" class="space-y-1">
-                      <div class="flex items-center justify-between gap-1">
-                        <span class="text-[9px] text-blue-300 font-bold">ArgPlay</span>
-                        <span v-if="game.diffPrimary > 0 && game.bestFulfillmentPrimary === 'argentinaplay'" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">
-                          🏆 Mejor Compra
+                <!-- Comparativa Completa de TODAS las Webs Scrapeadas & Lista .TXT -->
+                <td v-else class="p-3 bg-slate-900/50 border-x border-slate-800 font-mono min-w-[290px]">
+                  <div class="space-y-1.5">
+                    <div 
+                      v-for="p in (game.activeProvidersList || [])" 
+                      :key="p.key"
+                      :class="[
+                        'p-2 rounded-xl border flex items-center justify-between gap-2 text-[10px]',
+                        p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
+                          ? 'bg-emerald-950/30 border-emerald-500/40'
+                          : 'bg-slate-950/80 border-slate-800'
+                      ]"
+                    >
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1">
+                          <span class="font-bold text-white truncate">{{ p.name }}</span>
+                          <span v-if="p.costPrimary === game.minCostPrimary && game.diffPrimary > 0" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-black px-1.5 py-0.2 rounded border border-emerald-500/30 shrink-0">
+                            🏆 Más Barato
+                          </span>
+                        </div>
+                        <span class="text-[9px] text-slate-400">Sec: ${{ (p.costSecondary || 0).toLocaleString() }}</span>
+                      </div>
+                      <div class="text-right shrink-0">
+                        <strong :class="['font-black text-xs block', p.costPrimary === game.minCostPrimary ? 'text-emerald-400' : 'text-white']">
+                          ${{ (p.costPrimary || 0).toLocaleString() }}
+                        </strong>
+                        <span v-if="p.costPrimary > game.minCostPrimary" class="text-[8px] text-amber-400 block">
+                          +${{ (p.costPrimary - game.minCostPrimary).toLocaleString() }} dif.
                         </span>
                       </div>
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Costo Prim:</span>
-                        <strong class="text-white font-black">${{ game.providers?.argentinaplay?.primaryPrice?.toLocaleString() }}</strong>
-                      </div>
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Costo Sec:</span>
-                        <span class="text-blue-300">${{ game.providers?.argentinaplay?.secondaryPrice?.toLocaleString() }}</span>
-                      </div>
                     </div>
-                    <div v-else class="text-center py-2 text-slate-500 text-[10px] italic">
-                      No listado en ArgPlay
-                    </div>
-                  </td>
 
-                  <!-- Columna Juegos Digitales Argentina -->
-                  <td class="p-3.5 bg-amber-950/10 border-r border-slate-800 font-mono">
-                    <div v-if="game.providers?.juegosdigitalesargentina?.available" class="space-y-1">
-                      <div class="flex items-center justify-between gap-1">
-                        <span class="text-[9px] text-amber-300 font-bold">JDA</span>
-                        <span v-if="game.diffPrimary > 0 && game.bestFulfillmentPrimary === 'juegosdigitalesargentina'" class="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">
-                          🏆 Mejor Compra
-                        </span>
-                      </div>
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Costo Prim:</span>
-                        <strong class="text-white font-black">${{ game.providers?.juegosdigitalesargentina?.primaryPrice?.toLocaleString() }}</strong>
-                      </div>
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="text-slate-400 text-[10px]">Costo Sec:</span>
-                        <span class="text-amber-300">${{ game.providers?.juegosdigitalesargentina?.secondaryPrice?.toLocaleString() }}</span>
-                      </div>
+                    <div v-if="game.diffPrimary > 0" class="flex items-center justify-between px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[10px]">
+                      <span class="text-amber-300 font-bold">⚡ Brecha Total entre Webs:</span>
+                      <strong class="text-amber-300 font-black">+${{ game.diffPrimary.toLocaleString() }} (+{{ game.diffPrimaryPercent }}%)</strong>
                     </div>
-                    <div v-else class="text-center py-2 text-slate-500 text-[10px] italic">
-                      No listado en JDA
-                    </div>
-                  </td>
-                </template>
+                  </div>
+                </td>
 
                 <!-- PRECIO EN PLATAFORMA (MAYOR PRECIO) -->
                 <td class="p-3.5 bg-emerald-950/20 border-r border-slate-800 font-mono">
@@ -7124,6 +7217,22 @@ const deletePackageItem = (pkgId) => {
                   <span v-if="game.subcategory" class="text-[9px] text-amber-400/90 font-medium bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">{{ game.subcategory }}</span>
                 </div>
               </div>
+            </div>
+
+            <!-- Webs Scrapeadas y Lista .TXT Cotizadas -->
+            <div v-if="game.activeProvidersList && game.activeProvidersList.length > 0" class="flex flex-wrap gap-1.5">
+              <span 
+                v-for="p in game.activeProvidersList" 
+                :key="p.key"
+                :class="[
+                  'text-[10px] px-2 py-0.5 rounded-lg border font-mono',
+                  p.costPrimary === game.minCostPrimary && game.diffPrimary > 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-black'
+                    : 'bg-slate-950 text-slate-300 border-slate-700'
+                ]"
+              >
+                {{ p.shortName }}: ${{ (p.costPrimary || 0).toLocaleString() }}
+              </span>
             </div>
 
             <!-- Indicador de Brecha y Diferencia de Precios -->
@@ -7838,7 +7947,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
           <!-- Barra de Control y Filtros de la Tabla Analizada -->
           <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-[#020617] p-4 rounded-2xl border border-slate-800">
-            <!-- Pestañas de Filtro -->
+            <!-- Pestañas de Filtro (Incluye Comparativa vs Webs Scrapeadas) -->
             <div class="flex flex-wrap items-center gap-1.5">
               <button 
                 type="button" 
@@ -7856,6 +7965,22 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               </button>
               <button 
                 type="button" 
+                @click="bulkFilterStatus = 'cheaper_list'"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'cheaper_list' ? 'bg-teal-600 text-white shadow' : 'bg-slate-900 text-teal-400 hover:text-teal-300 border border-teal-500/20']"
+                title="Juegos donde tu lista .txt tiene menor precio que todas las webs scrapeadas"
+              >
+                💰 Más Barato en Lista ({{ bulkAnalyzedGames.filter(i => i.isCheaperInList).length }})
+              </button>
+              <button 
+                type="button" 
+                @click="bulkFilterStatus = 'cheaper_webs'"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'cheaper_webs' ? 'bg-amber-500 text-slate-950 font-black shadow' : 'bg-slate-900 text-amber-400 hover:text-amber-300 border border-amber-500/20']"
+                title="Juegos donde alguna web scrapeada es aún más económica que tu lista"
+              >
+                🌐 Más Barato en Webs ({{ bulkAnalyzedGames.filter(i => i.isCheaperInWebs).length }})
+              </button>
+              <button 
+                type="button" 
                 @click="bulkFilterStatus = 'new'"
                 :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'new' ? 'bg-blue-600 text-white shadow' : 'bg-slate-900 text-slate-400 hover:text-white']"
               >
@@ -7863,13 +7988,13 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               </button>
             </div>
 
-            <!-- Búsqueda y Selección -->
+            <!-- Búsqueda Inteligente por Título, Precio o Web Scrapeada -->
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <input 
                 v-model="bulkSearchQuery" 
                 type="text" 
-                placeholder="Buscar en la lista..."
-                class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-48"
+                placeholder="Buscar título, precio ($42.500) o web..."
+                class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-indigo-400 w-56 sm:w-64"
               >
               <button 
                 type="button" 
@@ -7895,7 +8020,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             </div>
           </div>
 
-          <!-- Tabla de Resultados y Emparejamiento Inteligente -->
+          <!-- Tabla de Resultados, Similitud y Comparativa con Webs Scrapeadas -->
           <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
             <table class="w-full text-left text-xs text-slate-300">
               <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
@@ -7908,13 +8033,12 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                       class="rounded accent-indigo-600"
                     >
                   </th>
-                  <th class="p-3">Título en Lista & Precio</th>
+                  <th class="p-3">Título en Lista & Precio Lista</th>
                   <th class="p-3">Similitud Inteligente</th>
-                  <th class="p-3">Juego en Catálogo Oficial</th>
-                  <th class="p-3 text-right">Nuevo Costo</th>
-                  <th class="p-3 text-right text-emerald-400">PVP Público (+{{ adminStore.gamingStoreMarginPercent }}%)</th>
-                  <th class="p-3 text-right text-purple-300">Comisión Rev.</th>
-                  <th class="p-3 text-right text-teal-300">Neto Tienda</th>
+                  <th class="p-3">Juego en Catálogo & Webs Scrapeadas</th>
+                  <th class="p-3">Diferencia de Precios</th>
+                  <th class="p-3 text-right text-emerald-400">PVP Público & Neto</th>
+                  <th class="p-3 text-right">Botón Proveedor</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-850">
@@ -7930,9 +8054,10 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   <!-- Título Original y Precio en la lista -->
                   <td class="p-3">
                     <div class="font-bold text-white text-xs">{{ item.rawTitle }}</div>
-                    <div class="flex items-center gap-1.5 mt-0.5">
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
                       <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">{{ item.platform }}</span>
-                      <span class="text-[10px] text-slate-400 font-mono">Línea {{ item.lineNumber }}</span>
+                      <span class="text-xs font-mono font-black text-emerald-400">${{ item.newWholesaleCost.toLocaleString() }} Lista</span>
+                      <span class="text-[10px] text-slate-500 font-mono">L{{ item.lineNumber }}</span>
                     </div>
                   </td>
 
@@ -7965,37 +8090,77 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                     <span class="text-[9px] text-slate-500 block mt-0.5">{{ item.similarityReason }}</span>
                   </td>
 
-                  <!-- Juego Asociado en Catálogo -->
-                  <td class="p-3">
-                    <div v-if="item.matchedGame" class="space-y-0.5">
+                  <!-- Juego Asociado + Webs Scrapeadas -->
+                  <td class="p-3 min-w-[230px]">
+                    <div v-if="item.matchedGame" class="space-y-1">
                       <strong class="text-white text-xs block line-clamp-1">{{ item.matchedGame.title }}</strong>
-                      <span class="text-[10px] text-slate-400 font-mono">
-                        Costo actual: ${{ (item.currentCost || 0).toLocaleString() }} · PVP: ${{ (item.currentPvp || 0).toLocaleString() }}
+                      <div v-if="item.scrapedProviders && item.scrapedProviders.length > 0" class="flex flex-wrap gap-1">
+                        <span 
+                          v-for="sp in item.scrapedProviders" 
+                          :key="sp.key"
+                          :class="[
+                            'text-[9px] font-mono px-1.5 py-0.5 rounded border',
+                            sp.costPrimary === item.lowestScrapedCost
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                              : 'bg-slate-900 text-slate-300 border-slate-700'
+                          ]"
+                        >
+                          {{ sp.shortName }}: ${{ (sp.costPrimary || 0).toLocaleString() }}
+                        </span>
+                      </div>
+                      <span v-else class="text-[10px] text-slate-400 font-mono block">
+                        Costo base: ${{ (item.currentCost || 0).toLocaleString() }} · PVP: ${{ (item.currentPvp || 0).toLocaleString() }}
                       </span>
                     </div>
                     <div v-else class="text-blue-300 text-xs italic">
-                      + Se creará como juego nuevo en el catálogo
+                      + Se creará como juego nuevo con portada oficial PS Store
                     </div>
                   </td>
 
-                  <!-- Nuevo Costo de Proveedor -->
-                  <td class="p-3 text-right font-mono font-bold text-white">
-                    ${{ item.newWholesaleCost.toLocaleString() }}
+                  <!-- Diferencia de Precios (Lista vs Webs Scrapeadas) -->
+                  <td class="p-3 font-mono">
+                    <div v-if="item.isCheaperInList" class="space-y-0.5">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black text-[11px]">
+                        💰 Ahorras -${{ Math.abs(item.diffVsLowestScraped).toLocaleString() }} (-{{ item.diffPercentVsLowest }}%)
+                      </span>
+                      <span class="text-[9px] text-slate-400 block">
+                        Mejor que {{ item.cheapestScrapedProviderName }} (${{ (item.lowestScrapedCost || 0).toLocaleString() }})
+                      </span>
+                    </div>
+                    <div v-else-if="item.isCheaperInWebs" class="space-y-0.5">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black text-[11px]">
+                        ⚠️ +${{ item.diffVsLowestScraped.toLocaleString() }} (+{{ item.diffPercentVsLowest }}%)
+                      </span>
+                      <span class="text-[9px] text-amber-200/80 block">
+                        🏆 {{ item.cheapestScrapedProviderName }} más barato (${{ (item.lowestScrapedCost || 0).toLocaleString() }})
+                      </span>
+                    </div>
+                    <div v-else-if="!item.isNewGame && item.lowestScrapedCost > 0" class="text-[10px] text-slate-400">
+                      ⚖️ Igualado con web (${{ (item.lowestScrapedCost || 0).toLocaleString() }})
+                    </div>
+                    <div v-else class="text-[10px] text-blue-300">
+                      🔹 Sin referencia previa
+                    </div>
                   </td>
 
-                  <!-- PVP Calculado con Margen de Tienda -->
-                  <td class="p-3 text-right font-mono font-black text-emerald-400">
-                    ${{ item.proposedPvp.toLocaleString() }}
+                  <!-- PVP Calculado con Margen de Tienda & Neto -->
+                  <td class="p-3 text-right font-mono">
+                    <strong class="text-emerald-400 text-sm font-black block">${{ item.proposedPvp.toLocaleString() }}</strong>
+                    <span class="text-[9px] text-slate-400 block">
+                      Rev: <span class="text-purple-300">+${{ item.proposedResellerProfit.toLocaleString() }}</span> · Neto: <span class="text-teal-300 font-bold">+${{ item.proposedStoreNet.toLocaleString() }}</span>
+                    </span>
                   </td>
 
-                  <!-- Comisión Revendedor -->
-                  <td class="p-3 text-right font-mono font-bold text-purple-300">
-                    +${{ item.proposedResellerProfit.toLocaleString() }}
-                  </td>
-
-                  <!-- Ganancia Neta Tienda -->
-                  <td class="p-3 text-right font-mono font-black text-teal-400">
-                    +${{ item.proposedStoreNet.toLocaleString() }}
+                  <!-- Botón Proveedor en Cada Fila -->
+                  <td class="p-3 text-right">
+                    <button 
+                      type="button" 
+                      @click="openProviderModalFromBulk(item)"
+                      class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition inline-flex items-center gap-1 shadow cursor-pointer active:scale-95"
+                      title="Ver cotizaciones scrapeadas, enlace del proveedor o contactar por WhatsApp"
+                    >
+                      <span>🏢 Proveedor</span>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -8696,10 +8861,16 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                     <span>✓ Proveedor Activo Asignado</span>
                   </span>
                   <span 
-                    v-else-if="selectedGameForProvider.diffPrimary > 0 && prov.costPrimary === (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary)"
+                    v-else-if="selectedGameForProvider.diffPrimary > 0 && prov.costPrimary === (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))"
                     class="text-[9px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/40"
                   >
                     🏆 Mejor Costo (-${{ selectedGameForProvider.diffPrimary.toLocaleString() }})
+                  </span>
+                  <span 
+                    v-else-if="selectedGameForProvider.diffPrimary > 0 && prov.costPrimary > (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))"
+                    class="text-[9px] bg-rose-500/15 text-rose-300 font-mono px-2 py-0.5 rounded-full border border-rose-500/30"
+                  >
+                    +${{ (prov.costPrimary - (selectedGameForProvider.minCostPrimary || (selectedGameForProvider.baseCostPrimary - selectedGameForProvider.diffPrimary))).toLocaleString() }} más caro
                   </span>
                 </div>
 
@@ -8723,10 +8894,10 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                 <button 
                   type="button" 
                   @click="selectPreferredProvider(selectedGameForProvider, prov.key)"
-                  :disabled="selectedGameForProvider.preferredFulfillmentProvider === prov.key || selectedGameForProvider.bestFulfillmentPrimary === prov.key"
+                  :disabled="selectedGameForProvider.preferredFulfillmentProvider === prov.key || (selectedGameForProvider.bestFulfillmentPrimary === prov.key && !selectedGameForProvider.preferredFulfillmentProvider)"
                   :class="[
                     'py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95',
-                    (selectedGameForProvider.preferredFulfillmentProvider === prov.key || selectedGameForProvider.bestFulfillmentPrimary === prov.key)
+                    (selectedGameForProvider.preferredFulfillmentProvider === prov.key || (selectedGameForProvider.bestFulfillmentPrimary === prov.key && !selectedGameForProvider.preferredFulfillmentProvider))
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow'
                   ]"
