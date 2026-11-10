@@ -9,6 +9,7 @@ import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailPa
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
 import { GAMING_PROVIDERS, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
+import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { 
   initFirebase, 
@@ -3256,6 +3257,77 @@ export const useAdminStore = defineStore('admin', {
         return true
       }
       return false
+    },
+
+    /**
+     * Aplica en lote una lista de ofertas parseadas con sus precios de proveedor convenidos
+     */
+    applyGamingBatchFromList(analyzedItems, providerInfo) {
+      if (!Array.isArray(analyzedItems) || analyzedItems.length === 0) {
+        return { error: 'No hay elementos para aplicar.' }
+      }
+      const result = applyGamingBatchUpdate(
+        analyzedItems,
+        this.gamingProducts,
+        providerInfo,
+        {
+          storeMarginPercent: this.gamingStoreMarginPercent,
+          resellerCommissionPercent: this.gamingResellerCommissionPercent,
+          minResellerProfit: this.gamingMinResellerProfit
+        }
+      )
+
+      this.gamingProducts = result.updatedCatalog
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return {
+        success: true,
+        updatedMatchesCount: result.updatedMatchesCount,
+        createdNewCount: result.createdNewCount,
+        totalCatalog: this.gamingProducts.length
+      }
+    },
+
+    /**
+     * Convenir o pactar rápidamente el precio de un juego con un proveedor o precio personalizado
+     */
+    conveyGamingProductPrice(gameId, { providerKey, agreedCost, targetLicense = 'primary', customPvp = null }) {
+      const game = this.gamingProducts.find(g => g.id === gameId)
+      if (!game) return { error: 'Juego no encontrado' }
+
+      if (!game.providers) game.providers = {}
+      if (providerKey && !game.providers[providerKey]) {
+        game.providers[providerKey] = {
+          providerName: providerKey === 'argentinaplay' ? 'Argentina Play' : (providerKey === 'juegosdigitalesargentina' ? 'Juegos Digitales Argentina' : 'Proveedor Acordado'),
+          providerUrl: providerKey === 'argentinaplay' ? 'https://www.argentinaplay.com.ar/' : (providerKey === 'juegosdigitalesargentina' ? 'https://juegosdigitalesargentina.com/' : ''),
+          available: true
+        }
+      }
+
+      const pObj = providerKey ? game.providers[providerKey] : null
+      const costNum = Math.max(0, Number(agreedCost) || 0)
+
+      if (pObj) {
+        pObj.available = true
+        if (targetLicense === 'primary') {
+          pObj.costPrimary = costNum
+          pObj.primaryPrice = costNum
+        } else {
+          pObj.costSecondary = costNum
+          pObj.secondaryPrice = costNum
+        }
+      }
+
+      if (customPvp && Number(customPvp) > 0) {
+        if (targetLicense === 'primary') {
+          game.customPrimaryPrice = Number(customPvp)
+        } else {
+          game.customSecondaryPrice = Number(customPvp)
+        }
+      }
+
+      game.lastConveyedDate = new Date().toISOString()
+      this.persist(DB_KEYS.GAMING_PRODUCTS)
+      return { success: true, game }
     },
     setGamingFulfillmentProvider(orderId, providerKey) {
       const order = this.orders.find(o => o.id === orderId)

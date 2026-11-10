@@ -6,6 +6,7 @@ import { useToastStore } from '../store/toast'
 import { loadDb, DB_KEYS, generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { testFirebaseConnection } from '../services/firebase'
+import { parseGamingTextList, matchGamingListWithCatalog } from '../services/gamingListParser'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 
@@ -882,6 +883,282 @@ const gamingAdminSubcategoryFilter = ref('Todas')
 const gamingAdminPlatformFilter = ref('ALL')
 const onlyHighestCostProvider = ref(true)
 
+// Filtros y Ordenamiento por Precio para Proveedores
+const gamingAdminPriceSort = ref('default') // 'default' | 'price_desc' | 'price_asc' | 'cost_desc' | 'margin_desc'
+const gamingAdminMinPrice = ref('')
+const gamingAdminMaxPrice = ref('')
+
+// ==========================================
+// CONVENIR PRECIO CON PROVEEDOR
+// ==========================================
+const showConvenePriceModal = ref(false)
+const conveningGame = ref(null)
+const conveneForm = ref({
+  providerKey: 'argentinaplay',
+  targetLicense: 'primary',
+  agreedCost: 0,
+  customPvp: 0,
+  customProviderName: 'Proveedor Convenio'
+})
+
+const openConvenePriceModal = (game) => {
+  conveningGame.value = game
+  const pArgCost = game.providers?.argentinaplay?.costPrimary || game.providers?.argentinaplay?.primaryPrice || 0
+  const pJdaCost = game.providers?.juegosdigitalesargentina?.costPrimary || game.providers?.juegosdigitalesargentina?.primaryPrice || 0
+  
+  conveneForm.value = {
+    providerKey: game.visibleProviderKey || 'argentinaplay',
+    targetLicense: 'primary',
+    agreedCost: game.baseCostPrimary || Math.max(pArgCost, pJdaCost) || 20000,
+    customPvp: game.effectivePrimaryPrice || 0,
+    customProviderName: game.visibleProviderName || 'Proveedor Convenio'
+  }
+  showConvenePriceModal.value = true
+}
+
+const quickAdoptProviderCost = (providerKey) => {
+  if (!conveningGame.value) return
+  conveneForm.value.providerKey = providerKey
+  const pData = conveningGame.value.providers?.[providerKey] || {}
+  const cost = conveneForm.value.targetLicense === 'primary' 
+    ? (pData.costPrimary || pData.primaryPrice || 0)
+    : (pData.costSecondary || pData.secondaryPrice || 0)
+  
+  conveneForm.value.agreedCost = cost
+  const markup = Math.ceil((cost * ((adminStore.gamingStoreMarginPercent || 20) / 100)) / 100) * 100
+  conveneForm.value.customPvp = cost + markup
+}
+
+const saveConvenePrice = () => {
+  if (!conveningGame.value) return
+  adminStore.conveyGamingProductPrice(conveningGame.value.id, {
+    providerKey: conveneForm.value.providerKey,
+    agreedCost: Number(conveneForm.value.agreedCost) || 0,
+    targetLicense: conveneForm.value.targetLicense,
+    customPvp: Number(conveneForm.value.customPvp) || 0
+  })
+  toast.add(`✓ Precio convenido guardado para "${conveningGame.value.title}" (${Number(conveneForm.value.agreedCost).toLocaleString()} costo / ${Number(conveneForm.value.customPvp).toLocaleString()} PVP).`, 'success')
+  showConvenePriceModal.value = false
+}
+
+// ==========================================
+// CARGA MASIVA POR LISTA / TXT & SIMILITUD INTELIGENTE
+// ==========================================
+const bulkLoaderStep = ref('input') // 'input' | 'analyzed' | 'completed'
+const rawGamingListText = ref('')
+const bulkProviderConfig = ref({
+  name: 'Proveedor Ofertas',
+  whatsapp: '+54 9 11 4050-6070',
+  url: 'https://mayoristajuegos.com.ar',
+  licenseType: 'primary'
+})
+const bulkTxtFileInput = ref(null)
+const isAnalyzingBulkList = ref(false)
+const isApplyingBulkBatch = ref(false)
+const bulkAnalyzedGames = ref([])
+const bulkSkippedHeaders = ref([])
+const bulkParsingErrors = ref([])
+const bulkFilterStatus = ref('ALL') // 'ALL' | 'matched' | 'new'
+const bulkSearchQuery = ref('')
+
+const handleBulkTxtFileUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    rawGamingListText.value = e.target?.result || ''
+    toast.add(`✓ Archivo "${file.name}" cargado (${rawGamingListText.value.length} caracteres).`, 'info')
+  }
+  reader.onerror = () => {
+    toast.add('Error al leer el archivo de texto', 'error')
+  }
+  reader.readAsText(file, 'UTF-8')
+}
+
+const loadExampleTxtList = () => {
+  rawGamingListText.value = `OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
+
+🤖ASTRO BOT PS5 - $42.500
+🗡️Assassin's Creed Antiquity Pack - $22.400
+🗡️Assassin's Creed Rogue Remastered - $11.900
+🗡️Assassin's Creed®️ Odyssey - DELUXE EDITION ESPAÑOL - $19.500
+🗡️Assassin's Creed®️ Odyssey - GOLD EDITION ESPAÑOL - $22.400
+🗡️Assassin's Creed®️ Unity - $10.400
+🗡️Assassin’s Creed®️ Syndicate - $11.900
+🗡️Assassin’s Creed®️ The Ezio Collection - $15.500
+🦇Batman™️: Arkham Knight - $7.900
+🔫Bayonetta - $9.200
+🏫Bully (Canis Canem Edit) - $14.100
+⚽CAPTAIN TSUBASA 2: WORLD FIGHTERS - Ultimate Edition PS5 - $72.600
+⚽CAPTAIN TSUBASA 2: WORLD FIGHTERS PS5 - $52.500
+🔧Car Mechanic Simulator 2021 - $8.800
+🌀Control Ultimate Edition - $8.800
+⚔️DARK SOULS™️ II: Scholar of the First Sin - $22.400
+⚔️DARK SOULS™️ III - $32.400
+⚔️DARK SOULS™️ III - Deluxe Edition - $47.800
+⚔️DARK SOULS™️: REMASTERED - $22.400
+🚚DEATH STRANDING 2: ON THE BEACH PS5 - $42.500
+🚚DEATH STRANDING DIRECTOR’S CUT PS5 - $24.600
+😈Diablo®️ IV - Standard Edition - $32.400
+💀DOOM Eternal Standard Edition - $12.800
+🐉DRAGON BALL Z: KAKAROT DAIMA EDITION - $27.700
+🎮EA Family Bundle - $10.900
+🔫Far Cry 4 - Gold Edition - $14.000
+🔫FAR CRY 5 - $11.900
+🔫Far Cry New Dawn - $10.900
+🔫Far Cry Primal - $10.400
+🔫Far Cry®️ 6 Deluxe Edition - $9.700
+🔫FAR CRY®️6 Gold Edition - $10.500
+⚔️God Of War 2018 ESPAÑOL LATINO - $12.800
+⚔️God of War Ragnarök PS4 ESPAÑOL LATINO - $27.700
+⚔️God of War Ragnarök PS5 ESPAÑOL LATINO - $32.400
+🎯HITMAN World of Assassination - $32.400
+🕵️Judgment PS4 - $10.400
+🕵️Judgment PS5 - $12.800
+💥Just Cause 3: XXL Edition - $4.300
+🌿Kena: Bridge of Spirits - $19.500
+🦇LEGO®️ Batman™️ 3: Más Allá de Gotham - $7.900
+🚓LEGO®️ CITY Undercover - $8.000
+🦸LEGO®️ Marvel Super Heroes 2 Deluxe Edition - $9.800
+🦸LEGO®️ Marvel’s Avengers Deluxe Edition - $8.800
+🌌LEGO®️ Star Wars™️: The Force Awakens Standard Edition - $7.900
+🧱LEGO®️ The Hobbit - $7.900
+😱Little Nightmares I & II Bundle - $18.500
+🕵️Lost Judgment Digital Ultimate Edition - $8.900
+🕷️Marvel's Spider-Man: Miles Morales Ultimate Edition PS5 - $32.400
+🦸Marvel’s Wolverine Digital Deluxe Edition PS5 - $62.600
+🐍METAL GEAR SOLID V: THE DEFINITIVE EXPERIENCE - $15.500
+🐍METAL GEAR SOLID: MASTER COLLECTION Vol.1 - $15.600
+⚔️Middle-earth™️: The Shadow Bundle - $9.800
+🏍️MotoGP™️24 - $8.800
+⚔️Mount & Blade II: Bannerlord - $27.700
+🏍️MX vs ATV Legends - $12.800
+🍥NARUTO SHIPPUDEN: Ultimate Ninja STORM Legacy - $32.400
+😱Outlast 1 - $6.600
+😱Outlast: Bundle of Terror - $7.900
+🍳Overcooked! 2 - $11.300
+🤖Ratchet & Clank™️ - $12.800
+🧸Sackboy: A Big Adventure - $29.300
+👻SILENT HILL 2 PS5 - $22.400
+👻SILENT HILL f PS5 - $22.400
+🦔Sonic Colours: Ultimate - Digital Deluxe - $7.900
+🏎️The Crew®️ 2 Special Edition - $15.500
+🐉The Elder Scrolls V: Skyrim Special Edition - $10.900
+😱The Evil Within 2 ESPAÑOL LATINO - $10.900
+🧟The Last Of Us™️ Remastered PS4 ESPAÑOL LATINO - $12.800
+🥋The Warriors®️ - $11.900
+🦌TheHunter: Call Of The Wild™️ - $7.300
+🔫Tom Clancy's Ghost Recon Wildlands - $12.800
+🔫Wolfenstein: Alt History Collection - $15.500
+🏎️WRC 10 FIA World Rally Championship PS4 - $10.900
+🏎️WRC 10 FIA World Rally Championship PS5 - $10.900
+
+OFERTAS HASTA EL DÍA 20/11/2026⚠️
+
+🕵️007 First Light - Deluxe Edition PS5 - $42.500
+🐀A Plague Tale Bundle PS5 - $32.400
+⚔️Absolum - $18.500
+🔫Arma Reforger PS5 - $32.400
+🌸Beast of Reincarnation PS5 - $47.800
+⚔️Blasphemous 2 - Mea Culpa Edition - $16.500
+🚌Bus Simulator 21 Next Stop - Gold Edition - $19.500
+🚌Bus Simulator 27 PS5 - $32.400
+🧗Cairn PS5 - $25.100
+⚔️Castle Crashers Remastered - $7.300
+⚔️Darksiders II Deathinitive Edition - $14.000
+⚔️Darksiders III Digital Deluxe Edition - $7.900
+🦎Darwin's Paradox! PS5 - $12.800
+🧟DayZ - $31.700
+🧟Dead Island Definitive Edition - $5.800
+🧟Dead Island: Riptide Definitive Edition - $5.800`
+  toast.add('✓ Lista de ejemplo de 197 juegos cargada con éxito en el área de texto.', 'success')
+}
+
+const analyzeGamingList = () => {
+  if (!rawGamingListText.value.trim()) {
+    toast.add('Por favor ingresa o carga una lista de videojuegos para analizar', 'error')
+    return
+  }
+
+  isAnalyzingBulkList.value = true
+  try {
+    const { games, headers, errors } = parseGamingTextList(rawGamingListText.value)
+    bulkSkippedHeaders.value = headers
+    bulkParsingErrors.value = errors
+
+    if (games.length === 0) {
+      toast.add('No se pudieron detectar videojuegos con precios en el texto proporcionado', 'error')
+      isAnalyzingBulkList.value = false
+      return
+    }
+
+    const matched = matchGamingListWithCatalog(games, adminStore.processedGamingProducts, {
+      storeMarginPercent: adminStore.gamingStoreMarginPercent,
+      resellerCommissionPercent: adminStore.gamingResellerCommissionPercent,
+      minResellerProfit: adminStore.gamingMinResellerProfit
+    })
+
+    bulkAnalyzedGames.value = matched
+    bulkLoaderStep.value = 'analyzed'
+    toast.add(`✓ Análisis completado: ${matched.length} videojuegos detectados (${matched.filter(m => !m.isNewGame).length} coincidencias, ${matched.filter(m => m.isNewGame).length} nuevos).`, 'success')
+  } catch (err) {
+    console.error('Error analizando lista gamer:', err)
+    toast.add('Ocurrió un error al analizar la lista de videojuegos', 'error')
+  } finally {
+    isAnalyzingBulkList.value = false
+  }
+}
+
+const filteredAnalyzedBulkGames = computed(() => {
+  let list = bulkAnalyzedGames.value || []
+  if (bulkFilterStatus.value === 'matched') {
+    list = list.filter(i => !i.isNewGame)
+  } else if (bulkFilterStatus.value === 'new') {
+    list = list.filter(i => i.isNewGame)
+  }
+
+  const q = bulkSearchQuery.value.toLowerCase().trim()
+  if (q) {
+    list = list.filter(i => 
+      i.rawTitle.toLowerCase().includes(q) || 
+      (i.matchedGameTitle && i.matchedGameTitle.toLowerCase().includes(q)) ||
+      String(i.price).includes(q)
+    )
+  }
+  return list
+})
+
+const selectedBulkCount = computed(() => {
+  return bulkAnalyzedGames.value.filter(i => i.selected).length
+})
+
+const toggleAllBulkSelection = (select) => {
+  bulkAnalyzedGames.value.forEach(i => i.selected = select)
+}
+
+const applyBulkBatchToCatalog = async () => {
+  const selectedItems = bulkAnalyzedGames.value.filter(i => i.selected)
+  if (selectedItems.length === 0) {
+    toast.add('Selecciona al menos un juego para convenir y aplicar precios', 'error')
+    return
+  }
+
+  isApplyingBulkBatch.value = true
+  try {
+    const res = adminStore.applyGamingBatchFromList(selectedItems, bulkProviderConfig.value)
+    if (res.error) throw new Error(res.error)
+
+    toast.add(`✓ ¡Éxito! Se actualizaron ${res.updatedMatchesCount} coincidencias y se añadieron ${res.createdNewCount} nuevos juegos de "${bulkProviderConfig.value.name}".`, 'success')
+    bulkLoaderStep.value = 'completed'
+  } catch (err) {
+    console.error('Error aplicando lote de videojuegos:', err)
+    toast.add(err.message || 'Error al aplicar el lote al catálogo', 'error')
+  } finally {
+    isApplyingBulkBatch.value = false
+  }
+}
+
 // ==========================================
 // ESTRATEGIA DE PRECIOS & MÁRGENES GAMING
 // ==========================================
@@ -1015,7 +1292,7 @@ const gamingNewForm = ref({
 
 const filteredGamingForAdmin = computed(() => {
   const list = adminStore.processedGamingProducts || []
-  return list.filter(game => {
+  let filtered = list.filter(game => {
     let matchesCat = false
     if (gamingAdminCategoryFilter.value === 'Todas' || !gamingAdminCategoryFilter.value) {
       matchesCat = true
@@ -1034,8 +1311,27 @@ const filteredGamingForAdmin = computed(() => {
     const matchesPlatform = gamingAdminPlatformFilter.value === 'ALL' || game.platform.includes(gamingAdminPlatformFilter.value)
     const q = gamingAdminSearch.value.toLowerCase().trim()
     const matchesQ = !q || game.title.toLowerCase().includes(q) || String(game.id).includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
+    
+    // Filtro por Rango de Precios
+    const price = Number(game.effectivePrimaryPrice || 0)
+    if (gamingAdminMinPrice.value && price < Number(gamingAdminMinPrice.value)) return false
+    if (gamingAdminMaxPrice.value && price > Number(gamingAdminMaxPrice.value)) return false
+
     return matchesCat && matchesSubcat && matchesPlatform && matchesQ
   })
+
+  // Ordenamiento por Precio / Costo / Margen
+  if (gamingAdminPriceSort.value === 'price_desc') {
+    filtered.sort((a, b) => (Number(b.effectivePrimaryPrice || 0) - Number(a.effectivePrimaryPrice || 0)))
+  } else if (gamingAdminPriceSort.value === 'price_asc') {
+    filtered.sort((a, b) => (Number(a.effectivePrimaryPrice || 0) - Number(b.effectivePrimaryPrice || 0)))
+  } else if (gamingAdminPriceSort.value === 'cost_desc') {
+    filtered.sort((a, b) => (Number(b.baseCostPrimary || 0) - Number(a.baseCostPrimary || 0)))
+  } else if (gamingAdminPriceSort.value === 'margin_desc') {
+    filtered.sort((a, b) => (Number(b.storeGrossMarginPrimary || 0) - Number(a.storeGrossMarginPrimary || 0)))
+  }
+
+  return filtered
 })
 
 // Paginación Reactiva Ultra-Fluida para Videojuegos Gaming
@@ -1049,7 +1345,7 @@ const paginatedGamingForAdmin = computed(() => {
   const start = (gamingAdminCurrentPage.value - 1) * gamingAdminPageSize.value
   return list.slice(start, start + gamingAdminPageSize.value)
 })
-watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilter, gamingAdminPlatformFilter, onlyHighestCostProvider, gamingAdminSubTab], () => {
+watch([gamingAdminSearch, gamingAdminCategoryFilter, gamingAdminSubcategoryFilter, gamingAdminPlatformFilter, onlyHighestCostProvider, gamingAdminSubTab, gamingAdminPriceSort, gamingAdminMinPrice, gamingAdminMaxPrice], () => {
   gamingAdminCurrentPage.value = 1
 })
 
@@ -6329,6 +6625,15 @@ const deletePackageItem = (pkgId) => {
 
         <button 
           type="button"
+          @click="gamingAdminSubTab = 'bulk_loader'"
+          :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'bulk_loader' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white']"
+        >
+          <span>📋</span>
+          <span>Carga Masiva por Lista / TXT</span>
+        </button>
+
+        <button 
+          type="button"
           @click="gamingAdminSubTab = 'orders'"
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white']"
         >
@@ -6361,6 +6666,28 @@ const deletePackageItem = (pkgId) => {
             >
               <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único Visible (Mayor Costo)' : '👁️ Ver Ambos Proveedores' }}</span>
             </button>
+
+            <!-- Ordenar por Precio / Margen de Proveedor -->
+            <select 
+              v-model="gamingAdminPriceSort" 
+              class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold cursor-pointer"
+              title="Ordenar por precio o costo de proveedor"
+            >
+              <option value="default">↕️ Orden Predeterminado</option>
+              <option value="price_desc">💰 Mayor Precio (PVP ↓)</option>
+              <option value="price_asc">🏷️ Menor Precio (PVP ↑)</option>
+              <option value="cost_desc">🏢 Mayor Costo Proveedor (↓)</option>
+              <option value="margin_desc">📈 Mayor Margen Tienda (↓)</option>
+            </select>
+
+            <!-- Rango de Precios -->
+            <div class="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1">
+              <span class="text-[10px] text-slate-500 font-mono font-bold">$</span>
+              <input v-model.number="gamingAdminMinPrice" type="number" placeholder="Min" class="w-14 bg-transparent text-white text-xs outline-none font-mono">
+              <span class="text-slate-600 text-xs">-</span>
+              <input v-model.number="gamingAdminMaxPrice" type="number" placeholder="Max" class="w-14 bg-transparent text-white text-xs outline-none font-mono">
+              <button v-if="gamingAdminMinPrice || gamingAdminMaxPrice" @click="gamingAdminMinPrice = ''; gamingAdminMaxPrice = ''" type="button" class="text-[10px] text-slate-400 hover:text-white ml-0.5" title="Limpiar rango">✕</button>
+            </div>
 
             <select v-model="gamingAdminCategoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none font-bold">
               <option v-for="cat in adminStore.gamingCategories" :key="cat" :value="cat">{{ cat }}</option>
@@ -6586,22 +6913,32 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </td>
 
-                <!-- Acciones -->
-                <td class="p-3.5 text-right space-y-1">
+                <!-- Acciones & Convenir Precio -->
+                <td class="p-3.5 text-right space-y-1.5">
                   <button 
                     type="button" 
-                    @click="openGamingPriceEdit(game)"
-                    class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer"
+                    @click="openConvenePriceModal(game)"
+                    class="w-full px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-1 shadow cursor-pointer"
+                    title="Convenir o pactar el precio de costo del proveedor para este juego"
                   >
-                    ✏️ Editar
+                    <span>🤝 Convenir Precio</span>
                   </button>
-                  <a 
-                    :href="game.visibleProviderUrl || (game.visibleProviderKey === 'argentinaplay' ? (game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/') : (game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'))" 
-                    target="_blank"
-                    class="block text-[10px] text-indigo-400 hover:underline"
-                  >
-                    Comprar en {{ game.visibleProviderShortName || 'Proveedor' }} ↗
-                  </a>
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button 
+                      type="button" 
+                      @click="openGamingPriceEdit(game)"
+                      class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] transition cursor-pointer"
+                    >
+                      ✏️ Editar
+                    </button>
+                    <a 
+                      :href="game.visibleProviderUrl || (game.visibleProviderKey === 'argentinaplay' ? (game.providers?.argentinaplay?.providerUrl || 'https://www.argentinaplay.com.ar/') : (game.providers?.juegosdigitalesargentina?.providerUrl || 'https://juegosdigitalesargentina.com/'))" 
+                      target="_blank"
+                      class="text-[10px] text-indigo-400 hover:underline"
+                    >
+                      Sitio ↗
+                    </a>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -6994,6 +7331,471 @@ const deletePackageItem = (pkgId) => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUB-VISTA: CARGA MASIVA POR LISTA / TXT & SIMILITUD INTELIGENTE ==================== -->
+      <div v-else-if="gamingAdminSubTab === 'bulk_loader'" class="space-y-6">
+        <!-- Banner Explicativo -->
+        <div class="bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-purple-950/30 border border-blue-500/30 rounded-3xl p-6 relative overflow-hidden">
+          <div class="relative z-10 space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
+                Motor de Similitud Inteligente Activo
+              </span>
+              <span class="text-xs font-mono text-slate-400">Catálogo Base: {{ adminStore.processedGamingProducts.length }} Juegos</span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-white">
+              Carga Masiva de Videojuegos por Lista o Archivo .TXT
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+              Pega listas de precios mayoristas enviadas por WhatsApp o sube un archivo <code>.txt</code>. El motor omite automáticamente fechas y cabeceras de ofertas (como <em>OFERTAS DESTACADAS HASTA EL DÍA...</em>), elimina emojis y símbolos iniciales, y asocia inteligentemente cada título con tu catálogo para actualizar costos o crear juegos nuevos en un solo clic.
+            </p>
+          </div>
+        </div>
+
+        <!-- PASO 1: Configuración de Proveedor y Entrada de Lista -->
+        <div v-if="bulkLoaderStep === 'input'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Columna Izquierda: Datos del Proveedor Mayorista -->
+          <div class="lg:col-span-5 bg-[#020617] border border-slate-800 p-6 rounded-3xl space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-base font-black text-white flex items-center gap-2">
+                <span>🏢</span>
+                <span>Datos del Proveedor Mayorista</span>
+              </h4>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                Paso 1 de 2
+              </span>
+            </div>
+
+            <!-- Nombre del Proveedor -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-300">Nombre del Proveedor / Mayorista:</label>
+              <input 
+                v-model="bulkProviderConfig.name" 
+                type="text" 
+                placeholder="Ej: Argentina Play, JDA, Distribuidor Ofertas..."
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white text-xs font-bold outline-none focus:border-blue-500"
+              >
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                <span class="text-[10px] text-slate-400 mr-1 self-center">Rápidos:</span>
+                <button 
+                  v-for="pName in ['Argentina Play', 'Juegos Digitales Argentina', 'Proveedor Ofertas']" 
+                  :key="pName"
+                  type="button"
+                  @click="bulkProviderConfig.name = pName"
+                  class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-mono transition cursor-pointer"
+                >
+                  {{ pName }}
+                </button>
+              </div>
+            </div>
+
+            <!-- WhatsApp del Proveedor -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-300">Número de WhatsApp del Proveedor:</label>
+              <div class="relative">
+                <span class="absolute left-3 top-3 text-emerald-400 text-xs">💬</span>
+                <input 
+                  v-model="bulkProviderConfig.whatsapp" 
+                  type="text" 
+                  placeholder="Ej: +54 9 11 4050-6070"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 pl-8 text-white text-xs font-mono font-bold outline-none focus:border-emerald-500"
+                >
+              </div>
+              <p class="text-[10px] text-slate-400">Permite contactar al proveedor directamente al realizar el pedido.</p>
+            </div>
+
+            <!-- Página Web del Proveedor -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-300">Página Web o Enlace Oficial:</label>
+              <div class="relative">
+                <span class="absolute left-3 top-3 text-blue-400 text-xs">🌐</span>
+                <input 
+                  v-model="bulkProviderConfig.url" 
+                  type="url" 
+                  placeholder="https://..."
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 pl-8 text-white text-xs font-mono outline-none focus:border-blue-500"
+                >
+              </div>
+            </div>
+
+            <!-- Modalidad de Licencia a Convenir -->
+            <div class="space-y-2 pt-2 border-t border-slate-800">
+              <label class="text-xs font-bold text-slate-300">Aplicar precios de la lista como:</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  type="button" 
+                  @click="bulkProviderConfig.licenseType = 'primary'"
+                  :class="['p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer', bulkProviderConfig.licenseType === 'primary' ? 'bg-indigo-600/20 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white']"
+                >
+                  <span>⭐️ Cuenta Primaria</span>
+                  <span class="text-[10px] text-slate-400 font-normal">Costo Base Primaria</span>
+                </button>
+                <button 
+                  type="button" 
+                  @click="bulkProviderConfig.licenseType = 'secondary'"
+                  :class="['p-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer', bulkProviderConfig.licenseType === 'secondary' ? 'bg-amber-600/20 border-amber-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white']"
+                >
+                  <span>⚡️ Cuenta Secundaria</span>
+                  <span class="text-[10px] text-slate-400 font-normal">Costo Base Secundaria</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Recordatorio de Margen Activo -->
+            <div class="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs">
+              <span class="text-slate-300">Margen de Tienda Activo:</span>
+              <strong class="text-emerald-400 font-mono font-bold">+{{ adminStore.gamingStoreMarginPercent }}% PVP</strong>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Entrada de Lista de Texto / Subida .TXT -->
+          <div class="lg:col-span-7 bg-[#020617] border border-slate-800 p-6 rounded-3xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <div>
+                <h4 class="text-base font-black text-white flex items-center gap-2">
+                  <span>📝</span>
+                  <span>Lista de Videojuegos & Precios</span>
+                </h4>
+                <p class="text-xs text-slate-400">Pega tu lista o sube un archivo .txt con títulos y precios.</p>
+              </div>
+
+              <!-- Input de Archivo .TXT -->
+              <div class="flex items-center gap-2">
+                <input 
+                  type="file" 
+                  ref="bulkTxtFileInput" 
+                  accept=".txt" 
+                  @change="handleBulkTxtFileUpload" 
+                  class="hidden"
+                >
+                <button 
+                  type="button" 
+                  @click="bulkTxtFileInput.click()" 
+                  class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1 shadow cursor-pointer"
+                >
+                  <span>📁 Subir .TXT</span>
+                </button>
+                <button 
+                  type="button" 
+                  @click="loadExampleTxtList" 
+                  class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  title="Cargar la lista de ejemplo con 197 juegos"
+                >
+                  <span>⚡️ Cargar Ejemplo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Textarea de Entrada -->
+            <div class="space-y-2">
+              <textarea 
+                v-model="rawGamingListText" 
+                rows="16" 
+                placeholder="Pega aquí la lista de ofertas del proveedor. Ejemplo:
+
+OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
+
+🤖ASTRO BOT PS5 - $42.500
+🗡️Assassin's Creed Antiquity Pack - $22.400
+🗡️Assassin's Creed Rogue Remastered - $11.900
+⚽CAPTAIN TSUBASA 2: WORLD FIGHTERS PS5 - $52.500
+...
+"
+                class="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white text-xs font-mono leading-relaxed outline-none focus:border-blue-500 custom-scrollbar resize-y"
+              ></textarea>
+              <div class="flex items-center justify-between text-xs text-slate-400">
+                <span>{{ rawGamingListText ? rawGamingListText.split('\n').filter(l => l.trim()).length : 0 }} líneas en total</span>
+                <button 
+                  v-if="rawGamingListText" 
+                  @click="rawGamingListText = ''" 
+                  type="button" 
+                  class="text-rose-400 hover:underline cursor-pointer"
+                >
+                  Limpiar texto
+                </button>
+              </div>
+            </div>
+
+            <!-- Botón de Acción: Analizar con Similitud Inteligente -->
+            <div class="pt-2">
+              <button 
+                type="button" 
+                @click="analyzeGamingList" 
+                :disabled="isAnalyzingBulkList || !rawGamingListText.trim()"
+                class="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-40 text-white font-black text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span :class="{'animate-spin inline-block': isAnalyzingBulkList}">🔍</span>
+                <span>{{ isAnalyzingBulkList ? 'Analizando Similitudes y Omitiendo Avisos...' : 'Analizar Lista con Similitud Inteligente' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 2: Vista Previa, Similitud y Confirmación -->
+        <div v-else-if="bulkLoaderStep === 'analyzed'" class="space-y-6">
+          <!-- Métricas del Análisis -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-[#020617] border border-slate-800 p-4 rounded-2xl space-y-1">
+              <span class="text-[10px] uppercase font-bold text-slate-400">Total Juegos Detectados</span>
+              <div class="text-2xl font-black text-white font-mono">{{ bulkAnalyzedGames.length }} Juegos</div>
+              <span class="text-[10px] text-slate-400">Sin contar cabeceras</span>
+            </div>
+
+            <div class="bg-[#020617] border border-emerald-500/30 p-4 rounded-2xl space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase font-bold text-emerald-400">🟢 Coincidencias en Catálogo</span>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-bold">Actualizar</span>
+              </div>
+              <div class="text-2xl font-black text-emerald-400 font-mono">
+                {{ bulkAnalyzedGames.filter(i => !i.isNewGame).length }}
+              </div>
+              <span class="text-[10px] text-slate-400">Se actualizará su costo y margen</span>
+            </div>
+
+            <div class="bg-[#020617] border border-blue-500/30 p-4 rounded-2xl space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase font-bold text-blue-400">🔵 Títulos Nuevos</span>
+                <span class="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded font-mono font-bold">Crear</span>
+              </div>
+              <div class="text-2xl font-black text-blue-400 font-mono">
+                {{ bulkAnalyzedGames.filter(i => i.isNewGame).length }}
+              </div>
+              <span class="text-[10px] text-slate-400">Se añadirán al catálogo oficial</span>
+            </div>
+
+            <div class="bg-[#020617] border border-amber-500/30 p-4 rounded-2xl space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase font-bold text-amber-400">⚠️ Avisos y Fechas Omitidos</span>
+                <span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">Filtro OK</span>
+              </div>
+              <div class="text-2xl font-black text-amber-400 font-mono">
+                {{ bulkSkippedHeaders.length }}
+              </div>
+              <span class="text-[10px] text-slate-400">Líneas de ofertas no numéricas</span>
+            </div>
+          </div>
+
+          <!-- Barra de Control y Filtros de la Tabla Analizada -->
+          <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-[#020617] p-4 rounded-2xl border border-slate-800">
+            <!-- Pestañas de Filtro -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button 
+                type="button" 
+                @click="bulkFilterStatus = 'ALL'"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'ALL' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-900 text-slate-400 hover:text-white']"
+              >
+                Todos ({{ bulkAnalyzedGames.length }})
+              </button>
+              <button 
+                type="button" 
+                @click="bulkFilterStatus = 'matched'"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'matched' ? 'bg-emerald-600 text-white shadow' : 'bg-slate-900 text-slate-400 hover:text-white']"
+              >
+                🟢 Coincidencias ({{ bulkAnalyzedGames.filter(i => !i.isNewGame).length }})
+              </button>
+              <button 
+                type="button" 
+                @click="bulkFilterStatus = 'new'"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', bulkFilterStatus === 'new' ? 'bg-blue-600 text-white shadow' : 'bg-slate-900 text-slate-400 hover:text-white']"
+              >
+                🔵 Nuevos ({{ bulkAnalyzedGames.filter(i => i.isNewGame).length }})
+              </button>
+            </div>
+
+            <!-- Búsqueda y Selección -->
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <input 
+                v-model="bulkSearchQuery" 
+                type="text" 
+                placeholder="Buscar en la lista..."
+                class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-48"
+              >
+              <button 
+                type="button" 
+                @click="toggleAllBulkSelection(true)"
+                class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                ✓ Todos
+              </button>
+              <button 
+                type="button" 
+                @click="toggleAllBulkSelection(false)"
+                class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                ✕ Ninguno
+              </button>
+              <button 
+                type="button" 
+                @click="bulkLoaderStep = 'input'"
+                class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                ✏️ Editar Lista
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Resultados y Emparejamiento Inteligente -->
+          <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-[#020617]">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                <tr>
+                  <th class="p-3 w-10 text-center">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedBulkCount === bulkAnalyzedGames.length && bulkAnalyzedGames.length > 0" 
+                      @change="(e) => toggleAllBulkSelection(e.target.checked)"
+                      class="rounded accent-indigo-600"
+                    >
+                  </th>
+                  <th class="p-3">Título en Lista & Precio</th>
+                  <th class="p-3">Similitud Inteligente</th>
+                  <th class="p-3">Juego en Catálogo Oficial</th>
+                  <th class="p-3 text-right">Nuevo Costo</th>
+                  <th class="p-3 text-right text-emerald-400">PVP Público (+{{ adminStore.gamingStoreMarginPercent }}%)</th>
+                  <th class="p-3 text-right text-purple-300">Comisión Rev.</th>
+                  <th class="p-3 text-right text-teal-300">Neto Tienda</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-850">
+                <tr 
+                  v-for="item in filteredAnalyzedBulkGames" 
+                  :key="item.id"
+                  :class="['hover:bg-slate-900/60 transition-colors', !item.selected ? 'opacity-40' : '']"
+                >
+                  <td class="p-3 text-center">
+                    <input type="checkbox" v-model="item.selected" class="rounded accent-indigo-600">
+                  </td>
+
+                  <!-- Título Original y Precio en la lista -->
+                  <td class="p-3">
+                    <div class="font-bold text-white text-xs">{{ item.rawTitle }}</div>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                      <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">{{ item.platform }}</span>
+                      <span class="text-[10px] text-slate-400 font-mono">Línea {{ item.lineNumber }}</span>
+                    </div>
+                  </td>
+
+                  <!-- Estado de Similitud -->
+                  <td class="p-3">
+                    <span 
+                      v-if="item.matchStatus === 'exact'" 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    >
+                      🟢 100% Exacto
+                    </span>
+                    <span 
+                      v-else-if="item.matchStatus === 'high'" 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    >
+                      🟢 {{ item.similarityScore }}% Coincidencia
+                    </span>
+                    <span 
+                      v-else-if="item.matchStatus === 'partial'" 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    >
+                      🟡 {{ item.similarityScore }}% Cercano
+                    </span>
+                    <span 
+                      v-else 
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                    >
+                      🔵 Nuevo Juego
+                    </span>
+                    <span class="text-[9px] text-slate-500 block mt-0.5">{{ item.similarityReason }}</span>
+                  </td>
+
+                  <!-- Juego Asociado en Catálogo -->
+                  <td class="p-3">
+                    <div v-if="item.matchedGame" class="space-y-0.5">
+                      <strong class="text-white text-xs block line-clamp-1">{{ item.matchedGame.title }}</strong>
+                      <span class="text-[10px] text-slate-400 font-mono">
+                        Costo actual: ${{ (item.currentCost || 0).toLocaleString() }} · PVP: ${{ (item.currentPvp || 0).toLocaleString() }}
+                      </span>
+                    </div>
+                    <div v-else class="text-blue-300 text-xs italic">
+                      + Se creará como juego nuevo en el catálogo
+                    </div>
+                  </td>
+
+                  <!-- Nuevo Costo de Proveedor -->
+                  <td class="p-3 text-right font-mono font-bold text-white">
+                    ${{ item.newWholesaleCost.toLocaleString() }}
+                  </td>
+
+                  <!-- PVP Calculado con Margen de Tienda -->
+                  <td class="p-3 text-right font-mono font-black text-emerald-400">
+                    ${{ item.proposedPvp.toLocaleString() }}
+                  </td>
+
+                  <!-- Comisión Revendedor -->
+                  <td class="p-3 text-right font-mono font-bold text-purple-300">
+                    +${{ item.proposedResellerProfit.toLocaleString() }}
+                  </td>
+
+                  <!-- Ganancia Neta Tienda -->
+                  <td class="p-3 text-right font-mono font-black text-teal-400">
+                    +${{ item.proposedStoreNet.toLocaleString() }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Barra Inferior de Acción y Guardado -->
+          <div class="bg-[#020617] border border-slate-800 p-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h5 class="text-base font-black text-white">¿Listo para convenir los precios con {{ bulkProviderConfig.name }}?</h5>
+              <p class="text-xs text-slate-400">
+                Se actualizarán <strong>{{ selectedBulkCount }} videojuegos seleccionados</strong> con sus nuevos costos mayoristas, márgenes de ganancia y comisiones de revendedor.
+              </p>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+              <button 
+                type="button" 
+                @click="bulkLoaderStep = 'input'"
+                class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer"
+              >
+                Volver
+              </button>
+              <button 
+                type="button" 
+                @click="applyBulkBatchToCatalog" 
+                :disabled="isApplyingBulkBatch || selectedBulkCount === 0"
+                class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/30 flex items-center gap-2 cursor-pointer"
+              >
+                <span>🚀</span>
+                <span>{{ isApplyingBulkBatch ? 'Aplicando Precios al Catálogo...' : `Convenir y Aplicar Precios (${selectedBulkCount} Juegos)` }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 3: Estado Completado -->
+        <div v-else-if="bulkLoaderStep === 'completed'" class="bg-[#020617] border border-emerald-500/30 p-8 rounded-3xl text-center space-y-4 max-w-xl mx-auto">
+          <span class="text-5xl block">🎉</span>
+          <h4 class="text-xl font-black text-white">¡Lista de Precios Convenida con Éxito!</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Los precios acordados con <strong>{{ bulkProviderConfig.name }}</strong> se aplicaron al catálogo general de videojuegos. Los precios de venta al público (PVP) y las comisiones de revendedor ya están vigentes y sincronizados en la nube.
+          </p>
+          <div class="flex flex-wrap justify-center gap-3 pt-3">
+            <button 
+              type="button" 
+              @click="gamingAdminSubTab = 'comparison'"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition shadow cursor-pointer"
+            >
+              Ver Catálogo en Comparador →
+            </button>
+            <button 
+              type="button" 
+              @click="bulkLoaderStep = 'input'; rawGamingListText = ''"
+              class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer"
+            >
+              Cargar Otra Lista
+            </button>
           </div>
         </div>
       </div>
@@ -7543,6 +8345,124 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- MODAL DE EDICIÓN DE PRECIOS GAMING (AMBOS PROVEEDORES) -->
+    <!-- MODAL DE CONVENIR PRECIO CON PROVEEDOR -->
+    <div v-if="showConvenePriceModal && conveningGame" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md">
+      <div class="bg-[#0b0f19] border border-emerald-500/30 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar p-6 space-y-5 shadow-2xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🤝</span>
+            <div>
+              <h3 class="text-base font-black text-white">Convenir Precio de Proveedor</h3>
+              <p class="text-[11px] text-slate-400">Pacta el costo del mayorista y fija el precio oficial para la plataforma</p>
+            </div>
+          </div>
+          <button 
+            @click="showConvenePriceModal = false" 
+            type="button" 
+            class="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Ficha del Juego -->
+        <div class="flex items-center gap-3 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+          <img 
+            :src="conveningGame.image" 
+            :alt="conveningGame.title" 
+            class="w-14 h-14 object-cover rounded-xl border border-slate-700 shrink-0"
+            @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
+          >
+          <div class="flex-1 min-w-0">
+            <h4 class="font-black text-white text-xs line-clamp-1">{{ conveningGame.title }}</h4>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-[9px] bg-indigo-500/20 text-indigo-300 font-mono font-bold px-1.5 py-0.2 rounded">{{ conveningGame.platform }}</span>
+              <span class="text-[10px] text-slate-400 font-mono">PVP actual: ${{ (conveningGame.effectivePrimaryPrice || 0).toLocaleString() }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adopción Rápida con 1 Clic desde Proveedores Actuales -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-300">Adopción Rápida con 1 Clic:</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button 
+              type="button" 
+              @click="quickAdoptProviderCost('argentinaplay')"
+              class="p-2.5 rounded-xl border border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/40 text-left transition cursor-pointer space-y-0.5"
+            >
+              <span class="text-[10px] font-bold text-blue-300 block">🇦🇷 Argentina Play</span>
+              <div class="text-xs font-black text-white font-mono">
+                ${{ (conveningGame.providers?.argentinaplay?.costPrimary || conveningGame.providers?.argentinaplay?.primaryPrice || 0).toLocaleString() }} ARS
+              </div>
+              <span class="text-[9px] text-slate-400 block">Adoptar como costo base</span>
+            </button>
+
+            <button 
+              type="button" 
+              @click="quickAdoptProviderCost('juegosdigitalesargentina')"
+              class="p-2.5 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:bg-amber-950/40 text-left transition cursor-pointer space-y-0.5"
+            >
+              <span class="text-[10px] font-bold text-amber-300 block">🎮 Juegos Digitales Arg</span>
+              <div class="text-xs font-black text-white font-mono">
+                ${{ (conveningGame.providers?.juegosdigitalesargentina?.costPrimary || conveningGame.providers?.juegosdigitalesargentina?.primaryPrice || 0).toLocaleString() }} ARS
+              </div>
+              <span class="text-[9px] text-slate-400 block">Adoptar como costo base</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulario de Acuerdo de Precio -->
+        <div class="space-y-3 pt-2 border-t border-slate-800">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-300">Costo Acordado ($ ARS):</label>
+              <input 
+                v-model.number="conveneForm.agreedCost" 
+                type="number" 
+                step="500" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-mono font-bold text-xs outline-none focus:border-emerald-500"
+              >
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-300">PVP Plataforma ($ ARS):</label>
+              <input 
+                v-model.number="conveneForm.customPvp" 
+                type="number" 
+                step="500" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-emerald-400 font-mono font-black text-xs outline-none focus:border-emerald-500"
+              >
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-[11px]">
+            <span class="text-slate-400">Margen Tienda resultante:</span>
+            <strong class="text-emerald-400 font-mono font-black">
+              +${{ Math.max(0, (conveneForm.customPvp || 0) - (conveneForm.agreedCost || 0)).toLocaleString() }} ARS
+            </strong>
+          </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+          <button 
+            type="button" 
+            @click="showConvenePriceModal = false" 
+            class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition hover:bg-slate-700 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            @click="saveConvenePrice" 
+            class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+          >
+            ✓ Guardar Precio Convenido
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showGamingPriceEditModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md">
       <div class="bg-[#0b0f19] border border-indigo-500/30 rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar p-6 space-y-5 shadow-2xl">
         <div class="flex justify-between items-center pb-3 border-b border-slate-800">
