@@ -8,6 +8,7 @@ import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/clea
 import { testFirebaseConnection } from '../services/firebase'
 import { parseGamingTextList, matchGamingListWithCatalog, smartSearchGamingMatch, resolveOfficialGameImage } from '../services/gamingListParser'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
+const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 
 import { 
@@ -1871,6 +1872,35 @@ const sendWhatsAppGameDelivery = (order) => {
 // GESTIÓN AVANZADA DE VENTAS, POS, CUPONES, SALUD Y DESPACHO GAMER
 // ==========================================
 const flyerInitialProduct = ref(null)
+const showSharePlaqueModal = ref(false)
+const sharePlaquePayload = ref(null)
+const adminPlaqueContext = ref({
+  storeName: '',
+  resellerRef: 'DIRECT',
+  contactPhone: ''
+})
+
+const openAdminPlaqueForGaming = (game) => {
+  if (!game) return
+  adminPlaqueContext.value = {
+    storeName: adminStore.adminAuth.name || 'StreamePro Oficial',
+    resellerRef: 'DIRECT',
+    contactPhone: adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || ''
+  }
+  sharePlaquePayload.value = {
+    mode: 'single',
+    productType: 'gaming',
+    id: game.id,
+    licenseType: 'primary',
+    title: game.title,
+    subtitle: `${game.platform || 'PS4 / PS5'} · Cuenta Primaria Oficial · Entrega 60/90 min`,
+    priceNumeric: Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0),
+    image: game.image || '',
+    tag: `${game.platform || 'DIGITAL'} · PRIMARIA`
+  }
+  showSharePlaqueModal.value = true
+}
+
 const openFlyerForGaming = (game) => {
   if (!game) {
     showFlyerModal.value = true
@@ -2287,50 +2317,179 @@ const handleDeletePromoCode = (code) => {
   toast.add(`Cupón ${code} eliminado`, 'info')
 }
 
-const copyPromoCodeBanner = async (coupon) => {
+const buildPromoCodeBannerText = (coupon) => {
   const discountTxt = coupon.type === 'fixed' ? `$${Number(coupon.value).toLocaleString()} ARS OFF` : `${coupon.value}% OFF`
-  const text = `🎁 *CUPÓN EXCLUSIVO STREAMEPRO: ${coupon.code}*\n🔥 Aprovecha *${discountTxt}* en tu próxima compra.\n` +
+  return `🎁 *CUPÓN EXCLUSIVO STREAMEPRO: ${coupon.code}*\n🔥 Aprovecha *${discountTxt}* en tu próxima compra.\n` +
     (coupon.minAmount > 0 ? `💳 Válido desde $${Number(coupon.minAmount).toLocaleString()} ARS\n` : '') +
     `👉 Canjéalo en el carrito: https://streamepro.me/juegos`
+}
+
+const copyPromoCodeBanner = async (coupon) => {
   try {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(buildPromoCodeBannerText(coupon))
     toast.add(`Mensaje promo del cupón ${coupon.code} copiado`, 'success')
   } catch {
     toast.add('No se pudo copiar al portapapeles', 'error')
   }
 }
 
-// GENERADOR DE LISTAS VIRALES WHATSAPP / TELEGRAM
+const openPromoCodeWhatsApp = (coupon) => {
+  window.open(`https://wa.me/?text=${encodeURIComponent(buildPromoCodeBannerText(coupon))}`, '_blank')
+}
+
+// GENERADOR DE LISTAS VIRALES WHATSAPP / TELEGRAM Y PLACA PRO
 const marketingListConfig = ref({
+  campaignMode: 'games', // 'games' | 'coupon_games' | 'combos'
   platform: 'ALL',
   maxPrice: 0,
   limit: 12,
   resellerId: 'DIRECT',
-  sortMode: 'popular'
+  sortMode: 'popular',
+  couponCode: ''
+})
+
+const selectedMarketingReseller = computed(() => {
+  const rid = marketingListConfig.value.resellerId
+  if (!rid || rid === 'DIRECT') return null
+  return (adminStore.resellers || []).find(r => r.id === rid) || null
+})
+
+const marketingFilteredGames = computed(() => {
+  let list = [...(adminStore.processedGamingProducts || [])]
+  const cfg = marketingListConfig.value
+  if (cfg.platform !== 'ALL') {
+    list = list.filter(g => g.platform && g.platform.includes(cfg.platform))
+  }
+  if (cfg.maxPrice > 0) {
+    list = list.filter(g => Number(g.effectivePrimaryPrice || 0) > 0 && Number(g.effectivePrimaryPrice) <= cfg.maxPrice)
+  }
+  if (cfg.sortMode === 'lowest_price') {
+    list.sort((a, b) => Number(a.effectivePrimaryPrice || 9999999) - Number(b.effectivePrimaryPrice || 9999999))
+  } else if (cfg.sortMode === 'highest_margin') {
+    const marginOf = (g) => Number(g.actualStoreProfitPrimary ?? g.storeGrossMarginPrimary ?? (Number(g.effectivePrimaryPrice || 0) - Number(g.baseCostPrimary || 0)))
+    list.sort((a, b) => marginOf(b) - marginOf(a))
+  }
+  return list
 })
 
 const marketingDealsPreviewText = computed(() => {
-  let list = [...(adminStore.processedGamingProducts || [])]
-  if (marketingListConfig.value.platform !== 'ALL') {
-    list = list.filter(g => g.platform && g.platform.includes(marketingListConfig.value.platform))
+  const cfg = marketingListConfig.value
+  const resObj = selectedMarketingReseller.value
+  const refSuffix = resObj ? `/${encodeURIComponent(resObj.id)}` : ''
+  const refQuery = resObj ? `?ref=${encodeURIComponent(resObj.id)}` : ''
+  const storeLabel = (resObj ? (resObj.storeName || resObj.name) : (adminStore.adminAuth.name || 'STREAMEPRO')).toUpperCase()
+  const waContact = resObj
+    ? (resObj.contactNumber || resObj.whatsapp || '')
+    : (adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '')
+
+  if (cfg.campaignMode === 'combos') {
+    const pkgs = adminStore.packages || []
+    const header = `🎁 *COMBOS DE STREAMING OFICIALES — ${storeLabel}* 🍿\nPerfiles privados con PIN, calidad 4K y entrega rápida.\n\n`
+    const rows = pkgs.map((pkg, idx) => {
+      const srvs = (pkg.services || []).map(s => s.platform).join(' + ')
+      const saveStr = pkg.originalPrice > pkg.promoPrice
+        ? ` *(Antes $${Number(pkg.originalPrice).toLocaleString()})*`
+        : ''
+      return `${idx + 1}. *${pkg.title}* (${srvs})\n   💥 *$${Number(pkg.promoPrice || 0).toLocaleString()} ARS*${saveStr}`
+    }).join('\n\n')
+    const footer = `\n\n🛒 Pedí tu combo online: https://streamepro.me/${refQuery ? `${refQuery}&sec=packages` : '?sec=packages'}` +
+      (waContact ? `\n💬 Consultas directas: https://wa.me/${String(waContact).replace(/[^0-9]/g, '')}` : '')
+    return header + (rows || 'Sin combos cargados.') + footer
   }
-  if (marketingListConfig.value.maxPrice > 0) {
-    list = list.filter(g => Number(g.effectivePrimaryPrice || 0) > 0 && Number(g.effectivePrimaryPrice) <= marketingListConfig.value.maxPrice)
+
+  const picked = marketingFilteredGames.value.slice(0, cfg.limit || 12)
+  const platTitle = cfg.platform === 'ALL' ? 'PS4 / PS5' : cfg.platform
+  let couponCallout = ''
+  if (cfg.campaignMode === 'coupon_games') {
+    const activeCoupons = (adminStore.promoCodes || []).filter(c => c.active !== false)
+    const chosenCoupon = (cfg.couponCode && activeCoupons.find(c => c.code === cfg.couponCode)) || activeCoupons[0]
+    if (chosenCoupon) {
+      const discTxt = chosenCoupon.type === 'fixed'
+        ? `$${Number(chosenCoupon.value).toLocaleString()} ARS OFF`
+        : `${chosenCoupon.value}% OFF`
+      couponCallout = `🎟️ *CUPÓN ACTIVO: ${chosenCoupon.code}* (${discTxt})\n\n`
+    }
   }
-  if (marketingListConfig.value.sortMode === 'lowest_price') {
-    list.sort((a, b) => Number(a.effectivePrimaryPrice || 9999999) - Number(b.effectivePrimaryPrice || 9999999))
-  }
-  const picked = list.slice(0, marketingListConfig.value.limit || 12)
-  const platTitle = marketingListConfig.value.platform === 'ALL' ? 'PS4 / PS5' : marketingListConfig.value.platform
-  const header = `🔥 *OFERTAS DIGITALES ${platTitle} — STREAMEPRO* 🎮\nEntrega garantizada y soporte en consola.\n\n`
+
+  const header = `🔥 *OFERTAS DIGITALES ${platTitle} — ${storeLabel}* 🎮\nEntrega garantizada 60/90 min y soporte en consola.\n\n` + couponCallout
   const rows = picked.map((g, idx) => {
     const secStr = g.effectiveSecondaryPrice && !String(g.platform || '').match(/PC|Steam|PS3/i)
       ? ` | Sec $${g.effectiveSecondaryPrice.toLocaleString()}`
       : ''
-    return `${idx + 1}. *${g.title}* (${g.platform || platTitle})\n   💰 Pri $${(g.effectivePrimaryPrice || 0).toLocaleString()}${secStr}\n   👉 https://streamepro.me/juego/${g.id}`
+    return `${idx + 1}. *${g.title}* (${g.platform || platTitle})\n   💰 Pri $${(g.effectivePrimaryPrice || 0).toLocaleString()}${secStr}\n   👉 https://streamepro.me/juego/${g.id}${refSuffix}`
   }).join('\n')
-  return header + (rows || 'Sin títulos en este filtro.') + `\n\n🛒 Ver catálogo completo (+${(adminStore.processedGamingProducts || []).length} juegos): https://streamepro.me/juegos`
+  const footer = `\n\n🛒 Ver catálogo completo (+${(adminStore.processedGamingProducts || []).length} juegos): https://streamepro.me/juegos${refQuery}` +
+    (waContact ? `\n💬 WhatsApp Directo: https://wa.me/${String(waContact).replace(/[^0-9]/g, '')}` : '')
+  return header + (rows || 'Sin títulos en este filtro.') + footer
 })
+
+const openAdminMarketingPlaque = () => {
+  const cfg = marketingListConfig.value
+  const resObj = selectedMarketingReseller.value
+  adminPlaqueContext.value = {
+    storeName: resObj ? (resObj.storeName || resObj.name) : (adminStore.adminAuth.name || 'StreamePro Oficial'),
+    resellerRef: resObj ? resObj.id : 'DIRECT',
+    contactPhone: resObj
+      ? (resObj.contactNumber || resObj.whatsapp || '')
+      : (adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '')
+  }
+
+  if (cfg.campaignMode === 'combos') {
+    const pkgs = adminStore.packages || []
+    if (!pkgs.length) {
+      toast.add('No hay combos creados todavía.', 'info')
+      return
+    }
+    sharePlaquePayload.value = {
+      mode: pkgs.length === 1 ? 'single' : 'multi',
+      productType: 'package',
+      id: pkgs[0].id || '',
+      title: pkgs.length === 1 ? pkgs[0].title : 'Combos Oficiales StreamePro',
+      subtitle: `${pkgs.length} combos activos · Perfiles privados 4K con PIN`,
+      priceNumeric: Number(pkgs[0].promoPrice || 0),
+      originalPrice: Number(pkgs[0].originalPrice || 0),
+      services: pkgs[0].services || [],
+      tag: pkgs[0].badge || 'COMBOS VIP',
+      items: pkgs.slice(0, 4).map(p => ({
+        title: p.title,
+        subtitle: (p.services || []).map(s => s.platform).join(' + '),
+        priceNumeric: Number(p.promoPrice || 0),
+        originalPrice: Number(p.originalPrice || 0),
+        tag: p.badge || 'COMBO'
+      }))
+    }
+    showSharePlaqueModal.value = true
+    return
+  }
+
+  const picked = marketingFilteredGames.value.slice(0, 4)
+  if (!picked.length) {
+    toast.add('No hay juegos en este filtro para generar la placa.', 'info')
+    return
+  }
+  const platTitle = cfg.platform === 'ALL' ? 'PS4 / PS5' : cfg.platform
+  sharePlaquePayload.value = {
+    mode: picked.length === 1 ? 'single' : 'multi',
+    productType: 'gaming',
+    id: picked.length === 1 ? picked[0].id : '',
+    licenseType: picked.length === 1 ? 'primary' : undefined,
+    title: picked.length === 1 ? picked[0].title : `Top Ofertas Gamer ${platTitle}`,
+    subtitle: picked.length === 1
+      ? `${picked[0].platform || 'PS4/PS5'} · Entrega 60/90 min`
+      : `Selección destacada · Entrega digital garantizada 60/90 min`,
+    priceNumeric: picked.length === 1 ? Number(picked[0].effectivePrimaryPrice || picked[0].effectiveSecondaryPrice || 0) : 0,
+    image: picked[0].image || '',
+    tag: platTitle,
+    items: picked.map(g => ({
+      title: g.title,
+      subtitle: `${g.platform || platTitle} · Primaria`,
+      priceNumeric: Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0),
+      image: g.image || '',
+      tag: g.platform || 'GAMING'
+    }))
+  }
+  showSharePlaqueModal.value = true
+}
 
 const copyMarketingDealsList = async () => {
   try {
@@ -10176,13 +10335,23 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   <span class="text-[10px] font-mono text-indigo-300 uppercase font-bold">{{ posSelectedGame.platform }} · {{ posSelectedGame.id }}</span>
                   <h4 class="text-sm sm:text-base font-black text-white truncate">{{ posSelectedGame.title }}</h4>
                 </div>
-                <button
-                  type="button"
-                  @click="openFlyerForGaming(posSelectedGame)"
-                  class="px-3 py-2 rounded-xl bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-black transition cursor-pointer shrink-0"
-                >
-                  🎨 Flyer
-                </button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    @click="openAdminPlaqueForGaming(posSelectedGame)"
+                    class="px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500 text-sky-200 hover:text-slate-950 border border-sky-500/35 text-xs font-black transition cursor-pointer"
+                    title="Generar placa 1:1 con logo sobre portada"
+                  >
+                    📤 Placa
+                  </button>
+                  <button
+                    type="button"
+                    @click="openFlyerForGaming(posSelectedGame)"
+                    class="px-3 py-2 rounded-xl bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-black transition cursor-pointer"
+                  >
+                    🎨 Flyer
+                  </button>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -10340,6 +10509,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
                     <button type="button" @click="copyPromoCodeBanner(coupon)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white text-[10px] cursor-pointer" title="Copiar mensaje promo">📲</button>
+                    <button type="button" @click="openPromoCodeWhatsApp(coupon)" class="px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-[10px] cursor-pointer" title="Difundir cupón por WhatsApp">💬</button>
                     <button type="button" @click="handleTogglePromoCode(coupon.code)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] cursor-pointer" title="Pausar/Activar">{{ coupon.active !== false ? '⏸️' : '▶️' }}</button>
                     <button type="button" @click="handleDeletePromoCode(coupon.code)" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 text-[10px] cursor-pointer" title="Eliminar">🗑️</button>
                   </div>
@@ -10349,18 +10519,50 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
             <!-- Generador de Listas Promocionales WhatsApp / Telegram -->
             <div class="bg-[#020617] border border-pink-500/30 rounded-3xl p-5 space-y-3 shadow-xl">
-              <div class="flex items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 class="text-base font-black text-white">📢 Generador Lista Viral WhatsApp / TG</h3>
-                  <p class="text-[11px] text-slate-400">Enlaces directos /juego/:id listos para estados, grupos y Telegram.</p>
+                  <h3 class="text-base font-black text-white">📢 Generador Lista Viral &amp; Placa Pro</h3>
+                  <p class="text-[11px] text-slate-400">Listas y placas con atribución directa o enlace ?ref= del distribuidor.</p>
                 </div>
+                <button
+                  type="button"
+                  @click="openAdminMarketingPlaque"
+                  class="bg-indigo-500/20 hover:bg-indigo-500 text-indigo-200 hover:text-white border border-indigo-500/40 font-black text-[11px] px-3 py-1.5 rounded-xl transition cursor-pointer shrink-0"
+                  title="Crear placa multi-producto con los primeros destacados de esta campaña"
+                >
+                  📤 Placa Top
+                </button>
               </div>
 
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <select v-model="marketingListConfig.campaignMode" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold outline-none">
+                  <option value="games">🎮 Juegos Digitales</option>
+                  <option value="coupon_games">🎟️ Juegos + Cupón</option>
+                  <option value="combos">🎁 Combos Streaming</option>
+                </select>
+
+                <select v-model="marketingListConfig.resellerId" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-sky-300 font-semibold outline-none">
+                  <option value="DIRECT">🏪 Tienda Directa</option>
+                  <option v-for="r in adminStore.resellers" :key="r.id" :value="r.id">👤 {{ r.storeName || r.name }}</option>
+                </select>
+
+                <select v-if="marketingListConfig.campaignMode === 'coupon_games'" v-model="marketingListConfig.couponCode" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-amber-300 font-mono outline-none">
+                  <option value="">Auto (Primer Cupón Activo)</option>
+                  <option v-for="c in (adminStore.promoCodes || []).filter(x => x.active !== false)" :key="c.code" :value="c.code">
+                    {{ c.code }} ({{ c.type === 'fixed' ? '$' + c.value : c.value + '%' }})
+                  </option>
+                </select>
+              </div>
+
+              <div v-if="marketingListConfig.campaignMode !== 'combos'" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <select v-model="marketingListConfig.platform" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
-                  <option value="ALL">Todas</option>
+                  <option value="ALL">Todas las plataformas</option>
                   <option value="PS5">PS5</option>
                   <option value="PS4">PS4</option>
+                  <option value="PS3">PS3</option>
+                  <option value="Xbox">Xbox</option>
+                  <option value="Switch">Switch</option>
+                  <option value="PC">PC / Steam</option>
                 </select>
                 <select v-model.number="marketingListConfig.maxPrice" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
                   <option :value="0">Cualquier $</option>
@@ -10371,6 +10573,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                 <select v-model="marketingListConfig.sortMode" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none">
                   <option value="popular">Destacados</option>
                   <option value="lowest_price">Más Baratos</option>
+                  <option value="highest_margin">Mayor Margen $</option>
                 </select>
                 <select v-model.number="marketingListConfig.limit" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-mono outline-none">
                   <option :value="8">8 juegos</option>
@@ -12587,6 +12790,16 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       :default-store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
       :initial-product="flyerInitialProduct"
+    />
+
+    <!-- MODAL: PLACA DIRECTA CON LOGO SOBRE PRODUCTO -->
+    <SharePlaqueModal
+      :show="showSharePlaqueModal"
+      :payload="sharePlaquePayload"
+      :store-name="adminPlaqueContext.storeName || adminStore.adminAuth.name || 'StreamePro Oficial'"
+      :reseller-ref="adminPlaqueContext.resellerRef || 'DIRECT'"
+      :contact-phone="adminPlaqueContext.contactPhone || adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || ''"
+      @close="showSharePlaqueModal = false; sharePlaquePayload = null"
     />
 
     <!-- MODAL DE GESTIÓN: CREAR / EDITAR PRODUCTO FÍSICO O PÁGINA (ADMIN) -->

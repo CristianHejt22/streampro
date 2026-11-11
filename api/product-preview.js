@@ -88,20 +88,19 @@ export default async function handler(req, res) {
     rawImg = `https://streamepro.me/${rawImg.replace(/^\//, '')}`
   }
 
-  // Imagen en alta definición 1200x630 para WhatsApp / Facebook / Telegram / Twitter
+  // Imagen en alta definición 1200x630 con Logo Oficial sobre la imagen para WhatsApp / Telegram / Instagram / Facebook
+  const markBadgeUrl = 'https://streamepro.me/share-logo-badge.png'
   const focusedOgImage = rawImg.startsWith('https://streamepro.me/og-banner')
     ? 'https://streamepro.me/og-banner.png'
-    : (rawImg.includes('playstation.com') 
-        ? rawImg 
-        : `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=ffffff&output=jpg`)
+    : `https://wsrv.nl/?url=${encodeURIComponent(rawImg)}&w=1200&h=630&fit=contain&cbg=090d16&mark=${encodeURIComponent(markBadgeUrl)}&markpos=top-left&markw=280&markpad=26&output=jpg`
 
   const targetRedirectUrl = isGame
     ? (refCode ? `/?game=${encodeURIComponent(product.id)}&ref=${encodeURIComponent(refCode)}` : `/?game=${encodeURIComponent(product.id)}`)
     : (refCode ? `/?prod=${encodeURIComponent(prodId)}&ref=${encodeURIComponent(refCode)}&sec=physical` : `/?prod=${encodeURIComponent(prodId)}&sec=physical`)
 
   const canonicalUrl = isGame
-    ? `https://streamepro.me/?game=${encodeURIComponent(product.id)}`
-    : `https://streamepro.me/p/${encodeURIComponent(prodId)}`
+    ? `https://streamepro.me/?game=${encodeURIComponent(product.id)}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}`
+    : `https://streamepro.me/p/${encodeURIComponent(prodId)}${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`
 
   const cleanTitle = isGame
     ? `${product.name} | StreamePro Oficial`
@@ -175,8 +174,8 @@ export default async function handler(req, res) {
 </head>
 <body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box;">
   <div style="text-align:center;max-width:480px;background:#0f172a;padding:30px;border-radius:24px;border:1px solid #334155;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-    <div style="width:140px;height:140px;background:#ffffff;border-radius:18px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:10px;">
-      <img src="${focusedOgImage}" alt="${escapeHtml(product.name)}" style="max-width:100%;max-height:100%;object-fit:contain;">
+    <div style="width:160px;height:110px;background:#090d16;border:1px solid #334155;border-radius:18px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden;">
+      <img src="${focusedOgImage}" alt="${escapeHtml(product.name)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;">
     </div>
     <h1 style="font-size:18px;margin:0 0 10px;color:#ffffff;font-weight:900;">${escapeHtml(product.name)}</h1>
     <div style="font-size:22px;color:#38bdf8;font-weight:900;margin-bottom:15px;">${escapeHtml(product.price)}</div>

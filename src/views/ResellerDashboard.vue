@@ -3,8 +3,9 @@ import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { loadDb, DB_KEYS } from '../services/db'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
+const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { 
@@ -21,6 +22,8 @@ import {
 const tab = ref('crm') 
 const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
+const showSharePlaqueModal = ref(false)
+const sharePlaquePayload = ref(null)
 
 const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
@@ -71,6 +74,77 @@ const openFlyerForProduct = (prod) => {
   }
   flyerInitialProduct.value = prod
   showFlyerModal.value = true
+}
+
+const openResellerSharePlaque = (prod) => {
+  if (!prod) return
+  const isPhysical = prod.itemType === 'physical' || (prod.categoryIds && !prod.effectivePrimaryPrice) || (!prod.effectivePrimaryPrice && prod.priceNumeric !== undefined)
+  const isGaming = Boolean(prod.effectivePrimaryPrice || prod.itemType === 'gaming' || (prod.platform && prod.title && !prod.services))
+  const isPackage = Boolean(prod.services || prod.itemType === 'package')
+
+  if (isPhysical) {
+    if (!adminStore.isStoreVisible || !adminStore.isPhysicalStoreVisible) {
+      toast.add('La tienda física está en pausa temporalmente.', 'warning')
+      return
+    }
+    const priceNum = typeof prod.priceNumeric === 'number'
+      ? prod.priceNumeric
+      : Number(String(prod.price || '').replace(/[^0-9]/g, '')) || 0
+    const origNum = prod.hasDiscount
+      ? (typeof prod.originalPriceNumeric === 'number' ? prod.originalPriceNumeric : Number(String(prod.originalPrice || '').replace(/[^0-9]/g, '')) || 0)
+      : 0
+    sharePlaquePayload.value = {
+      mode: 'single',
+      productType: 'physical',
+      id: prod.id,
+      title: prod.name,
+      subtitle: '🚚 Stock Disponible · Envíos a Todo el País · Garantía Oficial',
+      priceNumeric: priceNum,
+      originalPrice: origNum > priceNum ? origNum : 0,
+      discountPct: Number(prod.discountPercentage || 0),
+      image: prod.image || '',
+      tag: prod.categoryName || 'TIENDA OFICIAL'
+    }
+  } else if (isGaming) {
+    sharePlaquePayload.value = {
+      mode: 'single',
+      productType: 'gaming',
+      id: prod.id,
+      licenseType: 'primary',
+      title: prod.title || prod.name,
+      subtitle: `${prod.platform || 'PS4 / PS5'} · Cuenta Primaria Oficial · Entrega 60/90 min`,
+      priceNumeric: Number(prod.effectivePrimaryPrice || prod.effectiveSecondaryPrice || 0),
+      image: prod.image || '',
+      tag: `${prod.platform || 'DIGITAL'} · PRIMARIA`
+    }
+  } else if (isPackage) {
+    const promo = Number(prod.promoPrice || 0)
+    const orig = Number(prod.originalPrice || 0)
+    sharePlaquePayload.value = {
+      mode: 'single',
+      productType: 'package',
+      id: prod.id || '',
+      title: prod.title,
+      subtitle: prod.description || `${(prod.services || []).length} Plataformas oficiales con PIN privado`,
+      priceNumeric: promo,
+      originalPrice: orig > promo ? orig : 0,
+      discountPct: orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 0,
+      tag: prod.badge || 'COMBO STREAMING',
+      services: prod.services || []
+    }
+  } else {
+    sharePlaquePayload.value = {
+      mode: 'single',
+      productType: 'streaming',
+      id: prod.platform || selectedPlatform.value,
+      platform: prod.platform || selectedPlatform.value,
+      title: prod.title || `${selectedPlatform.value} Oficial`,
+      subtitle: prod.subtitle || `${devicesToPromo.value === 1 ? '1 Perfil Privado con PIN' : devicesToPromo.value + ' Dispositivos Simultáneos'} · Garantía 30 días`,
+      priceNumeric: Number(prod.priceNumeric || priceToShow.value || 0),
+      tag: (prod.platform || selectedPlatform.value).toUpperCase()
+    }
+  }
+  showSharePlaqueModal.value = true
 }
 const filterStatus = ref('All')
 const searchQuery = ref('')
@@ -253,13 +327,18 @@ const downloadVoucherImage = async () => {
   if (!voucherCardRef.value) return
   toast.add('Generando comprobante digital en alta definición...', 'info')
   try {
-    const canvas = await html2canvas(voucherCardRef.value, { scale: 3, backgroundColor: null })
+    const dataUrl = await toPng(voucherCardRef.value, {
+      cacheBust: true,
+      pixelRatio: 2.5,
+      backgroundColor: '#0b1120'
+    })
     const link = document.createElement('a')
     link.download = `comprobante-streampro-${selectedVoucherClient.value?.clientNumber || 'entrega'}.png`
-    link.href = canvas.toDataURL('image/png')
+    link.href = dataUrl
     link.click()
     toast.add('¡Comprobante digital descargado con éxito!', 'success')
   } catch (err) {
+    console.error('Voucher PNG error:', err)
     toast.add('Error al generar la imagen del comprobante', 'error')
   }
 }
@@ -519,13 +598,25 @@ const clearAllResellerAlerts = () => {
   toast.add('Todas las notificaciones han sido eliminadas.', 'success')
 }
 
-// Marketing Flyer Generator
+// Marketing Flyer Generator (Todas las plataformas del catálogo)
+const MARKETING_STREAMING_PLATFORMS = ['Netflix', 'Max', 'Spotify', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
 const platformStyles = {
   Netflix: { bg: 'bg-red-600', text: 'text-white', price: 'text-yellow-300' },
   Max: { bg: 'bg-blue-600', text: 'text-white', price: 'text-white' },
   Spotify: { bg: 'bg-emerald-600', text: 'text-black', price: 'text-black' },
   'Disney+': { bg: 'bg-sky-600', text: 'text-white', price: 'text-white' },
-  IPTV: { bg: 'bg-purple-600', text: 'text-white', price: 'text-green-300' }
+  IPTV: { bg: 'bg-purple-600', text: 'text-white', price: 'text-green-300' },
+  'Prime Video': { bg: 'bg-cyan-700', text: 'text-white', price: 'text-amber-300' },
+  'YouTube Premium': { bg: 'bg-rose-700', text: 'text-white', price: 'text-yellow-300' },
+  'Canva Pro': { bg: 'bg-violet-600', text: 'text-white', price: 'text-cyan-200' }
+}
+
+const getCatalogStreamingPrice = (platform, screens = 1) => {
+  const plansObj = adminStore.pricingCatalog?.[platform]?.plans || {}
+  const entries = Object.values(plansObj)
+  if (!entries.length) return 7500
+  const exact = entries.find(p => Number(p.units || 1) === Number(screens))
+  return Number((exact || entries[0])?.clientPrice || 7500)
 }
 
 // GESTIÓN Y ARMADO DE PAQUETES (REVENDEDOR)
@@ -684,7 +775,7 @@ const togglePlatformInComboMarketing = (plat) => {
     comboMarketingData.value.services.push({ platform: plat, planLabel: '1 Perfil / Pantalla' })
   }
   const sumRegular = comboMarketingData.value.services.reduce((acc, s) => {
-    const base = adminStore.pricingCatalog[s.platform]?.plans['1_perfil']?.clientPrice || 5000
+    const base = getCatalogStreamingPrice(s.platform, 1)
     return acc + base
   }, 0)
   comboMarketingData.value.originalPrice = sumRegular
@@ -692,26 +783,81 @@ const togglePlatformInComboMarketing = (plat) => {
 }
 
 const selectedPlatform = ref('Netflix')
-const priceToShow = ref(7700)
 const devicesToPromo = ref(1)
+const priceToShow = ref(getCatalogStreamingPrice('Netflix', 1))
 const flyerRef = ref(null)
+
+watch([selectedPlatform, devicesToPromo], ([plat, units]) => {
+  priceToShow.value = getCatalogStreamingPrice(plat, units)
+})
+
+const openMarketingFullStudio = () => {
+  if (marketingMode.value === 'package') {
+    openFlyerForProduct({
+      itemType: 'package',
+      id: selectedMarketingPackageId.value,
+      title: comboMarketingData.value.title,
+      badge: comboMarketingData.value.badge,
+      services: comboMarketingData.value.services,
+      promoPrice: Number(comboMarketingData.value.promoPrice || 0),
+      originalPrice: Number(comboMarketingData.value.originalPrice || 0)
+    })
+  } else {
+    openFlyerForProduct({
+      itemType: 'streaming',
+      id: selectedPlatform.value,
+      platform: selectedPlatform.value,
+      name: `${selectedPlatform.value} Oficial`,
+      title: `${selectedPlatform.value} Oficial`,
+      priceNumeric: Number(priceToShow.value || 0),
+      subtitle: devicesToPromo.value === 1 ? '1 Perfil con PIN Privado' : `${devicesToPromo.value} Dispositivos Simultáneos`
+    })
+  }
+}
+
+const openMarketingBrandPlaque = () => {
+  if (marketingMode.value === 'package') {
+    openResellerSharePlaque({
+      itemType: 'package',
+      id: selectedMarketingPackageId.value,
+      title: comboMarketingData.value.title,
+      badge: comboMarketingData.value.badge,
+      services: comboMarketingData.value.services,
+      promoPrice: Number(comboMarketingData.value.promoPrice || 0),
+      originalPrice: Number(comboMarketingData.value.originalPrice || 0)
+    })
+  } else {
+    openResellerSharePlaque({
+      itemType: 'streaming',
+      platform: selectedPlatform.value,
+      title: `${selectedPlatform.value} Oficial`,
+      priceNumeric: Number(priceToShow.value || 0),
+      subtitle: `${devicesToPromo.value === 1 ? '1 Perfil Privado con PIN' : devicesToPromo.value + ' Dispositivos Simultáneos'} · Garantía 30 días`
+    })
+  }
+}
 
 const downloadFlyer = async () => {
   const targetRef = marketingMode.value === 'package' ? comboFlyerRef.value : flyerRef.value
   if (!targetRef) return
   toast.add('Generando flyer en alta definición...', 'success')
   try {
-    const canvas = await html2canvas(targetRef, { scale: 3, backgroundColor: null })
+    const dataUrl = await toPng(targetRef, {
+      cacheBust: true,
+      pixelRatio: 2.5,
+      backgroundColor: '#020617'
+    })
     const link = document.createElement('a')
     const fileName = marketingMode.value === 'package' 
-      ? `streampro-combo-${comboMarketingData.value.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`
-      : `streampro-flyer-${selectedPlatform.value.toLowerCase()}.png`
+      ? `streamepro-combo-${comboMarketingData.value.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`
+      : `streamepro-flyer-${selectedPlatform.value.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`
     link.download = fileName
-    link.href = canvas.toDataURL('image/png')
+    link.href = dataUrl
     link.click()
     toast.add('¡Flyer descargado en HD listo para publicar!', 'success')
   } catch (err) {
-    toast.add('Error al generar la imagen', 'error')
+    console.error('Flyer PNG error:', err)
+    toast.add('Error al generar la imagen del flyer', 'error')
   }
 }
 
@@ -730,8 +876,91 @@ const shareFlyerOfferToWhatsApp = () => {
 const socialNetwork = ref('whatsapp') // 'whatsapp' | 'instagram' | 'tiktok' | 'facebook'
 const socialPlatform = ref('Netflix')
 const promoTone = ref('urgente') // 'urgente' | 'vip' | 'ahorro'
-const promoPrice = ref(7700)
 const promoScreens = ref(1)
+const promoPrice = ref(getCatalogStreamingPrice('Netflix', 1))
+
+watch([socialPlatform, promoScreens], ([plat, units]) => {
+  promoPrice.value = getCatalogStreamingPrice(plat, units)
+})
+
+// Generador de Lista Viral Gaming con enlaces ?ref del Distribuidor
+const resellerMarketingGamesConfig = ref({
+  platform: 'ALL',
+  maxPrice: 0,
+  limit: 8
+})
+
+const filteredResellerMarketingGames = computed(() => {
+  let list = [...(adminStore.processedGamingProducts || [])]
+  const plat = resellerMarketingGamesConfig.value.platform
+  if (plat !== 'ALL') {
+    list = list.filter(g => g.platform && g.platform.includes(plat))
+  }
+  const maxP = Number(resellerMarketingGamesConfig.value.maxPrice || 0)
+  if (maxP > 0) {
+    list = list.filter(g => Number(g.effectivePrimaryPrice || 0) > 0 && Number(g.effectivePrimaryPrice) <= maxP)
+  }
+  return list.slice(0, Number(resellerMarketingGamesConfig.value.limit || 8))
+})
+
+const resellerViralGamingListText = computed(() => {
+  const origin = getBaseOrigin()
+  const refCode = currentResellerId.value
+  const storeTitle = (resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'STREAMEPRO').toUpperCase()
+  const platTitle = resellerMarketingGamesConfig.value.platform === 'ALL' ? 'PS4 / PS5' : resellerMarketingGamesConfig.value.platform
+  const picked = filteredResellerMarketingGames.value
+  const header = `🔥 *OFERTAS GAMER ${platTitle} — ${storeTitle}* 🎮\nEntrega garantizada 60/90 min · Cuentas Digitales Oficiales.\n\n`
+  const rows = picked.map((g, idx) => {
+    const secStr = gameSupportsSecondary(g)
+      ? ` | Sec ${Number(g.effectiveSecondaryPrice).toLocaleString()}`
+      : ''
+    return `${idx + 1}. *${g.title}* (${g.platform || platTitle})\n   💰 Pri ${Number(g.effectivePrimaryPrice || 0).toLocaleString()}${secStr}\n   👉 ${origin}/juego/${encodeURIComponent(g.id)}/${encodeURIComponent(refCode)}`
+  }).join('\n')
+  return header + (rows || 'No hay juegos en este rango.') + `\n\n🛒 Catálogo completo: ${origin}/juegos?ref=${encodeURIComponent(refCode)}`
+})
+
+const copyResellerViralGamingList = async () => {
+  try {
+    await navigator.clipboard.writeText(resellerViralGamingListText.value)
+    toast.add('📋 ¡Lista viral de juegos con tus links copiada!', 'success')
+  } catch {
+    toast.add('No se pudo copiar al portapapeles', 'error')
+  }
+}
+
+const shareResellerViralGamingWhatsApp = () => {
+  window.open(`https://wa.me/?text=${encodeURIComponent(resellerViralGamingListText.value)}`, '_blank')
+}
+
+const openResellerTopGamesPlaque = () => {
+  const topGames = filteredResellerMarketingGames.value.slice(0, 4)
+  if (topGames.length === 0) {
+    toast.add('No hay juegos disponibles en el filtro actual.', 'info')
+    return
+  }
+  const platTitle = resellerMarketingGamesConfig.value.platform === 'ALL' ? 'PS4 / PS5' : resellerMarketingGamesConfig.value.platform
+  sharePlaquePayload.value = {
+    mode: topGames.length === 1 ? 'single' : 'multi',
+    productType: 'gaming',
+    id: topGames.length === 1 ? topGames[0].id : '',
+    licenseType: topGames.length === 1 ? 'primary' : undefined,
+    title: topGames.length === 1 ? topGames[0].title : `Top Ofertas Gamer ${platTitle}`,
+    subtitle: topGames.length === 1
+      ? `${topGames[0].platform || 'PS4/PS5'} · Entrega 60/90 min`
+      : `${topGames.length} títulos digitales · Compra directa garantizada`,
+    priceNumeric: topGames.length === 1 ? Number(topGames[0].effectivePrimaryPrice || 0) : 0,
+    image: topGames[0].image || '',
+    tag: platTitle,
+    items: topGames.map(g => ({
+      title: g.title,
+      subtitle: `${g.platform || platTitle} · Primaria`,
+      priceNumeric: Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0),
+      image: g.image || '',
+      tag: g.platform || 'GAMING'
+    }))
+  }
+  showSharePlaqueModal.value = true
+}
 
 const generatedSocialCopy = computed(() => {
   const link = uniqueAffiliateLink.value
@@ -742,7 +971,7 @@ const generatedSocialCopy = computed(() => {
     const promo = comboMarketingData.value.promoPrice.toLocaleString()
     const regular = comboMarketingData.value.originalPrice.toLocaleString()
     const platformsList = comboMarketingData.value.services.map(s => {
-      const icon = s.platform === 'Netflix' ? '🍿' : s.platform === 'Spotify' ? '🎧' : s.platform === 'Disney+' ? '✨' : s.platform === 'IPTV' ? '📺' : '🎬'
+      const icon = s.platform === 'Netflix' ? '🍿' : s.platform === 'Spotify' ? '🎧' : s.platform === 'Disney+' ? '✨' : s.platform === 'IPTV' ? '📺' : s.platform === 'Prime Video' ? '📦' : s.platform === 'YouTube Premium' ? '▶️' : s.platform === 'Canva Pro' ? '🎨' : '🎬'
       return `${icon} ${s.platform} (${s.planLabel})`
     }).join('\n')
     const platNames = comboMarketingData.value.services.map(s => s.platform).join(', ')
@@ -1119,12 +1348,21 @@ const submitResellerGameInquiry = () => {
         </button>
 
         <button 
+          @click="openMarketingBrandPlaque"
+          class="bg-indigo-500/20 hover:bg-indigo-500/35 text-indigo-200 hover:text-white border border-indigo-500/35 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow cursor-pointer"
+          title="Generar placa 1:1 directa con tu logo de distribuidor"
+        >
+          <span>📤</span>
+          <span>Placa Rápida</span>
+        </button>
+
+        <button 
           @click="showFlyerModal = true"
-          class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
-          title="Crear Flyers y Banners publicitarios para Estados de WhatsApp e Instagram"
+          class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow cursor-pointer"
+          title="Crear Flyers y Banners publicitarios en 4 formatos para Estados, Stories y Feed"
         >
           <span>🎨</span>
-          <span>Generar Flyer</span>
+          <span>Estudio Flyers</span>
         </button>
 
         <div class="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-right">
@@ -2197,9 +2435,17 @@ const submitResellerGameInquiry = () => {
               </button>
               <button 
                 v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
+                @click="openResellerSharePlaque(prod)"
+                class="bg-indigo-500/20 hover:bg-indigo-500 text-indigo-200 hover:text-white text-[11px] font-bold px-2.5 py-2 rounded-xl border border-indigo-500/30 transition-all flex items-center justify-center gap-1 shadow cursor-pointer"
+                title="Compartir placa con tu logo sobre la foto del producto"
+              >
+                <span>📤 Placa</span>
+              </button>
+              <button 
+                v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
                 @click="openFlyerForProduct(prod)"
-                class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-1 shadow"
-                title="Crear Flyer publicitario para redes con streamepro.me"
+                class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 text-[11px] font-bold px-2.5 py-2 rounded-xl border border-amber-500/30 transition-all flex items-center justify-center gap-1 shadow cursor-pointer"
+                title="Crear Flyer publicitario HD multi-formato"
               >
                 <span>🎨 Flyer</span>
               </button>
@@ -2247,12 +2493,27 @@ const submitResellerGameInquiry = () => {
           <p class="text-xs text-slate-300 mt-1">Comparte textos persuasivos y flyers listos para captar clientes en Instagram, TikTok, WhatsApp y Facebook.</p>
         </div>
         
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button 
-            @click="copyAffiliateLink" 
-            class="bg-brand-accent text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow flex items-center gap-1.5"
+            type="button"
+            @click="openMarketingBrandPlaque"
+            class="bg-indigo-500/25 hover:bg-indigo-500 text-indigo-100 hover:text-white border border-indigo-400/40 font-black text-xs px-3.5 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
           >
-            <span>📋 Copiar Mi Link de Tienda</span>
+            <span>📤 Placa con Logo</span>
+          </button>
+          <button 
+            type="button"
+            @click="openMarketingFullStudio"
+            class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-400/40 font-black text-xs px-3.5 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🎨 Estudio Flyers HD</span>
+          </button>
+          <button 
+            type="button"
+            @click="copyAffiliateLink" 
+            class="bg-brand-accent text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📋 Copiar Mi Link</span>
           </button>
         </div>
       </div>
@@ -2353,7 +2614,7 @@ const submitResellerGameInquiry = () => {
                 <label class="block font-bold text-slate-400 uppercase tracking-wider mb-1.5">Cuentas Incluidas (Haz clic para sumar/quitar):</label>
                 <div class="flex flex-wrap gap-1.5">
                   <button 
-                    v-for="plat in ['Netflix', 'Max', 'Spotify', 'Disney+', 'IPTV']" 
+                    v-for="plat in MARKETING_STREAMING_PLATFORMS" 
                     :key="plat"
                     type="button"
                     @click="togglePlatformInComboMarketing(plat)"
@@ -2392,6 +2653,9 @@ const submitResellerGameInquiry = () => {
                   <option value="Spotify">Spotify Familiar</option>
                   <option value="Disney+">Disney+ Combo</option>
                   <option value="IPTV">IPTV MagisTV Pro</option>
+                  <option value="Prime Video">Amazon Prime Video 4K</option>
+                  <option value="YouTube Premium">YouTube Premium &amp; Music</option>
+                  <option value="Canva Pro">Canva Pro (A tu correo)</option>
                 </select>
               </div>
 
@@ -2501,7 +2765,7 @@ const submitResellerGameInquiry = () => {
               <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Plataformas en Flyer (Toca para activar/desactivar)</label>
               <div class="flex flex-wrap gap-2">
                 <button 
-                  v-for="plat in ['Netflix', 'Max', 'Spotify', 'Disney+', 'IPTV']" 
+                  v-for="plat in MARKETING_STREAMING_PLATFORMS" 
                   :key="plat"
                   type="button"
                   @click="togglePlatformInComboMarketing(plat)"
@@ -2569,6 +2833,9 @@ const submitResellerGameInquiry = () => {
                 <option value="Spotify">Spotify (Tema Verde)</option>
                 <option value="Disney+">Disney+ (Tema Celeste)</option>
                 <option value="IPTV">IPTV (Tema Morado)</option>
+                <option value="Prime Video">Prime Video (Tema Cyan)</option>
+                <option value="YouTube Premium">YouTube Premium (Tema Carmesí)</option>
+                <option value="Canva Pro">Canva Pro (Tema Violeta)</option>
               </select>
             </div>
 
@@ -2654,12 +2921,15 @@ const submitResellerGameInquiry = () => {
                   :key="idx"
                   class="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15 text-xs font-black shadow"
                 >
-                  <span>{{ s.platform === 'Netflix' ? '🍿' : s.platform === 'Spotify' ? '🎧' : s.platform === 'Disney+' ? '✨' : s.platform === 'IPTV' ? '📺' : '🎬' }}</span>
+                  <span>{{ s.platform === 'Netflix' ? '🍿' : s.platform === 'Spotify' ? '🎧' : s.platform === 'Disney+' ? '✨' : s.platform === 'IPTV' ? '📺' : s.platform === 'Prime Video' ? '📦' : s.platform === 'YouTube Premium' ? '▶️' : s.platform === 'Canva Pro' ? '🎨' : '🎬' }}</span>
                   <span :class="[
                     s.platform === 'Netflix' ? 'text-red-400' :
                     s.platform === 'Spotify' ? 'text-emerald-400' :
                     s.platform === 'Disney+' ? 'text-sky-300' :
-                    s.platform === 'Max' ? 'text-blue-400' : 'text-purple-400'
+                    s.platform === 'Max' ? 'text-blue-400' :
+                    s.platform === 'Prime Video' ? 'text-cyan-300' :
+                    s.platform === 'YouTube Premium' ? 'text-rose-400' :
+                    s.platform === 'Canva Pro' ? 'text-violet-300' : 'text-purple-400'
                   ]">{{ s.platform }}</span>
                 </div>
               </div>
@@ -2713,6 +2983,85 @@ const submitResellerGameInquiry = () => {
               <span>Garantía Oficial</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: GENERADOR VIRAL GAMING PARA REVENDEDORES -->
+      <div class="bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-indigo-500/30 backdrop-blur-md space-y-5">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 flex items-center justify-center text-xl">
+              🎮
+            </div>
+            <div>
+              <h4 class="text-lg font-black text-white">Generador Viral Videojuegos Digitales (Con tu Link ?ref=)</h4>
+              <p class="text-xs text-slate-400">Genera una lista con enlaces directos a tu catálogo o crea una Placa Multi-Juego Top con tu logo.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="openResellerTopGamesPlaque"
+            class="bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <span>📤 Placa Top Juegos</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div>
+            <label class="block font-bold text-slate-400 uppercase tracking-wider mb-1">Plataforma</label>
+            <select v-model="resellerMarketingGamesConfig.platform" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none">
+              <option value="ALL">Todas (PS4 / PS5 / PC / Xbox)</option>
+              <option value="PS5">PlayStation 5</option>
+              <option value="PS4">PlayStation 4</option>
+              <option value="PS3">PlayStation 3</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Switch">Nintendo Switch</option>
+              <option value="PC">PC / Steam</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 uppercase tracking-wider mb-1">Precio Máximo</label>
+            <select v-model.number="resellerMarketingGamesConfig.maxPrice" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none">
+              <option :value="0">Todos los precios</option>
+              <option :value="15000">Hasta $15.000 ARS</option>
+              <option :value="25000">Hasta $25.000 ARS</option>
+              <option :value="35000">Hasta $35.000 ARS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 uppercase tracking-wider mb-1">Cantidad de Títulos</label>
+            <select v-model.number="resellerMarketingGamesConfig.limit" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono font-semibold outline-none">
+              <option :value="6">Top 6 juegos</option>
+              <option :value="8">Top 8 juegos</option>
+              <option :value="12">Top 12 juegos</option>
+              <option :value="15">Top 15 juegos</option>
+            </select>
+          </div>
+        </div>
+
+        <textarea
+          :value="resellerViralGamingListText"
+          readonly
+          rows="8"
+          class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-[11px] text-slate-200 font-mono outline-none resize-none custom-scrollbar"
+        ></textarea>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            @click="copyResellerViralGamingList"
+            class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs py-3 px-4 rounded-xl transition cursor-pointer"
+          >
+            📋 Copiar Lista con Mis Enlaces
+          </button>
+          <button
+            type="button"
+            @click="shareResellerViralGamingWhatsApp"
+            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-3 px-4 rounded-xl transition cursor-pointer"
+          >
+            📲 Difundir por WhatsApp
+          </button>
         </div>
       </div>
     </div>
@@ -2986,16 +3335,24 @@ const submitResellerGameInquiry = () => {
               </button>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-3 gap-1.5">
+              <button 
+                @click="openResellerSharePlaque(game)" 
+                class="bg-sky-500/20 hover:bg-sky-500 text-sky-200 hover:text-slate-950 border border-sky-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                title="Generar placa 1:1 con logo sobre portada"
+              >
+                <span>📤 Placa</span>
+              </button>
               <button 
                 @click="openFlyerForProduct(game)" 
-                class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                title="Estudio Flyers Multi-Formato"
               >
-                <span>🎨 Crear Flyer</span>
+                <span>🎨 Flyer</span>
               </button>
               <button 
                 @click="shareGamingOnWhatsApp(game)" 
-                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
               >
                 <span>📲 WhatsApp</span>
               </button>
@@ -3615,8 +3972,15 @@ const submitResellerGameInquiry = () => {
           </button>
           <button 
             v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
+            @click="showPhysicalUrlModal = false; openResellerSharePlaque(previewingPhysicalProduct)" 
+            class="bg-indigo-500/20 hover:bg-indigo-500 text-indigo-200 hover:text-white font-bold py-2.5 px-3 rounded-xl border border-indigo-500/35 transition flex items-center justify-center gap-1.5 text-xs shadow cursor-pointer"
+          >
+            <span>📤 Placa</span>
+          </button>
+          <button 
+            v-if="adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible"
             @click="showPhysicalUrlModal = false; openFlyerForProduct(previewingPhysicalProduct)" 
-            class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold py-2.5 px-4 rounded-xl border border-amber-500/30 transition flex items-center justify-center gap-1.5 text-xs shadow"
+            class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold py-2.5 px-4 rounded-xl border border-amber-500/30 transition flex items-center justify-center gap-1.5 text-xs shadow cursor-pointer"
           >
             <span>🎨 Crear Flyer</span>
           </button>
@@ -3639,6 +4003,16 @@ const submitResellerGameInquiry = () => {
       @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'" 
       website-domain="streamepro.me"
+    />
+
+    <!-- MODAL: PLACA PARA COMPARTIR DIRECTA (CON LOGO SOBRE PRODUCTO) -->
+    <SharePlaqueModal
+      :show="showSharePlaqueModal"
+      :payload="sharePlaquePayload"
+      :store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'"
+      :reseller-ref="currentResellerId"
+      :contact-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''"
+      @close="showSharePlaqueModal = false; sharePlaquePayload = null"
     />
 
     <!-- MODAL DE VISUALIZACIÓN Y CONFIRMACIÓN DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF) -->

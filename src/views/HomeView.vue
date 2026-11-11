@@ -8,7 +8,7 @@ import { sendLocalNotification } from '../services/notifications'
 import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import { getRememberedSession } from '../services/biometrics'
 
-const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
+const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -52,42 +52,176 @@ const getCategoryIcon = (catId, catName = '') => {
   return '📦'
 }
 
-const showFlyerModal = ref(false)
-const flyerInitialProduct = ref(null)
+const showSharePlaqueModal = ref(false)
+const sharePlaquePayload = ref(null)
 
-const openFlyerForPackage = (pkg) => {
-  flyerInitialProduct.value = {
-    itemType: 'package',
-    ...pkg
-  }
-  showFlyerModal.value = true
+const parseArsNum = (v) => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  return Number(String(v || '').replace(/[^0-9]/g, '')) || 0
 }
 
-const openFlyerForPhysical = (prod) => {
+const getStreamingPlansDisplay = (prod) => {
+  return adminStore.pricingCatalog?.[prod?.platform]?.plans || prod?.plans || {}
+}
+
+const getMinStreamingPrice = (prod) => {
+  const prices = Object.values(getStreamingPlansDisplay(prod))
+    .map(p => Number(p?.clientPrice || 0))
+    .filter(n => Number.isFinite(n) && n > 0)
+  return prices.length > 0 ? Math.min(...prices) : 0
+}
+
+const openSharePlaqueForPackage = (pkg) => {
+  const promo = parseArsNum(pkg.promoPrice)
+  const orig = parseArsNum(pkg.originalPrice)
+  const disc = orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 0
+  sharePlaquePayload.value = {
+    mode: 'single',
+    productType: 'package',
+    id: pkg.id,
+    title: pkg.title,
+    subtitle: pkg.description || `${(pkg.services || []).length} Plataformas oficiales con perfil privado`,
+    priceNumeric: promo,
+    originalPrice: orig > promo ? orig : 0,
+    discountPct: disc,
+    tag: pkg.badge || `COMBO ${(pkg.services || []).length} EN 1`,
+    services: pkg.services || []
+  }
+  showSharePlaqueModal.value = true
+}
+
+const openSharePlaqueForPhysical = (prod) => {
   if (!isPhysicalNavVisible.value) {
-    toast.add('La tienda física y sus flyers están temporalmente desactivados.', 'warning')
+    toast.add('La tienda física está temporalmente desactivada.', 'warning')
     return
   }
-  flyerInitialProduct.value = prod
-  showFlyerModal.value = true
+  const priceNum = parseArsNum(prod.priceNumeric || prod.price)
+  const origNum = prod.hasDiscount ? parseArsNum(prod.originalPriceNumeric || prod.originalPrice) : 0
+  sharePlaquePayload.value = {
+    mode: 'single',
+    productType: 'physical',
+    id: prod.id,
+    title: prod.name,
+    subtitle: '🚚 Stock Disponible · Envíos a Todo el País · Garantía Oficial',
+    priceNumeric: priceNum,
+    originalPrice: origNum > priceNum ? origNum : 0,
+    discountPct: Number(prod.discountPercentage || 0),
+    image: prod.image || '',
+    tag: prod.categoryName || 'TIENDA FÍSICA'
+  }
+  showSharePlaqueModal.value = true
 }
 
-const openFlyerForGaming = (game, licenseType = null) => {
+const openSharePlaqueForGaming = (game, licenseType = null) => {
   const lic = licenseType || getGameSelectedLicense(game.id)
-  flyerInitialProduct.value = {
-    itemType: 'gaming',
-    gameId: game.id,
+  const chosenPrice = lic === 'primary'
+    ? Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0)
+    : Number(game.effectiveSecondaryPrice || game.effectivePrimaryPrice || 0)
+  sharePlaquePayload.value = {
+    mode: 'single',
+    productType: 'gaming',
     id: game.id,
-    title: game.title,
-    category: 'Videojuegos Digitales',
     licenseType: lic,
-    platform: game.platform,
-    image: game.image,
-    effectivePrimaryPrice: game.effectivePrimaryPrice,
-    effectiveSecondaryPrice: game.effectiveSecondaryPrice,
-    priceNumeric: lic === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
+    title: game.title,
+    subtitle: `${game.platform || 'PS4 / PS5'} · Cuenta ${lic === 'primary' ? 'Primaria (Tu Usuario)' : 'Secundaria'} · Entrega 60/90 min`,
+    priceNumeric: chosenPrice,
+    image: game.image || '',
+    tag: `${game.platform || 'DIGITAL'} · ${lic === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'}`
   }
-  showFlyerModal.value = true
+  showSharePlaqueModal.value = true
+}
+
+const openSharePlaqueForStreaming = (prod) => {
+  const plansObj = getStreamingPlansDisplay(prod)
+  const minPrice = getMinStreamingPrice(prod)
+  const planNames = Object.values(plansObj).slice(0, 3).map(p => p.label).join(' · ')
+  sharePlaquePayload.value = {
+    mode: 'single',
+    productType: 'streaming',
+    id: prod.platform || prod.id,
+    platform: prod.platform,
+    title: prod.name,
+    subtitle: planNames || prod.description || 'Perfiles oficiales 4K con PIN privado',
+    priceNumeric: minPrice,
+    tag: prod.platform || prod.category || 'STREAMING'
+  }
+  showSharePlaqueModal.value = true
+}
+
+const openSharePlaqueForWishlist = () => {
+  const wishIds = new Set(gamingWishlistIds.value || [])
+  const favGames = (adminStore.processedGamingProducts || []).filter(g => wishIds.has(g.id))
+  if (favGames.length === 0) {
+    toast.add('Agregá juegos a favoritos ❤️ para generar tu placa compartida.', 'info')
+    return
+  }
+  sharePlaquePayload.value = {
+    mode: favGames.length === 1 ? 'single' : 'multi',
+    productType: 'gaming',
+    id: favGames.length === 1 ? favGames[0].id : '',
+    licenseType: favGames.length === 1 ? getGameSelectedLicense(favGames[0].id) : undefined,
+    title: favGames.length === 1
+      ? favGames[0].title
+      : `Mi Top ${Math.min(favGames.length, 4)} Juegos Favoritos`,
+    subtitle: favGames.length === 1
+      ? `${favGames[0].platform || 'PS4 / PS5'} · Entrega 60/90 min`
+      : `${favGames.length} título${favGames.length > 1 ? 's' : ''} seleccionado${favGames.length > 1 ? 's' : ''} · Catálogo Oficial`,
+    priceNumeric: favGames.length === 1
+      ? Number(getGameSelectedLicense(favGames[0].id) === 'primary'
+          ? (favGames[0].effectivePrimaryPrice || favGames[0].effectiveSecondaryPrice || 0)
+          : (favGames[0].effectiveSecondaryPrice || favGames[0].effectivePrimaryPrice || 0))
+      : 0,
+    image: favGames[0].image || '',
+    tag: favGames.length === 1 ? (favGames[0].platform || 'GAMING') : 'MIS FAVORITOS',
+    items: favGames.slice(0, 4).map(g => {
+      const lic = getGameSelectedLicense(g.id)
+      const price = lic === 'primary'
+        ? Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0)
+        : Number(g.effectiveSecondaryPrice || g.effectivePrimaryPrice || 0)
+      return {
+        title: g.title,
+        subtitle: `${g.platform || 'PS4/PS5'} · ${lic === 'primary' ? 'Primaria' : 'Secundaria'}`,
+        priceNumeric: price,
+        image: g.image || '',
+        tag: g.platform || 'GAMING'
+      }
+    })
+  }
+  showSharePlaqueModal.value = true
+}
+
+const openSharePlaqueForCart = () => {
+  const items = cartStore.items || []
+  if (items.length === 0) {
+    toast.add('Tu carrito está vacío.', 'info')
+    return
+  }
+  const gamesList = adminStore.processedGamingProducts || []
+  const firstImg = items[0]?.image || (items[0]?.gameId ? gamesList.find(g => g.id === items[0].gameId)?.image : '') || ''
+  sharePlaquePayload.value = {
+    mode: items.length === 1 ? 'single' : 'multi',
+    productType: items[0]?.itemType === 'physical' ? 'physical' : items[0]?.itemType === 'gaming' ? 'gaming' : 'streaming',
+    id: items.length === 1 ? (items[0].gameId || items[0].platform || items[0].id || '') : '',
+    licenseType: items.length === 1 ? (items[0].licenseType || 'primary') : undefined,
+    title: items.length === 1 ? items[0].name : `Mi Selección (${items.length} productos)`,
+    subtitle: items.length === 1
+      ? `${items[0].platform || items[0].planLabel || 'Oficial'} · Pedido verificado`
+      : `${items.length} productos elegidos · Total estimado $${Number(cartStore.totalClient || 0).toLocaleString('es-AR')} ARS`,
+    priceNumeric: items.length === 1 ? Number(items[0].clientPrice || 0) : Number(cartStore.totalClient || 0),
+    image: firstImg,
+    tag: items[0]?.platform || 'PEDIDO OFICIAL',
+    items: items.slice(0, 4).map(it => {
+      const matchedGame = it.gameId ? gamesList.find(g => g.id === it.gameId) : null
+      return {
+        title: it.name,
+        subtitle: it.planLabel || it.platform || 'Oficial',
+        priceNumeric: Number(it.clientPrice || 0) * Number(it.quantity || 1),
+        image: it.image || matchedGame?.image || '',
+        tag: it.platform || (it.itemType === 'physical' ? 'TIENDA' : 'DIGITAL')
+      }
+    })
+  }
+  showSharePlaqueModal.value = true
 }
 
 // Comprobante de Pago en Mini Nube (JPG, PNG, WEBP, PDF)
@@ -645,7 +779,7 @@ const isAnyModalOpen = computed(() => {
     showPhysicalModal.value ||
     showGamingDetailModal.value ||
     showImageZoomModal.value ||
-    showFlyerModal.value
+    showSharePlaqueModal.value
 })
 
 watch(isAnyModalOpen, (isOpen) => {
@@ -884,7 +1018,7 @@ const applyRouteParams = () => {
     }
   }
 
-  // Previsualización y apertura automática de videojuego digital compartido (ej: desde flyers)
+  // Previsualización y apertura automática de videojuego digital compartido (ej: desde enlaces o placas)
   const sharedGameId = route.query.game || route.query.g
   if (sharedGameId) {
     clientForm.value.isSharedUrl = true
@@ -2413,26 +2547,38 @@ const submitOrder = async () => {
               <h4 class="text-base font-black text-white mb-1 group-hover:text-sky-300 transition-colors">{{ product.name }}</h4>
               <p class="text-xs text-slate-400 mb-3 line-clamp-2 leading-relaxed">{{ product.description }}</p>
 
-              <!-- Modalidades Oficiales Mini -->
+              <!-- Modalidades Oficiales Mini con Precio Visible -->
               <div class="space-y-1 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 mb-3 text-xs">
-                <div v-for="(plan, pKey) in product.plans" :key="pKey" class="flex items-center justify-between text-slate-300 text-[11px] py-0.5">
+                <div v-if="getMinStreamingPrice(product) > 0" class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1">
+                  <span class="text-[9px] font-bold uppercase tracking-wider text-sky-400">Planes desde</span>
+                  <span class="text-[11px] font-black text-emerald-400 font-mono">${{ getMinStreamingPrice(product).toLocaleString() }}</span>
+                </div>
+                <div v-for="(plan, pKey) in getStreamingPlansDisplay(product)" :key="pKey" class="flex items-center justify-between text-slate-300 text-[11px] py-0.5">
                   <div class="flex items-center gap-1.5">
                     <span class="text-emerald-400 font-bold">✓</span>
                     <span>{{ plan.label }}</span>
                   </div>
-                  <span class="text-[9px] text-slate-400 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/80">Oficial</span>
+                  <span class="text-[9px] text-sky-300 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/80">${{ Number(plan.clientPrice || 0).toLocaleString() }}</span>
                 </div>
               </div>
             </div>
 
-            <div class="flex gap-2 pt-2 border-t border-white/[0.06]">
+            <div class="flex gap-1.5 pt-2 border-t border-white/[0.06]">
               <button 
                 type="button" 
                 @click="openStreamingInfo(product)"
-                class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+                class="px-2.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
                 title="Ver especificaciones"
               >
-                ℹ️ +info
+                ℹ️
+              </button>
+              <button 
+                type="button" 
+                @click="openSharePlaqueForStreaming(product)"
+                class="px-2.5 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors shrink-0 cursor-pointer"
+                title="Compartir en placa con logo"
+              >
+                📤
               </button>
               <button 
                 @click="openConfig(product)" 
@@ -2536,11 +2682,11 @@ const submitOrder = async () => {
               </button>
               <div class="flex gap-1.5">
                 <button 
-                  @click="sharePackageLink(pkg)"
-                  class="flex-1 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-slate-800 flex items-center justify-center gap-1 cursor-pointer truncate"
-                  title="Copiar enlace"
+                  @click="openSharePlaqueForPackage(pkg)"
+                  class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
+                  title="Generar placa con logo para compartir"
                 >
-                  <span>🤝 Compartir</span>
+                  <span>📤 Placa</span>
                 </button>
                 <button 
                   @click="sharePackageWhatsApp(pkg)"
@@ -2550,11 +2696,11 @@ const submitOrder = async () => {
                   💬
                 </button>
                 <button 
-                  @click="openFlyerForPackage(pkg)"
-                  class="bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-pink-500/30 transition-colors shrink-0 cursor-pointer"
-                  title="Flyer"
+                  @click="sharePackageLink(pkg)"
+                  class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 transition-colors shrink-0 cursor-pointer"
+                  title="Copiar enlace"
                 >
-                  🎨
+                  🔗
                 </button>
               </div>
             </div>
@@ -2600,13 +2746,15 @@ const submitOrder = async () => {
             </div>
 
             <!-- Imagen -->
-            <div class="w-full h-36 sm:h-52 bg-white flex items-center justify-center p-2 sm:p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
-              <img 
-                :src="item.image" 
-                :alt="item.name" 
-                class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
-              >
+            <div class="w-full p-2 sm:p-2.5 pb-0 cursor-pointer" @click="openPhysicalModal(item)">
+              <div class="w-full h-36 sm:h-48 rounded-xl bg-gradient-to-br from-white via-slate-50 to-slate-100 border border-white/20 shadow-inner flex items-center justify-center p-2.5 sm:p-3.5 overflow-hidden relative group-hover:shadow-amber-500/10 transition-all">
+                <img 
+                  :src="item.image" 
+                  :alt="item.name" 
+                  class="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                >
+              </div>
             </div>
 
             <!-- Contenido -->
@@ -2657,6 +2805,14 @@ const submitOrder = async () => {
                   </button>
                   <button 
                     type="button"
+                    @click.stop="openSharePlaqueForPhysical(item)"
+                    class="px-2.5 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition cursor-pointer"
+                    title="Compartir en placa con logo"
+                  >
+                    📤
+                  </button>
+                  <button 
+                    type="button"
                     @click.stop="openPhysicalModal(item)"
                     class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs transition cursor-pointer"
                     title="Ver ficha completa"
@@ -2697,9 +2853,10 @@ const submitOrder = async () => {
             class="bg-slate-900/70 border border-white/[0.08] hover:border-indigo-500/50 rounded-2xl overflow-hidden transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
           >
             <div>
-              <div class="relative h-32 sm:h-36 bg-black overflow-hidden">
-                <img :src="game.image" :alt="game.title" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
-                <span class="absolute top-2 left-2 bg-indigo-600/90 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono">{{ game.platform }}</span>
+              <div class="relative h-36 sm:h-40 bg-slate-950 overflow-hidden flex items-center justify-center">
+                <img :src="game.image" aria-hidden="true" loading="lazy" class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-45 brightness-75 pointer-events-none select-none" @error="(e) => e.target.style.display = 'none'">
+                <img :src="game.image" :alt="game.title" loading="lazy" class="relative z-[1] w-full h-full object-contain p-1.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
+                <span class="absolute top-2 left-2 z-10 bg-indigo-600/90 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono shadow">{{ game.platform }}</span>
               </div>
               <div class="p-3 space-y-1">
                 <h4 class="font-black text-white text-xs line-clamp-1 group-hover:text-indigo-300 transition">{{ game.title }}</h4>
@@ -2905,21 +3062,23 @@ const submitOrder = async () => {
               </button>
             </div>
             
-            <!-- Modalidades Disponibles (Precios visibles al Elegir Plan) -->
+            <!-- Modalidades y Precio Inicial -->
             <div class="space-y-2 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 mb-4 text-xs">
               <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
                 <span class="flex items-center gap-1.5">
                   <span>✨</span> Modalidades Oficiales
                 </span>
-                <span class="text-[9px] text-slate-500 font-mono font-medium">Ver precios al elegir plan</span>
+                <span v-if="getMinStreamingPrice(product) > 0" class="text-[11px] font-black text-emerald-400 font-mono">
+                  Desde ${{ getMinStreamingPrice(product).toLocaleString() }}
+                </span>
               </div>
               <div class="space-y-1 pt-0.5">
-                <div v-for="(plan, pKey) in product.plans" :key="pKey" class="flex items-center justify-between text-slate-300 py-0.5">
+                <div v-for="(plan, pKey) in getStreamingPlansDisplay(product)" :key="pKey" class="flex items-center justify-between text-slate-300 py-0.5">
                   <div class="flex items-center gap-1.5">
                     <span class="text-emerald-400 font-bold text-xs">✓</span>
                     <span class="font-medium text-slate-200">{{ plan.label }}</span>
                   </div>
-                  <span class="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800/80">Oficial</span>
+                  <span class="text-[10px] text-sky-300 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800/80">${{ Number(plan.clientPrice || 0).toLocaleString() }}</span>
                 </div>
               </div>
             </div>
@@ -2929,11 +3088,19 @@ const submitOrder = async () => {
             <button 
               type="button" 
               @click="openStreamingInfo(product)"
-              class="px-3.5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              class="px-3 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
               title="Ver detalles y especificaciones del servicio"
             >
               <span>ℹ️</span>
               <span>+info</span>
+            </button>
+            <button 
+              type="button" 
+              @click="openSharePlaqueForStreaming(product)"
+              class="px-3 py-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+              title="Compartir en placa con logo"
+            >
+              📤
             </button>
             <button @click="openConfig(product)" class="flex-1 bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm text-xs sm:text-sm cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
@@ -3175,15 +3342,15 @@ const submitOrder = async () => {
               <span>+ Agregar Combo al Pedido</span>
             </button>
 
-            <!-- Acciones Secundarias: Compartir, WhatsApp y Flyer -->
+            <!-- Acciones Secundarias: Placa, WhatsApp y Link -->
             <div class="flex gap-1.5">
               <button 
-                @click="sharePackageLink(pkg)"
-                class="flex-1 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-slate-800 flex items-center justify-center gap-1 cursor-pointer truncate"
-                title="Copiar enlace del combo"
+                @click="openSharePlaqueForPackage(pkg)"
+                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
+                title="Generar placa con logo para compartir"
               >
-                <span>🤝</span>
-                <span class="truncate">COMPARTIR</span>
+                <span>📤</span>
+                <span class="truncate">Placa</span>
               </button>
               <button 
                 @click="sharePackageWhatsApp(pkg)"
@@ -3193,11 +3360,11 @@ const submitOrder = async () => {
                 💬
               </button>
               <button 
-                @click="openFlyerForPackage(pkg)"
-                class="bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-pink-500/30 transition-colors shrink-0 cursor-pointer"
-                title="Crear flyer publicitario de este combo"
+                @click="sharePackageLink(pkg)"
+                class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 transition-colors shrink-0 cursor-pointer"
+                title="Copiar enlace directo del combo"
               >
-                🎨
+                🔗
               </button>
             </div>
           </div>
@@ -3416,6 +3583,16 @@ const submitOrder = async () => {
                 <span>❤️</span>
                 <span>Favoritos ({{ gamingWishlistIds.length }})</span>
               </button>
+              <button
+                v-if="gamingWishlistIds.length > 0"
+                type="button"
+                @click="openSharePlaqueForWishlist()"
+                class="px-3 py-2 rounded-xl text-xs font-bold border bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border-indigo-500/35 transition cursor-pointer flex items-center gap-1"
+                title="Compartir tus juegos favoritos en una placa con logo"
+              >
+                <span>📤</span>
+                <span>Placa Favoritos</span>
+              </button>
 
               <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap">
                 🎮 {{ filteredGamingProducts.length }} títulos
@@ -3486,17 +3663,25 @@ const submitOrder = async () => {
           class="bg-slate-900/70 border border-white/[0.08] rounded-3xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 shadow-xl flex flex-col justify-between group"
         >
           <div>
-            <!-- Portada con Badge de Plataforma -->
-            <div class="relative w-full h-48 overflow-hidden bg-black flex items-center justify-center">
+            <!-- Portada con Badge de Plataforma (Encuadre completo sin recortes + fondo ambiental) -->
+            <div class="relative w-full h-52 overflow-hidden bg-slate-950 flex items-center justify-center">
+              <img
+                :src="game.image"
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-45 brightness-75 pointer-events-none select-none"
+                @error="(e) => e.target.style.display = 'none'"
+              >
               <img 
                 :src="game.image" 
                 :alt="game.title" 
                 loading="lazy"
                 decoding="async"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                class="relative z-[1] w-full h-full object-contain p-2 drop-shadow-[0_10px_22px_rgba(0,0,0,0.85)] group-hover:scale-105 transition-transform duration-500"
                 @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
               >
-              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60"></div>
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/60 z-[2] pointer-events-none"></div>
               
               <!-- Badges Superiores & Botón Favoritos -->
               <div class="absolute top-2.5 left-2.5 right-11 flex items-center gap-1.5 flex-wrap">
@@ -3617,13 +3802,7 @@ const submitOrder = async () => {
                   </div>
                 </div>
 
-                <!-- Garantía Oficial StreamePro -->
-                <div class="flex items-center justify-between text-[9px] bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-400">
-                  <span class="text-emerald-400 font-bold flex items-center gap-1">
-                    <span>✓</span> Garantía de Entrega 60/90min
-                  </span>
-                  <span class="text-indigo-300 font-bold">Líder: StreamePro</span>
-                </div>
+
               </div>
             </div>
           </div>
@@ -3651,7 +3830,7 @@ const submitOrder = async () => {
               </button>
             </div>
 
-            <!-- Fila 2: Detalle Completo, Flyer y Compartir Link -->
+            <!-- Fila 2: Detalle Completo, Placa Compartir y Link -->
             <div class="flex gap-2">
               <button 
                 type="button"
@@ -3663,11 +3842,11 @@ const submitOrder = async () => {
               </button>
               <button 
                 type="button"
-                @click="openFlyerForGaming(game)"
-                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                title="Generar flyer publicitario para redes y estados"
+                @click="openSharePlaqueForGaming(game)"
+                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                title="Generar placa para compartir con logo"
               >
-                <span>🎨 Flyer</span>
+                <span>📤 Placa</span>
               </button>
               <button
                 type="button"
@@ -4416,14 +4595,16 @@ const submitOrder = async () => {
             <span>🔥</span> {{ item.discountPercentage }}% OFF
           </div>
 
-          <!-- Imagen del Producto -->
-          <div class="w-full h-36 sm:h-52 bg-white flex items-center justify-center p-2 sm:p-3.5 overflow-hidden cursor-pointer relative group-hover:bg-slate-50 transition-colors" @click="openPhysicalModal(item)">
-            <img 
-              :src="item.image" 
-              :alt="item.name" 
-              class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
-            >
+          <!-- Imagen del Producto (Contenedor Encuadrado Elegante) -->
+          <div class="w-full p-2 sm:p-2.5 pb-0 cursor-pointer" @click="openPhysicalModal(item)">
+            <div class="w-full h-36 sm:h-48 rounded-xl bg-gradient-to-br from-white via-slate-50 to-slate-100 border border-white/20 shadow-inner flex items-center justify-center p-2.5 sm:p-3.5 overflow-hidden relative group-hover:shadow-amber-500/10 transition-all">
+              <img 
+                :src="item.image" 
+                :alt="item.name" 
+                class="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              >
+            </div>
           </div>
 
           <!-- Información y Precios -->
@@ -4486,14 +4667,14 @@ const submitOrder = async () => {
                   </button>
                 </div>
 
-                <!-- Botón AYUDAR COMPARTIENDO -->
+                <!-- Botón PLACA COMPARTIR DIRECTA -->
                 <div class="flex gap-1 pt-0.5">
                   <button 
-                    @click="copyShareProductUrl(item)" 
-                    class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-[9px] sm:text-[11px] font-black py-1 sm:py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:text-amber-200 transition-colors flex items-center justify-center gap-1 truncate px-1 cursor-pointer"
-                    title="Copiar enlace para compartir"
+                    @click="openSharePlaqueForPhysical(item)" 
+                    class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-[9px] sm:text-[11px] font-black py-1 sm:py-1.5 rounded-lg border border-indigo-500/35 text-indigo-200 hover:text-white transition-colors flex items-center justify-center gap-1 truncate px-1.5 cursor-pointer"
+                    title="Compartir placa con logo sobre el producto"
                   >
-                    <span class="truncate">🤝 COMPARTIR</span>
+                    <span class="truncate">📤 Placa</span>
                   </button>
                   <button 
                     @click="shareProductWhatsApp(item)" 
@@ -4503,11 +4684,11 @@ const submitOrder = async () => {
                     💬
                   </button>
                   <button 
-                    @click="openFlyerForPhysical(item)" 
-                    class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-amber-500/30 transition-colors shrink-0 flex items-center justify-center cursor-pointer"
-                    title="Crear Flyer de este producto"
+                    @click="copyShareProductUrl(item)" 
+                    class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                    title="Copiar enlace directo"
                   >
-                    🎨
+                    🔗
                   </button>
                 </div>
               </div>
@@ -4831,6 +5012,14 @@ const submitOrder = async () => {
               <span class="text-brand-accent text-2xl">${{ Math.round(cartStore.total).toLocaleString() }} ARS</span>
             </div>
           </div>
+
+          <button
+            type="button"
+            @click="openSharePlaqueForCart()"
+            class="w-full py-2.5 px-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 hover:text-white border border-indigo-500/30 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition"
+          >
+            <span>📤 Compartir Selección en Placa con Logo ({{ cartStore.items.length }})</span>
+          </button>
 
           <div class="flex gap-3">
             <button @click="showCartDrawer = false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-all text-sm">
@@ -5559,31 +5748,30 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Opción de Compartir Producto: AYUDAR COMPARTIENDO -->
+        <!-- Opción de Compartir Producto: PLACA CON LOGO + LINK -->
         <div class="bg-gradient-to-r from-amber-950/40 via-slate-950 to-slate-950 p-4 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
           <div class="space-y-0.5">
             <div class="font-black text-amber-300 flex items-center gap-1.5">
-              <span>🤝</span>
-              <span>AYUDAR COMPARTIENDO</span>
+              <span>📤</span>
+              <span>COMPARTIR ESTE PRODUCTO</span>
             </div>
             <div class="text-[11px] text-slate-300">
-              El producto que necesitas está aquí. Comparte el enlace directo con quien quieras.
+              Genera una placa directa con logo y precio o envía el enlace oficial por WhatsApp.
             </div>
           </div>
           <div class="flex flex-wrap gap-2 shrink-0 w-full sm:w-auto">
-            <button @click="copyShareProductUrl(selectedPhysicalProduct)" class="flex-1 sm:flex-none bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-black px-4 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs">
-              <span>🤝 Ayudar Compartiendo</span>
+            <button
+              @click="openSharePlaqueForPhysical(selectedPhysicalProduct)"
+              class="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all text-xs cursor-pointer shadow"
+              title="Abrir placa lista para compartir con logo oficial"
+            >
+              <span>📤 Placa Compartir</span>
             </button>
-            <button @click="shareProductWhatsApp(selectedPhysicalProduct)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-all text-xs">
+            <button @click="shareProductWhatsApp(selectedPhysicalProduct)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-all text-xs cursor-pointer">
               <span>WhatsApp</span>
             </button>
-            <button 
-              v-if="isPhysicalNavVisible"
-              @click="openFlyerForPhysical(selectedPhysicalProduct)" 
-              class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 text-amber-300 font-black px-3.5 py-2 rounded-xl border border-amber-500/40 flex items-center justify-center gap-1.5 transition-all text-xs cursor-pointer" 
-              title="Crear Flyer publicitario para WhatsApp e Instagram de este producto"
-            >
-              <span>🎨 Flyer</span>
+            <button @click="copyShareProductUrl(selectedPhysicalProduct)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-2 rounded-xl border border-slate-700 flex items-center justify-center gap-1 transition-all text-xs cursor-pointer">
+              <span>🔗 Link</span>
             </button>
           </div>
         </div>
@@ -5942,11 +6130,11 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button" 
-              @click="openFlyerForGaming(selectedGamingProduct); showGamingDetailModal = false"
+              @click="openSharePlaqueForGaming(selectedGamingProduct); showGamingDetailModal = false"
               class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white font-bold py-3 px-3 rounded-xl border border-indigo-500/30 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-              title="Crear Flyer de este juego"
+              title="Abrir placa lista para compartir con logo oficial"
             >
-              <span>🎨 Crear Flyer</span>
+              <span>📤 Placa Compartir</span>
             </button>
           </div>
           <div class="grid grid-cols-2 gap-2.5">
@@ -5974,15 +6162,14 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- MODAL GENERADOR DE FLYERS -->
-    <FlyerGeneratorModal 
-      :show="showFlyerModal" 
-      :initial-product="flyerInitialProduct"
+    <!-- MODAL PLACA DIRECTA PARA COMPARTIR (SIMPLE Y CON LOGO OFICIAL) -->
+    <SharePlaqueModal 
+      :show="showSharePlaqueModal" 
+      :payload="sharePlaquePayload"
+      :store-name="resellerStoreName"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
-      :default-store-name="resellerStoreName"
-      :default-phone="currentReseller?.contactNumber || adminStore.providerBankInfo?.whatsapp || ''"
-      website-domain="streamepro.me"
-      @close="showFlyerModal = false" 
+      :contact-phone="currentReseller?.contactNumber || adminStore.providerBankInfo?.whatsapp || ''"
+      @close="showSharePlaqueModal = false" 
     />
   </div>
 </template>
