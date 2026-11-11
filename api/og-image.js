@@ -6,23 +6,22 @@ import { resolvePreviewPayload, STREAMING_PLATFORMS_META } from './_catalogLooku
 let cachedFonts = null
 function loadFonts() {
   if (cachedFonts) return cachedFonts
-  const loadWoff = (rel) => fs.readFileSync(new URL(rel, import.meta.url))
   cachedFonts = [
     {
       name: 'Inter',
-      data: loadWoff('../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff'),
+      data: fs.readFileSync(new URL('./fonts/inter-500.woff', import.meta.url)),
       weight: 500,
       style: 'normal'
     },
     {
       name: 'Inter',
-      data: loadWoff('../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff'),
+      data: fs.readFileSync(new URL('./fonts/inter-700.woff', import.meta.url)),
       weight: 700,
       style: 'normal'
     },
     {
       name: 'Inter',
-      data: loadWoff('../node_modules/@fontsource/inter/files/inter-latin-900-normal.woff'),
+      data: fs.readFileSync(new URL('./fonts/inter-900.woff', import.meta.url)),
       weight: 900,
       style: 'normal'
     }
@@ -641,6 +640,7 @@ export default async function handler(req, res) {
     return res.status(200).send(jpeg)
   } catch (err) {
     console.error('OG image render error:', err)
+    res.setHeader('X-Og-Error', String(err?.message || err || 'unknown').replace(/[\r\n]/g, ' ').slice(0, 180))
     return res.redirect(302, 'https://streamepro.me/og-banner.png')
   }
 }

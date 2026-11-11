@@ -23,7 +23,7 @@ function buildOgImageUrl(query = {}) {
       params.set(key, String(val).trim())
     }
   }
-  params.set('v', '2')
+  params.set('v', '3')
   return `https://streamepro.me/api/og-image?${params.toString()}`
 }
 
