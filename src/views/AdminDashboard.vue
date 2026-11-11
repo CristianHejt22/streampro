@@ -2408,28 +2408,77 @@ const exportGamingOrdersCsv = () => {
   toast.add(`📥 Exportados ${list.length} pedidos gamer a CSV`, 'success')
 }
 
-// TICKETS / REPORTES DE FALLAS DE CLIENTES
+// TICKETS / REPORTES DE FALLAS Y CONSULTAS MANUALES DE JUEGOS
 const supportTicketReplies = ref({})
 const supportTicketFilter = ref('OPEN')
+
+const openGameRequestCount = computed(() => {
+  return (adminStore.supportTickets || []).filter(t => t.type === 'game_request' && t.status !== 'Resuelto').length
+})
+
+const openSupportOnlyCount = computed(() => {
+  return (adminStore.supportTickets || []).filter(t => t.type !== 'game_request' && t.status !== 'Resuelto').length
+})
+
+const gamingInquiryTicketsForAdmin = computed(() => {
+  return (adminStore.supportTickets || []).filter(t => t.type === 'game_request' || t.category === 'gaming')
+})
 
 const filteredSupportTicketsForAdmin = computed(() => {
   const all = adminStore.supportTickets || []
   if (supportTicketFilter.value === 'OPEN') return all.filter(t => t.status !== 'Resuelto')
+  if (supportTicketFilter.value === 'GAME_REQUESTS') return all.filter(t => t.type === 'game_request')
+  if (supportTicketFilter.value === 'SUPPORT') return all.filter(t => t.type !== 'game_request')
   return all
 })
 
 const handleResolveSupportTicket = (ticket) => {
-  const reply = supportTicketReplies.value[ticket.id] || 'Solucionado por Soporte Técnico StreamePro.'
+  const defaultReply = ticket.type === 'game_request'
+    ? 'Consulta respondida y confirmada por Administración StreamePro.'
+    : 'Solucionado por Soporte Técnico StreamePro.'
+  const reply = supportTicketReplies.value[ticket.id] || defaultReply
   const res = adminStore.resolveSupportTicket(ticket.id, reply)
   if (res.success) {
-    toast.add(`✅ Ticket #${ticket.id} marcado como resuelto`, 'success')
+    toast.add(`✅ Ticket #${ticket.id} marcado como resuelto y respondido`, 'success')
   }
 }
 
 const sendTicketReplyWhatsApp = (ticket) => {
-  const reply = supportTicketReplies.value[ticket.id] || ticket.adminReply || 'Ya revisamos tu reporte y está solucionado.'
-  const msg = `¡Hola ${ticket.clientName || 'Cliente'}! 🛟 Sobre tu reporte *${ticket.subject}* (#${ticket.id}):\n\n${reply}\n\nPuedes verificar tus accesos en: https://streamepro.me/portal`
+  const defaultReply = ticket.type === 'game_request'
+    ? '¡Tenemos buenas noticias sobre el juego consultado!'
+    : 'Ya revisamos tu reporte y está solucionado.'
+  const reply = supportTicketReplies.value[ticket.id] || ticket.adminReply || defaultReply
+  const header = ticket.type === 'game_request'
+    ? `🎮 Sobre tu solicitud manual *${ticket.requestedGame || ticket.subject}* (#${ticket.id}):`
+    : `🛟 Sobre tu reporte *${ticket.subject}* (#${ticket.id}):`
+  const msg = `¡Hola ${ticket.clientName || 'Cliente'}!\n${header}\n\n${reply}\n\nTienda Oficial: https://streamepro.me/juegos`
   window.open(`https://wa.me/${formatWaPhone(ticket.phone)}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+const openSupportTicketInPos = (ticket) => {
+  if (!ticket) return
+  adminTab.value = 'gaming'
+  gamingAdminSubTab.value = 'marketing_pos'
+  const q = String(ticket.requestedGame || '').trim().toLowerCase()
+  const match = q
+    ? (adminStore.processedGamingProducts || []).find(g => g.title && g.title.toLowerCase().includes(q))
+    : null
+  if (match) {
+    selectPosGame(match)
+  } else {
+    clearPosGame()
+    posGameSearch.value = ticket.requestedGame || ''
+  }
+  posForm.value.customerName = ticket.clientName || ''
+  posForm.value.customerPhone = ticket.phone || ''
+  posForm.value.resellerId = ticket.resellerId || 'DIRECT'
+  if (ticket.requestedLicense && ticket.requestedLicense.toLowerCase().includes('sec')) {
+    posForm.value.licenseType = 'secondary'
+  } else {
+    posForm.value.licenseType = 'primary'
+  }
+  posForm.value.deliveryNotes = `Pedido manual desde ticket #${ticket.id}`
+  toast.add(match ? `🛒 "${match.title}" cargado en POS Venta Rápida` : `🛒 Datos de ${ticket.clientName} cargados en POS (elige el título)`, 'info')
 }
 
 // ==========================================
@@ -4478,25 +4527,39 @@ const deletePackageItem = (pkgId) => {
         </button>
       </div>
 
-      <!-- BANDEJA DE TICKETS / FALLAS REPORTADAS POR CLIENTES -->
+      <!-- BANDEJA DE TICKETS, CONSULTAS MANUALES & FALLAS REPORTADAS -->
       <div v-if="(adminStore.supportTickets || []).length > 0" class="bg-[#020617] border border-rose-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <span class="text-lg">🆘</span>
+            <span class="text-lg">📩</span>
             <div>
               <h3 class="text-sm font-black text-white">
-                Tickets de Soporte & Fallas Reportadas ({{ adminStore.openSupportTickets.length }} abiertos)
+                Consultas de Juegos Manuales & Tickets de Soporte ({{ adminStore.openSupportTickets.length }} abiertos)
               </h3>
-              <p class="text-[11px] text-slate-400">Reportes enviados por clientes desde Mis Juegos / Bóveda Portal.</p>
+              <p class="text-[11px] text-slate-400">Solicitudes de juegos manuales y reportes enviados por clientes o revendedores oficiales.</p>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               @click="supportTicketFilter = 'OPEN'"
               :class="['px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer', supportTicketFilter === 'OPEN' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
             >
               Pendientes ({{ adminStore.openSupportTickets.length }})
+            </button>
+            <button
+              type="button"
+              @click="supportTicketFilter = 'GAME_REQUESTS'"
+              :class="['px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer', supportTicketFilter === 'GAME_REQUESTS' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-900 text-amber-300 hover:text-white']"
+            >
+              🎮 Pedidos Manuales ({{ openGameRequestCount }})
+            </button>
+            <button
+              type="button"
+              @click="supportTicketFilter = 'SUPPORT'"
+              :class="['px-3 py-1 rounded-lg text-[11px] font-bold cursor-pointer', supportTicketFilter === 'SUPPORT' ? 'bg-sky-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white']"
+            >
+              🆘 Fallas ({{ openSupportOnlyCount }})
             </button>
             <button
               type="button"
@@ -4509,17 +4572,23 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <div v-if="filteredSupportTicketsForAdmin.length === 0" class="text-xs text-emerald-400 font-bold py-2">
-          ✅ Todos los tickets han sido resueltos.
+          ✅ No hay elementos pendientes en este filtro.
         </div>
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto custom-scrollbar">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto custom-scrollbar">
           <div
             v-for="t in filteredSupportTicketsForAdmin"
             :key="t.id"
-            :class="['p-3 rounded-xl border text-xs space-y-2', t.status === 'Resuelto' ? 'bg-slate-950/60 border-emerald-500/20 opacity-75' : 'bg-slate-950 border-rose-500/30']"
+            :class="['p-3 rounded-xl border text-xs space-y-2', t.status === 'Resuelto' ? 'bg-slate-950/60 border-emerald-500/20 opacity-75' : (t.type === 'game_request' ? 'bg-slate-950 border-amber-500/35' : 'bg-slate-950 border-rose-500/30')]"
           >
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-mono font-bold text-indigo-300">#{{ t.id }}</span>
+                <span :class="['text-[10px] font-bold px-1.5 py-0.5 rounded', t.type === 'game_request' ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300']">
+                  {{ t.type === 'game_request' ? '🎮 Juego Manual' : '🆘 Soporte' }}
+                </span>
+                <span :class="['text-[10px] font-bold px-1.5 py-0.5 rounded', t.sourceRole === 'reseller' ? 'bg-purple-500/20 text-purple-300' : 'bg-sky-500/20 text-sky-300']">
+                  {{ t.sourceRole === 'reseller' ? '🏪 Revendedor' : '👤 Cliente' }}
+                </span>
                 <span class="font-black text-white">{{ t.clientName }}</span>
                 <span class="text-[10px] text-slate-400 font-mono">({{ t.phone || t.clientNumber }})</span>
               </div>
@@ -4527,14 +4596,19 @@ const deletePackageItem = (pkgId) => {
                 {{ t.status }}
               </span>
             </div>
-            <p class="text-amber-300 font-bold">{{ t.subject }} <span v-if="t.orderId" class="font-mono text-slate-400">· Orden #{{ t.orderId }}</span></p>
+            <p class="text-amber-300 font-bold">
+              {{ t.requestedGame ? `🎮 ${t.requestedGame}` : t.subject }}
+              <span v-if="t.requestedPlatform" class="font-mono text-[10px] text-cyan-300"> · {{ t.requestedPlatform }}</span>
+              <span v-if="t.requestedLicense" class="text-[10px] text-indigo-300"> · {{ t.requestedLicense }}</span>
+              <span v-if="t.orderId" class="font-mono text-slate-400"> · Orden #{{ t.orderId }}</span>
+            </p>
             <p class="text-slate-300 bg-slate-900/70 p-2 rounded-lg">{{ t.message }}</p>
 
             <div v-if="t.status !== 'Resuelto'" class="flex flex-wrap gap-1.5 pt-1">
               <input
                 v-model="supportTicketReplies[t.id]"
                 type="text"
-                placeholder="Respuesta para el cliente (Bóveda)..."
+                :placeholder="t.type === 'game_request' ? 'Responder disponibilidad o cotización...' : 'Respuesta para el cliente (Bóveda)...'"
                 class="flex-1 min-w-[140px] bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none"
               >
               <button
@@ -4542,7 +4616,7 @@ const deletePackageItem = (pkgId) => {
                 @click="handleResolveSupportTicket(t)"
                 class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer"
               >
-                ✅ Resolver
+                ✅ Responder
               </button>
               <button
                 v-if="t.phone"
@@ -4552,6 +4626,15 @@ const deletePackageItem = (pkgId) => {
                 title="Responder por WhatsApp"
               >
                 💬 WA
+              </button>
+              <button
+                v-if="t.type === 'game_request'"
+                type="button"
+                @click="openSupportTicketInPos(t)"
+                class="px-2.5 py-1.5 rounded-lg bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 font-bold text-[11px] cursor-pointer"
+                title="Abrir en POS Venta Rápida Gamer"
+              >
+                🛒 POS
               </button>
             </div>
             <p v-else-if="t.adminReply" class="text-[11px] text-emerald-300 italic">
@@ -9542,6 +9625,108 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               <span class="text-amber-300">🎮 {{ adminStore.gamingSalesStats?.jdaCount || 0 }}</span>
             </div>
             <span class="text-[10px] text-slate-400">Arg Play / JDA</span>
+          </div>
+        </div>
+
+        <!-- BANDEJA DE CONSULTAS Y SOLICITUDES MANUALES DE JUEGOS (CLIENTES / REVENDEDORES) -->
+        <div v-if="gamingInquiryTicketsForAdmin.length > 0" class="bg-[#020617] border border-amber-500/35 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📩</span>
+              <div>
+                <h4 class="text-sm font-black text-amber-300">
+                  Consultas & Solicitudes Manuales de Juegos ({{ openGameRequestCount }} pendientes)
+                </h4>
+                <p class="text-[11px] text-slate-400">
+                  Pedidos o consultas enviadas por Clientes y Revendedores Oficiales. Contesta directo o pásalo al POS con 1 click.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto custom-scrollbar">
+            <div
+              v-for="t in gamingInquiryTicketsForAdmin"
+              :key="t.id"
+              :class="['p-3.5 rounded-xl border text-xs space-y-2', t.status === 'Resuelto' ? 'bg-slate-950/60 border-emerald-500/25 opacity-80' : 'bg-slate-950 border-amber-500/35']"
+            >
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-mono font-bold text-indigo-300">#{{ t.id }}</span>
+                  <span :class="['text-[10px] font-black px-2 py-0.5 rounded-full', t.sourceRole === 'reseller' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30']">
+                    {{ t.sourceRole === 'reseller' ? '🏪 Revendedor' : '👤 Cliente' }}
+                  </span>
+                  <span class="font-black text-white">{{ t.clientName }}</span>
+                  <span v-if="t.phone" class="text-[10px] text-cyan-300 font-mono">({{ t.phone }})</span>
+                </div>
+                <span :class="['text-[10px] px-2 py-0.5 rounded-full font-bold', t.status === 'Resuelto' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
+                  {{ t.status }}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span class="font-black text-amber-300">🎮 {{ t.requestedGame || t.subject }}</span>
+                <span v-if="t.requestedPlatform" class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[10px]">{{ t.requestedPlatform }}</span>
+                <span v-if="t.requestedLicense" class="px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-200 font-bold text-[10px]">{{ t.requestedLicense }}</span>
+              </div>
+
+              <p class="text-slate-300 bg-slate-900/70 p-2 rounded-lg">{{ t.message }}</p>
+
+              <div v-if="t.status !== 'Resuelto'" class="flex flex-wrap gap-1.5 pt-1">
+                <input
+                  v-model="supportTicketReplies[t.id]"
+                  type="text"
+                  placeholder="Responder cotización o disponibilidad al cliente/revendedor..."
+                  class="flex-1 min-w-[140px] bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-amber-400"
+                >
+                <button
+                  type="button"
+                  @click="handleResolveSupportTicket(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer"
+                >
+                  ✅ Responder
+                </button>
+                <button
+                  v-if="t.phone"
+                  type="button"
+                  @click="sendTicketReplyWhatsApp(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-[11px] cursor-pointer"
+                  title="Responder directo por WhatsApp"
+                >
+                  💬 WA
+                </button>
+                <button
+                  type="button"
+                  @click="openSupportTicketInPos(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 font-bold text-[11px] cursor-pointer"
+                  title="Cargar en POS Venta Rápida para cobrar o cotizar"
+                >
+                  🛒 POS
+                </button>
+              </div>
+              <div v-else class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <p v-if="t.adminReply" class="text-[11px] text-emerald-300 italic">
+                  Respuesta Admin: {{ t.adminReply }}
+                </p>
+                <div class="flex gap-1.5 ml-auto">
+                  <button
+                    v-if="t.phone"
+                    type="button"
+                    @click="sendTicketReplyWhatsApp(t)"
+                    class="px-2 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-[10px] cursor-pointer"
+                  >
+                    💬 Reenviar WA
+                  </button>
+                  <button
+                    type="button"
+                    @click="openSupportTicketInPos(t)"
+                    class="px-2 py-1 rounded-lg bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 font-bold text-[10px] cursor-pointer"
+                  >
+                    🛒 POS
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

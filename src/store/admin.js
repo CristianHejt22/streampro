@@ -4066,19 +4066,40 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // ==========================================
-    // TICKETS DE SOPORTE / REPORTES DE FALLA CLIENTE
+    // TICKETS DE SOPORTE / REPORTES DE FALLA Y CONSULTAS MANUALES
     // ==========================================
-    createSupportTicket({ orderId = '', clientNumber = '', clientName = 'Cliente', phone = '', category = 'gaming', subject = 'Reporte de Servicio', message = '', resellerId = 'DIRECT' }) {
+    createSupportTicket({
+      orderId = '',
+      clientNumber = '',
+      clientName = 'Cliente',
+      phone = '',
+      category = 'gaming',
+      subject = 'Reporte de Servicio',
+      message = '',
+      resellerId = 'DIRECT',
+      resellerName = '',
+      type = 'support',
+      sourceRole = 'client',
+      requestedGame = '',
+      requestedPlatform = '',
+      requestedLicense = ''
+    }) {
       const ticket = {
         id: `TCK-${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`,
+        type: type || 'support',
+        sourceRole: sourceRole || 'client',
         orderId: orderId || '',
-        clientNumber: clientNumber || 'CLI',
-        clientName: clientName || 'Cliente',
+        clientNumber: clientNumber || (sourceRole === 'reseller' ? resellerId : 'CLI'),
+        clientName: clientName || (sourceRole === 'reseller' ? (resellerName || 'Revendedor') : 'Cliente'),
         phone: phone || '',
         category: category || 'general',
-        subject: subject || 'Soporte Técnico',
+        subject: subject || (type === 'game_request' ? `Consulta / Pedido Manual: ${requestedGame || 'Juego'}` : 'Soporte Técnico'),
+        requestedGame: requestedGame || '',
+        requestedPlatform: requestedPlatform || '',
+        requestedLicense: requestedLicense || '',
         message: message || '',
         resellerId: resellerId || 'DIRECT',
+        resellerName: resellerName || '',
         status: 'Pendiente',
         adminReply: '',
         createdAt: new Date().toISOString(),
@@ -4089,13 +4110,14 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.SUPPORT_TICKETS)
       saveSupportTicketToFirebase(ticket).catch(() => {})
 
-      if (resellerId && resellerId !== 'DIRECT') {
+      if (sourceRole !== 'reseller' && resellerId && resellerId !== 'DIRECT') {
+        const isGameReq = ticket.type === 'game_request'
         this.sendAlertToReseller({
           resellerId,
           clientNumber: ticket.clientNumber,
           clientName: ticket.clientName,
-          type: 'support_ticket',
-          title: `🆘 Reporte de Soporte (${ticket.subject})`,
+          type: isGameReq ? 'game_inquiry' : 'support_ticket',
+          title: isGameReq ? `🎮 Consulta Manual de Juego (${ticket.requestedGame || ticket.subject})` : `🆘 Reporte de Soporte (${ticket.subject})`,
           message: `${ticket.clientName}: ${ticket.message}`.slice(0, 220)
         })
       }
@@ -4109,6 +4131,17 @@ export const useAdminStore = defineStore('admin', {
       t.resolvedAt = new Date().toISOString()
       this.persist(DB_KEYS.SUPPORT_TICKETS)
       saveSupportTicketToFirebase(t).catch(() => {})
+      if (t.resellerId && t.resellerId !== 'DIRECT' && t.adminReply) {
+        const label = t.requestedGame ? `(${t.requestedGame})` : `#${t.id}`
+        this.sendAlertToReseller({
+          resellerId: t.resellerId,
+          clientNumber: t.clientNumber || t.resellerId,
+          clientName: t.clientName || 'Admin',
+          type: 'admin_reply',
+          title: `📩 Respuesta Admin ${label}`,
+          message: t.adminReply.slice(0, 240)
+        })
+      }
       return { success: true, ticket: t }
     },
 

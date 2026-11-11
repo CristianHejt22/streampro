@@ -933,6 +933,56 @@ const shareGamingOnWhatsApp = (game) => {
   const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
   window.open(waUrl, '_blank')
 }
+
+// ==========================================
+// CONSULTA / PEDIDO MANUAL DE JUEGO AL ADMIN (REVENDEDOR)
+// ==========================================
+const showResellerManualInquiry = ref(false)
+const resellerInquiryForm = ref({
+  title: '',
+  platform: 'PS5',
+  licenseType: 'Primaria',
+  notes: ''
+})
+
+const myGamingInquiryTickets = computed(() => {
+  return (adminStore.supportTickets || []).filter(t =>
+    t.type === 'game_request' &&
+    t.resellerId === currentResellerId.value &&
+    currentResellerId.value !== 'DIRECT'
+  )
+})
+
+const submitResellerGameInquiry = () => {
+  const title = resellerInquiryForm.value.title.trim()
+  if (!title) {
+    toast.add('Ingresa el nombre del juego que deseas consultar o solicitar.', 'warning')
+    return
+  }
+  const myStore = resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'Revendedor Oficial'
+  const myPhone = resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''
+  const res = adminStore.createSupportTicket({
+    type: 'game_request',
+    sourceRole: 'reseller',
+    category: 'gaming',
+    clientNumber: currentResellerId.value,
+    clientName: myStore,
+    phone: myPhone,
+    resellerId: currentResellerId.value,
+    resellerName: myStore,
+    requestedGame: title,
+    requestedPlatform: resellerInquiryForm.value.platform,
+    requestedLicense: resellerInquiryForm.value.licenseType,
+    subject: `Solicitud Manual Revendedor: ${title} (${resellerInquiryForm.value.platform})`,
+    message: resellerInquiryForm.value.notes.trim() || `El revendedor ${myStore} consulta disponibilidad/cotización para ${title} (${resellerInquiryForm.value.platform} - ${resellerInquiryForm.value.licenseType}).`
+  })
+  if (res.success) {
+    toast.add(`📩 Consulta #${res.ticket.id} enviada al Administrador. Podrás ver la respuesta aquí mismo.`, 'success')
+    resellerInquiryForm.value.title = ''
+    resellerInquiryForm.value.notes = ''
+    showResellerManualInquiry.value = false
+  }
+}
 </script>
 
 <template>
@@ -2687,11 +2737,93 @@ const shareGamingOnWhatsApp = (game) => {
         
         <div class="flex flex-wrap gap-2">
           <button 
+            type="button"
+            @click="showResellerManualInquiry = !showResellerManualInquiry"
+            class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📩 {{ showResellerManualInquiry ? 'Cerrar Consulta' : 'Consultar / Pedido Manual' }}</span>
+          </button>
+          <button 
             @click="tab = 'marketing'" 
             class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
           >
             <span>🎨 Suite de Flyers</span>
           </button>
+        </div>
+      </div>
+
+      <!-- CONSULTA / PEDIDO MANUAL DE JUEGO AL ADMINISTRADOR (REVENDEDORES OFICIALES) -->
+      <div v-if="showResellerManualInquiry || myGamingInquiryTickets.length > 0" class="bg-slate-900/80 border border-amber-500/35 rounded-2xl p-4 sm:p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 class="text-sm font-black text-amber-300 flex items-center gap-2">
+              <span>📩</span> Consultas & Pedidos Manuales de Juegos al Administrador
+            </h4>
+            <p class="text-[11px] text-slate-400">Solicita títulos fuera de catálogo, ediciones especiales o cotizaciones mayoristas y recibe respuesta directa del Admin.</p>
+          </div>
+          <button
+            v-if="!showResellerManualInquiry"
+            type="button"
+            @click="showResellerManualInquiry = true"
+            class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs cursor-pointer hover:bg-amber-400 transition"
+          >
+            + Nueva Consulta Manual
+          </button>
+        </div>
+
+        <div v-if="showResellerManualInquiry" class="bg-slate-950/90 border border-slate-800 rounded-2xl p-3.5 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <input
+              v-model="resellerInquiryForm.title"
+              type="text"
+              placeholder="Nombre exacto del juego o pack solicitado..."
+              class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+            >
+            <select v-model="resellerInquiryForm.platform" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white font-bold outline-none">
+              <option value="PS5">PS5</option>
+              <option value="PS4">PS4</option>
+              <option value="PS3">PS3</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Switch">Switch</option>
+              <option value="PC Steam">PC Steam</option>
+            </select>
+            <select v-model="resellerInquiryForm.licenseType" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white font-bold outline-none">
+              <option value="Primaria">⭐️ Primaria</option>
+              <option value="Secundaria">⚡️ Secundaria</option>
+              <option value="Completa / Clave">🔑 Completa / Clave</option>
+            </select>
+          </div>
+          <textarea
+            v-model="resellerInquiryForm.notes"
+            rows="2"
+            placeholder="Consulta para el Admin: disponibilidad inmediata, precio mayorista para tu cliente, idioma o edición..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none focus:border-amber-400 resize-none"
+          />
+          <div class="flex justify-end gap-2">
+            <button type="button" @click="showResellerManualInquiry = false" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer">Cancelar</button>
+            <button type="button" @click="submitResellerGameInquiry" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-xs font-black cursor-pointer shadow">📨 Enviar al Administrador</button>
+          </div>
+        </div>
+
+        <!-- Historial de Consultas y Respuestas del Admin -->
+        <div v-if="myGamingInquiryTickets.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto custom-scrollbar">
+          <div
+            v-for="t in myGamingInquiryTickets"
+            :key="t.id"
+            :class="['p-3 rounded-xl border text-xs space-y-1.5', t.status === 'Resuelto' ? 'bg-slate-950/70 border-emerald-500/30' : 'bg-slate-950 border-amber-500/30']"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-black text-white truncate">🎮 {{ t.requestedGame || t.subject }}</span>
+              <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', t.status === 'Resuelto' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
+                {{ t.status === 'Resuelto' ? '✅ Respondido' : '⏳ Pendiente' }}
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-400 font-mono">{{ t.requestedPlatform }} · {{ t.requestedLicense }} · #{{ t.id }} · {{ t.dateLabel }}</p>
+            <p class="text-[11px] text-slate-300">{{ t.message }}</p>
+            <div v-if="t.adminReply" class="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2 text-[11px] text-emerald-200">
+              <strong class="text-emerald-300">Respuesta Admin:</strong> {{ t.adminReply }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3503,6 +3635,7 @@ const shareGamingOnWhatsApp = (game) => {
       :show="showFlyerModal" 
       :initial-product="flyerInitialProduct"
       :reseller-ref="currentResellerId"
+      :default-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'" 
       website-domain="streamepro.me"

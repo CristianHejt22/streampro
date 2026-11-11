@@ -682,6 +682,75 @@ const resellerStoreName = computed(() => {
   return r.name.replace(/\s*\(Distribuidor\s*#?\d+\)/gi, '').replace(/^\[.*?\]\s*/, '').trim()
 })
 
+// ==========================================
+// CONSULTA / PEDIDO MANUAL DE JUEGO AL ADMIN (CLIENTE)
+// ==========================================
+const showClientGameInquiry = ref(false)
+const submittedClientInquiry = ref(null)
+const clientGameInquiryForm = ref({
+  title: '',
+  platform: 'PS5',
+  licenseType: 'Primaria',
+  name: '',
+  phone: '',
+  notes: ''
+})
+
+const openClientGameInquiry = (prefillTitle = '') => {
+  if (prefillTitle && String(prefillTitle).trim()) {
+    clientGameInquiryForm.value.title = String(prefillTitle).trim()
+  }
+  if (!clientGameInquiryForm.value.name && clientForm.value.name) {
+    clientGameInquiryForm.value.name = clientForm.value.name
+  }
+  if (!clientGameInquiryForm.value.phone && clientForm.value.phone) {
+    clientGameInquiryForm.value.phone = clientForm.value.phone
+  }
+  showClientGameInquiry.value = true
+}
+
+const submitClientGameInquiry = (alsoWhatsApp = false) => {
+  const title = clientGameInquiryForm.value.title.trim()
+  if (!title) {
+    toast.add('Ingresa el nombre del juego que deseas consultar o solicitar.', 'warning')
+    return
+  }
+  const cName = clientGameInquiryForm.value.name.trim() || clientForm.value.name || 'Cliente Web'
+  const cPhone = clientGameInquiryForm.value.phone.trim() || clientForm.value.phone || ''
+  const resId = clientForm.value.selectedResellerId || 'DIRECT'
+  const resName = currentReseller.value?.storeName || currentReseller.value?.name || ''
+
+  const res = adminStore.createSupportTicket({
+    type: 'game_request',
+    sourceRole: 'client',
+    category: 'gaming',
+    clientNumber: clientForm.value.clientNumber || 'WEB',
+    clientName: cName,
+    phone: cPhone,
+    resellerId: resId,
+    resellerName: resName,
+    requestedGame: title,
+    requestedPlatform: clientGameInquiryForm.value.platform,
+    requestedLicense: clientGameInquiryForm.value.licenseType,
+    subject: `Pedido Manual Cliente: ${title} (${clientGameInquiryForm.value.platform})`,
+    message: clientGameInquiryForm.value.notes.trim() || `Consulta / solicitud manual por ${title} (${clientGameInquiryForm.value.platform} - ${clientGameInquiryForm.value.licenseType}).`
+  })
+  if (res.success) {
+    submittedClientInquiry.value = res.ticket
+    toast.add(`📩 Solicitud #${res.ticket.id} enviada al Administrador. Te responderemos pronto.`, 'success')
+    if (alsoWhatsApp) {
+      const targetPhone = (currentReseller.value?.contactNumber || currentReseller.value?.whatsapp || adminStore.providerBankInfo?.whatsapp || '').replace(/\D/g, '')
+      const msg = `¡Hola ${resellerStoreName.value}! 🎮 Quiero consultar / pedir manualmente el siguiente juego:\n\n• *Juego:* ${title}\n• *Consola:* ${clientGameInquiryForm.value.platform}\n• *Licencia:* ${clientGameInquiryForm.value.licenseType}\n• *Detalle:* ${clientGameInquiryForm.value.notes.trim() || 'Consulta de precio y disponibilidad'}\n• *Mi Nombre:* ${cName}${cPhone ? ` (${cPhone})` : ''}\n• *Ref Ticket:* #${res.ticket.id}`
+      const waUrl = targetPhone
+        ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`
+      window.open(waUrl, '_blank')
+    }
+    clientGameInquiryForm.value.title = ''
+    clientGameInquiryForm.value.notes = ''
+  }
+}
+
 // Base URL canónica oficial para producción (streamepro.me)
 const getBaseOrigin = () => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -3699,14 +3768,112 @@ const submitOrder = async () => {
       <div v-else class="text-center py-12 bg-slate-900/40 rounded-3xl border border-slate-800 space-y-3">
         <span class="text-4xl block">🎮🔍</span>
         <h4 class="text-base font-bold text-white">No se encontraron juegos con esos criterios</h4>
-        <p class="text-xs text-slate-400">Prueba cambiando la categoría o término de búsqueda.</p>
-        <button 
-          type="button" 
-          @click="selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'; gamingPriceCeiling = 'ALL'; onlyGamingFavorites = false; gamingSortBy = 'default'"
-          class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs cursor-pointer"
-        >
-          Restablecer Filtros
-        </button>
+        <p class="text-xs text-slate-400">Prueba cambiando la categoría o término de búsqueda, o solicítalo manualmente al Administrador.</p>
+        <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <button 
+            type="button" 
+            @click="selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'; gamingPriceCeiling = 'ALL'; onlyGamingFavorites = false; gamingSortBy = 'default'"
+            class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs cursor-pointer"
+          >
+            Restablecer Filtros
+          </button>
+          <button
+            type="button"
+            @click="openClientGameInquiry(gamingSearch)"
+            class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs cursor-pointer shadow"
+          >
+            📩 Solicitar Juego Manual al Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- CONSULTA / PEDIDO MANUAL DE JUEGO AL ADMINISTRADOR (CLIENTES) -->
+      <div class="bg-slate-900/75 border border-amber-500/30 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl shrink-0">📩</span>
+            <div class="min-w-0">
+              <h4 class="text-sm sm:text-base font-black text-white">¿Buscas un juego específico, DLC o edición especial?</h4>
+              <p class="text-xs text-slate-400">Envía tu consulta o pedido manual y el Administrador{{ currentReseller ? ` / ${resellerStoreName}` : '' }} te responderá con cotización y entrega.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="showClientGameInquiry = !showClientGameInquiry"
+            class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shrink-0 transition shadow"
+          >
+            {{ showClientGameInquiry ? '▲ Ocultar Formulario' : '🎮 Consultar / Pedir Manual' }}
+          </button>
+        </div>
+
+        <div v-if="showClientGameInquiry" class="pt-3 border-t border-slate-800 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <input
+              v-model="clientGameInquiryForm.title"
+              type="text"
+              placeholder="Nombre exacto del juego (Ej: GTA V, FC 26, Red Dead 2)..."
+              class="sm:col-span-2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-400"
+            >
+            <select v-model="clientGameInquiryForm.platform" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-bold outline-none">
+              <option value="PS5">PS5</option>
+              <option value="PS4">PS4</option>
+              <option value="PS3">PS3</option>
+              <option value="Xbox">Xbox</option>
+              <option value="Switch">Switch</option>
+              <option value="PC Steam">PC Steam</option>
+            </select>
+            <select v-model="clientGameInquiryForm.licenseType" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-bold outline-none">
+              <option value="Primaria">⭐️ Cuenta Primaria</option>
+              <option value="Secundaria">⚡️ Cuenta Secundaria</option>
+              <option value="Completa / Clave">🔑 Licencia Completa / Clave</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <input
+              v-model="clientGameInquiryForm.name"
+              type="text"
+              placeholder="Tu nombre..."
+              class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-amber-400"
+            >
+            <input
+              v-model="clientGameInquiryForm.phone"
+              type="text"
+              placeholder="Tu WhatsApp para responderte (Ej: +54 9 11...)"
+              class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-amber-400"
+            >
+          </div>
+
+          <textarea
+            v-model="clientGameInquiryForm.notes"
+            rows="2"
+            placeholder="Detalles adicionales (edición Deluxe, idioma, presupuesto o duda)..."
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-amber-400 resize-none"
+          />
+
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span v-if="submittedClientInquiry" class="text-xs font-bold text-emerald-300">
+              ✅ Solicitud #{{ submittedClientInquiry.id }} enviada con éxito al Administrador.
+            </span>
+            <span v-else class="text-[11px] text-slate-400">Respuesta rápida por WhatsApp y en el Panel Admin.</span>
+            <div class="flex flex-wrap gap-2 ml-auto">
+              <button
+                type="button"
+                @click="submitClientGameInquiry(true)"
+                class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer transition"
+              >
+                📲 Enviar por WhatsApp
+              </button>
+              <button
+                type="button"
+                @click="submitClientGameInquiry(false)"
+                class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow transition"
+              >
+                📨 Enviar Consulta al Admin
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Banner de Navegación Cruzada hacia Suscripciones y Combos -->
