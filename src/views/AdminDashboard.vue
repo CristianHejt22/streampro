@@ -7789,6 +7789,9 @@ const deletePackageItem = (pkgId) => {
                 <option value="PS5">PlayStation 5</option>
                 <option value="PS4">PlayStation 4</option>
                 <option value="PS3">PlayStation 3</option>
+                <option value="Xbox">Xbox</option>
+                <option value="Switch">Nintendo Switch</option>
+                <option value="PC">PC / Steam</option>
               </select>
             </div>
           </div>

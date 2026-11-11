@@ -409,16 +409,12 @@ const gamingCurrentPage = ref(1)
 const gamingItemsPerPage = ref(24)
 
 const totalGamingPages = computed(() => {
-  if (gamingItemsPerPage.value === 'all') return 1
-  const perPage = Number(gamingItemsPerPage.value) || 24
+  const perPage = gamingItemsPerPage.value === 'all' ? 160 : (Number(gamingItemsPerPage.value) || 24)
   return Math.max(1, Math.ceil(filteredGamingProducts.value.length / perPage))
 })
 
 const paginatedGamingProducts = computed(() => {
-  if (gamingItemsPerPage.value === 'all') {
-    return filteredGamingProducts.value
-  }
-  const perPage = Number(gamingItemsPerPage.value) || 24
+  const perPage = gamingItemsPerPage.value === 'all' ? 160 : (Number(gamingItemsPerPage.value) || 24)
   const start = (gamingCurrentPage.value - 1) * perPage
   return filteredGamingProducts.value.slice(start, start + perPage)
 })
@@ -3621,7 +3617,7 @@ const submitOrder = async () => {
       <div v-if="filteredGamingProducts.length > 0" class="pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
         <div class="flex items-center gap-2 text-slate-400">
           <span>Mostrando</span>
-          <span class="font-bold text-white font-mono">{{ ((gamingCurrentPage - 1) * (gamingItemsPerPage === 'all' ? filteredGamingProducts.length : gamingItemsPerPage)) + 1 }} - {{ Math.min(gamingCurrentPage * (gamingItemsPerPage === 'all' ? filteredGamingProducts.length : gamingItemsPerPage), filteredGamingProducts.length) }}</span>
+          <span class="font-bold text-white font-mono">{{ ((gamingCurrentPage - 1) * (gamingItemsPerPage === 'all' ? 160 : gamingItemsPerPage)) + 1 }} - {{ Math.min(gamingCurrentPage * (gamingItemsPerPage === 'all' ? 160 : gamingItemsPerPage), filteredGamingProducts.length) }}</span>
           <span>de</span>
           <span class="font-bold text-indigo-400 font-mono">{{ filteredGamingProducts.length }}</span>
           <span>videojuegos</span>
@@ -3635,7 +3631,7 @@ const submitOrder = async () => {
               <option :value="24">24</option>
               <option :value="48">48</option>
               <option :value="96">96</option>
-              <option value="all">Todos</option>
+              <option :value="160">160</option>
             </select>
           </div>
 

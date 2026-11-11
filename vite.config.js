@@ -94,7 +94,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 5000000,
+        maximumFileSizeToCacheInBytes: 25000000,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']
       },
       manifest: {

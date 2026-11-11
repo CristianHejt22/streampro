@@ -38,6 +38,86 @@ import {
   testFirebaseConnection 
 } from '../services/firebase'
 
+function buildGamingDiffs(currentList = [], baseList = []) {
+  const baseArr = Array.isArray(baseList) ? baseList : []
+  const currArr = Array.isArray(currentList) ? currentList : []
+  const baseMap = new Map(baseArr.map(b => [b.id, b]))
+  const currIds = new Set(currArr.map(c => c.id))
+  const patches = {}
+  const customGames = []
+  const deletedIds = []
+
+  currArr.forEach(item => {
+    const base = baseMap.get(item.id)
+    if (!base) {
+      customGames.push(item)
+      return
+    }
+    const diff = {}
+    if (item.image && item.image !== base.image) diff.image = item.image
+    if (item.customPrimaryPrice) diff.customPrimaryPrice = item.customPrimaryPrice
+    if (item.customSecondaryPrice) diff.customSecondaryPrice = item.customSecondaryPrice
+    if (item.preferredFulfillmentProvider && item.preferredFulfillmentProvider !== base.preferredFulfillmentProvider) {
+      diff.preferredFulfillmentProvider = item.preferredFulfillmentProvider
+    }
+    if (item.title && item.title !== base.title) diff.title = item.title
+    if (item.platform && item.platform !== base.platform) diff.platform = item.platform
+    if (JSON.stringify(item.providers || {}) !== JSON.stringify(base.providers || {})) {
+      diff.providers = item.providers
+    }
+    if (Object.keys(diff).length > 0) patches[item.id] = diff
+  })
+
+  if (currArr.length < baseArr.length && baseArr.length - currArr.length < 500) {
+    baseArr.forEach(b => {
+      if (!currIds.has(b.id)) deletedIds.push(b.id)
+    })
+  }
+  return { patches, customGames, deletedIds }
+}
+
+function persistGamingCatalogDeltas(currentList, baseList) {
+  const payload = buildGamingDiffs(currentList, baseList)
+  saveDb(DB_KEYS.GAMING_OVERRIDES, payload)
+}
+
+function buildMergedGamingCatalog(baseList) {
+  const baseArr = Array.isArray(baseList) && baseList.length > 0 ? baseList : INITIAL_GAMING_PRODUCTS
+  let overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
+
+  if (!overrides) {
+    const legacy = loadDb(DB_KEYS.GAMING_PRODUCTS, null)
+    if (Array.isArray(legacy) && legacy.length > 0) {
+      overrides = buildGamingDiffs(legacy, baseArr)
+      saveDb(DB_KEYS.GAMING_OVERRIDES, overrides)
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('streampro_prod_v2_' + DB_KEYS.GAMING_PRODUCTS)
+        }
+      } catch {}
+    } else {
+      overrides = { patches: {}, customGames: [], deletedIds: [] }
+    }
+  }
+
+  const patches = overrides.patches || {}
+  const deletedSet = new Set(overrides.deletedIds || [])
+  const customGames = Array.isArray(overrides.customGames) ? overrides.customGames : []
+
+  const merged = []
+  baseArr.forEach(b => {
+    if (deletedSet.has(b.id)) return
+    const p = patches[b.id]
+    merged.push(p ? { ...b, ...p, providers: p.providers || b.providers } : { ...b })
+  })
+  customGames.forEach(cg => {
+    if (cg && cg.id && !merged.some(m => m.id === cg.id)) {
+      merged.push(cg)
+    }
+  })
+  return merged
+}
+
 export const OFFICIAL_PROVIDER_WHATSAPP = '+54 9 291 565-9321'
 
 function sanitizePhone(phone) {
@@ -597,16 +677,8 @@ export const useAdminStore = defineStore('admin', {
       return 1000 // Ganancia mínima garantizada al revendedor en ARS
     })(),
 
-    // CATÁLOGO DE VIDEOJUEGOS DIGITALES PS4 / PS5 (Argentina Play y Juegos Digitales Argentina)
-    gamingProducts: (() => {
-      const stored = loadDb(DB_KEYS.GAMING_PRODUCTS, null)
-      if (Array.isArray(stored) && stored.length >= (gamingProductsData?.length || 23)) {
-        return stored
-      }
-      const initial = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
-      saveDb(DB_KEYS.GAMING_PRODUCTS, initial)
-      return initial
-    })(),
+    // CATÁLOGO COMPLETO DE VIDEOJUEGOS DIGITALES (Multi-Sitio Scrapeado + Overrides Locales Compactos)
+    gamingProducts: (() => buildMergedGamingCatalog(gamingProductsData))(),
     gamingCategories: (() => {
       const stored = loadDb(DB_KEYS.GAMING_CATEGORIES, null)
       if (Array.isArray(stored) && stored.length > 0) {
@@ -679,13 +751,12 @@ export const useAdminStore = defineStore('admin', {
       return deduplicateGamingProducts(processed)
     },
 
-    gamingPricingSummary: (state) => {
-      const list = state.gamingProducts || []
+    gamingPricingSummary(state) {
       const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
       const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
       const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
       const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
-      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites)))
+      const processed = this.processedGamingProducts || []
 
       let totalPrimaryCost = 0
       let totalSecondaryCost = 0
@@ -936,17 +1007,8 @@ export const useAdminStore = defineStore('admin', {
 
     openSupportTickets: (state) => (state.supportTickets || []).filter(t => t.status !== 'Resuelto'),
 
-    gamingCatalogHealth: (state) => {
-      const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
-      const list = deduplicateGamingProducts(
-        (state.gamingProducts || []).map(p => processGamingProduct(
-          p,
-          Number(state.gamingStoreMarginPercent ?? 20),
-          Number(state.gamingResellerCommissionPercent ?? 10),
-          Number(state.gamingMinResellerProfit ?? 1000),
-          sites
-        ))
-      )
+    gamingCatalogHealth(state) {
+      const list = this.processedGamingProducts || []
       const noOfficialImageList = []
       const missingSecondaryList = []
       const singleProviderList = []
@@ -958,7 +1020,7 @@ export const useAdminStore = defineStore('admin', {
           noOfficialImageList.push(g)
         }
         const plat = String(g.platform || '').toLowerCase()
-        const isSingleLic = plat.includes('pc') || plat.includes('steam') || plat.includes('ps3')
+        const isSingleLic = plat.includes('pc') || plat.includes('steam') || plat.includes('ps3') || plat.includes('xbox') || plat.includes('switch') || plat.includes('nintendo')
         const hasRealSec = (g.activeProvidersList || []).some(p => Number(p.costSecondary) > 0)
         if (!isSingleLic && !hasRealSec) {
           missingSecondaryList.push(g)
@@ -1007,7 +1069,7 @@ export const useAdminStore = defineStore('admin', {
       } else if (key === DB_KEYS.FIREBASE_CONFIG) {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
-        saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
+        persistGamingCatalogDeltas(this.gamingProducts, gamingProductsData)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else if (key === DB_KEYS.GAMING_CATEGORIES) {
@@ -1048,7 +1110,7 @@ export const useAdminStore = defineStore('admin', {
           gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
           gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000)
         })
-        saveDb(DB_KEYS.GAMING_PRODUCTS, this.gamingProducts)
+        persistGamingCatalogDeltas(this.gamingProducts, gamingProductsData)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
@@ -4052,59 +4114,14 @@ export const useAdminStore = defineStore('admin', {
 
     ensureGamingProductsLoaded() {
       this.ensureGamingProviderSitesLoaded()
-      const hasCorruptData = Array.isArray(this.gamingProducts) && this.gamingProducts.some(g => 
-        (typeof g.title === 'string' && (g.title.includes('&#') || g.title.includes('&amp;') || g.title.includes('…') || g.title.endsWith('...'))) ||
-        (typeof g.description === 'string' && (g.description.includes('&#') || g.description.includes('inmediata'))) ||
-        !g.visibleProviderKey ||
-        (g.providers?.argentinaplay?.available && g.providers.argentinaplay.costPrimary !== g.providers.argentinaplay.primaryPrice) ||
-        (g.providers?.juegosdigitalesargentina?.available && g.providers.juegosdigitalesargentina.costPrimary !== g.providers.juegosdigitalesargentina.primaryPrice) ||
-        (g.id === 'GAME-001' && g.providers?.juegosdigitalesargentina?.primaryPrice === 23800)
-      )
-
-      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23) || hasCorruptData) {
-        this.gamingProducts = (gamingProductsData && gamingProductsData.length > 0) ? gamingProductsData : INITIAL_GAMING_PRODUCTS
+      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23)) {
+        this.gamingProducts = buildMergedGamingCatalog(gamingProductsData)
         this.persist(DB_KEYS.GAMING_PRODUCTS)
-      } else if (Array.isArray(this.gamingProducts) && Array.isArray(gamingProductsData)) {
-        // Sincronizar nuevas webs scrapeadas (DGS, TTG, Fusion, TXT) y portadas PS Store manteniendo convenios del admin
-        let changed = false
-        const baseMap = new Map()
-        gamingProductsData.forEach(bg => {
-          baseMap.set(bg.id, bg)
-          if (bg.slug) baseMap.set(bg.slug, bg)
-        })
-
-        this.gamingProducts.forEach(g => {
-          const fresh = baseMap.get(g.id) || (g.slug ? baseMap.get(g.slug) : null)
-          if (fresh) {
-            if (fresh.image && fresh.image.includes('playstation.com') && (!g.image || !g.image.includes('playstation.com'))) {
-              g.image = fresh.image
-              changed = true
-            }
-            if (fresh.providers && typeof fresh.providers === 'object') {
-              if (!g.providers) g.providers = {}
-              for (const [pk, pv] of Object.entries(fresh.providers)) {
-                if (pv && pv.available && (!g.providers[pk] || !g.providers[pk].available)) {
-                  g.providers[pk] = { ...pv }
-                  changed = true
-                }
-              }
-            }
-          }
-          if (g.visibleProviderName !== 'PlayStation Store Oficial' || g.primaryPriceLeaderName !== 'PlayStation Store Oficial') {
-            g.visibleProviderName = 'PlayStation Store Oficial'
-            g.visibleProviderShortName = 'PS Store'
-            g.visibleProviderBadge = '🎮 PlayStation Store Oficial'
-            g.primaryPriceLeaderName = 'PlayStation Store Oficial'
-            g.secondaryPriceLeaderName = 'PlayStation Store Oficial'
-            changed = true
-          }
-        })
-        if (changed) this.persist(DB_KEYS.GAMING_PRODUCTS)
       }
       if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0 || !this.gamingCategories.includes('PS3')) {
         this.gamingCategories = (gamingCategoriesData && gamingCategoriesData.length > 0) 
           ? gamingCategoriesData 
-          : ['Todas', 'PS5', 'PS4', 'PS3', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
+          : ['Todas', 'PS5', 'PS4', 'PS3', 'Xbox', 'Nintendo Switch', 'PC', 'Lanzamientos', 'Acción & Aventura', 'Deportes', 'Lucha', 'Rol & Aventura', 'Survival Horror', 'Plataformas', 'Membresías']
         this.persist(DB_KEYS.GAMING_CATEGORIES)
       }
       if (!this.gamingSubcategories || Object.keys(this.gamingSubcategories).length === 0 || !this.gamingSubcategories['PS3']) {

@@ -47,6 +47,7 @@ export const DB_KEYS = {
   MERCADOPAGO_CONFIG: 'mercadopago_config',
   STORE_SETTINGS: 'store_settings',
   GAMING_PRODUCTS: 'gaming_products',
+  GAMING_OVERRIDES: 'gaming_overrides',
   GAMING_CATEGORIES: 'gaming_categories',
   GAMING_SUBCATEGORIES: 'gaming_subcategories',
   GAMING_ORDERS: 'gaming_orders',
@@ -73,6 +74,13 @@ export function saveDb(key, value) {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
     return true
   } catch (e) {
+    if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+      try {
+        localStorage.removeItem(STORAGE_PREFIX + DB_KEYS.GAMING_PRODUCTS)
+        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+        return true
+      } catch {}
+    }
     console.error(`[DB] Error al guardar ${key}:`, e)
     return false
   }

@@ -899,12 +899,34 @@ export const INITIAL_GAMING_PRODUCTS = [
 // Función de procesamiento y arbitraje:
 // Calcula el MAYOR PRECIO entre TODOS los sitios agregados y scrapeados habilitados para PVP,
 // e identifica tanto el sitio de mayor costo (base del PVP público) como el proveedor más conveniente para comprar.
+export function getPlatformBucket(platform = '', title = '') {
+  const s = `${platform} ${title}`.toLowerCase()
+  if (s.includes('xbox')) return 'xbox'
+  if (s.includes('switch') || s.includes('nintendo')) return 'switch'
+  if (/\b(pc|steam)\b/i.test(s)) return 'pc'
+  if (s.includes('ps3') && !s.includes('ps4') && !s.includes('ps5')) return 'ps3'
+  return 'ps'
+}
+
+export function supportsSecondaryLicense(platform = '') {
+  const bucket = getPlatformBucket(platform)
+  return bucket === 'ps'
+}
+
+export function getPublicStoreBrand(platform = '') {
+  const bucket = getPlatformBucket(platform)
+  if (bucket === 'xbox') return { name: 'Xbox Store Oficial', shortName: 'Xbox Store', badge: '💚 Xbox Store Oficial' }
+  if (bucket === 'switch') return { name: 'Nintendo eShop Oficial', shortName: 'eShop', badge: '❤️ Nintendo eShop Oficial' }
+  if (bucket === 'pc') return { name: 'PC Digital Oficial', shortName: 'PC Digital', badge: '🖥️ PC Digital Oficial' }
+  return { name: 'PlayStation Store Oficial', shortName: 'PS Store', badge: '🎮 PlayStation Store Oficial' }
+}
+
 export function processGamingProduct(product, storeMarginPercent = 20, resellerCommissionPercent = 10, minResellerProfit = 1000, gamingSitesConfig = null) {
   const pArg = product.providers?.argentinaplay || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
   const pJda = product.providers?.juegosdigitalesargentina || { primaryPrice: 0, secondaryPrice: 0, costPrimary: 0, costSecondary: 0, available: false }
 
-  const hasArg = Boolean(pArg.available && (Number(pArg.primaryPrice) > 0 || Number(pArg.costPrimary) > 0))
-  const hasJda = Boolean(pJda.available && (Number(pJda.primaryPrice) > 0 || Number(pJda.costPrimary) > 0))
+  const hasArg = Boolean(pArg.available !== false && (Number(pArg.primaryPrice) > 0 || Number(pArg.costPrimary) > 0))
+  const hasJda = Boolean(pJda.available !== false && (Number(pJda.primaryPrice) > 0 || Number(pJda.costPrimary) > 0))
 
   // Mapa de configuración de sitios del administrador
   const siteCfgMap = {}
@@ -929,12 +951,13 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     const cSec = Number(p.costSecondary || p.secondaryPrice || 0)
     if (p.available !== false && (cPri > 0 || cSec > 0)) {
       const meta = siteCfg || GAMING_PROVIDERS[key]
+      const resolvedUrl = p.providerUrl || (key === 'digitalgamesshop' && product.title ? `https://digitalgamesshop.ar/?q=${encodeURIComponent(product.title)}` : (siteCfg?.url || meta?.url || ''))
       activeProvidersList.push({
         key,
         name: siteCfg?.name || p.providerName || meta?.name || 'Proveedor Acordado',
         shortName: siteCfg?.shortName || meta?.shortName || (p.providerName ? p.providerName.slice(0, 10) : 'Mayorista'),
         tagColor: siteCfg?.tagColor || meta?.tagColor || 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-        url: siteCfg?.url || p.providerUrl || meta?.url || '',
+        url: resolvedUrl,
         whatsapp: siteCfg?.whatsapp || p.providerWhatsapp || '',
         includeInPvp: siteCfg ? siteCfg.includeInPvp !== false : true,
         costPrimary: cPri,
@@ -954,6 +977,8 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   const allPrimaryCosts = activeProvidersList.map(p => p.costPrimary).filter(c => c > 0)
   const allSecondaryCosts = activeProvidersList.map(p => p.costSecondary).filter(c => c > 0)
 
+  const allowSecondary = supportsSecondaryLicense(product.platform)
+
   let baseCostPrimary = 0
   let minCostPrimary = 0
   if (pvpPrimaryCosts.length > 0) {
@@ -965,12 +990,14 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
 
   let baseCostSecondary = 0
   let minCostSecondary = 0
-  if (pvpSecondaryCosts.length > 0) {
-    baseCostSecondary = Math.max(...pvpSecondaryCosts)
-  } else {
-    baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 10000
+  if (allowSecondary) {
+    if (pvpSecondaryCosts.length > 0) {
+      baseCostSecondary = Math.max(...pvpSecondaryCosts)
+    } else {
+      baseCostSecondary = Number(product.baseCostSecondary || product.effectiveSecondaryPrice) || 0
+    }
+    minCostSecondary = allSecondaryCosts.length > 0 ? Math.min(...allSecondaryCosts) : baseCostSecondary
   }
-  minCostSecondary = allSecondaryCosts.length > 0 ? Math.min(...allSecondaryCosts) : baseCostSecondary
 
   // Diferencia / Arbitraje de Costo entre el sitio más alto (PVP) y el más barato (Compra)
   const diffPrimary = Math.max(0, baseCostPrimary - minCostPrimary)
@@ -999,13 +1026,15 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     effectivePrimaryPrice = Number(product.effectivePrimaryPrice) || 25000
   }
 
-  if (hasCustomSecondary) {
-    effectiveSecondaryPrice = Number(product.customSecondaryPrice)
-  } else if (baseCostSecondary > 0) {
-    const raw = baseCostSecondary * (1 + marginRate)
-    effectiveSecondaryPrice = Math.ceil(raw / 100) * 100
-  } else {
-    effectiveSecondaryPrice = Number(product.effectiveSecondaryPrice) || 12000
+  if (allowSecondary) {
+    if (hasCustomSecondary) {
+      effectiveSecondaryPrice = Number(product.customSecondaryPrice)
+    } else if (baseCostSecondary > 0) {
+      const raw = baseCostSecondary * (1 + marginRate)
+      effectiveSecondaryPrice = Math.ceil(raw / 100) * 100
+    } else if (Number(product.effectiveSecondaryPrice) > 0) {
+      effectiveSecondaryPrice = Number(product.effectiveSecondaryPrice)
+    }
   }
 
   // Enriquecer cada proveedor con ganancia real si se compra ahí
@@ -1061,9 +1090,14 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
   // Proveedor que marca el precio más alto en la plataforma
   const primaryPriceLeaderKey = visibleProviderKey
   const secondaryPriceLeaderKey = visibleProviderKey
+  const brand = getPublicStoreBrand(product.platform)
 
   return {
     ...product,
+    description: product.description || `Videojuego digital oficial para ${product.platform || 'PlayStation'}. Entrega garantizada y soporte técnico en consola.`,
+    features: (Array.isArray(product.features) && product.features.length > 0)
+      ? product.features
+      : ['Licencia Digital Oficial', 'Entrega Rápida Garantizada', 'Soporte StreamePro'],
     baseCostPrimary,
     baseCostSecondary,
     effectivePrimaryPrice,
@@ -1083,14 +1117,14 @@ export function processGamingProduct(product, storeMarginPercent = 20, resellerC
     storeMarginPercent,
     resellerCommissionPercent,
     primaryPriceLeaderKey,
-    primaryPriceLeaderName: 'PlayStation Store Oficial',
+    primaryPriceLeaderName: brand.name,
     secondaryPriceLeaderKey,
-    secondaryPriceLeaderName: 'PlayStation Store Oficial',
-    // Proveedor visible público estrictamente anónimo: PlayStation Store Oficial
+    secondaryPriceLeaderName: brand.name,
+    // Proveedor visible público estrictamente anónimo
     visibleProviderKey,
-    visibleProviderName: 'PlayStation Store Oficial',
-    visibleProviderShortName: 'PS Store',
-    visibleProviderBadge: '🎮 PlayStation Store Oficial',
+    visibleProviderName: brand.name,
+    visibleProviderShortName: brand.shortName,
+    visibleProviderBadge: brand.badge,
     visibleProviderTagColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
     visibleProvider,
     visibleCostPrimary: visibleProvider.costPrimary || visibleProvider.primaryPrice || baseCostPrimary,
@@ -1129,8 +1163,8 @@ export function normalizeGameTitle(title) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s*\((ps5|ps4|ps3|ps4\s*\/\s*ps5)\)\s*/gi, '')
-    .replace(/\b(ps5|ps4|ps3)\b/gi, '')
+    .replace(/\s*\((ps5|ps4|ps3|ps4\s*\/\s*ps5|xbox|switch|pc)\)\s*/gi, '')
+    .replace(/\b(ps5|ps4|ps3|nintendo\s*switch\s*2?|switch\s*2?|xbox\s*(?:one|series\s*x\/?s?)?|steam|pc|digital|original|primari[oa]|secundari[oa])\b/gi, '')
     .replace(/[^a-z0-9]/gi, '')
     .trim()
 }
@@ -1139,8 +1173,8 @@ export function getGamePrice(g) {
   if (!g) return 0
   const p1 = Number(g.effectivePrimaryPrice) || 0
   const p2 = Number(g.effectiveSecondaryPrice) || 0
-  const pArg = Number(g.providers?.argentinaplay?.primaryPrice) || 0
-  const pJda = Number(g.providers?.juegosdigitalesargentina?.primaryPrice) || 0
+  const pArg = Number(g.providers?.argentinaplay?.costPrimary || g.providers?.argentinaplay?.primaryPrice) || 0
+  const pJda = Number(g.providers?.juegosdigitalesargentina?.costPrimary || g.providers?.juegosdigitalesargentina?.primaryPrice) || 0
   const pDirect = Number(g.price) || 0
   return Math.max(p1, p2, pArg, pJda, pDirect)
 }
@@ -1151,7 +1185,9 @@ export function deduplicateGamingProducts(productsList) {
   const map = new Map()
 
   productsList.forEach(item => {
-    const norm = normalizeGameTitle(item.title) || normalizeGameTitle(item.slug) || String(item.id)
+    const bucket = getPlatformBucket(item.platform, item.title)
+    const clean = normalizeGameTitle(item.title) || normalizeGameTitle(item.slug) || String(item.id)
+    const norm = `${bucket}::${clean}`
     const itemPrice = getGamePrice(item)
 
     if (!map.has(norm)) {
@@ -1160,20 +1196,20 @@ export function deduplicateGamingProducts(productsList) {
       const existing = map.get(norm)
       const existingPrice = existing._maxPrice
 
-      // Combinar plataformas si una es PS4 y otra PS5
+      // Combinar plataformas dentro del mismo bucket (ej. PS4 + PS5)
       let mergedPlatform = existing.platform || item.platform || 'PS4 / PS5'
-      const platformsSet = new Set()
-      ;[existing.platform, item.platform].forEach(p => {
-        if (!p) return
-        if (p.includes('PS5')) platformsSet.add('PS5')
-        if (p.includes('PS4')) platformsSet.add('PS4')
-        if (p.includes('PS3')) platformsSet.add('PS3')
-        if (p.includes('PC') || p.includes('Steam')) platformsSet.add('PC')
-      })
-      if (platformsSet.has('PS4') && platformsSet.has('PS5')) {
-        mergedPlatform = 'PS4 / PS5'
-      } else if (platformsSet.size > 0) {
-        mergedPlatform = Array.from(platformsSet).join(' / ')
+      if (bucket === 'ps') {
+        const platformsSet = new Set()
+        ;[existing.platform, item.platform].forEach(p => {
+          if (!p) return
+          if (p.includes('PS5')) platformsSet.add('PS5')
+          if (p.includes('PS4')) platformsSet.add('PS4')
+        })
+        if (platformsSet.has('PS4') && platformsSet.has('PS5')) {
+          mergedPlatform = 'PS4 / PS5'
+        } else if (platformsSet.size > 0) {
+          mergedPlatform = Array.from(platformsSet).join(' / ')
+        }
       }
 
       // Combinar TODOS los proveedores scrapeados y listas sin descartar ninguno

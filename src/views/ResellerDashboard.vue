@@ -868,9 +868,7 @@ const filteredResellerGames = computed(() => {
 
   return list.filter(g => {
     let matchesPlat = true
-    if (plat === 'PS5') matchesPlat = Boolean(g.platform && g.platform.includes('PS5'))
-    else if (plat === 'PS4') matchesPlat = Boolean(g.platform && g.platform.includes('PS4'))
-    else if (plat === 'PS3') matchesPlat = Boolean(g.platform && g.platform.includes('PS3'))
+    if (plat !== 'ALL') matchesPlat = Boolean(g.platform && g.platform.includes(plat))
 
     const matchesQ = !q || 
       g.title?.toLowerCase().includes(q) || 
@@ -2713,7 +2711,7 @@ const shareGamingOnWhatsApp = (game) => {
         <!-- Filtro por plataforma -->
         <div class="flex gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
           <button 
-            v-for="plat in ['ALL', 'PS5', 'PS4', 'PS3']" 
+            v-for="plat in ['ALL', 'PS5', 'PS4', 'PS3', 'Xbox', 'Switch', 'PC']" 
             :key="plat"
             @click="resellerGamingPlatformFilter = plat"
             :class="[
