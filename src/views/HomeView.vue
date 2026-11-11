@@ -179,6 +179,8 @@ const openSharePlaqueForWishlist = () => {
         ? Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0)
         : Number(g.effectiveSecondaryPrice || g.effectivePrimaryPrice || 0)
       return {
+        id: g.id,
+        itemType: 'gaming',
         title: g.title,
         subtitle: `${g.platform || 'PS4/PS5'} · ${lic === 'primary' ? 'Primaria' : 'Secundaria'}`,
         priceNumeric: price,
@@ -213,6 +215,8 @@ const openSharePlaqueForCart = () => {
     items: items.slice(0, 4).map(it => {
       const matchedGame = it.gameId ? gamesList.find(g => g.id === it.gameId) : null
       return {
+        id: it.gameId || it.id || '',
+        itemType: it.itemType || (it.gameId ? 'gaming' : 'streaming'),
         title: it.name,
         subtitle: it.planLabel || it.platform || 'Oficial',
         priceNumeric: Number(it.clientPrice || 0) * Number(it.quantity || 1),
@@ -400,6 +404,8 @@ const gamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4'
 const gamingSortBy = ref('default') // 'default' | 'price_asc' | 'price_desc' | 'title_asc'
 const gamingPriceCeiling = ref('ALL') // 'ALL' | '15000' | '25000' | '40000'
 const onlyGamingFavorites = ref(false)
+const sharedSelectionGameIds = ref([])
+const sharedSelectionProdIds = ref([])
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
 const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
@@ -497,6 +503,7 @@ const filteredGamingProducts = computed(() => {
   const q = gamingSearch.value.toLowerCase().trim()
 
   const filtered = list.filter(game => {
+    if (sharedSelectionGameIds.value.length > 0 && !sharedSelectionGameIds.value.includes(game.id)) return false
     if (favSet && !favSet.has(game.id)) return false
 
     let matchesCat = false
@@ -999,6 +1006,26 @@ const applyRouteParams = () => {
     }
   }
 
+  // Apertura de selección múltiple compartida (?games=id1,id2... o ?prods=id1,id2...)
+  if (route.query.games) {
+    const ids = String(route.query.games).split(',').map(s => s.trim()).filter(Boolean)
+    if (ids.length > 0) {
+      sharedSelectionGameIds.value = ids
+      storeSection.value = 'gaming'
+      clientForm.value.isSharedUrl = true
+      toast.add(`🎯 Mostrando selección compartida (${ids.length} juegos)`, 'info')
+    }
+  }
+  if (route.query.prods && isPhysicalNavVisible.value) {
+    const ids = String(route.query.prods).split(',').map(s => s.trim()).filter(Boolean)
+    if (ids.length > 0) {
+      sharedSelectionProdIds.value = ids
+      storeSection.value = 'physical'
+      clientForm.value.isSharedUrl = true
+      toast.add(`🎯 Mostrando selección compartida (${ids.length} productos)`, 'info')
+    }
+  }
+
   // Apertura automática del carrito si viene en URL (?openCart=true)
   if (route.query.openCart === 'true' || route.query.cart === 'true') {
     showCartDrawer.value = true
@@ -1192,7 +1219,9 @@ const getProductDirectUrl = (product) => {
   if (!product) return ''
   const origin = getBaseOrigin()
   const refCode = isDirectSale.value ? '' : clientForm.value.selectedResellerId
-  return refCode ? `${origin}/p/${product.id}?ref=${refCode}` : `${origin}/p/${product.id}`
+  return refCode
+    ? `${origin}/producto/${encodeURIComponent(product.id)}/${encodeURIComponent(refCode)}`
+    : `${origin}/producto/${encodeURIComponent(product.id)}`
 }
 
 const getProductShortUrl = (product) => {
@@ -1532,8 +1561,10 @@ watch([searchQuery, onlyDiscountsFilter, packagesItemsPerPage], () => {
 const filteredPhysicalProducts = computed(() => {
   if (!isPhysicalNavVisible.value) return []
   const list = adminStore.physicalProducts || []
+  const sharedProdSet = sharedSelectionProdIds.value.length > 0 ? new Set(sharedSelectionProdIds.value) : null
   const result = list.filter(p => {
     if (!p) return false
+    if (sharedProdSet && !sharedProdSet.has(String(p.id).trim())) return false
     // Excluir contenido o páginas marcadas como visibles solo en admin
     if (p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) {
       return false
@@ -1685,10 +1716,16 @@ const addPackageToCart = (pkg) => {
   showCartDrawer.value = true
 }
 
-const sharePackageLink = (pkg) => {
+const getPackageShareUrl = (pkg) => {
   const origin = getBaseOrigin()
   const refCode = isDirectSale.value ? '' : clientForm.value.selectedResellerId
-  const link = refCode ? `${origin}/?ref=${refCode}&pkg=${pkg.id}` : `${origin}/?pkg=${pkg.id}`
+  return refCode
+    ? `${origin}/combo/${encodeURIComponent(pkg.id)}/${encodeURIComponent(refCode)}`
+    : `${origin}/combo/${encodeURIComponent(pkg.id)}`
+}
+
+const sharePackageLink = (pkg) => {
+  const link = getPackageShareUrl(pkg)
   navigator.clipboard.writeText(link).then(() => {
     toast.add(`¡Enlace copiado! Comparte este combo con tus contactos`, 'success')
   }).catch(() => {
@@ -1697,9 +1734,7 @@ const sharePackageLink = (pkg) => {
 }
 
 const sharePackageWhatsApp = (pkg) => {
-  const origin = getBaseOrigin()
-  const refCode = isDirectSale.value ? '' : clientForm.value.selectedResellerId
-  const link = refCode ? `${origin}/?ref=${refCode}&pkg=${pkg.id}` : `${origin}/?pkg=${pkg.id}`
+  const link = getPackageShareUrl(pkg)
   const savings = pkg.originalPrice > pkg.promoPrice ? ` (Ahorras $${(pkg.originalPrice - pkg.promoPrice).toLocaleString()} ARS)` : ''
   const platforms = pkg.services.map(s => s.platform).join(' + ')
   const msg = `🎁 *SUPER COMBO STREAMEPRO: ${pkg.title}*\n🎬 Incluye: ${platforms}\n💰 Precio Promo: *$${pkg.promoPrice.toLocaleString()} ARS*${savings}\n\n👉 Aprovecha esta oferta garantizada aquí:\n${link}`
@@ -3656,6 +3691,17 @@ const submitOrder = async () => {
       </div>
 
       <!-- Cuadrícula de Juegos -->
+      <!-- Banner Selección Compartida Gaming -->
+      <div v-if="sharedSelectionGameIds.length > 0" class="mb-4 flex flex-wrap items-center justify-between gap-2 bg-indigo-500/15 border border-indigo-400/40 rounded-2xl px-4 py-3 text-xs">
+        <div class="flex items-center gap-2 text-indigo-200 font-bold">
+          <span>🎯</span>
+          <span>Mostrando selección compartida ({{ sharedSelectionGameIds.length }} títulos)</span>
+        </div>
+        <button type="button" @click="sharedSelectionGameIds = []" class="px-3 py-1 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-black cursor-pointer">
+          Ver todos los juegos
+        </button>
+      </div>
+
       <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         <div 
           v-for="game in paginatedGamingProducts" 
@@ -4562,6 +4608,17 @@ const submitOrder = async () => {
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Banner Selección Compartida Físicos -->
+      <div v-if="sharedSelectionProdIds.length > 0" class="mb-4 flex flex-wrap items-center justify-between gap-2 bg-amber-500/15 border border-amber-400/40 rounded-2xl px-4 py-3 text-xs">
+        <div class="flex items-center gap-2 text-amber-200 font-bold">
+          <span>🎯</span>
+          <span>Mostrando selección compartida ({{ sharedSelectionProdIds.length }} productos)</span>
+        </div>
+        <button type="button" @click="sharedSelectionProdIds = []" class="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black cursor-pointer">
+          Ver catálogo completo
+        </button>
       </div>
 
       <!-- Estado Vacío si no hay coincidencias -->

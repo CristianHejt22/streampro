@@ -20,6 +20,8 @@ const normalizedItems = computed(() => {
   if (!props.payload) return []
   if (isMultiMode.value) {
     return props.payload.items.slice(0, 4).map((it) => ({
+      id: it.id || it.gameId || '',
+      itemType: it.itemType || props.payload?.productType || 'gaming',
       title: String(it.title || it.name || 'Producto StreamePro'),
       subtitle: String(it.subtitle || it.platform || it.planLabel || it.category || 'Oficial'),
       price: Number(it.priceNumeric || it.price || it.clientPrice || 0),
@@ -123,6 +125,22 @@ const directShareUrl = computed(() => {
   const pid = props.payload?.id || ''
 
   if (isMultiMode.value || !pid) {
+    const gIds = normalizedItems.value
+      .filter(it => (it.itemType === 'gaming' || pt === 'gaming') && it.id)
+      .map(it => it.id)
+    const pIds = normalizedItems.value
+      .filter(it => (it.itemType === 'physical' || pt === 'physical') && it.id)
+      .map(it => it.id)
+
+    if (gIds.length > 0 || pIds.length > 0) {
+      const qs = new URLSearchParams()
+      if (gIds.length > 0) qs.set('games', gIds.slice(0, 4).join(','))
+      if (pIds.length > 0) qs.set('prods', pIds.slice(0, 4).join(','))
+      if (ref) qs.set('ref', ref)
+      if (props.payload?.title) qs.set('title', String(props.payload.title).slice(0, 56))
+      return `${origin}/seleccion?${qs.toString()}`
+    }
+    if (pt === 'package') return ref ? `${origin}/combos?ref=${encodeURIComponent(ref)}` : `${origin}/combos`
     if (pt === 'gaming') return ref ? `${origin}/juegos?ref=${encodeURIComponent(ref)}` : `${origin}/juegos`
     if (pt === 'physical') return ref ? `${origin}/tienda?ref=${encodeURIComponent(ref)}` : `${origin}/tienda`
     return ref ? `${origin}/?ref=${encodeURIComponent(ref)}` : `${origin}/`
@@ -137,9 +155,9 @@ const directShareUrl = computed(() => {
     return ref ? `${origin}/producto/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/producto/${encodeURIComponent(pid)}`
   }
   if (pt === 'package') {
-    return `${origin}/?sec=packages&pkg=${encodeURIComponent(pid)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`
+    return ref ? `${origin}/combo/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/combo/${encodeURIComponent(pid)}`
   }
-  return `${origin}/?plat=${encodeURIComponent(pid)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`
+  return ref ? `${origin}/servicio/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/servicio/${encodeURIComponent(pid)}`
 })
 
 const getCORSUrl = (raw) => {

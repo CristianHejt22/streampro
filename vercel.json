@@ -2,6 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "outputDirectory": "dist",
+  "functions": {
+    "api/og-image.js": {
+      "memory": 1024,
+      "maxDuration": 15
+    }
+  },
   "headers": [
     {
       "source": "/(.*).html",
@@ -74,6 +80,10 @@
       "destination": "/api/product-preview?prod=:id"
     },
     {
+      "source": "/p/:id/:ref",
+      "destination": "/api/product-preview?prod=:id&ref=:ref"
+    },
+    {
       "source": "/producto/:id",
       "destination": "/api/product-preview?prod=:id"
     },
@@ -86,12 +96,80 @@
       "destination": "/api/product-preview?game=:id"
     },
     {
+      "source": "/j/:id/:ref",
+      "destination": "/api/product-preview?game=:id&ref=:ref"
+    },
+    {
       "source": "/juego/:id",
       "destination": "/api/product-preview?game=:id"
     },
     {
       "source": "/juego/:id/:ref",
       "destination": "/api/product-preview?game=:id&ref=:ref"
+    },
+    {
+      "source": "/combo/:id",
+      "destination": "/api/product-preview?pkg=:id"
+    },
+    {
+      "source": "/combo/:id/:ref",
+      "destination": "/api/product-preview?pkg=:id&ref=:ref"
+    },
+    {
+      "source": "/servicio/:id",
+      "destination": "/api/product-preview?plat=:id"
+    },
+    {
+      "source": "/servicio/:id/:ref",
+      "destination": "/api/product-preview?plat=:id&ref=:ref"
+    },
+    {
+      "source": "/seleccion",
+      "destination": "/api/product-preview?multi=1"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview"
+    },
+    {
+      "source": "/juegos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=gaming"
+    },
+    {
+      "source": "/tienda",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=physical"
+    },
+    {
+      "source": "/combos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=packages"
     },
     {
       "source": "/(.*)",

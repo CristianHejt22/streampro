@@ -952,6 +952,8 @@ const openResellerTopGamesPlaque = () => {
     image: topGames[0].image || '',
     tag: platTitle,
     items: topGames.map(g => ({
+      id: g.id,
+      itemType: 'gaming',
       title: g.title,
       subtitle: `${g.platform || platTitle} · Primaria`,
       priceNumeric: Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0),
@@ -1047,10 +1049,12 @@ const filteredPhysicalProductsForReseller = computed(() => {
 const getProductReferralUrl = (product, clean = false) => {
   if (!product) return ''
   const origin = getBaseOrigin()
+  const ref = encodeURIComponent(currentResellerId.value)
+  const pid = encodeURIComponent(product.id)
   if (clean) {
-    return `${origin}/producto/${product.id}?ref=${currentResellerId.value}`
+    return `${origin}/producto/${pid}`
   }
-  return `${origin}/?ref=${currentResellerId.value}&prod=${product.id}`
+  return `${origin}/producto/${pid}/${ref}`
 }
 
 const copyResellerProduct3PercentLink = (product) => {

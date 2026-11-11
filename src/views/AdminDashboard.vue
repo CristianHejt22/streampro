@@ -2451,6 +2451,8 @@ const openAdminMarketingPlaque = () => {
       services: pkgs[0].services || [],
       tag: pkgs[0].badge || 'COMBOS VIP',
       items: pkgs.slice(0, 4).map(p => ({
+        id: p.id,
+        itemType: 'package',
         title: p.title,
         subtitle: (p.services || []).map(s => s.platform).join(' + '),
         priceNumeric: Number(p.promoPrice || 0),
@@ -2481,6 +2483,8 @@ const openAdminMarketingPlaque = () => {
     image: picked[0].image || '',
     tag: platTitle,
     items: picked.map(g => ({
+      id: g.id,
+      itemType: 'gaming',
       title: g.title,
       subtitle: `${g.platform || platTitle} · Primaria`,
       priceNumeric: Number(g.effectivePrimaryPrice || g.effectiveSecondaryPrice || 0),
