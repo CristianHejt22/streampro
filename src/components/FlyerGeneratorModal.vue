@@ -66,12 +66,37 @@ const decodeHtmlEntities = (str) => {
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
 }
 
-// 4. Videojuegos Digitales Multiplataforma (Catálogo Oficial Consola / PlayStation)
-const selectedGamingId = ref('GAME-182')
+// 4. Videojuegos Digitales Multiplataforma (Catálogo Completo + Etiquetas Inteligentes + Ajuste Manual)
+const selectedGamingId = ref('GAME-001')
 const selectedGamingLicense = ref('primary') // 'primary' | 'secondary'
 const selectedGamingPlatform = ref('PS5')
 const gamingSearch = ref('')
 const selectedGamingCat = ref('All')
+
+const GAMING_LICENSE_BADGES_MAP = {
+  ps4_primaria: { key: 'ps4_primaria', label: 'PS4 PRIMARIA', imgUrl: '/flyers/badge-ps4-primaria.png' },
+  ps4_secundaria: { key: 'ps4_secundaria', label: 'PS4 SECUNDARIA', imgUrl: '/flyers/badge-ps4-secundaria.png' },
+  ps5_primaria: { key: 'ps5_primaria', label: 'PS5 PRIMARIA', imgUrl: '/flyers/badge-ps5-primaria.png' },
+  ps5_secundaria: { key: 'ps5_secundaria', label: 'PS5 SECUNDARIA', imgUrl: '/flyers/badge-ps5-secundaria.png' },
+  ps3_digital: { key: 'ps3_digital', label: 'PS3 DIGITAL', imgUrl: '/flyers/badge-ps3-digital.png' }
+}
+const GAMING_LICENSE_BADGES_LIST = Object.values(GAMING_LICENSE_BADGES_MAP)
+const gamingBadgeOverride = ref('auto') // 'auto' | key | 'none'
+const gamingBadgePosition = ref('frame_bottom') // 'frame_bottom' | 'frame_top' | 'pill_top'
+
+// Herramientas de ajuste manual de imagen en recuadro
+const imageZoom = ref(1.0)
+const imageOffsetX = ref(0)
+const imageOffsetY = ref(0)
+const customUploadImageUrl = ref('')
+const customCoverInputRef = ref(null)
+
+const GAMING_LAYOUTS = {
+  story: { frame: { left: 19.3, top: 17.5, width: 61.4, height: 24.6, radius: 28 } },
+  feed: { frame: { left: 22.6, top: 18.1, width: 54.8, height: 31.3, radius: 26 } },
+  square: { frame: { left: 22.1, top: 19.2, width: 55.8, height: 34.0, radius: 24 } },
+  banner: { frame: { left: 7.7, top: 19.8, width: 50.3, height: 46.8, radius: 26 } }
+}
 
 const gamingProductsList = computed(() => adminStore.processedGamingProducts || [])
 
@@ -96,6 +121,12 @@ const filteredGamingProducts = computed(() => {
       matchesCat = Boolean(g.platform && g.platform.includes('PS4'))
     } else if (selectedGamingCat.value === 'PS3') {
       matchesCat = Boolean(g.platform && g.platform.includes('PS3'))
+    } else if (selectedGamingCat.value === 'Xbox') {
+      matchesCat = Boolean(g.platform && g.platform.includes('Xbox'))
+    } else if (selectedGamingCat.value === 'Nintendo Switch') {
+      matchesCat = Boolean(g.platform && g.platform.includes('Switch'))
+    } else if (selectedGamingCat.value === 'PC') {
+      matchesCat = Boolean(g.platform && (g.platform.includes('PC') || g.platform.includes('Steam')))
     } else if (selectedGamingCat.value === 'Lanzamientos') {
       matchesCat = Boolean(g.badge && (g.badge.includes('LANZAMIENTO') || g.badge.includes('2026') || g.badge.includes('2025') || g.badge.includes('2024') || g.badge.includes('TOP') || g.badge.includes('MÁS VENDIDO') || g.badge.includes('FENÓMENO') || g.badge.includes('JUEGO DEL AÑO')))
     } else {
@@ -114,6 +145,49 @@ const selectedGamingProduct = computed(() => {
   return list.find(g => g.id === selectedGamingId.value) || list[0]
 })
 
+const displayedGamingSelectOptions = computed(() => {
+  const slice = filteredGamingProducts.value.slice(0, 120)
+  const curr = selectedGamingProduct.value
+  if (curr && !slice.some(g => g.id === curr.id)) {
+    return [curr, ...slice]
+  }
+  return slice
+})
+
+const selectedGameSupportsSecondary = computed(() => {
+  const plat = String(selectedGamingPlatform.value || selectedGamingProduct.value?.platform || '').toLowerCase()
+  return !plat.includes('ps3') && !plat.includes('pc') && !plat.includes('steam') && !plat.includes('xbox') && !plat.includes('switch') && !plat.includes('nintendo')
+})
+
+const detectedGamingBadgeInfo = computed(() => {
+  const plat = String(selectedGamingPlatform.value || selectedGamingProduct.value?.platform || '').toUpperCase()
+  const titleUpper = String(selectedGamingProduct.value?.title || '').toUpperCase()
+  const isSec = selectedGamingLicense.value === 'secondary'
+
+  if (plat.includes('XBOX')) return { key: 'xbox_digital', label: '💚 XBOX DIGITAL', imgUrl: null }
+  if (plat.includes('SWITCH') || plat.includes('NINTENDO')) return { key: 'switch_digital', label: '❤️ NINTENDO SWITCH', imgUrl: null }
+  if (plat.includes('PC') || plat.includes('STEAM')) return { key: 'pc_steam', label: '🖥️ PC STEAM', imgUrl: null }
+  if ((plat.includes('PS3') && !plat.includes('PS4') && !plat.includes('PS5')) || (/\bPS3\b/.test(titleUpper) && !/\bPS[45]\b/.test(titleUpper))) {
+    return GAMING_LICENSE_BADGES_MAP.ps3_digital
+  }
+  if (plat.includes('PS4') && !plat.includes('PS5')) {
+    return isSec ? GAMING_LICENSE_BADGES_MAP.ps4_secundaria : GAMING_LICENSE_BADGES_MAP.ps4_primaria
+  }
+  return isSec ? GAMING_LICENSE_BADGES_MAP.ps5_secundaria : GAMING_LICENSE_BADGES_MAP.ps5_primaria
+})
+
+const activeGamingBadgeInfo = computed(() => {
+  if (gamingBadgeOverride.value === 'none') return null
+  if (gamingBadgeOverride.value !== 'auto' && GAMING_LICENSE_BADGES_MAP[gamingBadgeOverride.value]) {
+    return GAMING_LICENSE_BADGES_MAP[gamingBadgeOverride.value]
+  }
+  return detectedGamingBadgeInfo.value
+})
+
+const coverPreviewTransformStyle = computed(() => ({
+  transform: `translate(${imageOffsetX.value}%, ${imageOffsetY.value}%) scale(${imageZoom.value})`
+}))
+
 // Personalización del flyer (Solo dominio principal)
 const storeName = ref(props.defaultStoreName)
 const websiteUrl = ref('streamepro.me')
@@ -125,6 +199,40 @@ const customSubtitle = ref('')
 const flyerTheme = ref('cyber') // 'cinema' | 'cyber' | 'emerald' | 'blue'
 const flyerFormat = ref('story') // 'story' (9:16) | 'feed' (4:5) | 'square' (1:1) | 'banner' (16:9)
 const flyerImageFit = ref('cover') // 'cover' (rellenar espacios enfocado) | 'contain' (completo con fondo ambiental)
+
+const currentGamingLayout = computed(() => GAMING_LAYOUTS[flyerFormat.value] || GAMING_LAYOUTS.story)
+
+const getBadgePercentBox = (fmt) => {
+  const pos = gamingBadgePosition.value
+  if (fmt === 'banner') {
+    if (pos === 'frame_top') return { left: 16.5, top: 15.8, width: 32.5 }
+    if (pos === 'pill_top') return { left: 57.0, top: 67.6, width: 32.0 }
+    return { left: 16.5, top: 63.0, width: 32.5 }
+  }
+  if (fmt === 'feed') {
+    if (pos === 'frame_top') return { left: 22.0, top: 14.8, width: 56.0 }
+    if (pos === 'pill_top') return { left: 22.0, top: 62.6, width: 56.0 }
+    return { left: 22.0, top: 46.8, width: 56.0 }
+  }
+  if (fmt === 'square') {
+    if (pos === 'frame_top') return { left: 22.0, top: 16.0, width: 56.0 }
+    if (pos === 'pill_top') return { left: 22.0, top: 69.2, width: 56.0 }
+    return { left: 22.0, top: 50.2, width: 56.0 }
+  }
+  // story
+  if (pos === 'frame_top') return { left: 21.0, top: 15.2, width: 58.0 }
+  if (pos === 'pill_top') return { left: 21.0, top: 51.0, width: 58.0 }
+  return { left: 21.0, top: 39.8, width: 58.0 }
+}
+
+const gamingDomBadgeStyle = computed(() => {
+  const b = getBadgePercentBox(flyerFormat.value)
+  return {
+    left: b.left + '%',
+    top: b.top + '%',
+    width: b.width + '%'
+  }
+})
 
 const flyerFormatLabels = {
   story: '9:16 Historias / Estados',
@@ -243,12 +351,24 @@ const currentTheme = computed(() => {
 const isExporting = ref(false)
 const flyerPreviewRef = ref(null)
 
-// Precarga de las 4 plantillas Cyber Oficiales de Canva
+// Precarga de las 4 plantillas Cyber + las 4 plantillas Gaming Oficiales + 5 Etiquetas de Licencia
 if (typeof window !== 'undefined') {
   ['story', 'feed', 'square', 'banner'].forEach((fmt) => {
     const ext = fmt === 'story' ? 'png' : 'jpg'
-    const img = new Image()
-    img.src = `/flyer-template-cyber-${fmt}.${ext}`
+    const imgCyber = new Image()
+    imgCyber.src = `/flyer-template-cyber-${fmt}.${ext}`
+    const imgGaming = new Image()
+    imgGaming.src = `/flyers/gaming-template-${fmt}.jpg`
+  })
+  ;[
+    '/flyers/badge-ps4-primaria.png',
+    '/flyers/badge-ps4-secundaria.png',
+    '/flyers/badge-ps5-primaria.png',
+    '/flyers/badge-ps5-secundaria.png',
+    '/flyers/badge-ps3-digital.png'
+  ].forEach((bSrc) => {
+    const bImg = new Image()
+    bImg.src = bSrc
   })
 }
 
@@ -287,6 +407,12 @@ const getPlatformCyberStyle = (platform) => {
 }
 
 const getCyberTemplateUrl = (format) => {
+  if (flyerProductType.value === 'gaming') {
+    if (format === 'feed') return '/flyers/gaming-template-feed.jpg'
+    if (format === 'square') return '/flyers/gaming-template-square.jpg'
+    if (format === 'banner') return '/flyers/gaming-template-banner.jpg'
+    return '/flyers/gaming-template-story.jpg'
+  }
   if (format === 'story') return '/flyer-template-cyber-story.png'
   if (format === 'feed') return '/flyer-template-cyber-feed.jpg'
   if (format === 'square') return '/flyer-template-cyber-square.jpg'
@@ -405,8 +531,11 @@ const selectedPhysicalProduct = computed(() => {
   return list.find(p => String(p.id) === String(selectedPhysicalId.value)) || list[0]
 })
 
-// Imagen con CORS para físicos y videojuegos
+// Imagen con CORS y soporte para portada personalizada manual
 const productImageCORS = computed(() => {
+  if (customUploadImageUrl.value) {
+    return customUploadImageUrl.value
+  }
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.image) {
     return getCORSImageUrl(selectedPhysicalProduct.value.image)
   }
@@ -414,6 +543,11 @@ const productImageCORS = computed(() => {
     return getCORSImageUrl(selectedGamingProduct.value.image)
   }
   return null
+})
+
+const effectiveCoverImage = computed(() => {
+  if (customUploadImageUrl.value) return customUploadImageUrl.value
+  return productImageCORS.value || (flyerProductType.value === 'gaming' ? selectedGamingProduct.value?.image : selectedPhysicalProduct.value?.image) || ''
 })
 
 // Sincronizar selección cuando cambie el combo
@@ -485,13 +619,64 @@ watch(selectedPhysicalId, (newId) => {
   }
 })
 
+const resetImageAdjustments = () => {
+  imageZoom.value = 1
+  imageOffsetX.value = 0
+  imageOffsetY.value = 0
+}
+
+const triggerCustomCoverUpload = () => {
+  customCoverInputRef.value?.click()
+}
+
+const handleCustomCoverUpload = (event) => {
+  const file = event.target?.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    if (e.target?.result) {
+      customUploadImageUrl.value = String(e.target.result)
+      resetImageAdjustments()
+      toast.add('🖼️ Portada personalizada cargada en el recuadro', 'success')
+    }
+  }
+  reader.readAsDataURL(file)
+  if (event.target) event.target.value = ''
+}
+
+let dragState = null
+const startCoverDrag = (event) => {
+  const box = event.currentTarget?.getBoundingClientRect()
+  if (!box) return
+  event.currentTarget?.setPointerCapture?.(event.pointerId)
+  dragState = {
+    startX: event.clientX,
+    startY: event.clientY,
+    initOffX: imageOffsetX.value,
+    initOffY: imageOffsetY.value,
+    w: Math.max(1, box.width),
+    h: Math.max(1, box.height)
+  }
+}
+
+const onCoverDrag = (event) => {
+  if (!dragState) return
+  const dxPct = ((event.clientX - dragState.startX) / dragState.w) * 100
+  const dyPct = ((event.clientY - dragState.startY) / dragState.h) * 100
+  imageOffsetX.value = Math.max(-60, Math.min(60, Math.round(dragState.initOffX + dxPct)))
+  imageOffsetY.value = Math.max(-60, Math.min(60, Math.round(dragState.initOffY + dyPct)))
+}
+
+const endCoverDrag = () => {
+  dragState = null
+}
+
 // Sincronización oficial para videojuegos multiplataforma
 const syncGamingFlyer = () => {
   if (flyerProductType.value !== 'gaming') return
   const g = selectedGamingProduct.value
   if (!g) return
 
-  // Si el título es exclusivo de una plataforma, sincronizar automáticamente
   if (g.platform === 'PS5') {
     selectedGamingPlatform.value = 'PS5'
   } else if (g.platform === 'PS4') {
@@ -508,38 +693,36 @@ const syncGamingFlyer = () => {
     selectedGamingPlatform.value = availableGamePlatforms.value[0] || 'PS5'
   }
 
+  if (!selectedGameSupportsSecondary.value && selectedGamingLicense.value === 'secondary') {
+    selectedGamingLicense.value = 'primary'
+  }
+
   const isPrim = selectedGamingLicense.value === 'primary'
   customTitle.value = decodeHtmlEntities(g.title)
 
-  // Subtítulo y tienda adaptada a la consola/plataforma
-  let storeName = 'PlayStation Store'
+  let storeNameLabel = 'PlayStation Store'
   const plat = selectedGamingPlatform.value
-  if (plat.includes('Switch')) {
-    storeName = 'Nintendo eShop'
-  } else if (plat.includes('Xbox')) {
-    storeName = 'Xbox Store'
-  } else if (plat.includes('PC') || plat.includes('Steam')) {
-    storeName = 'Steam'
-  }
+  if (plat.includes('Switch')) storeNameLabel = 'Nintendo eShop'
+  else if (plat.includes('Xbox')) storeNameLabel = 'Xbox Store'
+  else if (plat.includes('PC') || plat.includes('Steam')) storeNameLabel = 'Steam'
 
   if (plat.includes('PC') || plat.includes('Steam')) {
-    customSubtitle.value = `🔑 Clave Digital Oficial · ${storeName}`
+    customSubtitle.value = `🔑 Clave Digital Oficial · ${storeNameLabel}`
     headlineBadge.value = '🔥 ENTREGA 60/90 MIN & GARANTÍA OFICIAL'
     bullet1.value = 'Código original para canjear en tu cuenta de Steam'
   } else if (plat.includes('Switch')) {
-    customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
-    headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO GARANTIZADO'
-    bullet1.value = isPrim ? 'Juega con tu Perfil Personal en Nintendo Switch' : 'Juega desde el usuario asignado 100% oficial'
+    customSubtitle.value = `⭐️ Cuenta Primaria · ${plat} Oficial`
+    headlineBadge.value = '🔥 JUEGA CON TU USUARIO PERSONAL'
+    bullet1.value = 'Juega con tu Perfil Personal en Nintendo Switch'
   } else if (plat.includes('Xbox')) {
-    customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Oficial`
-    headlineBadge.value = isPrim ? '🔥 JUEGA CON TU PERFIL PERSONAL' : '⚡️ ACCESO ECONÓMICO GARANTIZADO'
-    bullet1.value = isPrim ? 'Juega con tu Gamertag Personal (Logros en tu cuenta)' : 'Juega desde el usuario asignado 100% oficial'
+    customSubtitle.value = `⭐️ Licencia Digital · ${plat} Oficial`
+    headlineBadge.value = '🔥 JUEGA CON TU PERFIL PERSONAL'
+    bullet1.value = 'Juega con tu Gamertag Personal (Logros en tu cuenta)'
   } else if (plat.includes('PS3')) {
     customSubtitle.value = '🕹️ Licencia Digital Oficial · PS3'
     headlineBadge.value = '🔥 JUEGA EN TU CONSOLA PLAYSTATION 3'
     bullet1.value = 'Instalación completa y directa en tu consola PS3'
   } else {
-    // PlayStation 5 / 4
     customSubtitle.value = `${isPrim ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'} · ${plat} Digital Oficial`
     headlineBadge.value = isPrim ? '🔥 JUEGA CON TU USUARIO PERSONAL' : '⚡️ ACCESO ECONÓMICO 100% GARANTIZADO'
     bullet1.value = isPrim 
@@ -547,11 +730,19 @@ const syncGamingFlyer = () => {
       : 'Juega desde el usuario asignado 100% oficial'
   }
 
-  customPrice.value = isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice
-  customOriginalPrice.value = Math.round((isPrim ? g.effectivePrimaryPrice : g.effectiveSecondaryPrice) * 1.35)
-  bullet2.value = `Descarga directa desde ${storeName}`
+  const resolvedPrice = isPrim
+    ? (g.effectivePrimaryPrice || 0)
+    : (g.effectiveSecondaryPrice || g.effectivePrimaryPrice || 0)
+  customPrice.value = resolvedPrice
+  customOriginalPrice.value = Math.round(resolvedPrice * 1.35)
+  bullet2.value = `Descarga directa desde ${storeNameLabel}`
   bullet3.value = 'Garantía oficial y entrega en 60 a 90 min 24/7'
 }
+
+watch(selectedGamingId, () => {
+  customUploadImageUrl.value = ''
+  resetImageAdjustments()
+})
 
 watch([selectedGamingId, selectedGamingLicense, selectedGamingPlatform], () => {
   if (flyerProductType.value === 'gaming') {
@@ -964,26 +1155,86 @@ function renderCanvasFlyerBlob() {
         ctx.fillRect(0, 0, w, h)
       }
 
+      function drawCoverWithManualAdjust(ctx, imgEl, innerX, innerY, innerW, innerH, cornerR, isGamer) {
+        ctx.save()
+        roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, false)
+        ctx.clip()
+
+        ctx.fillStyle = isGamer ? '#090d16' : '#0f172a'
+        ctx.fillRect(innerX, innerY, innerW, innerH)
+
+        if (imgEl) {
+          const imgAspect = (imgEl.width || 1) / (imgEl.height || 1)
+          const visorAspect = innerW / innerH
+
+          // 1. Capa ambiental difuminada
+          const bgScale = Math.max(innerW / imgEl.width, innerH / imgEl.height) * 1.18
+          const bgW = imgEl.width * bgScale
+          const bgH = imgEl.height * bgScale
+          ctx.save()
+          ctx.filter = 'blur(18px) brightness(0.42)'
+          ctx.drawImage(imgEl, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
+          ctx.restore()
+
+          // 2. Tamaño base según modo (cover o contain)
+          let baseW, baseH
+          if (flyerImageFit.value === 'contain') {
+            if (visorAspect > imgAspect) {
+              baseH = innerH - 16
+              baseW = baseH * imgAspect
+            } else {
+              baseW = innerW - 16
+              baseH = baseW / imgAspect
+            }
+          } else {
+            if (visorAspect > imgAspect) {
+              baseW = innerW
+              baseH = innerW / imgAspect
+            } else {
+              baseH = innerH
+              baseW = innerH * imgAspect
+            }
+          }
+
+          // 3. Transformación manual: translate(offsetX%, offsetY%) + scale(imageZoom) equivalente a CSS
+          const scale = Math.max(0.5, Number(imageZoom.value) || 1)
+          const dw = baseW * scale
+          const dh = baseH * scale
+          const panX = ((Number(imageOffsetX.value) || 0) / 100) * innerW
+          const panY = ((Number(imageOffsetY.value) || 0) / 100) * innerH
+          const dx = innerX + (innerW - dw) / 2 + panX
+          const dy = innerY + (innerH - dh) / 2 + panY
+
+          ctx.save()
+          if (flyerImageFit.value === 'contain') {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
+            ctx.shadowBlur = 20
+          }
+          ctx.drawImage(imgEl, dx, dy, dw, dh)
+          ctx.restore()
+        } else {
+          const iconSize = Math.min(130, innerH * 0.38)
+          ctx.font = `${iconSize}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText(isGamer ? '🎮' : '📦', innerX + innerW / 2, innerY + innerH / 2 + iconSize * 0.25)
+        }
+        ctx.restore()
+      }
+
       async function drawVisorHeroContent(ctx, visorX, visorY, visorW, visorH) {
         const centerX = visorX + visorW / 2
         const centerY = visorY + visorH / 2
         const th = currentTheme.value
 
         ctx.save()
-
-        // Resplandor holográfico sutil de fondo
         const pedGlow = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, visorW * 0.5)
         pedGlow.addColorStop(0, th.pedGlow)
         pedGlow.addColorStop(1, 'transparent')
         ctx.fillStyle = pedGlow
         ctx.fillRect(visorX, visorY, visorW, visorH)
 
-        if (flyerProductType.value === 'physical' || flyerProductType.value === 'gaming') {
-          const isGamer = flyerProductType.value === 'gaming'
-          // Encajar la imagen del producto perfectamente en el rectángulo
-          const imgEl = await loadFlyerImageElement(productImageCORS.value)
-
-          // Marco interno exacto del visor
+        if (flyerProductType.value === 'physical') {
+          const imgEl = await loadFlyerImageElement(effectiveCoverImage.value)
           const pad = (visorW < 450) ? 6 : 4
           const innerX = visorX + pad
           const innerY = visorY + pad
@@ -991,87 +1242,8 @@ function renderCanvasFlyerBlob() {
           const innerH = visorH - pad * 2
           const cornerR = Math.min(28, innerW * 0.065)
 
-          ctx.save()
-          roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, false)
-          ctx.clip()
+          drawCoverWithManualAdjust(ctx, imgEl, innerX, innerY, innerW, innerH, cornerR, false)
 
-          // Fondo base estilizado
-          ctx.fillStyle = isGamer ? '#090d16' : '#0f172a'
-          ctx.fillRect(innerX, innerY, innerW, innerH)
-
-          if (imgEl) {
-            const imgAspect = (imgEl.width || 1) / (imgEl.height || 1)
-            const visorAspect = innerW / innerH
-
-            // 1. Capa ambiental que rellena el 100% del visor sin dejar ningún espacio vacío
-            const bgScale = Math.max(innerW / imgEl.width, innerH / imgEl.height) * 1.18
-            const bgW = imgEl.width * bgScale
-            const bgH = imgEl.height * bgScale
-            const bgX = innerX + (innerW - bgW) / 2
-            const bgY = innerY + (innerH - bgH) / 2
-
-            ctx.save()
-            ctx.filter = 'blur(18px) brightness(0.42)'
-            ctx.drawImage(imgEl, bgX, bgY, bgW, bgH)
-            ctx.restore()
-
-            if (flyerImageFit.value === 'contain') {
-              // Modo completo: imagen completa en primer plano sobre fondo ambiental
-              let dw, dh
-              if (visorAspect > imgAspect) {
-                dh = innerH - 16
-                dw = dh * imgAspect
-              } else {
-                dw = innerW - 16
-                dh = dw / imgAspect
-              }
-              const dx = innerX + (innerW - dw) / 2
-              const dy = innerY + (innerH - dh) / 2
-              ctx.save()
-              ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
-              ctx.shadowBlur = 20
-              ctx.drawImage(imgEl, dx, dy, dw, dh)
-              ctx.restore()
-            } else {
-              // Modo enfocado rellenando espacios (Cover 100%):
-              // Rellena la totalidad del visor con la imagen nítida enfocada en el centro
-              let dw, dh, dx, dy
-              if (visorAspect > imgAspect) {
-                dw = innerW
-                dh = innerW / imgAspect
-                dx = innerX
-                dy = innerY + (innerH - dh) / 2
-              } else {
-                dh = innerH
-                dw = innerH * imgAspect
-                dx = innerX + (innerW - dw) / 2
-                dy = innerY
-              }
-              ctx.drawImage(imgEl, dx, dy, dw, dh)
-            }
-
-            if (isGamer) {
-              const licText = selectedGamingLicense.value === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'
-              const platText = selectedGamingPlatform.value
-              const licBadgeText = `${platText} · ${licText}`
-              ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              const bw = Math.max(90, ctx.measureText(licBadgeText).width + 20)
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'
-              roundRect(ctx, innerX + 12, innerY + 12, bw, 26, 8, true, true, '#6366f1', 1.5)
-              ctx.fillStyle = '#818cf8'
-              ctx.textAlign = 'center'
-              ctx.fillText(licBadgeText, innerX + 12 + bw / 2, innerY + 29)
-            }
-          } else {
-            const iconSize = Math.min(130, innerH * 0.38)
-            ctx.font = `${iconSize}px sans-serif`
-            ctx.textAlign = 'center'
-            ctx.fillText(isGamer ? '🎮' : '📦', centerX, centerY + iconSize * 0.25)
-          }
-
-          ctx.restore()
-
-          // Borde con resplandor neón alrededor del marco interno (sin obstruir la imagen)
           ctx.save()
           ctx.shadowColor = th.glow
           ctx.shadowBlur = 10
@@ -1238,7 +1410,6 @@ function renderCanvasFlyerBlob() {
             ctx.fillText(`-${calculatedDiscountPct.value}%`, badgeX + badgeW / 2, y + (isSquare ? 26 : 37))
           }
 
-          // Precio Principal
           ctx.textAlign = 'center'
           ctx.font = `900 ${isSquare ? 46 : 74}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
           ctx.fillStyle = '#ffffff'
@@ -1304,9 +1475,259 @@ function renderCanvasFlyerBlob() {
         ctx.restore()
       }
 
+      async function drawGamingCanvasLayout() {
+        const th = currentTheme.value
+        const layout = currentGamingLayout.value
+
+        // 1. Dibujar portada en el marco metálico exacto con ajuste manual
+        const fRect = layout.frame
+        const fx = Math.round((fRect.left / 100) * width)
+        const fy = Math.round((fRect.top / 100) * height)
+        const fw = Math.round((fRect.width / 100) * width)
+        const fh = Math.round((fRect.height / 100) * height)
+        const coverEl = await loadFlyerImageElement(effectiveCoverImage.value)
+        drawCoverWithManualAdjust(ctx, coverEl, fx, fy, fw, fh, fRect.radius || 26, true)
+
+        // 2. Dibujar Etiqueta Oficial Inteligente de Tipo de Licencia (PS4/PS5/PS3)
+        if (activeGamingBadgeInfo.value && gamingBadgeOverride.value !== 'none') {
+          const bSpec = getBadgePercentBox(format)
+          const bw = Math.round((bSpec.width / 100) * width)
+          const bx = Math.round((bSpec.left / 100) * width)
+          const by = Math.round((bSpec.top / 100) * height)
+
+          if (activeGamingBadgeInfo.value.imgUrl) {
+            const badgeEl = await loadFlyerImageElement(activeGamingBadgeInfo.value.imgUrl)
+            if (badgeEl) {
+              const bh = Math.round(bw * (badgeEl.height / badgeEl.width))
+              ctx.save()
+              ctx.shadowColor = 'rgba(0, 220, 255, 0.6)'
+              ctx.shadowBlur = 18
+              ctx.drawImage(badgeEl, bx, by, bw, bh)
+              ctx.restore()
+            }
+          } else {
+            const bh = Math.round(bw * 0.16)
+            ctx.save()
+            const g = ctx.createLinearGradient(bx, by, bx + bw, by)
+            g.addColorStop(0, '#0f172a')
+            g.addColorStop(0.5, '#0284c7')
+            g.addColorStop(1, '#1e3a8a')
+            ctx.fillStyle = g
+            roundRect(ctx, bx, by, bw, bh, bh / 2, true, true, '#38bdf8', 2.5)
+            ctx.fillStyle = '#ffffff'
+            ctx.font = `900 ${Math.round(bh * 0.46)}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.fillText(activeGamingBadgeInfo.value.label, bx + bw / 2, by + bh * 0.67)
+            ctx.restore()
+          }
+        }
+
+        const hasOrig = displayOriginalPrice.value && Number(displayOriginalPrice.value) > Number(displayPriceNumeric.value)
+        const guaranteeTxt = gamingFlyerGuaranteeText.value
+
+        if (format === 'story') {
+          // Chip de Impacto (47.5%)
+          drawCyberBadge(ctx, width / 2, Math.round(height * 0.475), 48, 820, false)
+
+          // Título + Subtítulo dentro del Recuadro Oscuro (PILL: 54.4%..63.4%)
+          const pTop = Math.round(height * 0.546)
+          const pH = Math.round(height * 0.088)
+          ctx.save()
+          ctx.textAlign = 'center'
+          const titleLines = wrapText(displayTitle.value, 28).slice(0, 2)
+          ctx.font = `900 ${titleLines.length > 1 ? 34 : 42}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+          ctx.fillStyle = '#ffffff'
+          titleLines.forEach((tl, i) => {
+            const ty = pTop + (titleLines.length > 1 ? 52 + i * 42 : pH * 0.48)
+            ctx.fillText(tl, width / 2, ty)
+          })
+          ctx.font = 'bold 21px monospace'
+          ctx.fillStyle = th.textAccent
+          const subStr = displaySubtitle.value.length > 46 ? displaySubtitle.value.slice(0, 44) + '...' : displaySubtitle.value
+          ctx.fillText(subStr, width / 2, pTop + pH - 22)
+          ctx.restore()
+
+          // Precio & Beneficios en el cuadrante inferior (65%..89%)
+          const pCardY = Math.round(height * 0.654)
+          drawCyberPriceCard(ctx, 110, pCardY, 860, 195, false)
+          drawCyberBullets(ctx, 140, pCardY + 245, 62, 3, false)
+
+          if (props.defaultPhone) {
+            const barW = 640
+            const barX = (width - barW) / 2
+            const barY = Math.round(height * 0.875)
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+            roundRect(ctx, barX, barY, barW, 46, 23, true, true, th.cardBorder, 1.5)
+            ctx.fillStyle = '#a5f3fc'
+            ctx.font = 'bold 22px monospace'
+            ctx.textAlign = 'center'
+            ctx.fillText(`📲 WhatsApp Pedidos: ${props.defaultPhone}`, width / 2, barY + 30)
+          }
+        } else if (format === 'feed') {
+          // Card translúcido Título entre portada y dark pill (53.5%..64.5%)
+          const tY = Math.round(height * 0.535)
+          const tH = Math.round(height * 0.108)
+          ctx.save()
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.78)'
+          roundRect(ctx, 108, tY, 864, tH, 20, true, true, 'rgba(56, 189, 248, 0.25)', 1.5)
+          ctx.restore()
+          drawCyberBadge(ctx, width / 2, tY + 8, 34, 720, true)
+
+          ctx.save()
+          ctx.textAlign = 'center'
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          const tClip = displayTitle.value.length > 34 ? displayTitle.value.slice(0, 32) + '...' : displayTitle.value
+          ctx.fillText(tClip, width / 2, tY + 88)
+          ctx.font = 'bold 19px monospace'
+          ctx.fillStyle = th.textAccent
+          const subClip = displaySubtitle.value.length > 50 ? displaySubtitle.value.slice(0, 48) + '...' : displaySubtitle.value
+          ctx.fillText(subClip, width / 2, tY + 122)
+          ctx.restore()
+
+          // Precio DENTRO del Recuadro Oscuro Oficial (65.6%..76.4%)
+          const pTop = Math.round(height * 0.658)
+          const pMidY = pTop + Math.round(height * 0.052)
+          ctx.save()
+          ctx.textAlign = 'center'
+          if (hasOrig) {
+            ctx.font = 'bold 20px sans-serif'
+            ctx.fillStyle = '#94a3b8'
+            ctx.fillText(`Antes: $${Number(displayOriginalPrice.value).toLocaleString()}${calculatedDiscountPct.value ? ` (-${calculatedDiscountPct.value}% OFF)` : ''}`, width / 2, pTop + 30)
+          }
+          ctx.font = '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = th.glow
+          ctx.shadowBlur = 14
+          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, pMidY + 16)
+          ctx.shadowBlur = 0
+          ctx.font = 'bold 17px sans-serif'
+          ctx.fillStyle = th.textAccent
+          ctx.fillText(guaranteeTxt, width / 2, pTop + Math.round(height * 0.095))
+          ctx.restore()
+
+          // Bullets & Contacto debajo del pill (77.5%..88.5%)
+          drawCyberBullets(ctx, 130, Math.round(height * 0.805), 42, 2, true)
+          if (props.defaultPhone) {
+            ctx.fillStyle = '#67e8f9'
+            ctx.font = 'bold 20px monospace'
+            ctx.textAlign = 'left'
+            ctx.fillText(`📲 Pedidos WhatsApp: ${props.defaultPhone}`, 115, Math.round(height * 0.878))
+          }
+        } else if (format === 'square') {
+          // Card Título entre portada y recuadro oscuro (56.8%..70.8%)
+          const tY = Math.round(height * 0.568)
+          const tH = Math.round(height * 0.138)
+          ctx.save()
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.80)'
+          roundRect(ctx, 108, tY, 864, tH, 20, true, true, 'rgba(56, 189, 248, 0.25)', 1.5)
+          ctx.restore()
+          drawCyberBadge(ctx, width / 2, tY + 8, 34, 720, true)
+
+          ctx.save()
+          ctx.textAlign = 'center'
+          ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          const tClip = displayTitle.value.length > 34 ? displayTitle.value.slice(0, 32) + '...' : displayTitle.value
+          ctx.fillText(tClip, width / 2, tY + 86)
+          ctx.font = 'bold 18px monospace'
+          ctx.fillStyle = th.textAccent
+          const subClip = displaySubtitle.value.length > 50 ? displaySubtitle.value.slice(0, 48) + '...' : displaySubtitle.value
+          ctx.fillText(subClip, width / 2, tY + 118)
+          ctx.restore()
+
+          // Precio DENTRO del Recuadro Oscuro Oficial (72.2%..83.7%)
+          const pTop = Math.round(height * 0.724)
+          ctx.save()
+          ctx.textAlign = 'center'
+          if (hasOrig) {
+            ctx.font = 'bold 18px sans-serif'
+            ctx.fillStyle = '#94a3b8'
+            ctx.fillText(`Antes: $${Number(displayOriginalPrice.value).toLocaleString()}${calculatedDiscountPct.value ? ` (-${calculatedDiscountPct.value}% OFF)` : ''}`, width / 2, pTop + 26)
+          }
+          ctx.font = '900 50px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = th.glow
+          ctx.shadowBlur = 14
+          ctx.fillText(`$${displayPrice.value} ARS`, width / 2, pTop + 78)
+          ctx.shadowBlur = 0
+          ctx.font = 'bold 16px sans-serif'
+          ctx.fillStyle = th.textAccent
+          ctx.fillText(guaranteeTxt, width / 2, pTop + 108)
+          ctx.restore()
+
+          // Franja inferior compacta (85.2%..88.8%)
+          ctx.save()
+          ctx.font = 'bold 17px sans-serif'
+          ctx.fillStyle = '#e2e8f0'
+          ctx.textAlign = 'left'
+          ctx.fillText(`✓ ${bullet1.value.slice(0, 42)}`, 110, Math.round(height * 0.873))
+          if (props.defaultPhone) {
+            ctx.textAlign = 'right'
+            ctx.fillStyle = '#67e8f9'
+            ctx.font = 'bold 17px monospace'
+            ctx.fillText(`📲 ${props.defaultPhone}`, width - 110, Math.round(height * 0.873))
+          }
+          ctx.restore()
+        } else {
+          // BANNER 16:9 GAMER (1920 x 1080)
+          // Card Izquierda Inferior (left: 7.2%, top: 70.6%, w: 42.5%, h: 18.2%)
+          const cardX = Math.round(width * 0.072)
+          const cardY = Math.round(height * 0.706)
+          const cardW = Math.round(width * 0.425)
+          const cardH = Math.round(height * 0.182)
+          ctx.save()
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.84)'
+          roundRect(ctx, cardX, cardY, cardW, cardH, 22, true, true, 'rgba(56, 189, 248, 0.35)', 2)
+          ctx.restore()
+
+          drawCyberBadge(ctx, cardX + cardW / 2, cardY + 12, 34, cardW - 40, true)
+          ctx.save()
+          ctx.textAlign = 'left'
+          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          const tClip = displayTitle.value.length > 34 ? displayTitle.value.slice(0, 32) + '...' : displayTitle.value
+          ctx.fillText(tClip, cardX + 24, cardY + 96)
+          ctx.font = 'bold 20px monospace'
+          ctx.fillStyle = th.textAccent
+          const sClip = displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value
+          ctx.fillText(sClip, cardX + 24, cardY + 132)
+          ctx.font = '600 18px sans-serif'
+          ctx.fillStyle = '#e2e8f0'
+          ctx.fillText(`✓ ${bullet1.value.slice(0, 52)}`, cardX + 24, cardY + 168)
+          ctx.restore()
+
+          // Precio DENTRO del Recuadro Oscuro Derecho Oficial (left: 51.6%, w: 43%, top: 72.3%..84.2%)
+          const rCenterX = Math.round(width * 0.731)
+          const rTop = Math.round(height * 0.725)
+          ctx.save()
+          ctx.textAlign = 'center'
+          if (hasOrig) {
+            ctx.font = 'bold 20px sans-serif'
+            ctx.fillStyle = '#94a3b8'
+            ctx.fillText(`Antes: $${Number(displayOriginalPrice.value).toLocaleString()}${calculatedDiscountPct.value ? `  |  -${calculatedDiscountPct.value}% OFF` : ''}`, rCenterX, rTop + 30)
+          }
+          ctx.font = '900 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = th.glow
+          ctx.shadowBlur = 14
+          ctx.fillText(`$${displayPrice.value} ARS`, rCenterX, rTop + 82)
+          ctx.shadowBlur = 0
+          ctx.font = 'bold 17px sans-serif'
+          ctx.fillStyle = th.textAccent
+          ctx.fillText(guaranteeTxt, rCenterX, rTop + 114)
+
+          if (props.defaultPhone) {
+            ctx.fillStyle = '#67e8f9'
+            ctx.font = 'bold 20px monospace'
+            ctx.fillText(`📲 Pedidos WhatsApp: ${props.defaultPhone}`, rCenterX, Math.round(height * 0.875))
+          }
+          ctx.restore()
+        }
+      }
+
       // ========================================================
-      // 1. MOTOR DE DISEÑO OFICIAL UNIFICADO CON CANVA ENGINE PRO
-      //    (CYBER PRO, CINEMA DARK, EMERALD DEAL, DEEP BLUE)
+      // 1. MOTOR DE DISEÑO OFICIAL UNIFICADO (GAMING + STREAMING/FÍSICO)
       // ========================================================
       const tplUrl = getCyberTemplateUrl(format)
       const cyberImg = await loadFlyerImageElement(tplUrl)
@@ -1323,136 +1744,128 @@ function renderCanvasFlyerBlob() {
         drawCyberBackground(ctx, width, height, th)
       }
 
-        if (format === 'banner') {
-          // ================= BANNER HORIZONTAL (1920 x 1080) =================
-          // Visor izquierdo: X=150, Y=260, W=520, H=560
-          await drawVisorHeroContent(ctx, 150, 260, 520, 560)
+      if (flyerProductType.value === 'gaming') {
+        await drawGamingCanvasLayout()
+      } else if (format === 'banner') {
+        // ================= BANNER HORIZONTAL (1920 x 1080) =================
+        await drawVisorHeroContent(ctx, 150, 260, 520, 560)
 
-          const rightX = 740
-          const rightW = 1040
+        const rightX = 740
+        const rightW = 1040
 
-          drawCyberBadge(ctx, rightX + rightW / 2, 140, 50, rightW, false)
+        drawCyberBadge(ctx, rightX + rightW / 2, 140, 50, rightW, false)
 
-          ctx.textAlign = 'left'
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-          ctx.shadowBlur = 10
-          const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 230 + i * 50))
-          ctx.shadowBlur = 0
-          const subY = 230 + titleLines.length * 50 + 6
+        ctx.textAlign = 'left'
+        ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowBlur = 10
+        const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
+        titleLines.forEach((tl, i) => ctx.fillText(tl, rightX, 230 + i * 50))
+        ctx.shadowBlur = 0
+        const subY = 230 + titleLines.length * 50 + 6
 
-          ctx.font = 'bold 23px sans-serif'
-          ctx.fillStyle = th.textAccent
-          ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
+        ctx.font = 'bold 23px sans-serif'
+        ctx.fillStyle = th.textAccent
+        ctx.fillText(displaySubtitle.value.length > 56 ? displaySubtitle.value.slice(0, 54) + '...' : displaySubtitle.value, rightX, subY)
 
-          const pCardY = subY + 20
-          drawCyberPriceCard(ctx, rightX, pCardY, rightW, 180, false)
+        const pCardY = subY + 20
+        drawCyberPriceCard(ctx, rightX, pCardY, rightW, 180, false)
 
-          drawCyberBullets(ctx, rightX + 20, pCardY + 180 + 45, 68, 3, false)
+        drawCyberBullets(ctx, rightX + 20, pCardY + 180 + 45, 68, 3, false)
+      } else if (format === 'story') {
+        // ================= STORY (1080 x 1920, 9:16) =================
+        await drawVisorHeroContent(ctx, 198, 261, 684, 544)
 
-        } else if (format === 'story') {
-          // ================= STORY (1080 x 1920, 9:16) =================
-          // Visor superior exacto: X=198, Y=261, W=684, H=544
-          await drawVisorHeroContent(ctx, 198, 261, 684, 544)
+        drawCyberBadge(ctx, width / 2, 840, 56, 860, false)
 
-          // Contenido estrictamente dentro del cuadrante (Y=830..1750)
-          drawCyberBadge(ctx, width / 2, 840, 56, 860, false)
+        ctx.textAlign = 'center'
+        ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowBlur = 12
+        const titleLines = wrapText(displayTitle.value, 28).slice(0, 2)
+        titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 940 + i * 50))
+        ctx.shadowBlur = 0
+        const subY = 940 + titleLines.length * 50 + 8
 
-          ctx.textAlign = 'center'
-          ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-          ctx.shadowBlur = 12
-          const titleLines = wrapText(displayTitle.value, 28).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 940 + i * 50))
-          ctx.shadowBlur = 0
-          const subY = 940 + titleLines.length * 50 + 8
+        ctx.font = 'bold 24px sans-serif'
+        ctx.fillStyle = th.textAccent
+        ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          ctx.font = 'bold 24px sans-serif'
-          ctx.fillStyle = th.textAccent
-          ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
+        const pCardY = subY + 28
+        drawCyberPriceCard(ctx, 110, pCardY, 860, 195, false)
 
-          const pCardY = subY + 28
-          drawCyberPriceCard(ctx, 110, pCardY, 860, 195, false)
+        drawCyberBullets(ctx, 145, pCardY + 195 + 45, 68, 3, false)
+      } else if (format === 'feed') {
+        // ================= FEED PORTRAIT (1080 x 1350, 4:5) =================
+        await drawVisorHeroContent(ctx, 218, 194, 645, 385)
 
-          drawCyberBullets(ctx, 145, pCardY + 195 + 45, 68, 3, false)
+        drawCyberBadge(ctx, width / 2, 600, 46, 840, false)
 
-        } else if (format === 'feed') {
-          // ================= FEED PORTRAIT (1080 x 1350, 4:5) =================
-          // Visor superior exacto: X=218, Y=194, W=645, H=385
-          await drawVisorHeroContent(ctx, 218, 194, 645, 385)
+        ctx.textAlign = 'center'
+        ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowBlur = 10
+        const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
+        titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 675 + i * 42))
+        ctx.shadowBlur = 0
+        const subY = 675 + titleLines.length * 42 + 6
 
-          // Contenido estrictamente dentro del cuadrante (Y=600..1220)
-          drawCyberBadge(ctx, width / 2, 600, 46, 840, false)
+        ctx.font = 'bold 21px sans-serif'
+        ctx.fillStyle = th.textAccent
+        ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          ctx.textAlign = 'center'
-          ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-          ctx.shadowBlur = 10
-          const titleLines = wrapText(displayTitle.value, 30).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 675 + i * 42))
-          ctx.shadowBlur = 0
-          const subY = 675 + titleLines.length * 42 + 6
+        const pCardY = subY + 20
+        drawCyberPriceCard(ctx, 120, pCardY, 840, 170, false)
 
-          ctx.font = 'bold 21px sans-serif'
-          ctx.fillStyle = th.textAccent
-          ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
+        drawCyberBullets(ctx, 145, pCardY + 170 + 40, 58, 3, false)
+      } else {
+        // ================= SQUARE (1080 x 1080, 1:1) =================
+        await drawVisorHeroContent(ctx, 353, 148, 374, 376)
 
-          const pCardY = subY + 20
-          drawCyberPriceCard(ctx, 120, pCardY, 840, 170, false)
+        drawCyberBadge(ctx, width / 2, 545, 42, 800, false)
 
-          drawCyberBullets(ctx, 145, pCardY + 170 + 40, 58, 3, false)
+        ctx.textAlign = 'center'
+        ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+        ctx.shadowBlur = 10
+        const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
+        titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 622 + i * 36))
+        ctx.shadowBlur = 0
+        const subY = 622 + titleLines.length * 36 + 4
 
-        } else {
-          // ================= SQUARE (1080 x 1080, 1:1) =================
-          // Visor superior exacto: X=353, Y=148, W=374, H=376
-          await drawVisorHeroContent(ctx, 353, 148, 374, 376)
+        ctx.font = 'bold 18px sans-serif'
+        ctx.fillStyle = th.textAccent
+        ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
 
-          // Contenido estrictamente dentro del cuadrante (Y=545..940)
-          drawCyberBadge(ctx, width / 2, 545, 42, 800, false)
+        const pCardY = subY + 16
+        drawCyberPriceCard(ctx, 130, pCardY, 820, 130, true)
 
-          ctx.textAlign = 'center'
-          ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-          ctx.shadowBlur = 10
-          const titleLines = wrapText(displayTitle.value, 32).slice(0, 2)
-          titleLines.forEach((tl, i) => ctx.fillText(tl, width / 2, 622 + i * 36))
-          ctx.shadowBlur = 0
-          const subY = 622 + titleLines.length * 36 + 4
+        const bulletsY = pCardY + 130 + 20
+        const numBullets = titleLines.length > 1 ? 2 : 3
+        drawCyberBullets(ctx, 150, bulletsY, 34, numBullets, true)
+      }
 
-          ctx.font = 'bold 18px sans-serif'
-          ctx.fillStyle = th.textAccent
-          ctx.fillText(displaySubtitle.value.length > 48 ? displaySubtitle.value.slice(0, 46) + '...' : displaySubtitle.value, width / 2, subY)
-
-          const pCardY = subY + 16
-          drawCyberPriceCard(ctx, 130, pCardY, 820, 130, true)
-
-          const bulletsY = pCardY + 130 + 20
-          const numBullets = titleLines.length > 1 ? 2 : 3
-          drawCyberBullets(ctx, 150, bulletsY, 34, numBullets, true)
-        }
-
-        // Banda inferior opcional con WhatsApp & Dominio Oficial en la descarga HD
-        if (props.defaultPhone || displayDomain.value) {
-          const footerText = [
-            storeName.value || 'StreamePro Oficial',
-            props.defaultPhone ? `WhatsApp: ${props.defaultPhone}` : '',
-            displayDomain.value || 'streamepro.me'
-          ].filter(Boolean).join('  •  ')
-          const barW = Math.min(width - 120, Math.max(460, footerText.length * 14 + 60))
-          const barX = format === 'banner' ? 740 : (width - barW) / 2
-          const barY = height - (format === 'story' ? 88 : 66)
-          ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
-          roundRect(ctx, barX, barY, barW, 44, 22, true, true, th.cardBorder, 1.5)
-          ctx.fillStyle = '#e2e8f0'
-          ctx.font = 'bold 20px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(footerText, barX + barW / 2, barY + 29)
-        }
+      // Banda inferior para modos Streaming / Combo / Físico (las plantillas Gaming ya tienen su propia barra footer)
+      if (flyerProductType.value !== 'gaming' && (props.defaultPhone || displayDomain.value)) {
+        const footerText = [
+          storeName.value || 'StreamePro Oficial',
+          props.defaultPhone ? `WhatsApp: ${props.defaultPhone}` : '',
+          displayDomain.value || 'streamepro.me'
+        ].filter(Boolean).join('  •  ')
+        const barW = Math.min(width - 120, Math.max(460, footerText.length * 14 + 60))
+        const barX = format === 'banner' ? 740 : (width - barW) / 2
+        const barY = height - (format === 'story' ? 88 : 66)
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
+        roundRect(ctx, barX, barY, barW, 44, 22, true, true, th.cardBorder, 1.5)
+        ctx.fillStyle = '#e2e8f0'
+        ctx.font = 'bold 20px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(footerText, barX + barW / 2, barY + 29)
+      }
 
         canvas.toBlob((blob) => {
           if (!blob) {
@@ -1841,15 +2254,18 @@ const shareToWhatsAppStatus = () => {
 
             <!-- Selector de Juego -->
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Seleccionar Videojuego</label>
+              <div class="flex justify-between items-center mb-1">
+                <label class="block font-bold uppercase text-slate-400 text-[11px]">Seleccionar Videojuego</label>
+                <span class="text-[10px] font-mono text-indigo-300">{{ filteredGamingProducts.length.toLocaleString() }} coincidencias</span>
+              </div>
               <select v-model="selectedGamingId" class="w-full bg-slate-900 border border-indigo-500/40 rounded-xl p-2.5 text-white font-bold outline-none focus:border-indigo-400 text-xs">
-                <option v-for="g in filteredGamingProducts" :key="g.id" :value="g.id">
-                  {{ g.title }} — Primaria: ${{ g.effectivePrimaryPrice?.toLocaleString() }} | Secundaria: ${{ g.effectiveSecondaryPrice?.toLocaleString() }}
+                <option v-for="g in displayedGamingSelectOptions" :key="g.id" :value="g.id">
+                  {{ g.title }} ({{ g.platform }}) — Pri: ${{ g.effectivePrimaryPrice?.toLocaleString() }}{{ g.effectiveSecondaryPrice ? ' | Sec: $' + g.effectiveSecondaryPrice.toLocaleString() : '' }}
                 </option>
               </select>
             </div>
 
-            <!-- Selector de Licencia (Primaria / Secundaria) & Plataforma (PS5 / PS4) -->
+            <!-- Selector de Licencia (Primaria / Secundaria) & Plataforma -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label class="block font-bold uppercase text-slate-400 mb-1 text-[11px]">Tipo de Licencia</label>
@@ -1862,6 +2278,7 @@ const shareToWhatsAppStatus = () => {
                     ⭐️ Primaria
                   </button>
                   <button 
+                    v-if="selectedGameSupportsSecondary"
                     type="button" 
                     @click="selectedGamingLicense = 'secondary'" 
                     :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center cursor-pointer active:scale-95', selectedGamingLicense === 'secondary' ? 'bg-indigo-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
@@ -1887,9 +2304,74 @@ const shareToWhatsAppStatus = () => {
               </div>
             </div>
 
+            <!-- ETIQUETA OFICIAL INTELIGENTE (PS4/PS5 PRIMARIA/SECUNDARIA, PS3 DIGITAL) -->
+            <div class="space-y-2 bg-slate-950/90 p-3 rounded-2xl border border-cyan-500/30">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[11px] font-black text-cyan-300 flex items-center gap-1.5">
+                  <span>🏷️</span> Etiqueta Oficial de Licencia
+                </span>
+                <span v-if="detectedGamingBadgeInfo" class="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  Auto: {{ detectedGamingBadgeInfo.label }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  @click="gamingBadgeOverride = 'auto'"
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-[10px] transition cursor-pointer border', gamingBadgeOverride === 'auto' ? 'bg-cyan-600/30 border-cyan-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white']"
+                >
+                  🤖 Auto Inteligente
+                </button>
+                <button
+                  v-for="b in GAMING_LICENSE_BADGES_LIST"
+                  :key="b.key"
+                  type="button"
+                  @click="gamingBadgeOverride = b.key"
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-[10px] transition cursor-pointer border truncate', gamingBadgeOverride === b.key ? 'bg-indigo-600 border-indigo-400 text-white font-black' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white']"
+                >
+                  {{ b.label }}
+                </button>
+                <button
+                  type="button"
+                  @click="gamingBadgeOverride = 'none'"
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-[10px] transition cursor-pointer border', gamingBadgeOverride === 'none' ? 'bg-rose-600/30 border-rose-400 text-rose-200' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white']"
+                >
+                  🚫 Ocultar
+                </button>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Posición estratégica:</span>
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    @click="gamingBadgePosition = 'frame_bottom'"
+                    :class="['px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer', gamingBadgePosition === 'frame_bottom' ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-900 text-slate-400 hover:text-white']"
+                  >
+                    ⬇️ Borde Portada
+                  </button>
+                  <button
+                    type="button"
+                    @click="gamingBadgePosition = 'frame_top'"
+                    :class="['px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer', gamingBadgePosition === 'frame_top' ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-900 text-slate-400 hover:text-white']"
+                  >
+                    ⬆️ Arriba Portada
+                  </button>
+                  <button
+                    type="button"
+                    @click="gamingBadgePosition = 'pill_top'"
+                    :class="['px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer', gamingBadgePosition === 'pill_top' ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-900 text-slate-400 hover:text-white']"
+                  >
+                    📌 Sobre Recuadro
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Preview Card del Juego Seleccionado -->
             <div v-if="selectedGamingProduct" class="flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-indigo-500/20">
-              <img :src="selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-12 h-14 object-cover rounded-lg border border-slate-700 shrink-0">
+              <img :src="effectiveCoverImage || selectedGamingProduct.image" :alt="selectedGamingProduct.title" class="w-12 h-14 object-cover rounded-lg border border-slate-700 shrink-0">
               <div class="flex-1 min-w-0">
                 <h5 class="text-xs font-bold text-white truncate">{{ selectedGamingProduct.title }}</h5>
                 <div class="flex items-center gap-2 mt-0.5">
@@ -1901,20 +2383,47 @@ const shareToWhatsAppStatus = () => {
               </div>
             </div>
 
-            <!-- Modo de Enfoque y Relleno de Imagen -->
-            <div class="space-y-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-indigo-500/30">
-              <div class="flex items-center justify-between text-[11px] font-bold">
+            <!-- HERRAMIENTAS DE AJUSTE MANUAL DE IMAGEN EN RECUADRO -->
+            <div class="space-y-2.5 bg-slate-950/90 p-3 rounded-2xl border border-indigo-500/30">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
                 <span class="text-indigo-300 flex items-center gap-1.5">
-                  <span>🖼️</span> Enfoque y Relleno de Imagen
+                  <span>🖼️</span> Ajuste Manual de Imagen en Recuadro
                 </span>
-                <span class="text-[9px] text-emerald-400 font-mono font-bold">100% Sin Espacios Vacíos</span>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    @click="triggerCustomCoverUpload"
+                    class="px-2 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 text-[10px] font-bold cursor-pointer"
+                    title="Subir imagen o banner propio desde tu equipo"
+                  >
+                    📁 Imagen Propia
+                  </button>
+                  <button
+                    v-if="customUploadImageUrl"
+                    type="button"
+                    @click="customUploadImageUrl = ''"
+                    class="px-2 py-1 rounded-lg bg-slate-800 text-amber-300 text-[10px] font-bold cursor-pointer"
+                  >
+                    ↺ Original
+                  </button>
+                  <button
+                    type="button"
+                    @click="resetImageAdjustments"
+                    class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold cursor-pointer"
+                    title="Centrar y restaurar zoom al 100%"
+                  >
+                    ⌖ Centrar
+                  </button>
+                </div>
+                <input ref="customCoverInputRef" type="file" accept="image/*" class="hidden" @change="handleCustomCoverUpload">
               </div>
+
               <div class="grid grid-cols-2 gap-1.5">
                 <button 
                   type="button" 
                   @click="flyerImageFit = 'cover'" 
                   :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'cover' ? 'bg-indigo-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
-                  title="La imagen rellena completamente el visor enfocada en el centro sin bordes vacíos"
+                  title="La imagen rellena todo el marco de portada"
                 >
                   <span>🎯</span> Enfocado (Rellenar)
                 </button>
@@ -1922,11 +2431,39 @@ const shareToWhatsAppStatus = () => {
                   type="button" 
                   @click="flyerImageFit = 'contain'" 
                   :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'contain' ? 'bg-indigo-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
-                  title="La imagen se muestra completa sobre un fondo ambiental difuminado que cubre todo el espacio"
+                  title="Imagen completa sin recortar sobre fondo difuminado"
                 >
-                  <span>📐</span> Completo + Fondo
+                  <span>📐</span> Completa + Fondo
                 </button>
               </div>
+
+              <!-- Controles de Zoom y Posición X / Y (también puedes arrastrar la vista previa) -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[10px]">
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>🔍 Zoom</span>
+                    <span class="font-mono text-cyan-300">{{ Math.round(imageZoom * 100) }}%</span>
+                  </div>
+                  <input v-model.number="imageZoom" type="range" min="0.6" max="2.4" step="0.05" class="w-full accent-cyan-400 cursor-pointer">
+                </div>
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>↔️ Posición X</span>
+                    <span class="font-mono text-cyan-300">{{ imageOffsetX > 0 ? '+' + Math.round(imageOffsetX) : Math.round(imageOffsetX) }}%</span>
+                  </div>
+                  <input v-model.number="imageOffsetX" type="range" min="-60" max="60" step="1" class="w-full accent-cyan-400 cursor-pointer">
+                </div>
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>↕️ Posición Y</span>
+                    <span class="font-mono text-cyan-300">{{ imageOffsetY > 0 ? '+' + Math.round(imageOffsetY) : Math.round(imageOffsetY) }}%</span>
+                  </div>
+                  <input v-model.number="imageOffsetY" type="range" min="-60" max="60" step="1" class="w-full accent-cyan-400 cursor-pointer">
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                💡 Tip: También puedes hacer click/tocar directamente sobre la portada en la vista previa y <strong class="text-cyan-300">arrastrarla</strong> para encuadrarla al milímetro.
+              </p>
             </div>
           </div>
 
@@ -2278,11 +2815,11 @@ const shareToWhatsAppStatus = () => {
               flyerFormat === 'story' ? 'max-w-[320px] aspect-[9/16]' :
               flyerFormat === 'feed' ? 'max-w-[330px] aspect-[4/5]' :
               flyerFormat === 'square' ? 'max-w-[340px] aspect-square' :
-              'max-w-[480px] aspect-[16/9]',
+              'max-w-[490px] aspect-[16/9]',
               currentTheme.cssContainerBorder
             ]"
           >
-            <!-- Capa de Plantilla de Fondo con Filtro Temático (Cinema, Emerald, Blue, Cyber) -->
+            <!-- Capa de Plantilla de Fondo con Filtro Temático -->
             <div 
               class="absolute inset-0 pointer-events-none transition-all duration-300 z-0"
               :style="{
@@ -2294,30 +2831,221 @@ const shareToWhatsAppStatus = () => {
               }"
             />
 
-            <!-- Capa de Contenido Elevada Oficial (Sin Filtro, Máxima Fidelidad) -->
-            <div class="relative w-full h-full text-white pointer-events-none select-none z-10">
+            <!-- MODO VIDEOJUEGOS DIGITALES: DISEÑO EXCLUSIVO GAMER + ETIQUETA INTELIGENTE + AJUSTE MANUAL -->
+            <div v-if="flyerProductType === 'gaming'" class="relative w-full h-full text-white select-none z-10">
+              <!-- Marco Iluminado de Portada con Arrastre Manual Directo -->
+              <div
+                @pointerdown="startCoverDrag"
+                @pointermove="onCoverDrag"
+                @pointerup="endCoverDrag"
+                @pointercancel="endCoverDrag"
+                @pointerleave="endCoverDrag"
+                :style="{
+                  left: currentGamingLayout.frame.left + '%',
+                  top: currentGamingLayout.frame.top + '%',
+                  width: currentGamingLayout.frame.width + '%',
+                  height: currentGamingLayout.frame.height + '%'
+                }"
+                :class="['absolute z-20 overflow-hidden bg-slate-950/90 pointer-events-auto cursor-grab active:cursor-grabbing group shadow-2xl', flyerFormat === 'story' || flyerFormat === 'banner' ? 'rounded-2xl' : 'rounded-xl']"
+                title="Arrastra la portada para encuadrar manualmente"
+              >
+                <img
+                  v-if="effectiveCoverImage"
+                  :src="effectiveCoverImage"
+                  :alt="displayTitle"
+                  draggable="false"
+                  class="absolute inset-0 w-full h-full object-cover filter blur-md scale-125 opacity-45 pointer-events-none"
+                >
+                <img
+                  v-if="effectiveCoverImage"
+                  :src="effectiveCoverImage"
+                  :alt="displayTitle"
+                  draggable="false"
+                  :style="coverPreviewTransformStyle"
+                  :class="[
+                    'relative z-10 w-full h-full pointer-events-none transition-transform duration-75',
+                    flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
+                  ]"
+                >
+                <div v-else class="w-full h-full flex items-center justify-center text-4xl">🎮</div>
+
+                <!-- Sugerencia sutil de arrastre en hover -->
+                <div class="absolute bottom-1.5 right-1.5 z-30 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/85 text-[8px] font-bold text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/40 pointer-events-none">
+                  ✋ Arrastrar
+                </div>
+              </div>
+
+              <!-- Etiqueta Oficial de Tipo de Licencia (Reconocimiento Inteligente) -->
+              <div
+                v-if="activeGamingBadgeInfo && gamingBadgeOverride !== 'none'"
+                :style="gamingDomBadgeStyle"
+                class="absolute z-30 pointer-events-none flex items-center justify-center"
+              >
+                <img
+                  v-if="activeGamingBadgeInfo.imgUrl"
+                  :src="activeGamingBadgeInfo.imgUrl"
+                  :alt="activeGamingBadgeInfo.label"
+                  class="w-full h-auto object-contain drop-shadow-[0_4px_12px_rgba(0,220,255,0.55)]"
+                >
+                <span
+                  v-else
+                  class="px-3 py-1 rounded-full bg-gradient-to-r from-blue-900 via-sky-600 to-blue-800 border border-cyan-300/70 text-[9px] font-black tracking-wide text-white shadow-lg uppercase"
+                >
+                  {{ activeGamingBadgeInfo.label }}
+                </span>
+              </div>
+
+              <!-- 1) STORY 9:16 GAMER -->
+              <template v-if="flyerFormat === 'story'">
+                <!-- Chip Impacto -->
+                <div class="absolute top-[47.5%] left-[12%] right-[12%] flex justify-center z-20 pointer-events-none">
+                  <div :class="['font-black px-3 py-0.5 rounded-full shadow-lg text-[9px] uppercase tracking-wider truncate max-w-full', currentTheme.cssBadge]">
+                    {{ headlineBadge }}
+                  </div>
+                </div>
+                <!-- Título & Subtítulo dentro del Recuadro Oscuro (PILL: 54.39%..63.37%) -->
+                <div class="absolute top-[54.6%] left-[11%] right-[11%] h-[8.6%] flex flex-col items-center justify-center text-center px-2 z-20 pointer-events-none">
+                  <h2 class="font-black text-[11px] sm:text-xs tracking-tight leading-tight line-clamp-2 text-white drop-shadow">{{ displayTitle }}</h2>
+                  <p :class="['font-bold text-[8px] font-mono truncate max-w-full mt-0.5', currentTheme.cssText]">{{ displaySubtitle }}</p>
+                </div>
+                <!-- Zona Inferior: Precio + Beneficios + Contacto -->
+                <div class="absolute top-[65.0%] bottom-[8.8%] left-[10%] right-[10%] flex flex-col justify-between items-center text-center z-20 py-1 pointer-events-none">
+                  <div :class="['w-full rounded-2xl py-1.5 px-3', currentTheme.cssPriceBox]">
+                    <div v-if="displayOriginalPrice" class="flex items-center justify-center gap-1 mb-0.5">
+                      <span class="text-slate-400 line-through text-[9px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                      <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[8px] px-1 rounded">-{{ calculatedDiscountPct }}%</span>
+                    </div>
+                    <div v-else class="text-[8px] uppercase font-bold text-slate-400 tracking-wider">PRECIO EXCLUSIVO</div>
+                    <div class="flex items-baseline justify-center gap-0.5">
+                      <span :class="['text-xs font-black', currentTheme.cssCurrency]">$</span>
+                      <span class="font-black tracking-tight text-white font-mono text-xl sm:text-2xl">{{ displayPrice }}</span>
+                      <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
+                    </div>
+                    <div :class="['text-[7px] font-bold truncate', currentTheme.cssText]">{{ gamingFlyerGuaranteeText }}</div>
+                  </div>
+                  <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                    <div class="flex items-center gap-1.5 truncate"><span :class="['w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0', currentTheme.cssCheck]">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                  </div>
+                  <div v-if="props.defaultPhone" class="text-[8px] font-mono font-bold text-cyan-200 bg-slate-950/80 border border-cyan-500/30 rounded-full px-3 py-0.5 truncate max-w-full">
+                    📲 WhatsApp: {{ props.defaultPhone }}
+                  </div>
+                </div>
+              </template>
+
+              <!-- 2) FEED 4:5 GAMER -->
+              <template v-else-if="flyerFormat === 'feed'">
+                <!-- Título + Impact Badge entre portada y recuadro oscuro -->
+                <div class="absolute top-[53.5%] h-[11.2%] left-[10%] right-[10%] flex flex-col items-center justify-center text-center z-20 pointer-events-none bg-slate-950/70 backdrop-blur-[2px] rounded-xl px-2 border border-cyan-500/20">
+                  <div :class="['font-black px-2 py-0.2 rounded-full text-[7px] uppercase tracking-wider mb-0.5', currentTheme.cssBadge]">
+                    {{ headlineBadge }}
+                  </div>
+                  <h2 class="font-black text-[11px] leading-tight line-clamp-1 text-white">{{ displayTitle }}</h2>
+                  <p :class="['font-bold text-[7.5px] font-mono truncate max-w-full', currentTheme.cssText]">{{ displaySubtitle }}</p>
+                </div>
+                <!-- Precio Promo dentro del Recuadro Oscuro Oficial (65.62%..76.46%) -->
+                <div class="absolute top-[65.9%] left-[10.5%] right-[10.5%] h-[10.2%] flex flex-col items-center justify-center text-center z-20 px-2 pointer-events-none">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span v-if="displayOriginalPrice" class="text-slate-400 line-through text-[8px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                    <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[7px] px-1 rounded">-{{ calculatedDiscountPct }}%</span>
+                  </div>
+                  <div class="flex items-baseline justify-center gap-0.5 leading-none my-0.5">
+                    <span :class="['text-[10px] font-black', currentTheme.cssCurrency]">$</span>
+                    <span class="font-black tracking-tight text-white font-mono text-base sm:text-lg">{{ displayPrice }}</span>
+                    <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
+                  </div>
+                  <div :class="['text-[6.5px] font-bold truncate max-w-full', currentTheme.cssText]">{{ gamingFlyerGuaranteeText }}</div>
+                </div>
+                <!-- Beneficios + WhatsApp debajo del Recuadro Oscuro -->
+                <div class="absolute top-[77.2%] bottom-[9.2%] left-[10%] right-[10%] flex flex-col justify-center space-y-0.5 text-[7.5px] text-slate-200 px-1.5 z-20 pointer-events-none">
+                  <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
+                  <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
+                  <div v-if="props.defaultPhone" class="text-[7px] font-mono text-cyan-300 font-bold truncate">📲 Pedidos WhatsApp: {{ props.defaultPhone }}</div>
+                </div>
+              </template>
+
+              <!-- 3) SQUARE 1:1 GAMER -->
+              <template v-else-if="flyerFormat === 'square'">
+                <!-- Título + Impact Badge entre portada y recuadro oscuro -->
+                <div class="absolute top-[56.8%] h-[14.2%] left-[10%] right-[10%] flex flex-col items-center justify-center text-center z-20 pointer-events-none bg-slate-950/75 backdrop-blur-[2px] rounded-xl px-2 border border-cyan-500/20">
+                  <div :class="['font-black px-2 py-0.2 rounded-full text-[7px] uppercase tracking-wider mb-0.5', currentTheme.cssBadge]">
+                    {{ headlineBadge }}
+                  </div>
+                  <h2 class="font-black text-[11px] leading-tight line-clamp-1 text-white">{{ displayTitle }}</h2>
+                  <p :class="['font-bold text-[7px] font-mono truncate max-w-full', currentTheme.cssText]">{{ displaySubtitle }}</p>
+                </div>
+                <!-- Precio Promo dentro del Recuadro Oscuro Oficial (72.17%..83.69%) -->
+                <div class="absolute top-[72.4%] left-[9.8%] right-[9.8%] h-[11.0%] flex flex-col items-center justify-center text-center z-20 px-2 pointer-events-none">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span v-if="displayOriginalPrice" class="text-slate-400 line-through text-[7.5px]">Antes: ${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                    <span v-if="calculatedDiscountPct" class="bg-emerald-500/20 text-emerald-300 font-black text-[6.5px] px-1 rounded">-{{ calculatedDiscountPct }}%</span>
+                  </div>
+                  <div class="flex items-baseline justify-center gap-0.5 leading-none">
+                    <span :class="['text-[9px] font-black', currentTheme.cssCurrency]">$</span>
+                    <span class="font-black tracking-tight text-white font-mono text-sm sm:text-base">{{ displayPrice }}</span>
+                    <span class="text-[6.5px] font-bold text-slate-400 font-mono">ARS</span>
+                  </div>
+                  <div :class="['text-[6.5px] font-bold truncate max-w-full', currentTheme.cssText]">{{ gamingFlyerGuaranteeText }}</div>
+                </div>
+                <!-- Franja inferior compacta -->
+                <div class="absolute top-[84.3%] bottom-[9.2%] left-[10%] right-[10%] flex items-center justify-between gap-2 text-[6.5px] text-slate-200 px-1.5 z-20 pointer-events-none">
+                  <span class="truncate"><strong :class="currentTheme.cssCheckText">✓</strong> {{ bullet1 }}</span>
+                  <span v-if="props.defaultPhone" class="font-mono font-bold text-cyan-300 shrink-0">📲 {{ props.defaultPhone }}</span>
+                </div>
+              </template>
+
+              <!-- 4) BANNER WEB 16:9 GAMER -->
+              <template v-else>
+                <!-- Card Izquierda Inferior: Badge + Título + Beneficios (sin tapar guerrero cyber) -->
+                <div class="absolute top-[70.6%] bottom-[11.0%] left-[7.2%] w-[42.5%] flex flex-col justify-center text-left z-20 pointer-events-none bg-slate-950/80 backdrop-blur-[2px] rounded-xl px-2.5 py-1 border border-cyan-500/25">
+                  <div class="flex items-center gap-1.5 mb-0.5">
+                    <span :class="['text-[6.5px] font-black px-1.5 py-0.2 rounded-full uppercase truncate', currentTheme.cssBadge]">{{ headlineBadge }}</span>
+                  </div>
+                  <h2 class="text-[10px] font-black text-white line-clamp-1 leading-tight">{{ displayTitle }}</h2>
+                  <div :class="['text-[6.5px] font-bold font-mono truncate', currentTheme.cssText]">{{ displaySubtitle }}</div>
+                </div>
+                <!-- Precio Promo dentro del Recuadro Oscuro Derecho Oficial (51.56%..94.53%, 72.33%..84.24%) -->
+                <div class="absolute top-[72.6%] left-[52.0%] w-[42.2%] h-[11.2%] flex flex-col items-center justify-center text-center z-20 px-2 pointer-events-none">
+                  <div class="flex items-baseline justify-center gap-1.5 leading-none">
+                    <span v-if="displayOriginalPrice" class="text-[7px] text-slate-400 line-through">${{ Number(displayOriginalPrice).toLocaleString() }}</span>
+                    <span v-if="calculatedDiscountPct" class="text-[6px] bg-emerald-500/20 text-emerald-300 font-black px-1 rounded">-{{ calculatedDiscountPct }}%</span>
+                    <div class="flex items-baseline gap-0.5">
+                      <span :class="['font-bold text-[8.5px]', currentTheme.cssCurrency]">$</span>
+                      <span class="font-black text-xs sm:text-sm text-white font-mono">{{ displayPrice }}</span>
+                      <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
+                    </div>
+                  </div>
+                  <div :class="['text-[6px] font-bold truncate max-w-full mt-0.5', currentTheme.cssText]">{{ gamingFlyerGuaranteeText }}</div>
+                </div>
+                <div v-if="props.defaultPhone" class="absolute top-[85.0%] left-[52.0%] w-[42.2%] text-center text-[6.5px] font-mono text-cyan-200 font-bold truncate z-20 pointer-events-none">
+                  📲 Pedidos WhatsApp: {{ props.defaultPhone }} · {{ bullet1 }}
+                </div>
+              </template>
+            </div>
+
+            <!-- MODOS STREAMING / COMBO / FÍSICO (SIN CAMBIOS) -->
+            <div v-else class="relative w-full h-full text-white pointer-events-none select-none z-10">
               
               <!-- 1.1 STORY (9:16) -->
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
                       class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
                     >
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
                       :class="[
-                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-all duration-300',
+                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-transform duration-75',
                         flyerImageFit === 'contain' ? 'object-contain p-2' : 'object-cover object-center'
                       ]"
                     >
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1.5 right-1.5 z-20 bg-indigo-600/95 text-white font-black text-[7px] px-1.5 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
-                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
-                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-xl bg-slate-950/90 border flex flex-col items-center justify-center p-1 shadow-md', currentTheme.cssBorder]">
@@ -2357,7 +3085,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[8px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[7px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? '🎮 Cuenta Oficial PSN · Entrega 60/90min · Garantía 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-1 text-[8px] sm:text-[9px] font-semibold text-slate-200 px-1">
@@ -2372,23 +3100,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'feed'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[14.4%] left-[20.2%] w-[59.7%] h-[28.5%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
                       class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
                     >
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
                       :class="[
-                        'relative z-10 w-full h-full filter drop-shadow-xl transition-all duration-300',
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-transform duration-75',
                         flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
                       ]"
                     >
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
-                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
-                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -2427,7 +3153,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[7px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
@@ -2442,23 +3168,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else-if="flyerFormat === 'square'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.7%] left-[32.7%] w-[34.6%] h-[34.8%] flex items-center justify-center p-1 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
                       class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
                     >
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
                       :class="[
-                        'relative z-10 w-full h-full filter drop-shadow-xl transition-all duration-300',
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-transform duration-75',
                         flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
                       ]"
                     >
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
-                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
-                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -2496,7 +3220,7 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[6px] font-bold text-slate-400 font-mono">ARS</span>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="w-full text-left space-y-0.5 text-[7.5px] font-medium text-slate-200 px-1">
@@ -2511,23 +3235,21 @@ const shareToWhatsAppStatus = () => {
               <div v-else class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[24.1%] left-[7.8%] w-[27.1%] h-[51.9%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical' || flyerProductType === 'gaming'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group', flyerProductType === 'gaming' ? 'bg-slate-950' : 'bg-slate-900', currentTheme.cssBorder]">
+                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
                       class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
                     >
                     <img 
-                      :src="productImageCORS || (flyerProductType === 'gaming' ? selectedGamingProduct?.image : selectedPhysicalProduct?.image)" 
+                      :src="effectiveCoverImage" 
                       :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
                       :class="[
-                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-all duration-300',
+                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-transform duration-75',
                         flyerImageFit === 'contain' ? 'object-contain p-2' : 'object-cover object-center'
                       ]"
                     >
-                    <span v-if="flyerProductType === 'gaming'" class="absolute top-1 right-1 z-20 bg-indigo-600/95 text-white font-black text-[6px] px-1 py-0.5 rounded shadow border border-indigo-400/50 backdrop-blur-sm">
-                      {{ selectedGamingPlatform }} · {{ selectedGamingLicense === 'primary' ? 'PRIMARIA' : 'SECUNDARIA' }}
-                    </span>
                   </div>
                   <div v-else-if="flyerProductType === 'combo'" class="grid grid-cols-2 gap-1 w-full h-full p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 4) || [])" :key="idx" :class="['rounded bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
@@ -2564,7 +3286,7 @@ const shareToWhatsAppStatus = () => {
                       </div>
                     </div>
                     <div :class="['text-[6px] font-bold truncate', currentTheme.cssText]">
-                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : flyerProductType === 'gaming' ? gamingFlyerGuaranteeText : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
+                      {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
                   <div class="space-y-0.5 text-[8px] text-slate-200">
