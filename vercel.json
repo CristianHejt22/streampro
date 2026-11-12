@@ -173,6 +173,28 @@
       "destination": "/api/product-preview?sec=packages"
     },
     {
+      "source": "/sorteos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=sorteos"
+    },
+    {
+      "source": "/promo/:code",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?promo=:code"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

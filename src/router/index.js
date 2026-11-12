@@ -37,9 +37,55 @@ const router = createRouter({
     },
     {
       path: '/juegos',
-      alias: ['/gaming', '/videojuegos', '/ps5', '/ps4', '/playstation'],
+      alias: ['/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'],
       name: 'gaming',
       component: HomeView
+    },
+    {
+      path: '/sorteos',
+      alias: ['/sorteo', '/descuentos', '/embajadores'],
+      name: 'sorteos',
+      component: HomeView
+    },
+    {
+      path: '/seleccion',
+      name: 'seleccion',
+      component: HomeView
+    },
+    {
+      path: '/promo/:code',
+      redirect: to => ({
+        path: '/',
+        query: { ...to.query, promo: to.params.code }
+      })
+    },
+    {
+      path: '/combo/:id',
+      redirect: to => ({
+        path: '/combos',
+        query: { ...to.query, pkg: to.params.id }
+      })
+    },
+    {
+      path: '/combo/:id/:ref',
+      redirect: to => ({
+        path: '/combos',
+        query: { ...to.query, pkg: to.params.id, ref: to.params.ref }
+      })
+    },
+    {
+      path: '/servicio/:id',
+      redirect: to => ({
+        path: '/suscripciones',
+        query: { ...to.query, plat: to.params.id }
+      })
+    },
+    {
+      path: '/servicio/:id/:ref',
+      redirect: to => ({
+        path: '/suscripciones',
+        query: { ...to.query, plat: to.params.id, ref: to.params.ref }
+      })
     },
     {
       path: '/tienda',

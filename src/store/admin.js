@@ -8,6 +8,15 @@ import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
+import {
+  normalizePhoneDigits,
+  maskPhonePublic,
+  normalizePromoCode,
+  computePromoDiscountBreakdown,
+  computeReferrerRewardBreakdown,
+  buildDefaultGiveawayFormalities,
+  buildDiscountProgramFormalities
+} from '../utils/marketing'
 import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
@@ -35,8 +44,31 @@ import {
   deleteResellerFromFirebase,
   saveSupportTicketToFirebase,
   listenToSupportTickets,
+  saveMarketingHubPatchToFirebase,
+  deleteMarketingHubMapKeyInFirebase,
+  saveGiveawayEntryToFirebase,
+  deleteGiveawayEntryInFirebase,
+  fetchMarketingHubFromFirebase,
+  listenToMarketingHub,
+  fetchGiveawayEntriesFromFirebase,
+  listenToGiveawayEntries,
   testFirebaseConnection 
 } from '../services/firebase'
+
+let _marketingHubListenersStarted = false
+
+const DEFAULT_MARKETING_CAMPAIGN = {
+  bannerEnabled: true,
+  bannerBadge: 'PROMOS & SORTEOS',
+  bannerText: 'Participa en sorteos oficiales o comparte códigos con porcentajes ajustados para ganar crédito en tienda',
+  bannerCtaLabel: 'Ver Sorteos',
+  bannerCtaTarget: 'giveaways',
+  highlightedCode: 'BIENVENIDO10',
+  stackingPolicy: 'best_discount',
+  maxCombinedDiscountPct: 35,
+  ambassadorTermsVersion: '2026.1',
+  updatedAt: ''
+}
 
 function buildGamingDiffs(currentList = [], baseList = []) {
   const baseArr = Array.isArray(baseList) ? baseList : []
@@ -724,9 +756,43 @@ export const useAdminStore = defineStore('admin', {
       saveDb(DB_KEYS.PROMO_CODES, defaults)
       return defaults
     })(),
-    supportTickets: loadDb(DB_KEYS.SUPPORT_TICKETS, [])
+    supportTickets: loadDb(DB_KEYS.SUPPORT_TICKETS, []),
+    marketingCampaign: (() => {
+      const stored = loadDb(DB_KEYS.MARKETING_CAMPAIGN, null)
+      return stored && typeof stored === 'object' ? { ...DEFAULT_MARKETING_CAMPAIGN, ...stored } : { ...DEFAULT_MARKETING_CAMPAIGN }
+    })(),
+    discountUsers: loadDb(DB_KEYS.DISCOUNT_USERS, []),
+    discountApplications: loadDb(DB_KEYS.DISCOUNT_APPLICATIONS, []),
+    discountCreditsLog: loadDb(DB_KEYS.DISCOUNT_CREDITS_LOG, []),
+    giveaways: loadDb(DB_KEYS.GIVEAWAYS, []),
+    giveawayEntries: loadDb(DB_KEYS.GIVEAWAY_ENTRIES, [])
   }},
   getters: {
+    activeGiveaways: (state) => (state.giveaways || []).filter(g => g.status === 'active'),
+    visibleGiveaways: (state) => (state.giveaways || []).filter(g => g.status && g.status !== 'draft'),
+    activeDiscountUsers: (state) => (state.discountUsers || []).filter(u => u.status === 'active'),
+    pendingDiscountApplications: (state) => (state.discountApplications || []).filter(a => a.status === 'pending'),
+    marketingMetrics: (state) => {
+      const allOrders = [...(state.orders || []), ...(state.physicalOrders || [])]
+      const promoOrders = allOrders.filter(o => Boolean(o.promoCode))
+      const totalPromoSales = promoOrders.reduce((acc, o) => acc + Number(o.clientPrice || o.totalAmount || o.total || 0), 0)
+      const totalDiscountsGiven = promoOrders.reduce((acc, o) => acc + Number(o.promoDiscountAmount || 0), 0)
+      const totalPendingRewards = (state.discountUsers || []).reduce((acc, u) => acc + Number(u.pendingCredit || 0), 0)
+      const totalCreditBalance = (state.discountUsers || []).reduce((acc, u) => acc + Number(u.creditBalance || 0), 0)
+      const validGiveawayEntries = (state.giveawayEntries || []).filter(e => e.status !== 'disqualified')
+      const totalGiveawayTickets = validGiveawayEntries.reduce((acc, e) => acc + Number(e.ticketsCount || 1), 0)
+      return {
+        promoOrdersCount: promoOrders.length,
+        totalPromoSales,
+        totalDiscountsGiven,
+        activeDiscountUsersCount: (state.discountUsers || []).filter(u => u.status === 'active').length,
+        pendingDiscountApplicationsCount: (state.discountApplications || []).filter(a => a.status === 'pending').length,
+        totalPendingRewards,
+        totalCreditBalance,
+        activeGiveawaysCount: (state.giveaways || []).filter(g => g.status === 'active').length,
+        totalGiveawayTickets
+      }
+    },
     totalInvestment: (state) => state.inventory.reduce((acc, item) => acc + (Number(item.cost) || 0), 0),
     totalProviderRevenue: (state) => state.orders.filter(o => o.status === 'Dispatched').reduce((acc, o) => acc + (o.providerCost || 0), 0),
     availableStock: (state) => state.inventory.filter(i => i.status === 'Available').length,
@@ -1082,6 +1148,18 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
       } else if (key === DB_KEYS.SUPPORT_TICKETS) {
         saveDb(DB_KEYS.SUPPORT_TICKETS, this.supportTickets)
+      } else if (key === DB_KEYS.MARKETING_CAMPAIGN) {
+        saveDb(DB_KEYS.MARKETING_CAMPAIGN, this.marketingCampaign)
+      } else if (key === DB_KEYS.DISCOUNT_USERS) {
+        saveDb(DB_KEYS.DISCOUNT_USERS, this.discountUsers)
+      } else if (key === DB_KEYS.DISCOUNT_APPLICATIONS) {
+        saveDb(DB_KEYS.DISCOUNT_APPLICATIONS, this.discountApplications)
+      } else if (key === DB_KEYS.DISCOUNT_CREDITS_LOG) {
+        saveDb(DB_KEYS.DISCOUNT_CREDITS_LOG, this.discountCreditsLog)
+      } else if (key === DB_KEYS.GIVEAWAYS) {
+        saveDb(DB_KEYS.GIVEAWAYS, this.giveaways)
+      } else if (key === DB_KEYS.GIVEAWAY_ENTRIES) {
+        saveDb(DB_KEYS.GIVEAWAY_ENTRIES, this.giveawayEntries)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -1116,6 +1194,12 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
         saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
         saveDb(DB_KEYS.SUPPORT_TICKETS, this.supportTickets)
+        saveDb(DB_KEYS.MARKETING_CAMPAIGN, this.marketingCampaign)
+        saveDb(DB_KEYS.DISCOUNT_USERS, this.discountUsers)
+        saveDb(DB_KEYS.DISCOUNT_APPLICATIONS, this.discountApplications)
+        saveDb(DB_KEYS.DISCOUNT_CREDITS_LOG, this.discountCreditsLog)
+        saveDb(DB_KEYS.GIVEAWAYS, this.giveaways)
+        saveDb(DB_KEYS.GIVEAWAY_ENTRIES, this.giveawayEntries)
       }
     },
 
@@ -1505,6 +1589,62 @@ export const useAdminStore = defineStore('admin', {
       listenToStoreSettings((cloudSettings) => {
         applyCloudSettings(cloudSettings)
       })
+
+      this.initMarketingHubSync().catch(() => {})
+    },
+
+    async initMarketingHubSync() {
+      initFirebase(this.firebaseConfig)
+
+      const applyHubData = (hub) => {
+        if (!hub || typeof hub !== 'object') return
+        if (hub.campaign && typeof hub.campaign === 'object') {
+          this.marketingCampaign = { ...DEFAULT_MARKETING_CAMPAIGN, ...hub.campaign }
+          this.persist(DB_KEYS.MARKETING_CAMPAIGN)
+        }
+        if (hub.discountUsersById && typeof hub.discountUsersById === 'object') {
+          const remoteList = Object.values(hub.discountUsersById).filter(Boolean)
+          this.discountUsers = remoteList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          this.persist(DB_KEYS.DISCOUNT_USERS)
+        }
+        if (hub.discountAppsById && typeof hub.discountAppsById === 'object') {
+          const apps = Object.values(hub.discountAppsById).filter(Boolean)
+          this.discountApplications = apps.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          this.persist(DB_KEYS.DISCOUNT_APPLICATIONS)
+        }
+        if (hub.giveawaysById && typeof hub.giveawaysById === 'object') {
+          const gList = Object.values(hub.giveawaysById).filter(Boolean)
+          this.giveaways = gList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          this.persist(DB_KEYS.GIVEAWAYS)
+        }
+        if (hub.creditsLogById && typeof hub.creditsLogById === 'object') {
+          const cList = Object.values(hub.creditsLogById).filter(Boolean)
+          this.discountCreditsLog = cList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, 200)
+          this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+        }
+      }
+
+      const applyEntriesData = (docData) => {
+        if (!docData || !docData.entriesById || typeof docData.entriesById !== 'object') return
+        const eList = Object.values(docData.entriesById).filter(Boolean)
+        this.giveawayEntries = eList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+        this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      }
+
+      try {
+        const [hub, entriesDoc] = await Promise.all([
+          fetchMarketingHubFromFirebase(),
+          fetchGiveawayEntriesFromFirebase()
+        ])
+        applyHubData(hub)
+        applyEntriesData(entriesDoc)
+      } catch {}
+
+      if (!_marketingHubListenersStarted) {
+        _marketingHubListenersStarted = true
+        listenToMarketingHub((hub) => applyHubData(hub))
+        listenToGiveawayEntries((docData) => applyEntriesData(docData))
+      }
     },
 
     // Gestión de Credenciales Maestras del Administrador
@@ -2396,6 +2536,7 @@ export const useAdminStore = defineStore('admin', {
 
       const resellerStore = useResellerStore()
       resellerStore.addDeliveredOrderToClients(order)
+      this.settleOrderPromoReward(order.id, 'credited')
 
       this.persist(DB_KEYS.INVENTORY)
       this.persist(DB_KEYS.ORDERS)
@@ -2465,6 +2606,7 @@ export const useAdminStore = defineStore('admin', {
 
       const resellerStore = useResellerStore()
       resellerStore.addDeliveredOrderToClients(order)
+      this.settleOrderPromoReward(order.id, 'credited')
 
       this.persist(DB_KEYS.INVENTORY)
       this.persist(DB_KEYS.ORDERS)
@@ -2866,6 +3008,11 @@ export const useAdminStore = defineStore('admin', {
         fulfillmentProviderName: orderData.fulfillmentProviderName || null,
         providerUrl: orderData.providerUrl || null,
         category: isGaming ? 'Videojuegos Digitales' : (orderData.category || null),
+        promoCode: orderData.promoCode || null,
+        promoDiscountAmount: Number(orderData.promoDiscountAmount || 0),
+        discountUserId: orderData.discountUserId || null,
+        referrerRewardAmount: Number(orderData.referrerRewardAmount || 0),
+        referrerRewardStatus: orderData.referrerRewardAmount > 0 ? 'Pendiente' : null,
         profileSelections: (orderData.profileSelections || []).map(p => ({
           name: p.name
         })),
@@ -2914,14 +3061,15 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // PEDIDOS FÍSICOS
-    async createPhysicalOrder({ customerNumber, customerName, customerPhone, pin = null, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria', voucher = '', hasReceipt = false, receiptFileName = null, receiptFileType = null, receiptFileSize = 0 }) {
+    async createPhysicalOrder({ customerNumber, customerName, customerPhone, pin = null, shippingAddress, resellerId, source = 'store', items, paymentMethod = 'Transferencia Bancaria', voucher = '', hasReceipt = false, receiptFileName = null, receiptFileType = null, receiptFileSize = 0, promoCode = null, promoDiscountAmount = 0, discountUserId = null, referrerRewardAmount = 0, overrideTotalAmount = null }) {
       const isDirect = !resellerId || resellerId === 'DIRECT'
       const targetResellerId = isDirect ? 'DIRECT' : resellerId
       const resellerObj = isDirect ? null : this.resellers.find(r => r.id === targetResellerId)
       const isSharedUrl = !isDirect && source === 'shared_url'
       const commissionRate = isDirect ? 0 : (isSharedUrl ? 0.03 : 0.01)
       
-      const totalAmount = items.reduce((sum, item) => sum + ((item.clientPrice || item.priceNumeric || 0) * item.quantity), 0)
+      const rawTotal = items.reduce((sum, item) => sum + ((item.clientPrice || item.priceNumeric || 0) * item.quantity), 0)
+      const totalAmount = overrideTotalAmount !== null && overrideTotalAmount !== undefined ? Math.max(0, Number(overrideTotalAmount)) : Math.max(0, rawTotal - Number(promoDiscountAmount || 0))
       const commissionAmount = isDirect ? 0 : Math.round(totalAmount * commissionRate)
       const orderId = `PED-FIS-${Date.now().toString().slice(-4)}`
 
@@ -2937,6 +3085,11 @@ export const useAdminStore = defineStore('admin', {
         commissionRate,
         commissionAmount,
         totalAmount,
+        promoCode: promoCode || null,
+        promoDiscountAmount: Number(promoDiscountAmount || 0),
+        discountUserId: discountUserId || null,
+        referrerRewardAmount: Number(referrerRewardAmount || 0),
+        referrerRewardStatus: referrerRewardAmount > 0 ? 'Pendiente' : null,
         paymentMethod,
         hasReceipt: Boolean(hasReceipt),
         receiptFileName: receiptFileName || null,
@@ -3083,6 +3236,8 @@ export const useAdminStore = defineStore('admin', {
         deleteReceipt(order.id).catch(() => {})
       }
 
+      this.settleOrderPromoReward(order.id, 'credited', true)
+
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
       savePhysicalOrderToFirebase(order).catch(() => {})
       return { success: true, order }
@@ -3137,6 +3292,8 @@ export const useAdminStore = defineStore('admin', {
         message: `El Administrador canceló el pedido ${order.id} de ${order.customerName}. Motivo: ${reason}.`
       })
 
+      this.settleOrderPromoReward(order.id, 'cancelled', true)
+
       this.persist(DB_KEYS.PHYSICAL_ORDERS)
       savePhysicalOrderToFirebase(order).catch(() => {})
       return { success: true, order }
@@ -3150,6 +3307,8 @@ export const useAdminStore = defineStore('admin', {
       order.cancelReason = reason
       order.cancelledAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 
+      this.settleOrderPromoReward(order.id, 'cancelled', false)
+
       this.persist(DB_KEYS.ORDERS)
       saveStreamingOrderToFirebase(order).catch(() => {})
       return { success: true, order }
@@ -3161,9 +3320,14 @@ export const useAdminStore = defineStore('admin', {
       order.status = newStatus
       if (newStatus === 'Dispatched' || newStatus === 'Entregado') {
         order.dispatchedAt = new Date().toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        this.settleOrderPromoReward(order.id, 'credited', false)
       } else {
         delete order.dispatchedAt
+        if (newStatus === 'Cancelado') {
+          this.settleOrderPromoReward(order.id, 'cancelled', false)
+        }
       }
+
       this.persist(DB_KEYS.ORDERS)
       saveStreamingOrderToFirebase(order).catch(() => {})
       return { success: true, order }
@@ -3857,6 +4021,8 @@ export const useAdminStore = defineStore('admin', {
         deleteReceipt(order.id).catch(() => {})
       }
 
+      this.settleOrderPromoReward(order.id, 'credited', false)
+
       this.persist(DB_KEYS.ORDERS)
       saveStreamingOrderToFirebase(order).catch(() => {})
       return { success: true, order }
@@ -3993,39 +4159,117 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // ==========================================
-    // CUPONES PROMOCIONALES (VENTAS & MARKETING)
+    // MARKETING, USUARIOS DESCUENTO & SORTEOS OFICIALES
     // ==========================================
-    validatePromoCode(rawCode, cartItems = []) {
-      const clean = String(rawCode || '').trim().toUpperCase()
-      if (!clean) return { error: 'Ingresa un código de descuento.' }
-      const coupon = (this.promoCodes || []).find(c => String(c.code || '').toUpperCase() === clean)
-      if (!coupon) return { error: 'El cupón ingresado no existe o expiró.' }
-      if (coupon.active === false) return { error: 'Este cupón está pausado.' }
-      if (coupon.maxUses && Number(coupon.uses || 0) >= Number(coupon.maxUses)) {
-        return { error: 'Este cupón alcanzó el límite máximo de usos.' }
+    findActivePromoByCode(rawCode) {
+      const clean = normalizePromoCode(rawCode)
+      if (!clean) return null
+      const dUser = (this.discountUsers || []).find(u => normalizePromoCode(u.code) === clean)
+      if (dUser) {
+        return {
+          isDiscountUserCode: true,
+          discountUserId: dUser.id,
+          code: dUser.code,
+          ownerName: dUser.name,
+          ownerPhone: dUser.phone,
+          tierLabel: dUser.tierLabel || 'Embajador',
+          type: 'percent',
+          value: Number(dUser.discountByCategory?.all ?? 8),
+          discountByCategory: { ...(dUser.discountByCategory || {}) },
+          rewardMode: dUser.rewardMode || 'credit',
+          rewardByCategory: { ...(dUser.rewardByCategory || {}) },
+          scope: 'all',
+          minAmount: Number(dUser.minOrderAmount || 0),
+          minOrderAmount: Number(dUser.minOrderAmount || 0),
+          maxDiscountAmount: Number(dUser.maxDiscountAmount || 0),
+          maxUses: Number(dUser.maxTotalUses || 0),
+          maxUsesPerClient: Number(dUser.maxUsesPerClient || 0),
+          uses: Number(dUser.usesCount || 0),
+          allowSelfUse: Boolean(dUser.allowSelfUse),
+          expiresAt: dUser.expiresAt || '',
+          active: dUser.status === 'active',
+          status: dUser.status || 'active',
+          maxCombinedDiscountPct: Number(this.marketingCampaign?.maxCombinedDiscountPct ?? 35),
+          description: `Descuentos ajustados de ${dUser.name} (${dUser.tierLabel || 'Embajador'})`
+        }
       }
-      const scope = coupon.scope || 'all'
-      const eligibleSubtotal = (cartItems || []).reduce((acc, item) => {
-        if (scope === 'all') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'gaming' && item.itemType === 'gaming') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'streaming' && item.itemType !== 'physical' && item.itemType !== 'gaming') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'physical' && item.itemType === 'physical') return acc + (item.clientPrice * item.quantity)
-        return acc
-      }, 0)
-      if (eligibleSubtotal <= 0) {
-        const scopeLabel = scope === 'gaming' ? 'Videojuegos Digitales' : scope === 'streaming' ? 'Streaming' : 'Tienda Física'
-        return { error: `Este cupón aplica únicamente a ${scopeLabel}.` }
+      const coupon = (this.promoCodes || []).find(c => normalizePromoCode(c.code) === clean)
+      if (!coupon) return null
+      return {
+        ...coupon,
+        maxCombinedDiscountPct: Number(this.marketingCampaign?.maxCombinedDiscountPct ?? 35)
       }
-      if (coupon.minAmount && eligibleSubtotal < Number(coupon.minAmount)) {
-        return { error: `Compra mínima requerida para este cupón: $${Number(coupon.minAmount).toLocaleString()} ARS.` }
-      }
-      return { success: true, coupon }
     },
-    addPromoCode({ code, type = 'percent', value = 10, scope = 'all', minAmount = 0, maxUses = 100, description = '' }) {
-      const clean = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+
+    validatePromoCode(rawCode, cartItems = [], context = {}) {
+      const clean = normalizePromoCode(rawCode)
+      if (!clean) return { error: 'Ingresa un código de descuento.' }
+
+      const coupon = this.findActivePromoByCode(clean)
+      if (!coupon) return { error: 'El cupón o código ingresado no existe.' }
+      if (coupon.active === false || coupon.status === 'paused' || coupon.status === 'revoked') {
+        return { error: 'Este código está pausado o inactivo.' }
+      }
+      if (coupon.expiresAt) {
+        const expTime = new Date(`${coupon.expiresAt}T23:59:59`).getTime()
+        if (!Number.isNaN(expTime) && Date.now() > expTime) {
+          return { error: `El código ${clean} expiró el ${coupon.expiresAt}.` }
+        }
+      }
+      const maxUses = Number(coupon.maxUses || 0)
+      if (maxUses > 0 && Number(coupon.uses || 0) >= maxUses) {
+        return { error: 'Este código alcanzó el límite máximo de usos.' }
+      }
+
+      // Formalidades anti-abuso para Usuarios Descuento
+      const buyerDigits = normalizePhoneDigits(context.customerPhone)
+      if (coupon.isDiscountUserCode && buyerDigits.length >= 6) {
+        const ownerDigits = normalizePhoneDigits(coupon.ownerPhone)
+        if (!coupon.allowSelfUse && ownerDigits && (ownerDigits === buyerDigits || ownerDigits.endsWith(buyerDigits) || buyerDigits.endsWith(ownerDigits))) {
+          return { error: 'Por reglamento oficial, no podés usar tu propio código de Usuario Descuento en tus compras personales.' }
+        }
+        const maxPerClient = Number(coupon.maxUsesPerClient || 0)
+        if (maxPerClient > 0) {
+          const pastUses = [...(this.orders || []), ...(this.physicalOrders || [])].filter(o => {
+            if (o.status === 'Cancelado') return false
+            if (normalizePromoCode(o.promoCode) !== clean) return false
+            const oDigits = normalizePhoneDigits(o.customerPhone)
+            return oDigits && (oDigits === buyerDigits || oDigits.endsWith(buyerDigits) || buyerDigits.endsWith(oDigits))
+          }).length
+          if (pastUses >= maxPerClient) {
+            return { error: `Alcanzaste el límite de ${maxPerClient} uso(s) por cliente para el código ${clean}.` }
+          }
+        }
+      }
+
+      const breakdown = computePromoDiscountBreakdown(coupon, cartItems, {
+        volumeDiscount: Number(context.volumeDiscount || 0),
+        maxCombinedPct: Number(this.marketingCampaign?.maxCombinedDiscountPct ?? 35)
+      })
+
+      if (breakdown.eligibleSubtotal <= 0) {
+        const scope = coupon.scope || 'all'
+        const scopeLabel = scope === 'gaming' ? 'Videojuegos Digitales' : scope === 'streaming' ? 'Streaming' : scope === 'packages' ? 'Combos' : 'Tienda Física'
+        return { error: `Este código aplica únicamente a ${scopeLabel}.` }
+      }
+      const minRequired = Number(coupon.minOrderAmount || coupon.minAmount || 0)
+      if (minRequired > 0 && breakdown.eligibleSubtotal < minRequired) {
+        return { error: `Compra mínima requerida para ${clean}: $${minRequired.toLocaleString()} ARS.` }
+      }
+      if (breakdown.totalDiscount <= 0) {
+        return { error: `El código ${clean} no otorga descuento para los productos actuales del carrito.` }
+      }
+
+      return { success: true, coupon, breakdown }
+    },
+
+    addPromoCode({ code, type = 'percent', value = 10, scope = 'all', minAmount = 0, maxUses = 100, maxDiscountAmount = 0, expiresAt = '', description = '' }) {
+      const clean = normalizePromoCode(code)
       if (!clean) return { error: 'Ingresa un código alfanumérico válido (Ej: GAMER10).' }
       if (!Array.isArray(this.promoCodes)) this.promoCodes = []
-      if (this.promoCodes.some(c => c.code === clean)) return { error: 'Ya existe un cupón con ese código.' }
+      if (this.promoCodes.some(c => normalizePromoCode(c.code) === clean) || (this.discountUsers || []).some(u => normalizePromoCode(u.code) === clean)) {
+        return { error: 'Ya existe un cupón o Usuario Descuento con ese código.' }
+      }
       const entry = {
         code: clean,
         type: type === 'fixed' ? 'fixed' : 'percent',
@@ -4033,6 +4277,8 @@ export const useAdminStore = defineStore('admin', {
         scope: scope || 'all',
         minAmount: Math.max(0, Number(minAmount) || 0),
         maxUses: Math.max(1, Number(maxUses) || 100),
+        maxDiscountAmount: Math.max(0, Number(maxDiscountAmount) || 0),
+        expiresAt: String(expiresAt || '').trim(),
         uses: 0,
         active: true,
         description: String(description || '').trim() || (type === 'fixed' ? `$${Number(value).toLocaleString()} ARS OFF` : `${value}% OFF`),
@@ -4043,6 +4289,7 @@ export const useAdminStore = defineStore('admin', {
       this.persistStoreSettings()
       return { success: true, coupon: entry }
     },
+
     togglePromoCode(code) {
       const target = (this.promoCodes || []).find(c => c.code === code)
       if (!target) return false
@@ -4051,18 +4298,688 @@ export const useAdminStore = defineStore('admin', {
       this.persistStoreSettings()
       return true
     },
+
     deletePromoCode(code) {
       this.promoCodes = (this.promoCodes || []).filter(c => c.code !== code)
       this.persist(DB_KEYS.PROMO_CODES)
       this.persistStoreSettings()
       return true
     },
+
     incrementPromoUse(code) {
-      const target = (this.promoCodes || []).find(c => c.code === String(code || '').toUpperCase())
-      if (!target) return
-      target.uses = Number(target.uses || 0) + 1
-      this.persist(DB_KEYS.PROMO_CODES)
-      this.persistStoreSettings()
+      const clean = normalizePromoCode(code)
+      const target = (this.promoCodes || []).find(c => normalizePromoCode(c.code) === clean)
+      if (target) {
+        target.uses = Number(target.uses || 0) + 1
+        this.persist(DB_KEYS.PROMO_CODES)
+        this.persistStoreSettings()
+      }
+    },
+
+    saveMarketingCampaign(updates = {}) {
+      this.marketingCampaign = {
+        ...DEFAULT_MARKETING_CAMPAIGN,
+        ...(this.marketingCampaign || {}),
+        ...updates,
+        maxCombinedDiscountPct: Math.min(70, Math.max(5, Number(updates.maxCombinedDiscountPct ?? this.marketingCampaign?.maxCombinedDiscountPct ?? 35))),
+        updatedAt: new Date().toISOString()
+      }
+      this.persist(DB_KEYS.MARKETING_CAMPAIGN)
+      saveMarketingHubPatchToFirebase({ campaign: this.marketingCampaign }).catch(() => {})
+      return { success: true, campaign: this.marketingCampaign }
+    },
+
+    upsertDiscountUser(payload = {}) {
+      const cleanCode = normalizePromoCode(payload.code)
+      if (!cleanCode || cleanCode.length < 3) {
+        return { error: 'El código debe tener al menos 3 caracteres alfanuméricos.' }
+      }
+      if (!String(payload.name || '').trim() || normalizePhoneDigits(payload.phone).length < 6) {
+        return { error: 'Completa Nombre completo y WhatsApp válido (mínimo 6 dígitos).' }
+      }
+      const existingId = payload.id || null
+      const codeCollisionPromo = (this.promoCodes || []).some(c => normalizePromoCode(c.code) === cleanCode)
+      const codeCollisionUser = (this.discountUsers || []).some(u => u.id !== existingId && normalizePromoCode(u.code) === cleanCode)
+      if (codeCollisionPromo || codeCollisionUser) {
+        return { error: `El código ${cleanCode} ya está asignado a otro cupón o usuario.` }
+      }
+
+      const clampPct = (v, max = 50) => Math.min(max, Math.max(0, Number(v || 0)))
+      const dCat = payload.discountByCategory || {}
+      const rCat = payload.rewardByCategory || {}
+
+      const entry = {
+        id: existingId || `DSC-${Date.now().toString().slice(-5)}`,
+        code: cleanCode,
+        name: String(payload.name || '').trim(),
+        phone: String(payload.phone || '').trim(),
+        email: String(payload.email || '').trim(),
+        pin: String(payload.pin || '').trim() || String(Math.floor(1000 + Math.random() * 9000)),
+        tierLabel: String(payload.tierLabel || 'Embajador Oficial').trim(),
+        status: payload.status || 'active',
+        discountByCategory: {
+          all: clampPct(dCat.all ?? 8, 50),
+          streaming: clampPct(dCat.streaming ?? dCat.all ?? 10, 50),
+          gaming: clampPct(dCat.gaming ?? dCat.all ?? 5, 35),
+          packages: clampPct(dCat.packages ?? dCat.all ?? 8, 50),
+          physical: clampPct(dCat.physical ?? dCat.all ?? 8, 50)
+        },
+        rewardMode: payload.rewardMode || 'credit',
+        rewardByCategory: {
+          all: clampPct(rCat.all ?? 5, 30),
+          streaming: clampPct(rCat.streaming ?? rCat.all ?? 6, 30),
+          gaming: clampPct(rCat.gaming ?? rCat.all ?? 3, 20),
+          packages: clampPct(rCat.packages ?? rCat.all ?? 5, 30),
+          physical: clampPct(rCat.physical ?? rCat.all ?? 4, 25)
+        },
+        minOrderAmount: Math.max(0, Number(payload.minOrderAmount || 0)),
+        maxDiscountAmount: Math.max(0, Number(payload.maxDiscountAmount || 0)),
+        maxTotalUses: Math.max(0, Number(payload.maxTotalUses || 0)),
+        maxUsesPerClient: Math.max(0, Number(payload.maxUsesPerClient ?? 3)),
+        allowSelfUse: Boolean(payload.allowSelfUse),
+        expiresAt: String(payload.expiresAt || '').trim(),
+        formalTermsAccepted: payload.formalTermsAccepted !== false,
+        notes: String(payload.notes || '').trim(),
+        usesCount: Number(payload.usesCount || 0),
+        totalSalesGenerated: Number(payload.totalSalesGenerated || 0),
+        totalDiscountGiven: Number(payload.totalDiscountGiven || 0),
+        creditBalance: Number(payload.creditBalance || 0),
+        pendingCredit: Number(payload.pendingCredit || 0),
+        totalRewardEarned: Number(payload.totalRewardEarned || 0),
+        totalRewardRedeemed: Number(payload.totalRewardRedeemed || 0),
+        createdAt: payload.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      if (!Array.isArray(this.discountUsers)) this.discountUsers = []
+      const idx = this.discountUsers.findIndex(u => u.id === entry.id)
+      if (idx >= 0) {
+        const prev = this.discountUsers[idx]
+        entry.usesCount = Number(prev.usesCount || 0)
+        entry.totalSalesGenerated = Number(prev.totalSalesGenerated || 0)
+        entry.totalDiscountGiven = Number(prev.totalDiscountGiven || 0)
+        entry.creditBalance = Number(prev.creditBalance || 0)
+        entry.pendingCredit = Number(prev.pendingCredit || 0)
+        entry.totalRewardEarned = Number(prev.totalRewardEarned || 0)
+        entry.totalRewardRedeemed = Number(prev.totalRewardRedeemed || 0)
+        this.discountUsers[idx] = entry
+      } else {
+        this.discountUsers.unshift(entry)
+      }
+
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      saveMarketingHubPatchToFirebase({ discountUsersById: { [entry.id]: entry } }).catch(() => {})
+      return { success: true, discountUser: entry }
+    },
+
+    toggleDiscountUserStatus(userId, forceStatus = null) {
+      const target = (this.discountUsers || []).find(u => u.id === userId)
+      if (!target) return false
+      target.status = forceStatus || (target.status === 'active' ? 'paused' : 'active')
+      target.updatedAt = new Date().toISOString()
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      saveMarketingHubPatchToFirebase({ discountUsersById: { [target.id]: target } }).catch(() => {})
+      return true
+    },
+
+    deleteDiscountUser(userId) {
+      this.discountUsers = (this.discountUsers || []).filter(u => u.id !== userId)
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      deleteMarketingHubMapKeyInFirebase('discountUsersById', userId).catch(() => {})
+      return true
+    },
+
+    redeemDiscountUserCredit(userId, amount, mode = 'voucher', note = '') {
+      const target = (this.discountUsers || []).find(u => u.id === userId)
+      if (!target) return { error: 'Usuario Descuento no encontrado' }
+      const redeemAmt = Math.round(Number(amount || 0))
+      if (redeemAmt <= 0) return { error: 'Ingresa un monto válido mayor a $0.' }
+      if (redeemAmt > Number(target.creditBalance || 0)) {
+        return { error: `El monto supera el crédito disponible ($${Number(target.creditBalance || 0).toLocaleString()}).` }
+      }
+
+      target.creditBalance = Math.max(0, Number(target.creditBalance || 0) - redeemAmt)
+      target.totalRewardRedeemed = Number(target.totalRewardRedeemed || 0) + redeemAmt
+      target.updatedAt = new Date().toISOString()
+
+      let generatedVoucherCode = null
+      if (mode === 'voucher') {
+        const suffix = Date.now().toString().slice(-4)
+        generatedVoucherCode = normalizePromoCode(`CANJE-${target.code}-${suffix}`)
+        this.addPromoCode({
+          code: generatedVoucherCode,
+          type: 'fixed',
+          value: redeemAmt,
+          scope: 'all',
+          minAmount: 0,
+          maxUses: 1,
+          description: `Vale de crédito canjeado por ${target.name} ($${redeemAmt.toLocaleString()} ARS)`
+        })
+      }
+
+      const logEntry = {
+        id: `CLG-${Date.now().toString().slice(-6)}`,
+        discountUserId: target.id,
+        code: target.code,
+        userName: target.name,
+        type: 'redeem',
+        amount: -redeemAmt,
+        status: 'Liquidado',
+        mode,
+        voucherCode: generatedVoucherCode,
+        note: String(note || '').trim() || (generatedVoucherCode ? `Canje en Vale ${generatedVoucherCode}` : 'Liquidación / Transferencia directa'),
+        createdAt: new Date().toISOString()
+      }
+      if (!Array.isArray(this.discountCreditsLog)) this.discountCreditsLog = []
+      this.discountCreditsLog.unshift(logEntry)
+
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+      saveMarketingHubPatchToFirebase({
+        discountUsersById: { [target.id]: target },
+        creditsLogById: { [logEntry.id]: logEntry }
+      }).catch(() => {})
+
+      return { success: true, discountUser: target, voucherCode: generatedVoucherCode, logEntry }
+    },
+
+    submitDiscountUserApplication(appData = {}) {
+      const name = String(appData.name || '').trim()
+      const phone = String(appData.phone || '').trim()
+      const digits = normalizePhoneDigits(phone)
+      if (!name || digits.length < 6) {
+        return { error: 'Ingresa tu nombre completo y WhatsApp válido.' }
+      }
+      if (!appData.acceptedTerms) {
+        return { error: 'Debes aceptar las bases y formalidades del Programa de Usuarios Descuento.' }
+      }
+      if (!Array.isArray(this.discountApplications)) this.discountApplications = []
+      const dupPending = this.discountApplications.find(a => a.status === 'pending' && normalizePhoneDigits(a.phone) === digits)
+      if (dupPending) {
+        return { error: 'Ya tienes una solicitud pendiente de revisión para este WhatsApp.' }
+      }
+
+      const preferred = normalizePromoCode(appData.preferredCode || `${name.split(' ')[0]}10`) || `PROMO${digits.slice(-4)}`
+      const appEntry = {
+        id: `DAPP-${Date.now().toString().slice(-5)}`,
+        name,
+        phone,
+        email: String(appData.email || '').trim(),
+        pin: String(appData.pin || '').trim() || String(Math.floor(1000 + Math.random() * 9000)),
+        preferredCode: preferred,
+        channel: String(appData.channel || 'WhatsApp / Instagram').trim(),
+        audience: String(appData.audience || '').trim(),
+        message: String(appData.message || '').trim(),
+        acceptedTerms: true,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      }
+      this.discountApplications.unshift(appEntry)
+      this.persist(DB_KEYS.DISCOUNT_APPLICATIONS)
+      saveMarketingHubPatchToFirebase({ discountAppsById: { [appEntry.id]: appEntry } }).catch(() => {})
+      return { success: true, application: appEntry }
+    },
+
+    reviewDiscountUserApplication(appId, decision = 'approved', customOverrides = {}) {
+      const app = (this.discountApplications || []).find(a => a.id === appId)
+      if (!app) return { error: 'Solicitud no encontrada' }
+
+      if (decision === 'rejected') {
+        app.status = 'rejected'
+        app.reviewedAt = new Date().toISOString()
+        this.persist(DB_KEYS.DISCOUNT_APPLICATIONS)
+        saveMarketingHubPatchToFirebase({ discountAppsById: { [app.id]: app } }).catch(() => {})
+        return { success: true, application: app }
+      }
+
+      const res = this.upsertDiscountUser({
+        name: app.name,
+        phone: app.phone,
+        email: app.email,
+        pin: app.pin,
+        code: customOverrides.code || app.preferredCode,
+        tierLabel: customOverrides.tierLabel || 'Embajador Aprobado',
+        discountByCategory: customOverrides.discountByCategory || { all: 8, streaming: 10, gaming: 5, packages: 8, physical: 8 },
+        rewardByCategory: customOverrides.rewardByCategory || { all: 5, streaming: 6, gaming: 3, packages: 5, physical: 4 },
+        rewardMode: customOverrides.rewardMode || 'credit',
+        maxDiscountAmount: customOverrides.maxDiscountAmount ?? 15000,
+        maxUsesPerClient: customOverrides.maxUsesPerClient ?? 3,
+        allowSelfUse: Boolean(customOverrides.allowSelfUse),
+        notes: `Aprobado desde solicitud ${app.id} (${app.channel})`
+      })
+
+      if (res.error) return res
+      app.status = 'approved'
+      app.createdDiscountUserId = res.discountUser.id
+      app.assignedCode = res.discountUser.code
+      app.reviewedAt = new Date().toISOString()
+      this.persist(DB_KEYS.DISCOUNT_APPLICATIONS)
+      saveMarketingHubPatchToFirebase({ discountAppsById: { [app.id]: app } }).catch(() => {})
+      return { success: true, application: app, discountUser: res.discountUser }
+    },
+
+    recordOrderPromoAttribution({
+      orderId = '',
+      promoCode = '',
+      discountAmount = 0,
+      discountUserId = '',
+      orderTotal = 0,
+      rewardAmount = 0,
+      customerName = 'Cliente',
+      countUse = true
+    }) {
+      const clean = normalizePromoCode(promoCode)
+      if (!clean) return
+
+      if (countUse) this.incrementPromoUse(clean)
+      const dUser = (this.discountUsers || []).find(u => u.id === discountUserId || normalizePromoCode(u.code) === clean)
+      if (!dUser) return
+
+      if (countUse) dUser.usesCount = Number(dUser.usesCount || 0) + 1
+      dUser.totalSalesGenerated = Number(dUser.totalSalesGenerated || 0) + Math.max(0, Number(orderTotal || 0))
+      dUser.totalDiscountGiven = Number(dUser.totalDiscountGiven || 0) + Math.max(0, Number(discountAmount || 0))
+      const reward = Math.max(0, Math.round(Number(rewardAmount || 0)))
+      if (reward > 0) {
+        dUser.pendingCredit = Number(dUser.pendingCredit || 0) + reward
+      }
+      dUser.updatedAt = new Date().toISOString()
+
+      const logEntry = {
+        id: `CLG-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
+        orderId,
+        discountUserId: dUser.id,
+        code: dUser.code,
+        userName: dUser.name,
+        customerName,
+        type: 'referral_order',
+        saleAmount: Math.max(0, Number(orderTotal || 0)),
+        discountGiven: Math.max(0, Number(discountAmount || 0)),
+        amount: reward,
+        status: reward > 0 ? 'Pendiente' : 'Registrado',
+        note: `Pedido #${orderId} de ${customerName}`,
+        createdAt: new Date().toISOString()
+      }
+      if (!Array.isArray(this.discountCreditsLog)) this.discountCreditsLog = []
+      this.discountCreditsLog.unshift(logEntry)
+
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+      saveMarketingHubPatchToFirebase({
+        discountUsersById: { [dUser.id]: dUser },
+        creditsLogById: { [logEntry.id]: logEntry }
+      }).catch(() => {})
+    },
+
+    settleOrderPromoReward(orderId, targetState = 'credited', isPhysical = false) {
+      const list = isPhysical ? this.physicalOrders : this.orders
+      const order = (list || []).find(o => o.id === orderId)
+      if (!order || !order.discountUserId || !Number(order.referrerRewardAmount || 0)) return false
+      if (order.referrerRewardStatus !== 'Pendiente') return false
+
+      const dUser = (this.discountUsers || []).find(u => u.id === order.discountUserId)
+      const reward = Number(order.referrerRewardAmount || 0)
+      if (!dUser || reward <= 0) return false
+
+      dUser.pendingCredit = Math.max(0, Number(dUser.pendingCredit || 0) - reward)
+      if (targetState === 'credited') {
+        dUser.creditBalance = Number(dUser.creditBalance || 0) + reward
+        dUser.totalRewardEarned = Number(dUser.totalRewardEarned || 0) + reward
+        order.referrerRewardStatus = 'Acreditado'
+      } else {
+        order.referrerRewardStatus = 'Anulado'
+      }
+      dUser.updatedAt = new Date().toISOString()
+
+      const patch = { discountUsersById: { [dUser.id]: dUser } }
+      const logItem = (this.discountCreditsLog || []).find(l => l.orderId === orderId && l.discountUserId === dUser.id)
+      if (logItem) {
+        logItem.status = order.referrerRewardStatus
+        patch.creditsLogById = { [logItem.id]: logItem }
+        this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+      }
+
+      this.persist(DB_KEYS.DISCOUNT_USERS)
+      saveMarketingHubPatchToFirebase(patch).catch(() => {})
+      return true
+    },
+
+    // ==========================================
+    // SORTEOS OFICIALES, TICKETS & ACTAS TRANSPARENTES
+    // ==========================================
+    upsertGiveaway(payload = {}) {
+      if (!String(payload.title || '').trim() || !String(payload.prizeTitle || '').trim()) {
+        return { error: 'Completa el título del sorteo y el premio principal.' }
+      }
+      const id = payload.id || `SOR-${Date.now().toString().slice(-4)}`
+      const existing = (this.giveaways || []).find(g => g.id === id)
+      const rules = {
+        freeEntryEnabled: payload.rules?.freeEntryEnabled !== false,
+        freeEntryTickets: Math.max(1, Number(payload.rules?.freeEntryTickets || 1)),
+        ticketsPerPurchase: Math.max(0, Number(payload.rules?.ticketsPerPurchase ?? 3)),
+        bonusThresholdAmount: Math.max(0, Number(payload.rules?.bonusThresholdAmount ?? 25000)),
+        bonusThresholdTickets: Math.max(0, Number(payload.rules?.bonusThresholdTickets ?? 2)),
+        ticketsPerReferral: Math.max(0, Number(payload.rules?.ticketsPerReferral ?? 2)),
+        maxTicketsPerUser: Math.min(200, Math.max(1, Number(payload.rules?.maxTicketsPerUser ?? 25))),
+        requireInstagram: Boolean(payload.rules?.requireInstagram)
+      }
+
+      const giveaway = {
+        id,
+        title: String(payload.title || '').trim(),
+        subtitle: String(payload.subtitle || '').trim() || 'Participación oficial verificada con entrega garantizada StreamePro.',
+        prizeTitle: String(payload.prizeTitle || '').trim(),
+        prizeValue: Math.max(0, Number(payload.prizeValue || 0)),
+        prizeCategory: payload.prizeCategory || 'gaming',
+        prizeImage: String(payload.prizeImage || '').trim(),
+        status: payload.status || existing?.status || 'active',
+        startDate: payload.startDate || new Date().toISOString().slice(0, 10),
+        endDate: payload.endDate || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+        drawDateLabel: String(payload.drawDateLabel || '').trim() || 'Al cierre del contador (21:00 hs ARG)',
+        winnersCount: Math.max(1, Math.min(10, Number(payload.winnersCount || 1))),
+        alternatesCount: Math.max(0, Math.min(5, Number(payload.alternatesCount ?? 1))),
+        rules,
+        formalitiesText: '',
+        winners: existing?.winners || [],
+        drawProof: existing?.drawProof || null,
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      giveaway.formalitiesText = String(payload.formalitiesText || '').trim() || buildDefaultGiveawayFormalities(giveaway)
+
+      if (!Array.isArray(this.giveaways)) this.giveaways = []
+      const idx = this.giveaways.findIndex(g => g.id === id)
+      if (idx >= 0) this.giveaways[idx] = giveaway
+      else this.giveaways.unshift(giveaway)
+
+      this.persist(DB_KEYS.GIVEAWAYS)
+      saveMarketingHubPatchToFirebase({ giveawaysById: { [giveaway.id]: giveaway } }).catch(() => {})
+      return { success: true, giveaway }
+    },
+
+    setGiveawayStatus(giveawayId, newStatus) {
+      const target = (this.giveaways || []).find(g => g.id === giveawayId)
+      if (!target) return false
+      target.status = newStatus
+      target.updatedAt = new Date().toISOString()
+      this.persist(DB_KEYS.GIVEAWAYS)
+      saveMarketingHubPatchToFirebase({ giveawaysById: { [target.id]: target } }).catch(() => {})
+      return true
+    },
+
+    deleteGiveaway(giveawayId) {
+      this.giveaways = (this.giveaways || []).filter(g => g.id !== giveawayId)
+      const toRemoveEntries = (this.giveawayEntries || []).filter(e => e.giveawayId === giveawayId)
+      this.giveawayEntries = (this.giveawayEntries || []).filter(e => e.giveawayId !== giveawayId)
+      this.persist(DB_KEYS.GIVEAWAYS)
+      this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      deleteMarketingHubMapKeyInFirebase('giveawaysById', giveawayId).catch(() => {})
+      toRemoveEntries.forEach(e => deleteGiveawayEntryInFirebase(e.id).catch(() => {}))
+      return true
+    },
+
+    getGiveawayTicketSummary(giveawayId) {
+      const entries = (this.giveawayEntries || [])
+        .filter(e => e.giveawayId === giveawayId && e.status !== 'disqualified')
+        .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || String(a.id).localeCompare(String(b.id)))
+
+      let cursor = 1
+      const phoneSet = new Set()
+      const detailed = entries.map(e => {
+        const count = Math.max(1, Number(e.ticketsCount || 1))
+        const startTicket = cursor
+        const endTicket = cursor + count - 1
+        cursor += count
+        if (e.normalizedPhone) phoneSet.add(e.normalizedPhone)
+        return {
+          ...e,
+          startTicket,
+          endTicket,
+          maskedPhone: maskPhonePublic(e.phone)
+        }
+      })
+
+      return {
+        entries: detailed,
+        totalTickets: cursor - 1,
+        uniqueParticipants: phoneSet.size
+      }
+    },
+
+    participateInGiveaway({ giveawayId, name, phone, email = '', instagram = '', clientNumber = '', invitedBy = '', acceptedTerms = false }) {
+      const giveaway = (this.giveaways || []).find(g => g.id === giveawayId)
+      if (!giveaway) return { error: 'Sorteo no encontrado.' }
+      if (giveaway.status !== 'active') return { error: 'Este sorteo no se encuentra abierto para inscripciones.' }
+      if (!acceptedTerms) return { error: 'Debes aceptar las Bases y Condiciones Oficiales para participar.' }
+      if (giveaway.rules?.freeEntryEnabled === false) {
+        return { error: 'Este sorteo es exclusivo mediante compras verificadas en tienda.' }
+      }
+
+      const cleanName = String(name || '').trim()
+      const cleanPhone = String(phone || '').trim()
+      const normPhone = normalizePhoneDigits(cleanPhone)
+      if (!cleanName || normPhone.length < 6) {
+        return { error: 'Ingresa tu nombre completo y WhatsApp válido (mín. 6 dígitos).' }
+      }
+      if (giveaway.rules?.requireInstagram && !String(instagram || '').trim()) {
+        return { error: 'Ingresa tu usuario de Instagram (@usuario) requerido en las bases.' }
+      }
+
+      const existingWeb = (this.giveawayEntries || []).find(
+        e => e.giveawayId === giveawayId && e.normalizedPhone === normPhone && e.sourceType === 'web_form' && e.status !== 'disqualified'
+      )
+      if (existingWeb) {
+        return { error: 'Tu WhatsApp ya registró la inscripción gratuita en este sorteo. Suma más chances compartiendo tu link o realizando compras.' }
+      }
+
+      const currentUserTickets = (this.giveawayEntries || [])
+        .filter(e => e.giveawayId === giveawayId && e.normalizedPhone === normPhone && e.status !== 'disqualified')
+        .reduce((acc, e) => acc + Number(e.ticketsCount || 1), 0)
+      const maxPerUser = Number(giveaway.rules?.maxTicketsPerUser || 25)
+      if (currentUserTickets >= maxPerUser) {
+        return { error: `Ya alcanzaste el tope máximo de ${maxPerUser} tickets por persona en este sorteo.` }
+      }
+
+      const freeQty = Math.min(maxPerUser - currentUserTickets, Math.max(1, Number(giveaway.rules?.freeEntryTickets || 1)))
+      const referralToken = `INV-${normPhone.slice(-4)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+      const entry = {
+        id: `ENT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
+        giveawayId,
+        participantName: cleanName,
+        phone: cleanPhone,
+        normalizedPhone: normPhone,
+        email: String(email || '').trim(),
+        instagramHandle: String(instagram || '').trim(),
+        clientNumber: clientNumber || '',
+        referralToken,
+        invitedBy: String(invitedBy || '').trim() || null,
+        sourceType: 'web_form',
+        ticketsCount: freeQty,
+        acceptedTerms: true,
+        acceptedTermsAt: new Date().toISOString(),
+        status: 'valid',
+        createdAt: new Date().toISOString()
+      }
+
+      if (!Array.isArray(this.giveawayEntries)) this.giveawayEntries = []
+      this.giveawayEntries.push(entry)
+
+      // Dinámica viral de referido: otorgar +tickets al invitador si es otro participante distinto
+      const refBonusQty = Math.max(0, Number(giveaway.rules?.ticketsPerReferral || 0))
+      if (invitedBy && refBonusQty > 0) {
+        const cleanInv = String(invitedBy).trim().toUpperCase()
+        const inviterEntry = this.giveawayEntries.find(e =>
+          e.giveawayId === giveawayId &&
+          e.status !== 'disqualified' &&
+          e.normalizedPhone !== normPhone &&
+          (String(e.referralToken || '').toUpperCase() === cleanInv || normalizePhoneDigits(e.phone).slice(-4) === cleanInv)
+        )
+        if (inviterEntry) {
+          const invTotal = this.giveawayEntries
+            .filter(e => e.giveawayId === giveawayId && e.normalizedPhone === inviterEntry.normalizedPhone && e.status !== 'disqualified')
+            .reduce((acc, e) => acc + Number(e.ticketsCount || 1), 0)
+          const room = Math.max(0, maxPerUser - invTotal)
+          const grant = Math.min(room, refBonusQty)
+          if (grant > 0) {
+            const refEntry = {
+              id: `ENT-REF-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 90 + 10)}`,
+              giveawayId,
+              participantName: inviterEntry.participantName,
+              phone: inviterEntry.phone,
+              normalizedPhone: inviterEntry.normalizedPhone,
+              clientNumber: inviterEntry.clientNumber || '',
+              referralToken: inviterEntry.referralToken,
+              sourceType: 'referral_bonus',
+              invitedParticipant: cleanName,
+              ticketsCount: grant,
+              acceptedTerms: true,
+              status: 'valid',
+              createdAt: new Date().toISOString()
+            }
+            this.giveawayEntries.push(refEntry)
+            saveGiveawayEntryToFirebase(refEntry).catch(() => {})
+          }
+        }
+      }
+
+      this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      saveGiveawayEntryToFirebase(entry).catch(() => {})
+
+      const summary = this.getGiveawayTicketSummary(giveawayId)
+      const enriched = summary.entries.find(e => e.id === entry.id) || entry
+      return { success: true, entry: enriched, giveaway }
+    },
+
+    awardOrderGiveawayTickets({ orderId = '', name = 'Cliente', phone = '', amount = 0, clientNumber = '' }) {
+      const normPhone = normalizePhoneDigits(phone)
+      if (normPhone.length < 6) return []
+      const awarded = []
+
+      ;(this.giveaways || []).forEach((g) => {
+        if (g.status !== 'active') return
+        const baseTickets = Number(g.rules?.ticketsPerPurchase || 0)
+        if (baseTickets <= 0) return
+
+        const threshAmt = Number(g.rules?.bonusThresholdAmount || 0)
+        const threshBonus = (threshAmt > 0 && Number(amount || 0) >= threshAmt) ? Number(g.rules?.bonusThresholdTickets || 0) : 0
+        const desired = baseTickets + threshBonus
+
+        const existingTickets = (this.giveawayEntries || [])
+          .filter(e => e.giveawayId === g.id && e.normalizedPhone === normPhone && e.status !== 'disqualified')
+          .reduce((acc, e) => acc + Number(e.ticketsCount || 1), 0)
+        const maxPerUser = Number(g.rules?.maxTicketsPerUser || 25)
+        const grant = Math.min(Math.max(0, maxPerUser - existingTickets), desired)
+        if (grant <= 0) return
+
+        const entry = {
+          id: `ENT-ORD-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 90 + 10)}`,
+          giveawayId: g.id,
+          participantName: String(name || 'Cliente').trim(),
+          phone: String(phone || '').trim(),
+          normalizedPhone: normPhone,
+          clientNumber,
+          referralToken: `INV-${normPhone.slice(-4)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
+          sourceType: 'order_bonus',
+          orderId,
+          ticketsCount: grant,
+          acceptedTerms: true,
+          acceptedTermsAt: new Date().toISOString(),
+          status: 'valid',
+          createdAt: new Date().toISOString()
+        }
+        if (!Array.isArray(this.giveawayEntries)) this.giveawayEntries = []
+        this.giveawayEntries.push(entry)
+        saveGiveawayEntryToFirebase(entry).catch(() => {})
+        awarded.push({ giveawayId: g.id, giveawayTitle: g.title, tickets: grant, entryId: entry.id })
+      })
+
+      if (awarded.length > 0) {
+        this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      }
+      return awarded
+    },
+
+    disqualifyGiveawayEntry(entryId, reason = 'Descalificado por incumplimiento de bases') {
+      const target = (this.giveawayEntries || []).find(e => e.id === entryId)
+      if (!target) return false
+      target.status = target.status === 'disqualified' ? 'valid' : 'disqualified'
+      target.disqualifyReason = target.status === 'disqualified' ? reason : ''
+      this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      saveGiveawayEntryToFirebase(target).catch(() => {})
+      return true
+    },
+
+    runGiveawayDraw(giveawayId) {
+      const giveaway = (this.giveaways || []).find(g => g.id === giveawayId)
+      if (!giveaway) return { error: 'Sorteo no encontrado.' }
+
+      const summary = this.getGiveawayTicketSummary(giveawayId)
+      if (summary.totalTickets <= 0 || summary.entries.length === 0) {
+        return { error: 'No hay tickets válidos registrados para ejecutar el sorteo.' }
+      }
+
+      // Pool ponderado determinístico por número de ticket
+      const pool = []
+      summary.entries.forEach(entry => {
+        for (let t = entry.startTicket; t <= entry.endTicket; t++) {
+          pool.push({ ticketNumber: t, entry })
+        }
+      })
+
+      const secureRandomInt = (max) => {
+        if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+          const arr = new Uint32Array(1)
+          window.crypto.getRandomValues(arr)
+          return arr[0] % max
+        }
+        return Math.floor(Math.random() * max)
+      }
+
+      const desiredWinners = Math.min(summary.uniqueParticipants, Math.max(1, Number(giveaway.winnersCount || 1)))
+      const desiredAlternates = Math.min(Math.max(0, summary.uniqueParticipants - desiredWinners), Math.max(0, Number(giveaway.alternatesCount ?? 1)))
+      const totalPick = desiredWinners + desiredAlternates
+
+      const selectedPhones = new Set()
+      const winners = []
+      let attempts = 0
+      const maxAttempts = pool.length * 4
+
+      while (winners.length < totalPick && attempts < maxAttempts) {
+        attempts++
+        const picked = pool[secureRandomInt(pool.length)]
+        const pKey = picked.entry.normalizedPhone || picked.entry.id
+        if (selectedPhones.has(pKey)) continue
+        selectedPhones.add(pKey)
+        const idx = winners.length
+        const isAlternate = idx >= desiredWinners
+        winners.push({
+          rank: isAlternate ? idx - desiredWinners + 1 : idx + 1,
+          isAlternate,
+          roleLabel: isAlternate ? `Suplente #${idx - desiredWinners + 1}` : (desiredWinners === 1 ? 'Ganador Oficial' : `Ganador #${idx + 1}`),
+          ticketNumber: picked.ticketNumber,
+          entryId: picked.entry.id,
+          participantName: picked.entry.participantName,
+          phone: picked.entry.phone,
+          maskedPhone: maskPhonePublic(picked.entry.phone),
+          instagramHandle: picked.entry.instagramHandle || '',
+          claimed: false
+        })
+      }
+
+      const nowIso = new Date().toISOString()
+      giveaway.winners = winners
+      giveaway.status = 'drawn'
+      giveaway.drawProof = {
+        drawnAt: nowIso,
+        totalValidTickets: summary.totalTickets,
+        totalParticipants: summary.uniqueParticipants,
+        verificationCode: `SP-ACTA-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+        formalitiesSnapshot: buildDiscountProgramFormalities(this.marketingCampaign)[0] ? 'Verificado bajo Bases y Condiciones Oficiales StreamePro' : ''
+      }
+      giveaway.updatedAt = nowIso
+
+      this.persist(DB_KEYS.GIVEAWAYS)
+      saveMarketingHubPatchToFirebase({ giveawaysById: { [giveaway.id]: giveaway } }).catch(() => {})
+      return { success: true, giveaway, winners }
     },
 
     // ==========================================

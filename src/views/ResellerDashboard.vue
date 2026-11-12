@@ -4,6 +4,7 @@ import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { loadDb, DB_KEYS } from '../services/db'
 import { toPng } from 'html-to-image'
+import { generateMarketingCopy } from '../utils/marketing'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
@@ -930,6 +931,34 @@ const copyResellerViralGamingList = async () => {
 
 const shareResellerViralGamingWhatsApp = () => {
   window.open(`https://wa.me/?text=${encodeURIComponent(resellerViralGamingListText.value)}`, '_blank')
+}
+
+const resellerGiveawayChannel = ref('whatsapp')
+const activeResellerGiveaways = computed(() => adminStore.activeGiveaways || [])
+const getResellerGiveawayUrl = (g) => {
+  const origin = getBaseOrigin()
+  const refCode = currentResellerId.value
+  return `${origin}/sorteos?sorteo=${encodeURIComponent(g.id)}&ref=${encodeURIComponent(refCode)}`
+}
+const getResellerGiveawayCopy = (g) => {
+  return generateMarketingCopy({
+    channel: resellerGiveawayChannel.value,
+    headline: `🎉 SORTEO OFICIAL: ${g.title}`,
+    subline: `Premio: ${g.prizeTitle}${g.prizeValue ? ` (Valor $${Number(g.prizeValue).toLocaleString()} ARS)` : ''} · Participación gratuita verificada y chances extra comprando en mi tienda.`,
+    giveawayTitle: g.title,
+    url: getResellerGiveawayUrl(g)
+  })
+}
+const copyResellerGiveawayPost = async (g) => {
+  try {
+    await navigator.clipboard.writeText(getResellerGiveawayCopy(g))
+    toast.add(`📋 ¡Publicación del sorteo "${g.title}" copiada para ${resellerGiveawayChannel.value}!`, 'success')
+  } catch {
+    toast.add('No se pudo copiar al portapapeles', 'error')
+  }
+}
+const shareResellerGiveawayWhatsApp = (g) => {
+  window.open(`https://wa.me/?text=${encodeURIComponent(getResellerGiveawayCopy(g))}`, '_blank')
 }
 
 const openResellerTopGamesPlaque = () => {
@@ -2519,6 +2548,52 @@ const submitResellerGameInquiry = () => {
           >
             <span>📋 Copiar Mi Link</span>
           </button>
+        </div>
+      </div>
+
+      <!-- BLOQUE SORTEOS ACTIVOS CON TU CÓDIGO AFILIADO -->
+      <div v-if="activeResellerGiveaways.length > 0" class="bg-gradient-to-br from-amber-950/35 via-slate-900 to-rose-950/30 p-6 rounded-3xl border border-amber-500/35 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-3">
+          <div>
+            <h4 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              <span>🎉 Sorteos Oficiales Activos con tu Enlace Afiliado</span>
+              <span class="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-500/30">
+                {{ activeResellerGiveaways.length }} activos
+              </span>
+            </h4>
+            <p class="text-xs text-slate-300 mt-0.5">
+              Atrae clientes con los sorteos oficiales de la tienda. Todo comprador que ingrese con tu enlace ?ref={{ currentResellerId }} acredita tu comisión automáticamente.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+            <button
+              v-for="ch in ['whatsapp', 'instagram', 'tiktok', 'telegram']"
+              :key="ch"
+              type="button"
+              @click="resellerGiveawayChannel = ch"
+              :class="['px-2.5 py-1 rounded-lg text-[10px] font-black uppercase cursor-pointer', resellerGiveawayChannel === ch ? 'bg-amber-400 text-slate-950' : 'text-slate-400 hover:text-white']"
+            >
+              {{ ch }}
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div v-for="g in activeResellerGiveaways" :key="g.id" class="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3 text-xs">
+            <div>
+              <strong class="text-white text-sm block">{{ g.title }}</strong>
+              <span class="text-amber-300 font-bold block mt-0.5">🏆 {{ g.prizeTitle }}</span>
+              <span class="text-[11px] text-slate-400 font-mono block mt-1 truncate">{{ getResellerGiveawayUrl(g) }}</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" @click="copyResellerGiveawayPost(g)" class="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold cursor-pointer">
+                📋 Copiar Copy ({{ resellerGiveawayChannel }})
+              </button>
+              <button type="button" @click="shareResellerGiveawayWhatsApp(g)" class="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black cursor-pointer">
+                📲 WhatsApp
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -74,9 +74,10 @@ const isClientArea = computed(() => {
   const p = route.path.toLowerCase()
   return [
     '/', '/suscripciones', '/streaming', '/digital',
-    '/combos', '/paquetes', '/ofertas',
+    '/combos', '/paquetes', '/ofertas', '/combo', '/servicio',
     '/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j',
-    '/tienda', '/catalogo', '/productos', '/p',
+    '/tienda', '/catalogo', '/productos', '/p', '/seleccion',
+    '/sorteos', '/sorteo', '/descuentos', '/embajadores', '/promo',
     '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente',
     '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'
   ].some(allowed => p === allowed || p.startsWith(allowed + '/'))
@@ -104,6 +105,10 @@ const publicPhysicalCount = computed(() => {
 
 const activePackagesCount = computed(() => {
   return (adminStore.packages || []).filter(p => p.active).length
+})
+
+const activeGiveawaysCount = computed(() => {
+  return (adminStore.activeGiveaways || []).length
 })
 
 const handleOpenCart = () => {
@@ -199,6 +204,18 @@ const handleOpenCart = () => {
               <span>Tienda Física</span>
               <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
                 {{ publicPhysicalCount }}
+              </span>
+            </RouterLink>
+
+            <RouterLink 
+              to="/sorteos" 
+              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-gradient-to-r from-amber-500/25 to-rose-500/25 text-amber-300 border border-amber-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+            >
+              <span>🎉</span>
+              <span>Sorteos</span>
+              <span v-if="activeGiveawaysCount > 0" class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
+                {{ activeGiveawaysCount }}
               </span>
             </RouterLink>
 
@@ -347,6 +364,18 @@ const handleOpenCart = () => {
             <span>Físicos</span>
             <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
               {{ publicPhysicalCount }}
+            </span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/sorteos" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-gradient-to-r from-amber-500/25 to-rose-500/25 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+          >
+            <span>🎉</span>
+            <span>Sorteos</span>
+            <span v-if="activeGiveawaysCount > 0" class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
+              {{ activeGiveawaysCount }}
             </span>
           </RouterLink>
 

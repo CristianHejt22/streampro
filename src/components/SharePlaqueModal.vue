@@ -7,12 +7,17 @@ const props = defineProps({
   payload: { type: Object, default: null },
   storeName: { type: String, default: 'StreamePro Oficial' },
   resellerRef: { type: String, default: 'DIRECT' },
-  contactPhone: { type: String, default: '' }
+  contactPhone: { type: String, default: '' },
+  promoCode: { type: String, default: '' },
+  promoLabel: { type: String, default: '' }
 })
 
 const emit = defineEmits(['close'])
 const toast = useToastStore()
 const isExporting = ref(false)
+
+const activePromoCode = computed(() => String(props.payload?.promoCode || props.promoCode || '').trim().toUpperCase())
+const activePromoLabel = computed(() => String(props.payload?.promoLabel || props.promoLabel || 'Descuento Oficial').trim())
 
 const isMultiMode = computed(() => props.payload?.mode === 'multi' && Array.isArray(props.payload?.items) && props.payload.items.length > 0)
 
@@ -115,11 +120,23 @@ const accentTheme = computed(() => {
   }
 })
 
+const appendPromoToUrl = (baseUrl) => {
+  const code = activePromoCode.value
+  if (!code) return baseUrl
+  try {
+    const u = new URL(baseUrl)
+    u.searchParams.set('promo', code)
+    return u.toString()
+  } catch {
+    return baseUrl.includes('?') ? `${baseUrl}&promo=${encodeURIComponent(code)}` : `${baseUrl}?promo=${encodeURIComponent(code)}`
+  }
+}
+
 const directShareUrl = computed(() => {
   const origin = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
     ? window.location.origin
     : 'https://streamepro.me'
-  if (props.payload?.shareUrl) return props.payload.shareUrl
+  if (props.payload?.shareUrl) return appendPromoToUrl(props.payload.shareUrl)
   const ref = props.resellerRef && props.resellerRef !== 'DIRECT' ? props.resellerRef : ''
   const pt = props.payload?.productType || 'gaming'
   const pid = props.payload?.id || ''
@@ -137,27 +154,29 @@ const directShareUrl = computed(() => {
       if (gIds.length > 0) qs.set('games', gIds.slice(0, 4).join(','))
       if (pIds.length > 0) qs.set('prods', pIds.slice(0, 4).join(','))
       if (ref) qs.set('ref', ref)
+      if (activePromoCode.value) qs.set('promo', activePromoCode.value)
       if (props.payload?.title) qs.set('title', String(props.payload.title).slice(0, 56))
       return `${origin}/seleccion?${qs.toString()}`
     }
-    if (pt === 'package') return ref ? `${origin}/combos?ref=${encodeURIComponent(ref)}` : `${origin}/combos`
-    if (pt === 'gaming') return ref ? `${origin}/juegos?ref=${encodeURIComponent(ref)}` : `${origin}/juegos`
-    if (pt === 'physical') return ref ? `${origin}/tienda?ref=${encodeURIComponent(ref)}` : `${origin}/tienda`
-    return ref ? `${origin}/?ref=${encodeURIComponent(ref)}` : `${origin}/`
+    if (pt === 'package') return appendPromoToUrl(ref ? `${origin}/combos?ref=${encodeURIComponent(ref)}` : `${origin}/combos`)
+    if (pt === 'gaming') return appendPromoToUrl(ref ? `${origin}/juegos?ref=${encodeURIComponent(ref)}` : `${origin}/juegos`)
+    if (pt === 'physical') return appendPromoToUrl(ref ? `${origin}/tienda?ref=${encodeURIComponent(ref)}` : `${origin}/tienda`)
+    return appendPromoToUrl(ref ? `${origin}/?ref=${encodeURIComponent(ref)}` : `${origin}/`)
   }
   if (pt === 'gaming') {
     const lic = props.payload?.licenseType || 'primary'
-    return ref
+    const base = ref
       ? `${origin}/juego/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}?lic=${lic}`
       : `${origin}/juego/${encodeURIComponent(pid)}?lic=${lic}`
+    return appendPromoToUrl(base)
   }
   if (pt === 'physical') {
-    return ref ? `${origin}/producto/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/producto/${encodeURIComponent(pid)}`
+    return appendPromoToUrl(ref ? `${origin}/producto/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/producto/${encodeURIComponent(pid)}`)
   }
   if (pt === 'package') {
-    return ref ? `${origin}/combo/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/combo/${encodeURIComponent(pid)}`
+    return appendPromoToUrl(ref ? `${origin}/combo/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/combo/${encodeURIComponent(pid)}`)
   }
-  return ref ? `${origin}/servicio/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/servicio/${encodeURIComponent(pid)}`
+  return appendPromoToUrl(ref ? `${origin}/servicio/${encodeURIComponent(pid)}/${encodeURIComponent(ref)}` : `${origin}/servicio/${encodeURIComponent(pid)}`)
 })
 
 const getCORSUrl = (raw) => {
@@ -523,6 +542,26 @@ async function renderPlaqueBlob() {
     ctx.restore()
   }
 
+  // Sello Promocional (si viene con código de Usuario Descuento o cupón activo)
+  if (activePromoCode.value) {
+    ctx.save()
+    const badgeStr = `🎟️ CUPÓN ${activePromoCode.value} · ${activePromoLabel.value}`.slice(0, 46)
+    ctx.font = '900 18px monospace'
+    const bw = Math.min(W - 140, ctx.measureText(badgeStr).width + 52)
+    const bx = (W - bw) / 2
+    const by = 918
+    const bGrad = ctx.createLinearGradient(bx, by, bx + bw, by + 40)
+    bGrad.addColorStop(0, 'rgba(245, 158, 11, 0.95)')
+    bGrad.addColorStop(1, 'rgba(234, 88, 12, 0.95)')
+    ctx.fillStyle = bGrad
+    roundRectPath(ctx, bx, by, bw, 40, 20)
+    ctx.fill()
+    ctx.fillStyle = '#020617'
+    ctx.textAlign = 'center'
+    ctx.fillText(badgeStr, W / 2, by + 26)
+    ctx.restore()
+  }
+
   // Footer elegante con enlace directo y teléfono
   ctx.save()
   const fY = 980
@@ -585,9 +624,12 @@ const copyPlaqueLink = async () => {
 const sharePlaqueDirect = async () => {
   if (isExporting.value) return
   isExporting.value = true
+  const promoLine = activePromoCode.value
+    ? `\n🎟️ *CUPÓN ACTIVO: ${activePromoCode.value}* (${activePromoLabel.value})`
+    : ''
   const shareText = isMultiMode.value
-    ? `🔥 *${plaqueHeadline.value} (${props.storeName})*\n\n${normalizedItems.value.map(i => `• *${i.title}* — $${i.price.toLocaleString()} ARS`).join('\n')}\n\n👉 Ver catálogo oficial:\n${directShareUrl.value}`
-    : `🔥 *${mainItem.value.title}*\n📌 ${plaqueSubline.value}\n💰 *Precio: $${mainItem.value.price.toLocaleString()} ARS*\n\n👉 Compra directa aquí:\n${directShareUrl.value}`
+    ? `🔥 *${plaqueHeadline.value} (${props.storeName})*${promoLine}\n\n${normalizedItems.value.map(i => `• *${i.title}* — $${i.price.toLocaleString()} ARS`).join('\n')}\n\n👉 Ver catálogo oficial:\n${directShareUrl.value}`
+    : `🔥 *${mainItem.value.title}*\n📌 ${plaqueSubline.value}\n💰 *Precio: $${mainItem.value.price.toLocaleString()} ARS*${promoLine}\n\n👉 Compra directa aquí:\n${directShareUrl.value}`
 
   try {
     const blob = await renderPlaqueBlob()
@@ -678,6 +720,9 @@ const sharePlaqueDirect = async () => {
               </div>
             </div>
 
+            <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow truncate">
+              🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
+            </div>
             <div class="pt-2 border-t border-white/10 text-center text-[9px] font-mono text-slate-300 truncate">
               🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}
             </div>
@@ -738,11 +783,14 @@ const sharePlaqueDirect = async () => {
               </div>
             </div>
 
-            <!-- Pie con Link Directo -->
-            <div class="pt-1.5 border-t border-cyan-500/20 text-center text-[9px] font-mono text-slate-300 truncate">
-              🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}{{ contactPhone ? ` · 📲 ${contactPhone}` : '' }}
-            </div>
-          </template>
+              <!-- Pie con Link Directo + Badge Promo -->
+              <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow mb-1 truncate">
+                🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
+              </div>
+              <div class="pt-1.5 border-t border-cyan-500/20 text-center text-[9px] font-mono text-slate-300 truncate">
+                🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}{{ contactPhone ? ` · 📲 ${contactPhone}` : '' }}
+              </div>
+            </template>
         </div>
 
         <!-- 3 BOTONES DIRECTOS Y SIMPLES -->

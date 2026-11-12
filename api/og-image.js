@@ -302,7 +302,8 @@ function buildSingleOverlayVNode(payload, hasPhoto) {
       }, [
         el('div', {
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          gap: 10
         }, [
           el('div', {
             display: 'flex',
@@ -314,7 +315,20 @@ function buildSingleOverlayVNode(payload, hasPhoto) {
             fontSize: 15,
             fontWeight: 900,
             letterSpacing: '0.07em'
-          }, badgeText)
+          }, badgeText),
+          payload.promoCode
+            ? el('div', {
+                display: 'flex',
+                padding: '8px 16px',
+                borderRadius: 999,
+                background: 'rgba(245, 158, 11, 0.25)',
+                border: '1.5px solid rgba(251, 191, 36, 0.75)',
+                color: '#fde68a',
+                fontSize: 14,
+                fontWeight: 900,
+                letterSpacing: '0.06em'
+              }, `CÓDIGO ${cleanText(payload.promoCode, 18)}`)
+            : null
         ]),
         el('div', {
           display: 'flex',

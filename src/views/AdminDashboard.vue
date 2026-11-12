@@ -10,6 +10,7 @@ import { parseGamingTextList, matchGamingListWithCatalog, smartSearchGamingMatch
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
+const AdminMarketingHub = defineAsyncComponent(() => import('../components/AdminMarketingHub.vue'))
 
 import { 
   isBiometricsAvailable, 
@@ -1898,6 +1899,17 @@ const openAdminPlaqueForGaming = (game) => {
     image: game.image || '',
     tag: `${game.platform || 'DIGITAL'} · PRIMARIA`
   }
+  showSharePlaqueModal.value = true
+}
+
+const openAdminHubPlaque = (payload) => {
+  if (!payload) return
+  adminPlaqueContext.value = {
+    storeName: adminStore.adminAuth.name || 'StreamePro Oficial',
+    resellerRef: 'DIRECT',
+    contactPhone: adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || ''
+  }
+  sharePlaquePayload.value = payload
   showSharePlaqueModal.value = true
 }
 
@@ -4483,6 +4495,18 @@ const deletePackageItem = (pkgId) => {
           🏦 Cuentas & Validador de Pagos
           <span v-if="adminStore.bankTransfers?.length > 0" class="bg-emerald-500 text-slate-950 font-mono text-[10px] px-2 py-0.5 rounded-full font-black">
             {{ adminStore.bankTransfers.length }}
+          </span>
+        </button>
+        <button 
+          @click="adminTab = 'marketing'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'marketing' ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-black shadow' : 'text-amber-300 hover:text-white hover:bg-slate-800']"
+        >
+          📣 Marketing, Sorteos & Descuentos
+          <span v-if="adminStore.pendingDiscountApplications?.length > 0" class="bg-rose-600 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
+            {{ adminStore.pendingDiscountApplications.length }} sol.
+          </span>
+          <span v-else-if="adminStore.activeGiveaways?.length > 0" class="bg-amber-400/20 text-amber-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-black border border-amber-400/30">
+            {{ adminStore.activeGiveaways.length }} act.
           </span>
         </button>
         <button 
@@ -11459,6 +11483,12 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       </div>
     </div>
 
+    <!-- PESTAÑA: MARKETING HUB, SORTEOS & USUARIOS DESCUENTO -->
+    <AdminMarketingHub
+      v-if="adminTab === 'marketing'"
+      @open-plaque="openAdminHubPlaque"
+    />
+
     <!-- PESTAÑA: SISTEMA & BASE DE DATOS DEPURADA (PRODUCCIÓN LIMPIA) -->
     <div v-if="adminTab === 'database'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-8">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
@@ -12803,6 +12833,8 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       :store-name="adminPlaqueContext.storeName || adminStore.adminAuth.name || 'StreamePro Oficial'"
       :reseller-ref="adminPlaqueContext.resellerRef || 'DIRECT'"
       :contact-phone="adminPlaqueContext.contactPhone || adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || ''"
+      :promo-code="sharePlaquePayload?.promoCode || ''"
+      :promo-label="sharePlaquePayload?.promoLabel || ''"
       @close="showSharePlaqueModal = false; sharePlaquePayload = null"
     />
 

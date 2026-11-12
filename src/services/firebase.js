@@ -8,6 +8,7 @@ import {
   deleteDoc,
   getDoc,
   doc, 
+  deleteField,
   query, 
   orderBy, 
   onSnapshot, 
@@ -572,6 +573,126 @@ export function listenToSupportTickets(callback) {
     })
   } catch (err) {
     console.warn('[Firebase] Listener error support_tickets:', err)
+    return () => {}
+  }
+}
+
+/**
+ * Sincroniza configuración de campaña, Usuarios Descuento, postulaciones, créditos y sorteos en 'settings/marketing_hub'
+ */
+export async function saveMarketingHubPatchToFirebase(patch = {}) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanPatch = JSON.parse(JSON.stringify(patch))
+    cleanPatch.updatedAt = new Date().toISOString()
+    await setDoc(doc(dbInstance, 'settings', 'marketing_hub'), cleanPatch, { merge: true })
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando marketing_hub:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function deleteMarketingHubMapKeyInFirebase(mapField, itemId) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance || !mapField || !itemId) return { success: false }
+
+  try {
+    await setDoc(
+      doc(dbInstance, 'settings', 'marketing_hub'),
+      { [mapField]: { [String(itemId)]: deleteField() }, updatedAt: new Date().toISOString() },
+      { merge: true }
+    )
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error eliminando clave en marketing_hub:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function saveGiveawayEntryToFirebase(entryData) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance || !entryData?.id) return { success: false }
+
+  try {
+    const cleanEntry = JSON.parse(JSON.stringify(entryData))
+    cleanEntry.updatedAt = new Date().toISOString()
+    await setDoc(
+      doc(dbInstance, 'settings', 'giveaways_entries'),
+      { entriesById: { [String(cleanEntry.id)]: cleanEntry }, updatedAt: new Date().toISOString() },
+      { merge: true }
+    )
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando participación en sorteo:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function deleteGiveawayEntryInFirebase(entryId) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance || !entryId) return { success: false }
+
+  try {
+    await setDoc(
+      doc(dbInstance, 'settings', 'giveaways_entries'),
+      { entriesById: { [String(entryId)]: deleteField() }, updatedAt: new Date().toISOString() },
+      { merge: true }
+    )
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function fetchMarketingHubFromFirebase() {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return null
+  try {
+    const snap = await getDoc(doc(dbInstance, 'settings', 'marketing_hub'))
+    return snap.exists() ? snap.data() : null
+  } catch (error) {
+    return null
+  }
+}
+
+export function listenToMarketingHub(callback) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return () => {}
+  try {
+    return onSnapshot(doc(dbInstance, 'settings', 'marketing_hub'), (snap) => {
+      if (snap.exists()) callback(snap.data())
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error marketing_hub:', err)
+    })
+  } catch {
+    return () => {}
+  }
+}
+
+export async function fetchGiveawayEntriesFromFirebase() {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return null
+  try {
+    const snap = await getDoc(doc(dbInstance, 'settings', 'giveaways_entries'))
+    return snap.exists() ? snap.data() : null
+  } catch {
+    return null
+  }
+}
+
+export function listenToGiveawayEntries(callback) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return () => {}
+  try {
+    return onSnapshot(doc(dbInstance, 'settings', 'giveaways_entries'), (snap) => {
+      if (snap.exists()) callback(snap.data())
+    }, (err) => {
+      console.warn('[Firebase] Snapshot error giveaways_entries:', err)
+    })
+  } catch {
     return () => {}
   }
 }

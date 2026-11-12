@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { parseArgentinePrice } from '../utils/pricing'
+import { computePromoDiscountBreakdown } from '../utils/marketing'
 
 const CART_STORAGE_KEY = 'streamepro_cart_v1'
 
@@ -44,44 +45,48 @@ export const useCartStore = defineStore('cart', {
     discountPercentage(state) {
       // Aplica solo a productos digitales de streaming por volumen
       const streamingUnits = state.items
-        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
         .reduce((acc, item) => acc + ((item.units || 1) * item.quantity), 0)
       if (streamingUnits >= 8) return 15
       if (streamingUnits >= 4) return 7
       if (streamingUnits >= 2) return 5
       return 0
     },
-    couponDiscountAmount(state) {
+    volumeDiscountAmount(state) {
+      const streamingSubtotal = state.items
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
+        .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
+      return Math.round(streamingSubtotal * (this.discountPercentage / 100))
+    },
+    couponBreakdown(state) {
       const coupon = state.appliedCoupon
-      if (!coupon || coupon.active === false) return 0
-      const scope = coupon.scope || 'all'
-      const eligibleSubtotal = state.items.reduce((acc, item) => {
-        if (scope === 'all') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'gaming' && item.itemType === 'gaming') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'streaming' && item.itemType !== 'physical' && item.itemType !== 'gaming') return acc + (item.clientPrice * item.quantity)
-        if (scope === 'physical' && item.itemType === 'physical') return acc + (item.clientPrice * item.quantity)
-        return acc
-      }, 0)
-      if (eligibleSubtotal <= 0) return 0
-      if (coupon.minAmount && eligibleSubtotal < Number(coupon.minAmount)) return 0
-      const val = Number(coupon.value || 0)
-      if (val <= 0) return 0
-      const rawDiscount = coupon.type === 'fixed' ? val : Math.round(eligibleSubtotal * (val / 100))
-      return Math.min(eligibleSubtotal, Math.max(0, rawDiscount))
+      if (!coupon) {
+        return { totalDiscount: 0, eligibleSubtotal: 0, byCategory: {}, effectivePctByCategory: {} }
+      }
+      return computePromoDiscountBreakdown(coupon, state.items, {
+        volumeDiscount: this.volumeDiscountAmount,
+        maxCombinedPct: Number(coupon.maxCombinedDiscountPct ?? 35)
+      })
+    },
+    couponDiscountAmount(state) {
+      return Number(this.couponBreakdown?.totalDiscount || 0)
     },
     total(state) {
       const streamingSubtotal = state.items
-        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       const gamingSubtotal = state.items
         .filter(i => i.itemType === 'gaming')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
+      const packageSubtotal = state.items
+        .filter(i => i.itemType === 'package')
+        .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       const physicalSubtotal = state.items
         .filter(i => i.itemType === 'physical')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
-      
+
       const volumeDiscount = Math.round(streamingSubtotal * (this.discountPercentage / 100))
-      const rawTotal = (streamingSubtotal - volumeDiscount) + gamingSubtotal + physicalSubtotal
+      const rawTotal = (streamingSubtotal - volumeDiscount) + gamingSubtotal + packageSubtotal + physicalSubtotal
       return Math.max(0, rawTotal - this.couponDiscountAmount)
     },
     hasPhysicalItems: (state) => state.items.some(i => i.itemType === 'physical'),

@@ -7,8 +7,10 @@ import { useToastStore } from '../store/toast'
 import { sendLocalNotification } from '../services/notifications'
 import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import { getRememberedSession } from '../services/biometrics'
+import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/marketing'
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
+const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -360,14 +362,16 @@ const currentPageSection = computed(() => {
   if (['/combos', '/paquetes', '/ofertas'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'packages'
   if (['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'gaming'
   if (['/tienda', '/catalogo', '/productos', '/p'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'physical'
+  if (['/sorteos', '/sorteo', '/descuentos', '/embajadores'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'sorteos'
   if (route.query.sec === 'digital') return 'digital'
   if (route.query.sec === 'packages') return 'packages'
   if (route.query.sec === 'gaming') return 'gaming'
   if (route.query.sec === 'physical') return 'physical'
+  if (route.query.sec === 'sorteos' || route.query.sorteo) return 'sorteos'
   return 'home'
 })
 
-// Sección Activa en Tienda: 'all' (Todo el Catálogo) | 'digital' (Streaming) | 'physical' (Productos Físicos) | 'packages' (Combos)
+// Sección Activa en Tienda: 'all' (Todo el Catálogo) | 'digital' (Streaming) | 'physical' (Productos Físicos) | 'packages' (Combos) | 'sorteos'
 const storeSection = ref('all')
 
 watch(currentPageSection, (sec) => {
@@ -375,20 +379,79 @@ watch(currentPageSection, (sec) => {
 }, { immediate: true })
 
 // ==========================================
-// CUPONES PROMOCIONALES EN CARRITO
+// CUPONES PROMOCIONALES & USUARIOS DESCUENTO EN CARRITO
 // ==========================================
 const promoCodeInput = ref('')
+const activePromoBanner = ref(null)
+
+const activePromoPlaqueLabel = computed(() => {
+  const active = cartStore.appliedCoupon || activePromoBanner.value
+  if (!active) return ''
+  if (active.isDiscountUserCode && active.discountByCategory) {
+    const maxPct = Math.max(
+      Number(active.discountByCategory.streaming || 0),
+      Number(active.discountByCategory.gaming || 0),
+      Number(active.discountByCategory.packages || 0),
+      Number(active.discountByCategory.physical || 0)
+    )
+    return maxPct > 0 ? `Hasta ${maxPct}% OFF` : ''
+  }
+  if (active.type === 'fixed') return `$${Number(active.value || 0).toLocaleString()} OFF`
+  return active.value ? `${active.value}% OFF` : ''
+})
+
+const clearActivePromo = () => {
+  activePromoBanner.value = null
+  cartStore.removeCoupon()
+  try { localStorage.removeItem('streamepro_active_promo') } catch {}
+}
+
+const syncPersistedPromoBanner = (announceToast = false) => {
+  let saved = ''
+  try { saved = normalizePromoCode(localStorage.getItem('streamepro_active_promo') || '') } catch {}
+  if (!saved) {
+    activePromoBanner.value = null
+    return
+  }
+  const found = adminStore.findActivePromoByCode(saved)
+  if (!found) return
+  activePromoBanner.value = found
+  if (announceToast) {
+    toast.add(`🏷️ Código ${found.code} activado: disfruta porcentajes ajustados al agregar al carrito`, 'success')
+  }
+  if (!cartStore.appliedCoupon && cartStore.items.length > 0) {
+    const res = adminStore.validatePromoCode(saved, cartStore.items, {
+      customerPhone: clientForm.value.whatsapp,
+      volumeDiscount: cartStore.volumeDiscountAmount
+    })
+    if (res.success && res.coupon) {
+      cartStore.applyCoupon(res.coupon)
+    }
+  }
+}
+
+watch(
+  [() => cartStore.items.length, () => adminStore.discountUsers.length, () => adminStore.promoCodes.length],
+  () => syncPersistedPromoBanner(false),
+  { immediate: true }
+)
+
 const applyCartPromoCode = () => {
-  const code = String(promoCodeInput.value || '').trim().toUpperCase()
+  const code = normalizePromoCode(promoCodeInput.value)
   if (!code) {
     toast.add('Ingresa un código promocional para aplicar', 'warning')
     return
   }
-  const res = adminStore.validatePromoCode(code, cartStore.items)
+  const res = adminStore.validatePromoCode(code, cartStore.items, {
+    customerPhone: clientForm.value.whatsapp,
+    volumeDiscount: cartStore.volumeDiscountAmount
+  })
   if (res.success && res.coupon) {
     cartStore.applyCoupon(res.coupon)
+    activePromoBanner.value = res.coupon
+    try { localStorage.setItem('streamepro_active_promo', res.coupon.code) } catch {}
     promoCodeInput.value = ''
-    toast.add(`🏷️ Cupón ${res.coupon.code} aplicado: -$${cartStore.couponDiscountAmount.toLocaleString()} ARS`, 'success')
+    toast.add(`🏷️ Código ${res.coupon.code} aplicado: -$${cartStore.couponDiscountAmount.toLocaleString()} ARS`, 'success')
   } else {
     toast.add(res.error || 'Cupón inválido o no aplicable al carrito actual', 'error')
   }
@@ -973,13 +1036,29 @@ const applyRouteParams = () => {
     }
   }
 
+  // Código de descuento compartido (?promo=CODE / ?cup=CODE / ?d=CODE)
+  const rawPromoParam = route.query.promo || route.query.cup || route.query.d
+  if (rawPromoParam) {
+    const cleanPromo = normalizePromoCode(rawPromoParam)
+    if (cleanPromo) {
+      try {
+        localStorage.setItem('streamepro_active_promo', cleanPromo)
+      } catch (e) {}
+      syncPersistedPromoBanner(true)
+    }
+  } else {
+    syncPersistedPromoBanner(false)
+  }
+
   // Sincronizar filtro de categoría si viene en URL (?cat=virales)
   if (route.query.cat) {
     physicalCategoryFilter.value = route.query.cat
   }
 
-  // Redirección y activación de sección física, digital, gaming, paquetes o todo
-  if (route.query.sec === 'physical' || ['/tienda', '/catalogo', '/productos', '/p'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+  // Redirección y activación de sección física, digital, gaming, paquetes, sorteos o todo
+  if (route.query.sec === 'sorteos' || route.query.sorteo || ['/sorteos', '/sorteo', '/descuentos', '/embajadores'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'sorteos'
+  } else if (route.query.sec === 'physical' || ['/tienda', '/catalogo', '/productos', '/p'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'physical'
   } else if (route.query.sec === 'digital' || ['/suscripciones', '/streaming', '/digital'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
     storeSection.value = 'digital'
@@ -1856,9 +1935,27 @@ const submitOrder = async () => {
     return
   }
 
+  // Re-validar cupón o código de Usuario Descuento con el WhatsApp final del comprador (evita auto-referidos y límites)
+  let verifiedCoupon = cartStore.appliedCoupon ? { ...cartStore.appliedCoupon } : null
+  if (verifiedCoupon?.code) {
+    const promoCheck = adminStore.validatePromoCode(verifiedCoupon.code, cartStore.items, {
+      customerPhone: clientForm.value.whatsapp,
+      volumeDiscount: cartStore.volumeDiscountAmount
+    })
+    if (!promoCheck.success) {
+      cartStore.removeCoupon()
+      toast.add(promoCheck.error || 'El código de descuento fue removido porque no aplica para este WhatsApp.', 'error')
+      return
+    }
+    verifiedCoupon = promoCheck.coupon
+  }
+
   const digitalItems = cartStore.items.filter(i => i.itemType !== 'physical')
   const physicalItems = cartStore.items.filter(i => i.itemType === 'physical')
   const isDirect = isDirectSale.value
+  const totalPromoDiscount = cartStore.couponDiscountAmount || 0
+  const cartSubtotalSnapshot = cartStore.subtotal || 0
+  const totalOrderNet = Math.round(cartStore.total)
 
   // Snapshot del pedido antes de vaciar el carrito
   const prevNum = clientForm.value.clientNumber
@@ -1877,8 +1974,10 @@ const submitOrder = async () => {
     items: [...cartStore.items],
     digitalItems: [...digitalItems],
     physicalItems: [...physicalItems],
-    subtotal: cartStore.subtotal,
+    subtotal: cartSubtotalSnapshot,
     discountPercentage: cartStore.discountPercentage,
+    promoCode: verifiedCoupon?.code || null,
+    promoDiscountAmount: totalPromoDiscount,
     total: cartStore.total,
     paymentMethod: clientForm.value.paymentMethod,
     hasReceipt: hasUploadedReceipt,
@@ -1917,14 +2016,24 @@ const submitOrder = async () => {
     }))
   } catch {}
 
-  const netMultiplier = cartStore.subtotal > 0 ? Math.max(0.05, cartStore.total / cartStore.subtotal) : 1
+  const netMultiplier = cartSubtotalSnapshot > 0 ? Math.max(0.05, cartStore.total / cartSubtotalSnapshot) : 1
+  let countedPromoUse = false
 
   // 2. Registrar órdenes digitales de streaming / gaming evitando colisión de IDs en compras múltiples
   for (let idx = 0; idx < digitalItems.length; idx++) {
     const item = digitalItems[idx]
     const streamingOrderId = `ORD-${Date.now().toString().slice(-5)}-${idx + 1}`
     const qty = Math.max(1, Number(item.quantity) || 1)
-    const effectiveLinePrice = Math.round(Number(item.clientPrice || 0) * qty * netMultiplier)
+    const rawLineAmount = Number(item.clientPrice || 0) * qty
+    const effectiveLinePrice = Math.round(rawLineAmount * netMultiplier)
+    const linePromoDiscount = (verifiedCoupon?.code && cartSubtotalSnapshot > 0)
+      ? Math.round(totalPromoDiscount * (rawLineAmount / cartSubtotalSnapshot))
+      : 0
+    const isGaming = item.itemType === 'gaming' || Boolean(item.gameId) || Boolean(item.licenseType)
+    const normalizedItemForPromo = { ...item, itemType: isGaming ? 'gaming' : (item.itemType || 'streaming') }
+    const lineReward = verifiedCoupon?.isDiscountUserCode
+      ? computeReferrerRewardBreakdown(verifiedCoupon, [normalizedItemForPromo], netMultiplier).totalReward
+      : 0
     
     if (hasUploadedReceipt) {
       saveReceipt(streamingOrderId, {
@@ -1938,7 +2047,6 @@ const submitOrder = async () => {
       }).catch(() => {})
     }
 
-    const isGaming = item.itemType === 'gaming' || Boolean(item.gameId) || Boolean(item.licenseType)
     const gameName = item.title || item.baseName || item.name || null
     const gamePlatform = item.platform || 'PS4 / PS5'
     const platformDisplay = isGaming && gameName 
@@ -1971,6 +2079,11 @@ const submitOrder = async () => {
       receiptFileType: receiptMeta.fileType || null,
       receiptFileSize: receiptMeta.fileSize || 0,
       paymentMethod: clientForm.value.paymentMethod,
+      promoCode: verifiedCoupon?.code || null,
+      promoDiscountAmount: linePromoDiscount,
+      discountUserId: verifiedCoupon?.discountUserId || null,
+      referrerRewardAmount: lineReward,
+      referrerRewardStatus: lineReward > 0 ? 'Pendiente' : null,
       orderType: isGaming ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
       gameId: item.gameId || item.id || null,
       gameTitle: gameName,
@@ -1985,12 +2098,35 @@ const submitOrder = async () => {
         name: p.name
       }))
     })
+
+    if (verifiedCoupon?.code) {
+      adminStore.recordOrderPromoAttribution({
+        orderId: streamingOrderId,
+        promoCode: verifiedCoupon.code,
+        discountAmount: linePromoDiscount,
+        discountUserId: verifiedCoupon.discountUserId || null,
+        orderTotal: effectiveLinePrice,
+        rewardAmount: lineReward,
+        customerName: clientForm.value.fullName,
+        countUse: !countedPromoUse
+      })
+      countedPromoUse = true
+    }
   }
 
   // 3. Registrar orden de productos físicos esperando confirmación
   if (physicalItems.length > 0) {
     const source = clientForm.value.isSharedUrl ? 'shared_url' : 'store'
-    await adminStore.createPhysicalOrder({
+    const physSubtotal = physicalItems.reduce((sum, i) => sum + ((i.clientPrice || i.priceNumeric || 0) * Math.max(1, Number(i.quantity) || 1)), 0)
+    const physEffectiveTotal = Math.round(physSubtotal * netMultiplier)
+    const physPromoDiscount = (verifiedCoupon?.code && cartSubtotalSnapshot > 0)
+      ? Math.round(totalPromoDiscount * (physSubtotal / cartSubtotalSnapshot))
+      : 0
+    const physReward = verifiedCoupon?.isDiscountUserCode
+      ? computeReferrerRewardBreakdown(verifiedCoupon, physicalItems.map(i => ({ ...i, itemType: 'physical' })), netMultiplier).totalReward
+      : 0
+
+    const physRes = await adminStore.createPhysicalOrder({
       customerNumber: clientForm.value.clientNumber,
       customerName: clientForm.value.fullName,
       customerPhone: clientForm.value.whatsapp,
@@ -2004,9 +2140,38 @@ const submitOrder = async () => {
       hasReceipt: hasUploadedReceipt,
       receiptFileName: receiptMeta.fileName || null,
       receiptFileType: receiptMeta.fileType || null,
-      receiptFileSize: receiptMeta.fileSize || 0
+      receiptFileSize: receiptMeta.fileSize || 0,
+      promoCode: verifiedCoupon?.code || null,
+      promoDiscountAmount: physPromoDiscount,
+      discountUserId: verifiedCoupon?.discountUserId || null,
+      referrerRewardAmount: physReward,
+      overrideTotalAmount: physEffectiveTotal
     })
+
+    if (verifiedCoupon?.code && physRes?.order?.id) {
+      adminStore.recordOrderPromoAttribution({
+        orderId: physRes.order.id,
+        promoCode: verifiedCoupon.code,
+        discountAmount: physPromoDiscount,
+        discountUserId: verifiedCoupon.discountUserId || null,
+        orderTotal: physEffectiveTotal,
+        rewardAmount: physReward,
+        customerName: clientForm.value.fullName,
+        countUse: !countedPromoUse
+      })
+      countedPromoUse = true
+    }
   }
+
+  // Asignar tickets automáticos de Sorteos Activos por compra
+  const awardedGiveawayTickets = adminStore.awardOrderGiveawayTickets({
+    orderId: prevNum,
+    name: clientForm.value.fullName,
+    phone: clientForm.value.whatsapp,
+    amount: totalOrderNet,
+    clientNumber: prevNum
+  })
+  orderSnapshot.awardedGiveawayTickets = awardedGiveawayTickets
 
   // 4. Si el medio de pago seleccionado es Mercado Pago: Crear preferencia y redirigir
   if (clientForm.value.paymentMethod === 'mercadopago') {
@@ -2058,10 +2223,8 @@ const submitOrder = async () => {
         console.warn('Telegram notify error:', tgErr)
       }
 
-      if (cartStore.appliedCoupon?.code) {
-        adminStore.incrementPromoUse(cartStore.appliedCoupon.code)
-      }
       cartStore.clearCart()
+      clearActivePromo()
       showCheckoutModal.value = false
       toast.add('⚡ Redirigiendo a la pasarela oficial de Mercado Pago...', 'info')
       window.location.href = mpData.initPoint
@@ -2092,9 +2255,6 @@ const submitOrder = async () => {
     console.warn('Telegram notify error:', err)
   }
 
-  if (cartStore.appliedCoupon?.code) {
-    adminStore.incrementPromoUse(cartStore.appliedCoupon.code)
-  }
   lastPlacedOrder.value = {
     ...orderSnapshot,
     pin: clientForm.value.pin
@@ -2102,6 +2262,7 @@ const submitOrder = async () => {
   showCheckoutModal.value = false
   showOrderSuccessModal.value = true
   cartStore.clearCart()
+  clearActivePromo()
 
   // Enviar notificación local/push del sistema si está habilitada
   sendLocalNotification(`🎉 Pedido #${prevNum} Registrado Directamente`, {
@@ -2223,6 +2384,74 @@ const submitOrder = async () => {
         </button>
       </div>
     </div>
+    <!-- BARRA GLOBAL DE CAMPAÑA MARKETING / SORTEO ACTIVO -->
+    <div
+      v-if="adminStore.marketingCampaign?.bannerEnabled && adminStore.marketingCampaign?.bannerText"
+      class="bg-gradient-to-r from-amber-500/20 via-rose-500/15 to-indigo-500/20 border border-amber-500/40 rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs shadow-lg"
+    >
+      <div class="flex items-center gap-2 text-amber-100 font-bold text-center sm:text-left">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+        <span>{{ adminStore.marketingCampaign.bannerText }}</span>
+      </div>
+      <RouterLink
+        v-if="adminStore.marketingCampaign.bannerCtaLabel"
+        :to="adminStore.marketingCampaign.bannerCtaLink || '/sorteos'"
+        class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] shrink-0 transition shadow"
+      >
+        {{ adminStore.marketingCampaign.bannerCtaLabel }} →
+      </RouterLink>
+    </div>
+
+    <!-- BANNER DE CÓDIGO DE DESCUENTO ACTIVO (?promo=...) -->
+    <div
+      v-if="activePromoBanner"
+      class="bg-gradient-to-r from-emerald-500/15 via-slate-900 to-amber-500/15 border border-emerald-500/40 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg"
+    >
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">
+          🏷️
+        </div>
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-black text-white text-sm">Código Promocional Activo:</span>
+            <span class="font-mono font-black text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg">
+              {{ activePromoBanner.code }}
+            </span>
+            <span v-if="activePromoBanner.ownerName" class="text-[11px] text-amber-200 font-semibold">
+              · Compartido por {{ activePromoBanner.ownerName }}
+            </span>
+          </div>
+          <div v-if="activePromoBanner.isDiscountUserCode && activePromoBanner.discountByCategory" class="flex flex-wrap gap-1.5 text-[10px] font-bold">
+            <span v-if="activePromoBanner.discountByCategory.streaming > 0" class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+              🎬 Streaming {{ activePromoBanner.discountByCategory.streaming }}% OFF
+            </span>
+            <span v-if="activePromoBanner.discountByCategory.gaming > 0" class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              🎮 Juegos {{ activePromoBanner.discountByCategory.gaming }}% OFF
+            </span>
+            <span v-if="activePromoBanner.discountByCategory.packages > 0" class="px-2 py-0.5 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30">
+              🎁 Combos {{ activePromoBanner.discountByCategory.packages }}% OFF
+            </span>
+            <span v-if="activePromoBanner.discountByCategory.physical > 0" class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              📦 Físicos {{ activePromoBanner.discountByCategory.physical }}% OFF
+            </span>
+            <span v-if="activePromoBanner.minOrderAmount > 0" class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+              Mínimo ${{ Number(activePromoBanner.minOrderAmount).toLocaleString() }} ARS
+            </span>
+          </div>
+          <p v-else class="text-[11px] text-slate-300">
+            {{ activePromoBanner.description || 'El descuento se aplicará automáticamente al agregar productos al carrito.' }}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        @click="clearActivePromo"
+        class="text-[11px] text-slate-400 hover:text-rose-300 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer shrink-0"
+      >
+        Quitar código ✕
+      </button>
+    </div>
+
     <!-- Breadcrumb de Navegación Profesional (Visible en subpáginas dedicadas) -->
     <nav v-if="currentPageSection !== 'home'" class="flex items-center gap-2 text-xs font-semibold text-slate-400 py-1 px-1">
       <RouterLink to="/" class="hover:text-white flex items-center gap-1 transition-colors">
@@ -2245,6 +2474,10 @@ const submitOrder = async () => {
       <span v-else-if="currentPageSection === 'physical'" class="text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
         <span>📦</span>
         <span>Catálogo de Productos Físicos & Tecnología</span>
+      </span>
+      <span v-else-if="currentPageSection === 'sorteos'" class="text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+        <span>🎉</span>
+        <span>Sorteos Oficiales & Embajadores con Descuento</span>
       </span>
     </nav>
 
@@ -2464,6 +2697,22 @@ const submitOrder = async () => {
           <span>Catálogo Físico</span>
           <span class="bg-slate-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-400/30">
             {{ adminStore.physicalProducts.length }}
+          </span>
+        </RouterLink>
+
+        <RouterLink 
+          to="/sorteos"
+          :class="[
+            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            currentPageSection === 'sorteos' 
+              ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 shadow-lg shadow-amber-500/20 font-black' 
+              : 'text-amber-300 hover:text-white hover:bg-amber-500/10'
+          ]"
+        >
+          <span>🎉</span>
+          <span>Sorteos & Descuentos</span>
+          <span v-if="adminStore.activeGiveaways?.length > 0" class="bg-slate-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-400/30">
+            {{ adminStore.activeGiveaways.length }}
           </span>
         </RouterLink>
       </div>
@@ -2905,6 +3154,9 @@ const submitOrder = async () => {
           </div>
         </div>
       </div>
+
+      <!-- 4.5 Sorteos Oficiales & Programa de Usuarios Descuento -->
+      <GiveawaysSection :reseller-ref="clientForm.selectedResellerId || 'DIRECT'" />
 
       <!-- 5. Banner de Confianza & SLA Guarantee -->
       <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-2xl">
@@ -4873,6 +5125,11 @@ const submitOrder = async () => {
       </template>
     </div>
 
+    <!-- ==================== SECCIÓN DEDICADA: SORTEOS OFICIALES & EMBAJADORES CON DESCUENTO ==================== -->
+    <div v-else-if="currentPageSection === 'sorteos'" id="sorteos-descuentos" class="space-y-8">
+      <GiveawaysSection :reseller-ref="clientForm.selectedResellerId || 'DIRECT'" />
+    </div>
+
     <!-- MODAL DE ELECCIÓN DE PLAN -->
     <div v-if="showConfigModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
@@ -5026,12 +5283,20 @@ const submitOrder = async () => {
               </span>
               <span v-if="!cartStore.appliedCoupon" class="text-[10px] text-amber-300 font-mono">Ej: BIENVENIDO10 / GAMER5</span>
             </div>
-            <div v-if="cartStore.appliedCoupon" class="flex items-center justify-between bg-emerald-500/15 border border-emerald-500/30 rounded-lg px-3 py-2 text-xs">
-              <div>
-                <strong class="text-emerald-300 font-mono">✓ {{ cartStore.appliedCoupon.code }}</strong>
-                <span class="text-slate-300 ml-1.5">{{ cartStore.appliedCoupon.description }}</span>
+            <div v-if="cartStore.appliedCoupon" class="bg-emerald-500/15 border border-emerald-500/30 rounded-lg px-3 py-2 text-xs space-y-1">
+              <div class="flex items-center justify-between">
+                <div>
+                  <strong class="text-emerald-300 font-mono">✓ {{ cartStore.appliedCoupon.code }}</strong>
+                  <span class="text-slate-300 ml-1.5">{{ cartStore.appliedCoupon.description }}</span>
+                </div>
+                <button type="button" @click="clearActivePromo()" class="text-rose-400 hover:text-rose-300 font-bold text-[11px] cursor-pointer">Quitar ✕</button>
               </div>
-              <button type="button" @click="cartStore.removeCoupon()" class="text-rose-400 hover:text-rose-300 font-bold text-[11px] cursor-pointer">Quitar ✕</button>
+              <p v-if="cartStore.couponBreakdown?.cappedByMaxDiscount" class="text-[10px] text-amber-300">
+                ℹ️ Descuento ajustado al tope máximo por operación del código.
+              </p>
+              <p v-else-if="cartStore.couponBreakdown?.cappedByStackLimit" class="text-[10px] text-slate-400">
+                ℹ️ Ajustado al tope máximo combinado de descuento permitido ({{ adminStore.marketingCampaign?.maxCombinedDiscountPct || 35 }}%).
+              </p>
             </div>
             <div v-else class="flex gap-2">
               <input
@@ -5056,9 +5321,9 @@ const submitOrder = async () => {
               <span>Subtotal:</span>
               <span class="text-white font-semibold">${{ cartStore.subtotal.toLocaleString() }} ARS</span>
             </div>
-            <div v-if="cartStore.discountPercentage > 0" class="flex justify-between text-emerald-400 font-bold bg-emerald-400/10 p-2 rounded-lg text-xs">
+            <div v-if="cartStore.volumeDiscountAmount > 0" class="flex justify-between text-emerald-400 font-bold bg-emerald-400/10 p-2 rounded-lg text-xs">
               <span>Descuento Volumen Streaming ({{ cartStore.discountPercentage }}%):</span>
-              <span>- ${{ Math.round(cartStore.items.filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming').reduce((a, i) => a + (i.clientPrice * i.quantity), 0) * (cartStore.discountPercentage / 100)).toLocaleString() }} ARS</span>
+              <span>- ${{ cartStore.volumeDiscountAmount.toLocaleString() }} ARS</span>
             </div>
             <div v-if="cartStore.couponDiscountAmount > 0" class="flex justify-between text-amber-300 font-bold bg-amber-500/10 p-2 rounded-lg text-xs border border-amber-500/20">
               <span>Cupón ({{ cartStore.appliedCoupon?.code }}):</span>
@@ -5905,6 +6170,36 @@ const submitOrder = async () => {
             <span class="text-slate-300">Total a Abonar:</span>
             <span class="text-emerald-400 text-xl font-mono font-black">${{ lastPlacedOrder.total.toLocaleString() }} ARS</span>
           </div>
+          <div v-if="lastPlacedOrder.promoCode && lastPlacedOrder.promoDiscountAmount > 0" class="flex justify-between items-center text-[11px] text-amber-300 font-mono">
+            <span>🏷️ Descuento aplicado ({{ lastPlacedOrder.promoCode }}):</span>
+            <span>- ${{ lastPlacedOrder.promoDiscountAmount.toLocaleString() }} ARS</span>
+          </div>
+        </div>
+
+        <!-- TICKETS DE SORTEOS GANADOS POR LA COMPRA -->
+        <div
+          v-if="lastPlacedOrder.awardedGiveawayTickets?.length > 0"
+          class="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-rose-500/15 border border-amber-500/40 rounded-2xl p-4 space-y-2"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <span>🎟️</span>
+              <span>¡Sumaste Chances Automáticas en Sorteos!</span>
+            </span>
+            <RouterLink
+              to="/sorteos"
+              @click="showOrderSuccessModal = false"
+              class="text-[10px] font-black bg-amber-400 text-slate-950 px-2.5 py-1 rounded-lg hover:bg-amber-300 transition"
+            >
+              Ver Sorteos →
+            </RouterLink>
+          </div>
+          <div class="space-y-1">
+            <div v-for="t in lastPlacedOrder.awardedGiveawayTickets" :key="t.entryId" class="flex items-center justify-between text-xs text-slate-200 bg-slate-950/70 px-3 py-1.5 rounded-lg border border-amber-500/20">
+              <span class="truncate pr-2">{{ t.giveawayTitle }}</span>
+              <span class="font-mono font-black text-amber-300 shrink-0">+{{ t.tickets }} chance(s)</span>
+            </div>
+          </div>
         </div>
 
         <!-- PASO 2: DATOS BANCARIOS (SI TIENE STREAMING / DIGITAL) -->
@@ -6226,6 +6521,8 @@ const submitOrder = async () => {
       :store-name="resellerStoreName"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
       :contact-phone="currentReseller?.contactNumber || adminStore.providerBankInfo?.whatsapp || ''"
+      :promo-code="sharePlaquePayload?.promoCode || cartStore.appliedCoupon?.code || activePromoBanner?.code || ''"
+      :promo-label="sharePlaquePayload?.promoLabel || activePromoPlaqueLabel"
       @close="showSharePlaqueModal = false" 
     />
   </div>

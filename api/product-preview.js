@@ -16,14 +16,14 @@ function escapeHtml(str) {
 
 function buildOgImageUrl(query = {}) {
   const params = new URLSearchParams()
-  const forwardKeys = ['game', 'g', 'lic', 'prod', 'p', 'id', 'pkg', 'plat', 'games', 'prods', 'multi', 'sec', 'ref', 'title', 'price', 'orig']
+  const forwardKeys = ['game', 'g', 'lic', 'prod', 'p', 'id', 'pkg', 'plat', 'games', 'prods', 'multi', 'sec', 'ref', 'promo', 'sorteo', 'title', 'price', 'orig']
   for (const key of forwardKeys) {
     const val = query[key]
     if (val !== undefined && val !== null && String(val).trim() !== '') {
       params.set(key, String(val).trim())
     }
   }
-  params.set('v', '3')
+  params.set('v', '4')
   return `https://streamepro.me/api/og-image?${params.toString()}`
 }
 
@@ -39,9 +39,10 @@ export default async function handler(req, res) {
     ? `${payload.headline} | StreamePro Oficial`
     : `${payload.title} (${payload.priceStr}) | StreamePro Oficial`
 
+  const promoSuffix = payload.promoCode ? ` · Código ${payload.promoCode}` : ''
   const ogTitle = payload.mode === 'multi' || payload.mode === 'catalog'
     ? `${payload.headline}`
-    : `${payload.title} — ${payload.priceStr}`
+    : `${payload.title} — ${payload.priceStr}${promoSuffix}`
 
   const metaDescription = payload.description || payload.subtitle || 'Catálogo oficial de videojuegos digitales PlayStation, streaming y tienda StreamePro.'
   const schemaType = payload.type === 'gaming' && payload.mode === 'single' ? 'VideoGame' : 'Product'

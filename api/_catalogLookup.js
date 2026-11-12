@@ -202,7 +202,35 @@ function formatPhysicalItem(p) {
   }
 }
 
+function attachPromoMeta(payload, promoCode = '') {
+  if (!payload || !promoCode) return payload
+  const appendParam = (rawUrl) => {
+    if (!rawUrl) return rawUrl
+    const sep = rawUrl.includes('?') ? '&' : '?'
+    return rawUrl.includes('promo=') ? rawUrl : `${rawUrl}${sep}promo=${encodeURIComponent(promoCode)}`
+  }
+  const promoTag = `CÓDIGO ${promoCode}`
+  return {
+    ...payload,
+    promoCode,
+    headline: payload.headline ? `${payload.headline} · ${promoTag}` : undefined,
+    description: payload.description ? `🏷️ Aplica el código ${promoCode} en el carrito. ${payload.description}` : undefined,
+    canonicalUrl: appendParam(payload.canonicalUrl),
+    redirectUrl: appendParam(payload.redirectUrl)
+  }
+}
+
 export async function resolvePreviewPayload(query = {}) {
+  const promoCode = String(query.promo || query.cup || query.d || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, '')
+    .slice(0, 24)
+  const basePayload = await resolveBasePreviewPayload(query)
+  return attachPromoMeta(basePayload, promoCode)
+}
+
+async function resolveBasePreviewPayload(query = {}) {
   const refCode = String(query.ref || '').trim()
   const licParam = String(query.lic || 'primary').toLowerCase() === 'secondary' ? 'secondary' : 'primary'
   const prodId = String(query.prod || query.id || query.p || '').trim()
@@ -397,6 +425,12 @@ export async function resolvePreviewPayload(query = {}) {
       canonicalUrl: `https://streamepro.me/combos${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`,
       redirectUrl: `/?sec=packages${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}`
     }
+  } else if (sec === 'sorteos') {
+    featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
+    headline = 'Sorteos Oficiales & Descuentos Ajustados | StreamePro'
+    sub = 'Participa gratis por premios gamer/streaming o activa tu código de embajador con porcentajes por rubro.'
+    badge = 'SORTEOS OFICIALES STREAMEPRO'
+    targetPath = '/sorteos'
   } else {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
     headline = sec === 'gaming'

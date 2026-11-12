@@ -1,8 +1,11 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useResellerStore, useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
+import { buildDiscountProgramFormalities, generateMarketingCopy } from '../utils/marketing'
+
+const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -11,7 +14,7 @@ const isUnlocked = ref(false)
 const searchIdentifier = ref('') // WhatsApp (ej: 11 9988-1122) o N° Cliente (CLI-9024)
 const masterPin = ref('') // PIN personal de 4 dígitos
 const error = ref('')
-const portalTab = ref('gaming') // 'gaming' | 'streaming' | 'physical' | 'support'
+const portalTab = ref('gaming') // 'gaming' | 'streaming' | 'physical' | 'support' | 'promos'
 
 const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
@@ -113,8 +116,9 @@ const unlockVault = (silent = false) => {
   const matchedOrders = (adminStore.orders || []).filter(o => matchPhoneOrIdExact(o.customerPhone, o.customerNumber, o.id))
   const matchedPhysical = (adminStore.physicalOrders || []).filter(o => matchPhoneOrIdExact(o.customerPhone, o.customerNumber, o.id))
   const matchedUsers = (adminStore.registeredUsers || []).filter(u => matchPhoneOrIdExact(u.phone, u.clientNumber, u.id))
+  const matchedDiscountUsers = (adminStore.discountUsers || []).filter(d => matchPhoneOrIdExact(d.phone, d.id, d.code))
 
-  const hasAnyRecord = matchedClients.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0 || matchedUsers.length > 0
+  const hasAnyRecord = matchedClients.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0 || matchedUsers.length > 0 || matchedDiscountUsers.length > 0
   if (!hasAnyRecord) {
     error.value = 'No se encontraron servicios ni pedidos activos con esos datos. Verifica tu WhatsApp o N° de Cliente.'
     if (!silent) toast.add('No encontramos tus servicios ni pedidos', 'error')
@@ -130,6 +134,7 @@ const unlockVault = (silent = false) => {
   matchedOrders.forEach(o => { if (o.pin) registeredPins.add(String(o.pin).trim()) })
   matchedPhysical.forEach(o => { if (o.pin) registeredPins.add(String(o.pin).trim()) })
   matchedUsers.forEach(u => { if (u.pin) registeredPins.add(String(u.pin).trim()) })
+  matchedDiscountUsers.forEach(d => { if (d.pin) registeredPins.add(String(d.pin).trim()) })
 
   if (registeredPins.size > 0) {
     if (!pin) {
@@ -156,8 +161,10 @@ const unlockVault = (silent = false) => {
   const streamCount = matchedOrders.filter(o => !isGamingOrder(o)).length + matchedClients.length
   const physCount = matchedPhysical.length
 
-  if (route.query.tab && ['gaming', 'streaming', 'physical', 'support'].includes(String(route.query.tab))) {
+  if (route.query.tab && ['gaming', 'streaming', 'physical', 'support', 'promos'].includes(String(route.query.tab))) {
     portalTab.value = String(route.query.tab)
+  } else if (gamingCount === 0 && streamCount === 0 && physCount === 0 && matchedDiscountUsers.length > 0) {
+    portalTab.value = 'promos'
   } else if (gamingCount > 0 && streamCount === 0) {
     portalTab.value = 'gaming'
   } else if (streamCount > 0) {
@@ -215,6 +222,148 @@ const copyToClipboard = (text, field) => {
   }).catch(() => {
     toast.add('Error al copiar', 'error')
   })
+}
+
+// ==========================================
+// PROGRAMA DE USUARIOS DESCUENTO & SORTEOS EN BÓVEDA
+// ==========================================
+const promoSocialChannel = ref('whatsapp')
+const showPromoPlaqueModal = ref(false)
+const promoPlaquePayload = ref(null)
+const selectedPromoPlaqueGameId = ref('')
+const promoAppForm = ref({
+  name: '',
+  phone: '',
+  email: '',
+  preferredCode: '',
+  channel: 'WhatsApp / Estados',
+  audience: '',
+  message: '',
+  acceptedTerms: false
+})
+
+const matchedDiscountUser = computed(() => {
+  if (!isUnlocked.value) return null
+  return (adminStore.discountUsers || []).find(u =>
+    belongsToAuthenticated(u.phone, u.id, u.code)
+  ) || null
+})
+
+const myDiscountApplication = computed(() => {
+  if (!isUnlocked.value) return null
+  return (adminStore.discountApplications || []).find(a =>
+    belongsToAuthenticated(a.phone, a.id, a.preferredCode)
+  ) || null
+})
+
+const myDiscountCreditsLog = computed(() => {
+  if (!matchedDiscountUser.value) return []
+  return (adminStore.discountCreditsLog || []).filter(l => l.discountUserId === matchedDiscountUser.value.id)
+})
+
+const myGiveawayEntries = computed(() => {
+  if (!isUnlocked.value) return []
+  return (adminStore.giveawayEntries || [])
+    .filter(e => belongsToAuthenticated(e.phone, e.clientNumber, e.id))
+    .map(e => {
+      const g = (adminStore.giveaways || []).find(x => x.id === e.giveawayId)
+      return {
+        ...e,
+        giveawayTitle: g?.title || `Sorteo ${e.giveawayId}`,
+        prizeTitle: g?.prizeTitle || '',
+        giveawayStatus: g?.status || 'active',
+        winners: g?.winners || [],
+        drawProof: g?.drawProof || null
+      }
+    })
+})
+
+const promoShareBaseUrl = computed(() => {
+  if (!matchedDiscountUser.value) return ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://streamepro.me'
+  return `${origin}/?promo=${encodeURIComponent(matchedDiscountUser.value.code)}`
+})
+
+const promoGeneratedCopy = computed(() => {
+  if (!matchedDiscountUser.value) return ''
+  const d = matchedDiscountUser.value
+  const dCat = d.discountByCategory || {}
+  const maxPct = Math.max(Number(dCat.streaming || 0), Number(dCat.gaming || 0), Number(dCat.packages || 0), Number(dCat.physical || 0))
+  return generateMarketingCopy({
+    channel: promoSocialChannel.value,
+    headline: `¡Aprovecha hasta ${maxPct}% OFF con mi código ${d.code}!`,
+    subline: `Streaming 4K: ${dCat.streaming || 0}% OFF · Juegos PS4/PS5: ${dCat.gaming || 0}% OFF · Combos: ${dCat.packages || 0}% OFF · Tienda Física: ${dCat.physical || 0}% OFF`,
+    promoCode: d.code,
+    promoSummary: maxPct > 0 ? `Hasta ${maxPct}% OFF` : '',
+    url: promoShareBaseUrl.value
+  })
+})
+
+const promoProgramRulesText = computed(() => {
+  const rules = buildDiscountProgramFormalities(adminStore.marketingCampaign || {})
+  return Array.isArray(rules) ? rules.join('\n\n') : String(rules || '')
+})
+
+const openPortalPlaqueWithPromo = () => {
+  if (!matchedDiscountUser.value) return
+  const d = matchedDiscountUser.value
+  const dCat = d.discountByCategory || {}
+  const maxPct = Math.max(Number(dCat.streaming || 0), Number(dCat.gaming || 0), Number(dCat.packages || 0), Number(dCat.physical || 0))
+  const pickedGame = (adminStore.processedGamingProducts || []).find(g => g.id === selectedPromoPlaqueGameId.value)
+    || (adminStore.processedGamingProducts || [])[0]
+
+  if (pickedGame) {
+    promoPlaquePayload.value = {
+      mode: 'single',
+      productType: 'gaming',
+      id: pickedGame.id,
+      licenseType: 'primary',
+      title: pickedGame.title,
+      subtitle: `${pickedGame.platform || 'PS4/PS5'} · Usa el código ${d.code} en el carrito`,
+      priceNumeric: Number(pickedGame.effectivePrimaryPrice || pickedGame.effectiveSecondaryPrice || 0),
+      image: pickedGame.image || '',
+      tag: `${pickedGame.platform || 'DIGITAL'} · CÓDIGO ${d.code}`,
+      promoCode: d.code,
+      promoLabel: maxPct > 0 ? `Hasta ${maxPct}% OFF` : ''
+    }
+  } else {
+    promoPlaquePayload.value = {
+      mode: 'single',
+      productType: 'streaming',
+      id: 'netflix',
+      title: 'Suscripciones Streaming 4K',
+      subtitle: `Aplica el código ${d.code} al finalizar tu pedido`,
+      priceNumeric: 0,
+      tag: `CÓDIGO ${d.code}`,
+      promoCode: d.code,
+      promoLabel: maxPct > 0 ? `Hasta ${maxPct}% OFF` : ''
+    }
+  }
+  showPromoPlaqueModal.value = true
+}
+
+const submitPortalDiscountApp = () => {
+  const ctx = collectAuthenticatedContext()
+  const userObj = authenticatedUsers.value[0] || authenticatedOrders.value[0] || authenticatedClients.value[0] || {}
+  const phoneToUse = promoAppForm.value.phone || userObj.customerPhone || userObj.phone || ctx.phones[0] || searchIdentifier.value
+  const nameToUse = promoAppForm.value.name || userObj.customerName || userObj.name || 'Cliente StreamePro'
+
+  const res = adminStore.submitDiscountUserApplication({
+    name: nameToUse,
+    phone: phoneToUse,
+    email: promoAppForm.value.email || '',
+    pin: masterPin.value || '1234',
+    preferredCode: promoAppForm.value.preferredCode,
+    channel: promoAppForm.value.channel,
+    audience: promoAppForm.value.audience,
+    message: promoAppForm.value.message,
+    acceptedTerms: promoAppForm.value.acceptedTerms
+  })
+  if (res?.error) {
+    toast.add(res.error, 'error')
+    return
+  }
+  toast.add('✅ Solicitud enviada al Administrador para revisión y asignación de porcentajes.', 'success')
 }
 
 // 1. Videojuegos Digitales del cliente autenticado (re-computado reactivo para reflejar cloud updates)
@@ -604,6 +753,24 @@ const getGameInstallSteps = (order) => {
             >
               <span>🆘</span>
               <span>Ayuda ({{ customerSupportTickets.length }})</span>
+            </button>
+            <button 
+              @click="portalTab = 'promos'"
+              :class="[
+                'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                portalTab === 'promos' 
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md' 
+                  : 'bg-slate-950 text-amber-300 hover:text-white border border-amber-500/30'
+              ]"
+            >
+              <span>🎟️</span>
+              <span>Descuentos & Sorteos</span>
+              <span v-if="matchedDiscountUser" class="bg-emerald-500 text-slate-950 text-[9px] px-1.5 py-0.2 rounded-full font-black">
+                {{ matchedDiscountUser.code }}
+              </span>
+              <span v-else-if="myGiveawayEntries.length > 0" class="bg-amber-400/20 text-amber-200 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
+                {{ myGiveawayEntries.length }}
+              </span>
             </button>
           </div>
           <div class="flex items-center gap-2">
@@ -1077,6 +1244,255 @@ const getGameInstallSteps = (order) => {
             </div>
           </div>
         </div>
+
+        <!-- ==================== PESTAÑA 5: USUARIOS DESCUENTO & SORTEOS ==================== -->
+        <div v-if="portalTab === 'promos'" class="space-y-6">
+          <!-- A. Si ya es Usuario Descuento Aprobado / Configurado -->
+          <div v-if="matchedDiscountUser" class="bg-slate-900/70 border border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                    {{ matchedDiscountUser.tierLabel || 'Embajador Verificado' }}
+                  </span>
+                  <span :class="['px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase', matchedDiscountUser.status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border-rose-500/30']">
+                    {{ matchedDiscountUser.status === 'active' ? 'Activo para Compartir' : 'Pausado / Suspendido' }}
+                  </span>
+                </div>
+                <h3 class="text-xl font-black text-white mt-2">
+                  Tu Código Personal: <span class="text-emerald-300 font-mono">{{ matchedDiscountUser.code }}</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  Comparte tu enlace o placa con logo. Quien compre con tu código recibe sus porcentajes ajustados y tú acumulas recompensa verificada.
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2 shrink-0">
+                <button
+                  type="button"
+                  @click="copyToClipboard(promoShareBaseUrl, 'Enlace con descuento')"
+                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer"
+                >
+                  🔗 Copiar Link ?promo={{ matchedDiscountUser.code }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Porcentajes Ajustados por Rubro -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-sky-400 font-bold uppercase block">🎬 Streaming</span>
+                <strong class="text-base font-black text-white">{{ matchedDiscountUser.discountByCategory?.streaming || 0 }}% OFF</strong>
+                <span v-if="matchedDiscountUser.rewardMode !== 'none'" class="block text-[10px] text-emerald-400 font-mono">
+                  Recompensa: {{ matchedDiscountUser.rewardByCategory?.streaming || 0 }}%
+                </span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-indigo-400 font-bold uppercase block">🎮 Juegos Digitales</span>
+                <strong class="text-base font-black text-white">{{ matchedDiscountUser.discountByCategory?.gaming || 0 }}% OFF</strong>
+                <span v-if="matchedDiscountUser.rewardMode !== 'none'" class="block text-[10px] text-emerald-400 font-mono">
+                  Recompensa: {{ matchedDiscountUser.rewardByCategory?.gaming || 0 }}%
+                </span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-pink-400 font-bold uppercase block">🎁 Combos</span>
+                <strong class="text-base font-black text-white">{{ matchedDiscountUser.discountByCategory?.packages || 0 }}% OFF</strong>
+                <span v-if="matchedDiscountUser.rewardMode !== 'none'" class="block text-[10px] text-emerald-400 font-mono">
+                  Recompensa: {{ matchedDiscountUser.rewardByCategory?.packages || 0 }}%
+                </span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-amber-400 font-bold uppercase block">📦 Tienda Física</span>
+                <strong class="text-base font-black text-white">{{ matchedDiscountUser.discountByCategory?.physical || 0 }}% OFF</strong>
+                <span v-if="matchedDiscountUser.rewardMode !== 'none'" class="block text-[10px] text-emerald-400 font-mono">
+                  Recompensa: {{ matchedDiscountUser.rewardByCategory?.physical || 0 }}%
+                </span>
+              </div>
+            </div>
+
+            <!-- Billetera de Créditos y Límites Formales -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3">
+                <span class="text-[10px] text-emerald-300 font-bold uppercase block">Crédito Disponible</span>
+                <strong class="text-lg font-black text-emerald-300 font-mono">${{ Number(matchedDiscountUser.creditBalance || 0).toLocaleString() }} ARS</strong>
+              </div>
+              <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3">
+                <span class="text-[10px] text-amber-300 font-bold uppercase block">En Validación</span>
+                <strong class="text-lg font-black text-amber-300 font-mono">${{ Number(matchedDiscountUser.pendingCredit || 0).toLocaleString() }} ARS</strong>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Pedidos Referidos</span>
+                <strong class="text-lg font-black text-white font-mono">{{ matchedDiscountUser.usesCount || 0 }}{{ matchedDiscountUser.maxTotalUses > 0 ? ` / ${matchedDiscountUser.maxTotalUses}` : '' }}</strong>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Histórico Ganado</span>
+                <strong class="text-lg font-black text-sky-300 font-mono">${{ Number(matchedDiscountUser.totalRewardEarned || 0).toLocaleString() }} ARS</strong>
+              </div>
+            </div>
+
+            <!-- Herramienta Rápida: Placa con Código + Copy por Red -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <strong class="text-white block">🖼️ Generar Placa Promocional con tu Código</strong>
+                  <span class="text-[11px] text-slate-400">Elige un juego o servicio y comparte la placa lista con tu código estampado.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <select v-model="selectedPromoPlaqueGameId" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white max-w-[200px]">
+                    <option value="">Primer juego destacado</option>
+                    <option v-for="g in (adminStore.processedGamingProducts || []).slice(0, 30)" :key="g.id" :value="g.id">
+                      {{ g.title }} ({{ g.platform }})
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    @click="openPortalPlaqueWithPromo"
+                    class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow cursor-pointer shrink-0"
+                  >
+                    📤 Crear Placa
+                  </button>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-800 pt-3 space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-bold text-slate-300">✍️ Copy listo para redes sociales:</span>
+                  <div class="flex flex-wrap gap-1">
+                    <button
+                      v-for="ch in ['whatsapp', 'instagram', 'tiktok', 'telegram']"
+                      :key="ch"
+                      type="button"
+                      @click="promoSocialChannel = ch"
+                      :class="['px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase cursor-pointer border', promoSocialChannel === ch ? 'bg-amber-400 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-400 border-slate-800']"
+                    >
+                      {{ ch }}
+                    </button>
+                  </div>
+                </div>
+                <textarea :value="promoGeneratedCopy" readonly rows="4" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-200 font-mono"></textarea>
+                <div class="flex justify-end">
+                  <button
+                    type="button"
+                    @click="copyToClipboard(promoGeneratedCopy, 'Texto promocional')"
+                    class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-[11px] cursor-pointer"
+                  >
+                    📋 Copiar Texto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historial de Referidos & Créditos -->
+            <div v-if="myDiscountCreditsLog.length > 0" class="space-y-2">
+              <h4 class="text-xs font-black text-slate-300 uppercase tracking-wider">📒 Historial de Referidos y Acreditaciones</h4>
+              <div class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                <div v-for="log in myDiscountCreditsLog.slice(0, 20)" :key="log.id" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+                  <div>
+                    <strong class="text-white">{{ log.note || log.type }}</strong>
+                    <span class="block text-[10px] text-slate-500 font-mono">{{ new Date(log.createdAt).toLocaleString() }}</span>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <strong :class="log.type === 'redemption' ? 'text-sky-300 font-mono' : 'text-emerald-300 font-mono'">
+                      {{ log.type === 'redemption' ? '-' : '+' }}${{ Number(log.amount || 0).toLocaleString() }} ARS
+                    </strong>
+                    <span class="block text-[10px] text-slate-400">{{ log.status }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- B. Si aún NO es Usuario Descuento: Estado de solicitud o Formulario Formal -->
+          <div v-else class="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-lg font-black text-white">🏷️ Programa Oficial de Usuarios con Descuento Ajustado</h3>
+                <p class="text-xs text-slate-400">Obtén tu código propio para compartir ofertas con porcentajes por rubro y ganar crédito en tienda.</p>
+              </div>
+            </div>
+
+            <div v-if="myDiscountApplication && myDiscountApplication.status === 'pending'" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs space-y-1">
+              <strong class="text-amber-300">⏳ Tu solicitud ({{ myDiscountApplication.preferredCode || 'Código personalizado' }}) está en revisión</strong>
+              <p class="text-slate-300">El equipo Administrador evaluará tu perfil y te habilitará tus porcentajes ajustados en breve.</p>
+            </div>
+
+            <form v-else @submit.prevent="submitPortalDiscountApp" class="space-y-3 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-400 font-bold mb-1">Código deseado (ej: LIONEL10)</label>
+                  <input v-model="promoAppForm.preferredCode" type="text" required placeholder="MICODIGO" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono uppercase outline-none focus:border-amber-400">
+                </div>
+                <div>
+                  <label class="block text-slate-400 font-bold mb-1">Canal principal de difusión</label>
+                  <select v-model="promoAppForm.channel" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none">
+                    <option value="WhatsApp / Estados">WhatsApp / Estados</option>
+                    <option value="Instagram / Reels">Instagram / Reels</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Grupo Gamer / Comunidad">Grupo Gamer / Comunidad</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-slate-400 font-bold mb-1">¿Por qué quieres tu código o qué rubros compartirás?</label>
+                <textarea v-model="promoAppForm.message" rows="2" placeholder="Ej: Comparto juegos PS5 con amigos y seguidores..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none"></textarea>
+              </div>
+              <details class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                <summary class="cursor-pointer font-bold text-slate-300">📜 Ver Formalidades y Reglas de Usuarios Descuento</summary>
+                <pre class="mt-2 text-[11px] text-slate-400 whitespace-pre-wrap font-sans leading-relaxed">{{ promoProgramRulesText }}</pre>
+              </details>
+              <label class="flex items-start gap-2 cursor-pointer text-slate-300">
+                <input v-model="promoAppForm.acceptedTerms" type="checkbox" class="mt-0.5 rounded">
+                <span>Acepto las reglas formales del programa (no auto-referidos, tope de descuentos combinados y validación contra pedidos confirmados).</span>
+              </label>
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow cursor-pointer">
+                Enviar Solicitud de Código Personal
+              </button>
+            </form>
+          </div>
+
+          <!-- C. Mis Participaciones en Sorteos Oficiales -->
+          <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-lg font-black text-white">🎉 Mis Chances en Sorteos Oficiales ({{ myGiveawayEntries.length }})</h3>
+                <p class="text-xs text-slate-400">Tus inscripciones gratuitas verificadas, bonos por compra y enlaces para invitar amigos.</p>
+              </div>
+              <RouterLink to="/sorteos" class="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-black text-xs shrink-0">
+                Ver Todos los Sorteos →
+              </RouterLink>
+            </div>
+
+            <div v-if="myGiveawayEntries.length === 0" class="text-center py-8 text-xs text-slate-400 bg-slate-950 rounded-2xl border border-slate-800">
+              Aún no registraste chances en sorteos activos. Participa gratis o realiza una compra para sumar tickets automáticos.
+            </div>
+            <div v-else class="space-y-3">
+              <div v-for="entry in myGiveawayEntries" :key="entry.id" class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <strong class="text-white text-sm">{{ entry.giveawayTitle }}</strong>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                      {{ entry.ticketsCount }} chance(s)
+                    </span>
+                    <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', entry.status === 'disqualified' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300']">
+                      {{ entry.status === 'disqualified' ? 'Descalificado' : 'Válido' }}
+                    </span>
+                  </div>
+                  <p v-if="entry.prizeTitle" class="text-slate-400">Premio: {{ entry.prizeTitle }}</p>
+                  <p v-if="entry.winners?.length > 0 && entry.drawProof?.verificationCode" class="text-emerald-300 font-bold">
+                    🏆 Sorteo ejecutado — Acta: {{ entry.drawProof.verificationCode }} ({{ entry.winners.filter(w => !w.isAlternate).length }} ganador/es)
+                  </p>
+                </div>
+                <button
+                  v-if="entry.referralToken && entry.giveawayStatus === 'active'"
+                  type="button"
+                  @click="copyToClipboard(`https://streamepro.me/sorteos?sorteo=${encodeURIComponent(entry.giveawayId)}&inv=${encodeURIComponent(entry.referralToken)}`, 'Link de invitación al sorteo')"
+                  class="px-3.5 py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 font-bold text-xs cursor-pointer shrink-0"
+                >
+                  🔗 Copiar Link Invitación
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Transition>
 
@@ -1194,6 +1610,18 @@ const getGameInstallSteps = (order) => {
         </form>
       </div>
     </div>
+
+    <!-- MODAL: PLACA CON CÓDIGO PERSONAL DE DESCUENTO -->
+    <SharePlaqueModal
+      :show="showPromoPlaqueModal"
+      :payload="promoPlaquePayload"
+      :store-name="'StreamePro Oficial'"
+      :reseller-ref="'DIRECT'"
+      :contact-phone="adminStore.providerBankInfo?.whatsapp || ''"
+      :promo-code="matchedDiscountUser?.code || ''"
+      :promo-label="promoPlaquePayload?.promoLabel || ''"
+      @close="showPromoPlaqueModal = false; promoPlaquePayload = null"
+    />
   </div>
 </template>
 
