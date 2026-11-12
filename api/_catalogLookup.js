@@ -209,11 +209,9 @@ function attachPromoMeta(payload, promoCode = '') {
     const sep = rawUrl.includes('?') ? '&' : '?'
     return rawUrl.includes('promo=') ? rawUrl : `${rawUrl}${sep}promo=${encodeURIComponent(promoCode)}`
   }
-  const promoTag = `CÓDIGO ${promoCode}`
   return {
     ...payload,
     promoCode,
-    headline: payload.headline ? `${payload.headline} · ${promoTag}` : undefined,
     description: payload.description ? `🏷️ Aplica el código ${promoCode} en el carrito. ${payload.description}` : undefined,
     canonicalUrl: appendParam(payload.canonicalUrl),
     redirectUrl: appendParam(payload.redirectUrl)
@@ -427,7 +425,7 @@ async function resolveBasePreviewPayload(query = {}) {
     }
   } else if (sec === 'sorteos') {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
-    headline = 'Sorteos Oficiales & Descuentos Ajustados | StreamePro'
+    headline = 'Sorteos Oficiales & Descuentos'
     sub = 'Participa gratis por premios gamer/streaming o activa tu código de embajador con porcentajes por rubro.'
     badge = 'SORTEOS OFICIALES STREAMEPRO'
     targetPath = '/sorteos'

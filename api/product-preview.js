@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
   const promoSuffix = payload.promoCode ? ` · Código ${payload.promoCode}` : ''
   const ogTitle = payload.mode === 'multi' || payload.mode === 'catalog'
-    ? `${payload.headline}`
+    ? `${payload.headline}${promoSuffix}`
     : `${payload.title} — ${payload.priceStr}${promoSuffix}`
 
   const metaDescription = payload.description || payload.subtitle || 'Catálogo oficial de videojuegos digitales PlayStation, streaming y tienda StreamePro.'

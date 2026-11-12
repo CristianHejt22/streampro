@@ -457,15 +457,34 @@ function buildMultiOverlayVNode(payload, slots) {
     }, [
       el('div', {
         display: 'flex',
-        padding: '5px 14px',
-        borderRadius: 999,
-        background: theme.pillBg,
-        border: `1.5px solid ${theme.pillBorder}`,
-        color: theme.pillText,
-        fontSize: 12,
-        fontWeight: 900,
-        letterSpacing: '0.08em'
-      }, badgeText),
+        alignItems: 'center',
+        gap: 8
+      }, [
+        payload.promoCode
+          ? el('div', {
+              display: 'flex',
+              padding: '5px 14px',
+              borderRadius: 999,
+              background: 'rgba(245, 158, 11, 0.25)',
+              border: '1.5px solid rgba(251, 191, 36, 0.75)',
+              color: '#fde68a',
+              fontSize: 12,
+              fontWeight: 900,
+              letterSpacing: '0.07em'
+            }, `CÓDIGO ${cleanText(payload.promoCode, 18)}`)
+          : null,
+        el('div', {
+          display: 'flex',
+          padding: '5px 14px',
+          borderRadius: 999,
+          background: theme.pillBg,
+          border: `1.5px solid ${theme.pillBorder}`,
+          color: theme.pillText,
+          fontSize: 12,
+          fontWeight: 900,
+          letterSpacing: '0.08em'
+        }, badgeText)
+      ]),
       el('div', {
         display: 'flex',
         fontSize: headline.length > 34 ? 26 : 31,
