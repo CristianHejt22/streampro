@@ -397,14 +397,14 @@
                 >
                   <!-- Portada Thumbnail -->
                   <div class="w-10 h-12 rounded-lg bg-slate-950 overflow-hidden shrink-0 border border-white/10 flex items-center justify-center">
-                    <img v-if="g.image" :src="g.image" :alt="g.title" class="w-full h-full object-cover">
+                    <img v-if="g.image" :src="getCORSImageUrl(g.image)" :alt="g.title" class="w-full h-full object-cover" loading="lazy">
                     <span v-else class="text-xs">🎮</span>
                   </div>
 
                   <!-- Info resumida -->
                   <div class="flex-1 min-w-0">
                     <span class="text-[11px] font-bold block truncate group-hover:text-indigo-300 transition-colors">
-                      {{ g.title }}
+                      {{ cleanGameTitle(g.title) }}
                     </span>
                     <span class="text-[9px] text-slate-400 block font-mono">
                       {{ g.platform || 'PS4/PS5' }}
@@ -1391,13 +1391,29 @@ const gamingQuickCategory = ref('all')
 function getCORSImageUrl(rawUrl) {
   if (!rawUrl) return ''
   if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) return rawUrl
+  if (rawUrl.includes('wsrv.nl/?url=')) return rawUrl
   let fullUrl = rawUrl
   if (!fullUrl.startsWith('http')) {
     if (fullUrl.startsWith('/')) return fullUrl
-    fullUrl = `https://streamepro.me/${fullUrl}`
+    fullUrl = `https://streamepro.me/${fullUrl.replace(/^\/+/, '')}`
   }
   // Enrutamiento mediante proxy global seguro con CORS habilitado
   return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=1080&output=jpg`
+}
+
+// Limpiador estético de títulos de videojuegos para flyers y reels 9:16
+function cleanGameTitle(rawTitle) {
+  if (!rawTitle) return ''
+  let t = rawTitle
+    .replace(/\b(ESPAÑOL LATINO|AUDIO LATINO|SUBTITULADO|ESPAÑOL|LATINO)\b/gi, '')
+    .replace(/\b(PS4 Y PS5|PS4 & PS5|PS4 \/ PS5|PS4|PS5)\b/gi, '')
+    .replace(/\b(DIGITAL VERSION|DIGITAL EDITION|DIGITAL|DIGITALES)\b/gi, '')
+    .replace(/\b(CUENTA PRIMARIA|CUENTA SECUNDARIA)\b/gi, '')
+    .replace(/[\[\(][^\]\)]*[\]\)]/g, '')
+    .replace(/\s*-\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return t || rawTitle.trim()
 }
 
 // Sintetizador de carátula procedural en memoria (100% libre de CORS, nunca falla ni queda negro)
@@ -1761,7 +1777,7 @@ function selectGamingQuickFilter(filterId) {
 function selectGamingProduct(game) {
   if (!game) return
   pickedGameId.value = game.id
-  applyGamingProduct()
+  applyGamingProduct(game)
 }
 
 function selectContentMode(modeId) {
@@ -1771,12 +1787,18 @@ function selectContentMode(modeId) {
     onStreamingServiceChange()
   } else if (modeId === 'gaming') {
     if (!adminStore.isGamingCatalogLoaded && typeof adminStore.loadFullGamingCatalog === 'function') {
-      adminStore.loadFullGamingCatalog().catch(() => {})
+      adminStore.loadFullGamingCatalog().then(() => {
+        const firstGame = (adminStore.processedGamingProducts || [])[0]
+        if (firstGame && !pickedGameId.value) {
+          pickedGameId.value = firstGame.id
+          applyGamingProduct(firstGame)
+        }
+      }).catch(() => {})
     }
     const firstGame = (adminStore.processedGamingProducts || [])[0]
     if (firstGame) {
       pickedGameId.value = firstGame.id
-      applyGamingProduct()
+      applyGamingProduct(firstGame)
     }
   } else if (modeId === 'combo') {
     const firstCombo = adminStore.packages.find(p => p.active)
@@ -1815,21 +1837,21 @@ function onStreamingPlanChange() {
   loadArtwork(cover)
 }
 
-function applyGamingProduct() {
-  const g = (adminStore.processedGamingProducts || []).find(x => x.id === pickedGameId.value)
+function applyGamingProduct(passedGame = null) {
+  const g = passedGame || (adminStore.processedGamingProducts || []).find(x => x.id === pickedGameId.value)
   if (!g) return
-  reelHeadline.value = (g.title || 'Videojuego').toUpperCase().slice(0, 36)
+  const rawTitle = g.title || g.name || 'Videojuego'
+  reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
   const isPri = pickedGamingLicense.value === 'primary'
-  reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario' : 'Cuenta Secundaria · Activación Oficial'
+  reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial'
   reelPromoPrice.value = isPri ? Number(g.effectivePrimaryPrice || 15000) : Number(g.effectiveSecondaryPrice || 9000)
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
   reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
-  currentSealText.value = isPri ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
-  const rawCover = g.image || '/flyers/gaming-template-story.jpg'
-  const cover = getCORSImageUrl(rawCover)
-  reelArtworkUrl.value = cover
-  defaultProductCoverUrl.value = cover
-  loadArtwork(cover)
+  currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
+  const rawCover = g.image || g.cover || '/flyers/gaming-template-story.jpg'
+  reelArtworkUrl.value = rawCover
+  defaultProductCoverUrl.value = rawCover
+  loadArtwork(rawCover)
 }
 
 function onComboChange() {
@@ -1871,6 +1893,14 @@ async function loadArtwork(src) {
     loadedArtworkImage.value = img
     requestCanvasRedraw()
   } else {
+    if (src !== safeSrc) {
+      const directImg = await loadImage(src)
+      if (directImg) {
+        loadedArtworkImage.value = directImg
+        requestCanvasRedraw()
+        return
+      }
+    }
     // Generar respaldo procedural garantizado
     const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
     const fallbackImg = await loadImage(fallbackData)
@@ -2191,6 +2221,97 @@ function drawDirectProceduralCover(ctx, x, y, w, h, t = 0) {
   ctx.restore()
 }
 
+// Renderiza el titular y subtítulo con encaje tipográfico perfecto (1 o 2 líneas según extensión sin cortar palabras)
+function drawFittedHeadline(ctx, headlineText, sublineText, W, th, t = 0) {
+  if (!headlineText && !sublineText) return
+  ctx.save()
+
+  const maxW = 900
+  const centerX = W / 2
+  const text = (headlineText || '').trim().toUpperCase()
+
+  // 1. Probar en 1 línea con 54px
+  ctx.font = '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  const w54 = ctx.measureText(text).width
+
+  if (w54 <= maxW) {
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+    ctx.shadowBlur = 22
+    ctx.shadowOffsetY = 4
+    ctx.fillText(text, centerX, 260)
+  } else {
+    // 2. Probar en 1 línea con 44px
+    ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    const w44 = ctx.measureText(text).width
+    if (w44 <= maxW) {
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+      ctx.shadowBlur = 20
+      ctx.shadowOffsetY = 4
+      ctx.fillText(text, centerX, 262)
+    } else {
+      // 3. Dividir limpiamente en 2 líneas por palabras
+      const words = text.split(' ')
+      let line1 = ''
+      let line2 = ''
+      const targetHalf = text.length / 2
+      let currentLen = 0
+
+      for (let i = 0; i < words.length; i++) {
+        if (currentLen + words[i].length <= targetHalf + 4 || i === 0) {
+          line1 = line1 ? `${line1} ${words[i]}` : words[i]
+          currentLen = line1.length
+        } else {
+          line2 = words.slice(i).join(' ')
+          break
+        }
+      }
+
+      if (!line2 && words.length > 1) {
+        const mid = Math.ceil(words.length / 2)
+        line1 = words.slice(0, mid).join(' ')
+        line2 = words.slice(mid).join(' ')
+      }
+
+      let fontSize = 38
+      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      while ((ctx.measureText(line1).width > maxW || ctx.measureText(line2).width > maxW) && fontSize > 26) {
+        fontSize -= 2
+        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      }
+
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+      ctx.shadowBlur = 18
+      ctx.shadowOffsetY = 3
+      ctx.fillText(line1, centerX, 238)
+      ctx.fillText(line2, centerX, 278)
+    }
+  }
+
+  // Subtítulo con acento y auto-ajuste de escala
+  if (sublineText) {
+    let subSize = 26
+    ctx.font = `bold ${subSize}px -apple-system, sans-serif`
+    while (ctx.measureText(sublineText).width > maxW && subSize > 20) {
+      subSize -= 2
+      ctx.font = `bold ${subSize}px -apple-system, sans-serif`
+    }
+    ctx.fillStyle = th.accent
+    ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
+    ctx.shadowBlur = 14
+    ctx.shadowOffsetY = 2
+    ctx.fillText(sublineText, centerX, 316)
+  }
+
+  ctx.restore()
+}
+
 function drawCornerBrackets(ctx, x, y, w, h, size = 30, color = 'rgba(56, 189, 248, 0.75)') {
   ctx.save()
   ctx.strokeStyle = color
@@ -2326,18 +2447,28 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   // 2. Portada nítida en primer plano con Zoom, Desplazamiento X/Y, Inclinación y Filtros
   const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.4) * 0.03) : 1.0
   const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
+  
+  const imgAspect = (img.width || 1) / (img.height || 1)
+  const boxAspect = innerW / innerH
   let baseW = innerW
   let baseH = innerH
 
   if (imageFitMode.value === 'contain') {
-    const imgAspect = (img.width || 1) / (img.height || 1)
-    const boxAspect = innerW / innerH
     if (boxAspect > imgAspect) {
-      baseH = innerH - 40
+      baseH = innerH - 36
       baseW = baseH * imgAspect
     } else {
-      baseW = innerW - 40
+      baseW = innerW - 36
       baseH = baseW / imgAspect
+    }
+  } else {
+    // Modo cover: mantener proporción llenando todo el marco sin estirar ni aplastar
+    if (boxAspect > imgAspect) {
+      baseW = innerW
+      baseH = innerW / imgAspect
+    } else {
+      baseH = innerH
+      baseW = innerH * imgAspect
     }
   }
 
@@ -2556,19 +2687,8 @@ function renderFrame(timeMs = 0) {
   // Ecualizador de Audio / Trending Sound Bar en Header
   drawAudioVisualizer(ctx, W / 2, 208, th.accent, t)
 
-  // Titular Principal y Subtítulo
-  ctx.save()
-  ctx.fillStyle = '#ffffff'
-  ctx.font = '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
-  ctx.shadowBlur = 20
-  ctx.fillText(reelHeadline.value.slice(0, 36), W / 2, 265)
-
-  ctx.fillStyle = th.accent
-  ctx.font = 'bold 30px sans-serif'
-  ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 312)
-  ctx.restore()
+  // Titular Principal y Subtítulo con Encaje Tipográfico Perfecto (1 o 2 Líneas Equilibradas)
+  drawFittedHeadline(ctx, reelHeadline.value, reelSubline.value, W, th, t)
 
   // ==========================================
   // 2. RENDERIZADO SEGÚN PLANTILLA
@@ -3393,19 +3513,20 @@ function initFromProps() {
     if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales' || p.gameId) {
       selectedMode.value = 'gaming'
       pickedGameId.value = p.id || p.gameId || ''
-      reelHeadline.value = (p.title || p.name || 'Videojuego').toUpperCase().slice(0, 36)
+      const rawTitle = p.title || p.name || 'Videojuego'
+      reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
       const isPri = pickedGamingLicense.value === 'primary'
-      reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario' : 'Cuenta Secundaria · Activación Oficial'
+      reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial'
       reelPromoPrice.value = isPri ? Number(p.effectivePrimaryPrice || p.price || 15000) : Number(p.effectiveSecondaryPrice || p.price || 9000)
       reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
       reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
-      currentSealText.value = isPri ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
+      currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
       const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
       defaultProductCoverUrl.value = coverUrl
       loadArtwork(coverUrl)
       if (adminStore.processedGamingProducts?.length) {
-        applyGamingProduct()
+        applyGamingProduct(p)
       }
     } else if (p.services || (p.promoPrice && p.packages)) {
       selectedMode.value = 'combo'
