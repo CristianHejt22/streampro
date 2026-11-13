@@ -11,6 +11,7 @@ const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/Fly
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
 const AdminMarketingHub = defineAsyncComponent(() => import('../components/AdminMarketingHub.vue'))
+const ReelsStoryStudioModal = defineAsyncComponent(() => import('../components/ReelsStoryStudioModal.vue'))
 
 import { 
   isBiometricsAvailable, 
@@ -876,6 +877,8 @@ const openUserVault = (user) => {
 
 
 const showFlyerModal = ref(false)
+const showAdminReelsModal = ref(false)
+const adminReelsPayload = ref(null)
 
 // ==========================================
 // GESTIÓN DE PROVEEDORES GAMING MULTI-SITIO & ARBITRAJE
@@ -12821,9 +12824,19 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
     <FlyerGeneratorModal 
       :show="showFlyerModal" 
       @close="showFlyerModal = false; flyerInitialProduct = null" 
+      @open-reels="(payload) => { showFlyerModal = false; adminReelsPayload = payload; showAdminReelsModal = true }"
       :default-store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'" 
       :default-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp" 
       :initial-product="flyerInitialProduct"
+    />
+
+    <!-- MODAL: ESTUDIO DE REELS, TIKTOK & STORIES 9:16 (ADMIN) -->
+    <ReelsStoryStudioModal
+      :show="showAdminReelsModal"
+      :initial-payload="adminReelsPayload"
+      :store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'"
+      :contact-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '+54 9 11 4050-6070'"
+      @close="showAdminReelsModal = false; adminReelsPayload = null"
     />
 
     <!-- MODAL: PLACA DIRECTA CON LOGO SOBRE PRODUCTO -->

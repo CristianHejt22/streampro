@@ -816,8 +816,26 @@
                 <span class="text-[10px] text-slate-400">Personalización exclusiva</span>
               </div>
 
+              <!-- HERRAMIENTAS: FLYER OFICIAL ANIMADO -->
+              <div v-if="currentLayoutId === 'flyer_official'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div class="p-2.5 bg-slate-900/80 rounded-xl border border-indigo-500/30 flex items-center justify-between gap-1">
+                  <span class="text-indigo-300 font-bold text-[11px]">Plantilla Oficial:</span>
+                  <span class="text-[10px] bg-indigo-500/20 text-indigo-200 px-2 py-0.5 rounded-full font-mono font-bold">
+                    {{ selectedMode === 'gaming' ? 'Gaming Story 9:16' : 'Cyber Story 9:16' }}
+                  </span>
+                </div>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Malla Holográfica</span>
+                  <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Animación a 30 FPS</span>
+                  <input type="checkbox" v-model="isAnimated" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
+              </div>
+
               <!-- HERRAMIENTAS: CYBER PRO -->
-              <div v-if="currentLayoutId === 'cyber_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+              <div v-else-if="currentLayoutId === 'cyber_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
                   <span class="text-slate-300">Malla Holográfica</span>
                   <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
@@ -1401,7 +1419,7 @@ const studioTab = ref('product') // 'product' | 'image' | 'design' | 'custom' | 
 const mobileViewMode = ref('preview') // 'preview' | 'editor'
 const selectedMode = ref('streaming') // 'streaming' | 'gaming' | 'combo' | 'giveaway'
 const currentThemeId = ref('cyber_glow')
-const currentLayoutId = ref('cyber_pro') // 'cyber_pro' | 'cinematic' | 'glass_vip' | 'split_flash'
+const currentLayoutId = ref('flyer_official') // 'flyer_official' | 'cyber_pro' | 'cinematic' | 'glass_vip' | 'split_flash'
 
 // Estado de grabación y animación
 const isAnimated = ref(true)
@@ -1741,6 +1759,46 @@ function loadImage(src) {
   })
 }
 
+// ==========================================
+// PRECARGA Y CACHÉ DE PLANTILLAS OFICIALES DE FLYER 9:16
+// Sincronizado exactamente con las plantillas originales de FlyerGeneratorModal
+// ==========================================
+const loadedFlyerTemplates = {
+  gaming: null,
+  cyber: null
+}
+
+async function preloadFlyerTemplates() {
+  try {
+    const [gImg, cImg] = await Promise.all([
+      loadImage('/flyers/gaming-template-story.jpg'),
+      loadImage('/flyer-template-cyber-story.png')
+    ])
+    if (gImg) loadedFlyerTemplates.gaming = gImg
+    if (cImg) loadedFlyerTemplates.cyber = cImg
+    requestCanvasRedraw()
+  } catch (err) {
+    console.warn('[ReelsStudio] Error preloading flyer templates:', err)
+  }
+}
+
+function wrapReelsText(text, maxChars) {
+  if (!text) return []
+  const words = text.split(' ')
+  const lines = []
+  let cur = words[0] || ''
+  for (let i = 1; i < words.length; i++) {
+    if ((cur + ' ' + words[i]).length > maxChars) {
+      lines.push(cur)
+      cur = words[i]
+    } else {
+      cur += ' ' + words[i]
+    }
+  }
+  lines.push(cur)
+  return lines
+}
+
 // Entidades seleccionadas
 const pickedStreamingKey = ref('Netflix')
 const pickedStreamingPlanKey = ref('')
@@ -1757,6 +1815,7 @@ const contentModes = [
 ]
 
 const layoutTemplates = [
+  { id: 'flyer_official', icon: '🎨', name: 'Flyer Oficial (Story 9:16)', desc: 'Mismo diseño exacto y plantilla de FlyerGenerator, pero animado a 30 FPS' },
   { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico StreamePro con visores metálicos' },
   { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada a pantalla completa con viñeta cinemática' },
   { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón de lujo' },
@@ -1838,7 +1897,7 @@ const currentTheme = computed(() => {
 })
 
 const currentLayoutName = computed(() => {
-  return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Cyber Pro'
+  return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Flyer Oficial'
 })
 
 const currentStreamingPlans = computed(() => {
@@ -2106,7 +2165,7 @@ function autoOptimizeReel() {
   imageSaturation.value = 115
 
   if (mode === 'gaming') {
-    currentLayoutId.value = 'cyber_pro'
+    currentLayoutId.value = 'flyer_official'
     currentThemeId.value = 'cyber_glow'
     imageFitMode.value = 'contain'
     showBrandPill.value = true
@@ -2122,7 +2181,7 @@ function autoOptimizeReel() {
     currentSealText.value = pickedGamingLicense.value === 'primary' ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
     reelCtaText.value = '🎮 PEDILO AL WHATSAPP'
   } else if (mode === 'streaming') {
-    currentLayoutId.value = 'cinematic'
+    currentLayoutId.value = 'flyer_official'
     currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
     imageFitMode.value = 'contain'
     showBrandPill.value = true
@@ -2138,7 +2197,7 @@ function autoOptimizeReel() {
     currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
     reelCtaText.value = '🍿 PEDÍ TU CUENTA HOY'
   } else if (mode === 'combo') {
-    currentLayoutId.value = 'glass_vip'
+    currentLayoutId.value = 'flyer_official'
     currentThemeId.value = 'gold_vip'
     imageFitMode.value = 'cover'
     showBrandPill.value = true
@@ -2154,7 +2213,7 @@ function autoOptimizeReel() {
     currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
     reelCtaText.value = '📲 APROVECHAR COMBO VIP'
   } else if (mode === 'giveaway') {
-    currentLayoutId.value = 'split_flash'
+    currentLayoutId.value = 'flyer_official'
     currentThemeId.value = 'fire_sale'
     imageFitMode.value = 'cover'
     showBrandPill.value = true
@@ -2775,7 +2834,7 @@ function renderFrame(timeMs = 0) {
   drawAdaptiveParticles(ctx, W, H, t)
 
   // Marco Cyber 9:16 con esquinas HUD (en Cyber Pro, Glass VIP y Split Flash)
-  if (layout !== 'cinematic') {
+  if (layout !== 'cinematic' && layout !== 'flyer_official') {
     ctx.save()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
     ctx.lineWidth = 4
@@ -2788,7 +2847,7 @@ function renderFrame(timeMs = 0) {
   }
 
   // Header: Insignia de Tienda / Distribuidor (Proporción perfecta dentro de zona segura)
-  if (showBrandPill.value) {
+  if (showBrandPill.value && layout !== 'flyer_official') {
     ctx.save()
     const brandPillW = 460
     const brandPillH = 68
@@ -2809,19 +2868,402 @@ function renderFrame(timeMs = 0) {
   }
 
   // Ecualizador de Audio / Trending Sound Bar en Header
-  drawAudioVisualizer(ctx, W / 2, 208, th.accent, t)
-
-  // Titular Principal y Subtítulo con Encaje Tipográfico Perfecto (1 o 2 Líneas Equilibradas)
-  drawFittedHeadline(ctx, reelHeadline.value, reelSubline.value, W, th, t)
+  if (layout !== 'flyer_official') {
+    drawAudioVisualizer(ctx, W / 2, 208, th.accent, t)
+    drawFittedHeadline(ctx, reelHeadline.value, reelSubline.value, W, th, t)
+  }
 
   // ==========================================
   // 2. RENDERIZADO SEGÚN PLANTILLA
   // ==========================================
 
   // ----------------------------------------------------
+  // PLANTILLA 0: FLYER OFICIAL ANIMADO (STORY 9:16)
+  // Mismo diseño exacto y plantilla de FlyerGenerator, pero con dinámicas a 30 FPS
+  // ----------------------------------------------------
+  if (layout === 'flyer_official') {
+    const tplImg = selectedMode.value === 'gaming' ? loadedFlyerTemplates.gaming : loadedFlyerTemplates.cyber
+    if (tplImg && (tplImg.width > 0 || tplImg.naturalWidth > 0)) {
+      ctx.save()
+      ctx.drawImage(tplImg, 0, 0, W, H)
+      ctx.restore()
+    } else {
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
+      bgGrad.addColorStop(0, '#020617')
+      bgGrad.addColorStop(0.5, '#082f49')
+      bgGrad.addColorStop(1, '#020617')
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, W, H)
+    }
+
+    drawAdaptiveParticles(ctx, W, H, t)
+    drawAudioVisualizer(ctx, W / 2, 140, th.accent, t)
+
+    if (selectedMode.value === 'gaming') {
+      // 1. Marco metálico visor gaming exacto (fx = 201, fy = 290, fw = 678, fh = 516, radius = 46)
+      const fx = 201
+      const fy = 290
+      const fw = 678
+      const fh = 516
+      const cornerR = 46
+
+      ctx.save()
+      roundRect(ctx, fx, fy, fw, fh, cornerR)
+      ctx.clip()
+
+      ctx.fillStyle = '#060a14'
+      ctx.fillRect(fx, fy, fw, fh)
+
+      const img = loadedArtworkImage.value
+      if (img && (img.width > 0 || img.naturalWidth > 0)) {
+        const imgAspect = (img.width || 1) / (img.height || 1)
+        const visorAspect = fw / fh
+
+        // Fondo ambiental luminoso difuminado con saturación limpia
+        const bgScale = Math.max(fw / img.width, fh / img.height) * 1.25
+        const bgW = img.width * bgScale
+        const bgH = img.height * bgScale
+        ctx.save()
+        ctx.filter = 'blur(22px) brightness(0.48) saturate(1.3)'
+        ctx.drawImage(img, fx + (fw - bgW) / 2, fy + (fh - bgH) / 2, bgW, bgH)
+        ctx.restore()
+
+        const vigGrad = ctx.createLinearGradient(fx, fy, fx, fy + fh)
+        vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.28)')
+        vigGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
+        vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.42)')
+        ctx.fillStyle = vigGrad
+        ctx.fillRect(fx, fy, fw, fh)
+
+        const kenBurns = isAnimated.value ? (1.0 + Math.sin(t * 1.5) * 0.02) : 1.0
+        const userZoom = Number(imageZoomFactor.value) || 1.0
+        const totalScale = kenBurns * userZoom
+
+        const pad = Math.max(18, Math.round(fh * 0.05))
+        let baseW, baseH
+        if (imageFitMode.value === 'contain') {
+          if (visorAspect > imgAspect) {
+            baseH = fh - pad * 2
+            baseW = baseH * imgAspect
+          } else {
+            baseW = fw - pad * 2
+            baseH = baseW / imgAspect
+          }
+        } else {
+          if (visorAspect > imgAspect) {
+            baseW = fw
+            baseH = fw / imgAspect
+          } else {
+            baseH = fh
+            baseW = fh * imgAspect
+          }
+        }
+
+        const dw = baseW * totalScale
+        const dh = baseH * totalScale
+        const panX = ((Number(imageOffsetX.value) || 0) / 100) * fw
+        const panY = ((Number(imageOffsetY.value) || 0) / 100) * fh
+        const dx = fx + (fw - dw) / 2 + panX
+        const dy = fy + (fh - dh) / 2 + panY
+
+        ctx.save()
+        if (imageFitMode.value === 'contain') {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
+          ctx.shadowBlur = 24
+          ctx.shadowOffsetY = 8
+        }
+        ctx.drawImage(img, dx, dy, dw, dh)
+        ctx.restore()
+      } else {
+        drawDirectProceduralCover(ctx, fx, fy, fw, fh, t)
+      }
+      ctx.restore()
+
+      // Borde sutil del marco metálico
+      ctx.save()
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
+      ctx.lineWidth = 2
+      roundRect(ctx, fx, fy, fw, fh, cornerR)
+      ctx.stroke()
+      ctx.restore()
+
+      // 2. Etiqueta Oficial de Licencia Superior (bx = 201, by = 216, bw = 678, bh = 56)
+      if (reelBadgeText.value) {
+        const bw = 678
+        const bh = 56
+        const bx = (W - bw) / 2
+        const by = 216
+        ctx.save()
+        const bGrad = ctx.createLinearGradient(bx, by, bx + bw, by)
+        bGrad.addColorStop(0, '#0f172a')
+        bGrad.addColorStop(0.5, '#0284c7')
+        bGrad.addColorStop(1, '#1e3a8a')
+        ctx.fillStyle = bGrad
+        ctx.shadowColor = 'rgba(0, 220, 255, 0.70)'
+        ctx.shadowBlur = 16
+        roundRect(ctx, bx, by, bw, bh, bh / 2)
+        ctx.fill()
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        if (isAnimated.value) {
+          const shimmerPos = ((t * 0.45) % 1) * (bw + 200) - 100
+          const sGrad = ctx.createLinearGradient(bx + shimmerPos, by, bx + shimmerPos + 80, by)
+          sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+          sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)')
+          sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          ctx.fillStyle = sGrad
+          ctx.clip()
+          ctx.fillRect(bx, by, bw, bh)
+        }
+
+        ctx.shadowBlur = 0
+        ctx.fillStyle = '#ffffff'
+        ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(reelBadgeText.value.toUpperCase(), W / 2, by + bh * 0.68)
+        ctx.restore()
+      }
+
+      // 3. Etiqueta Impacto Central (y = 895, 46.6%)
+      const impactText = currentSealText.value || '🔥 ENTREGA INMEDIATA · GARANTÍA OFICIAL'
+      if (impactText) {
+        ctx.save()
+        ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        const badgeW = Math.min(ctx.measureText(impactText).width + 56, 780)
+        const badgeH = 44
+        const badgeX = (W - badgeW) / 2
+        const badgeY = Math.round(H * 0.466)
+
+        ctx.shadowColor = th.glow
+        ctx.shadowBlur = 18
+        const bGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY)
+        bGrad.addColorStop(0, th.pillGrad[0])
+        bGrad.addColorStop(1, th.pillGrad[1])
+        ctx.fillStyle = bGrad
+        roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2)
+        ctx.fill()
+
+        ctx.shadowBlur = 0
+        ctx.textAlign = 'center'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText(impactText, W / 2, badgeY + badgeH * 0.68)
+        ctx.restore()
+      }
+
+      // 4. Título + Subtítulo dentro del Recuadro Oscuro Oficial (PILL: 54.6%..63.4%)
+      const pTop = Math.round(H * 0.546)
+      const pH = Math.round(H * 0.088)
+      ctx.save()
+      ctx.textAlign = 'center'
+      const cleanTitle = cleanGameTitle(reelHeadline.value)
+      const titleLines = wrapReelsText(cleanTitle, 28).slice(0, 2)
+      ctx.font = `900 ${titleLines.length > 1 ? 36 : 44}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      ctx.fillStyle = '#ffffff'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'
+      ctx.shadowBlur = 12
+      titleLines.forEach((tl, i) => {
+        const ty = pTop + (titleLines.length > 1 ? 52 + i * 44 : pH * 0.48)
+        ctx.fillText(tl, W / 2, ty)
+      })
+      ctx.shadowBlur = 0
+      ctx.font = 'bold 22px monospace'
+      ctx.fillStyle = th.accent
+      const subStr = reelSubline.value.length > 48 ? reelSubline.value.slice(0, 46) + '...' : reelSubline.value
+      ctx.fillText(subStr, W / 2, pTop + pH - 22)
+      ctx.restore()
+
+      // 5. Zona Inferior de Precios con Halo Pulsante a 30 FPS
+      ctx.save()
+      const haloRadius = isAnimated.value ? (320 + Math.sin(t * 3.2) * 25) : 320
+      const haloGrad = ctx.createRadialGradient(W / 2, H * 0.715, 20, W / 2, H * 0.715, haloRadius)
+      haloGrad.addColorStop(0, th.glow || 'rgba(0, 220, 255, 0.16)')
+      haloGrad.addColorStop(1, 'rgba(0, 220, 255, 0)')
+      ctx.fillStyle = haloGrad
+      ctx.fillRect(100, Math.round(H * 0.64), W - 200, 260)
+
+      ctx.textAlign = 'center'
+      const hasOrig = showRegularPrice.value && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)
+      if (hasOrig) {
+        ctx.font = 'bold 22px sans-serif'
+        ctx.fillStyle = '#94a3b8'
+        const discPct = calculatedDiscountPercent.value
+        const origStr = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
+        const discStr = discPct ? `  (-${discPct}% OFF)` : ''
+        ctx.fillText(origStr + discStr, W / 2, Math.round(H * 0.674))
+      } else {
+        ctx.font = 'bold 20px sans-serif'
+        ctx.fillStyle = '#94a3b8'
+        ctx.fillText('PRECIO EXCLUSIVO', W / 2, Math.round(H * 0.674))
+      }
+
+      ctx.font = '900 78px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.shadowColor = th.glow
+      ctx.shadowBlur = isAnimated.value ? (22 + Math.sin(t * 4.0) * 8) : 20
+      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, Math.round(H * 0.720))
+      ctx.shadowBlur = 0
+
+      ctx.font = 'bold 19px sans-serif'
+      ctx.fillStyle = th.accent
+      ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, Math.round(H * 0.746))
+
+      const divGrad = ctx.createLinearGradient(200, 0, W - 200, 0)
+      divGrad.addColorStop(0, 'rgba(56, 189, 248, 0)')
+      divGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.6)')
+      divGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
+      ctx.strokeStyle = divGrad
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(200, Math.round(H * 0.768))
+      ctx.lineTo(W - 200, Math.round(H * 0.768))
+      ctx.stroke()
+      ctx.restore()
+
+      // 6. Beneficios Oficiales Animados (79.5%)
+      if (showReelBullets.value) {
+        drawAnimatedFlyerBullets(ctx, 130, Math.round(H * 0.796), W - 260, th, t)
+      }
+
+      // 7. Botón de Acción WhatsApp Oficial Animado (84.8%)
+      const waY = Math.round(H * 0.846)
+      if (showContactPhone.value && effectiveContactPhone.value) {
+        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, 108, t)
+      } else {
+        drawCtaButton(ctx, 140, waY, W - 280, 100, t)
+      }
+
+    } else {
+      // STREAMING / COMBOS OFICIAL STORY (1080 x 1920)
+      const vx = 198
+      const vy = 261
+      const vw = 684
+      const vh = 544
+      const cornerR = 36
+
+      ctx.save()
+      roundRect(ctx, vx, vy, vw, vh, cornerR)
+      ctx.clip()
+
+      ctx.fillStyle = '#0f172a'
+      ctx.fillRect(vx, vy, vw, vh)
+
+      const img = loadedArtworkImage.value
+      if (img && (img.width > 0 || img.naturalWidth > 0)) {
+        const imgAspect = (img.width || 1) / (img.height || 1)
+        const visorAspect = vw / vh
+
+        const bgScale = Math.max(vw / img.width, vh / img.height) * 1.25
+        const bgW = img.width * bgScale
+        const bgH = img.height * bgScale
+        ctx.save()
+        ctx.filter = 'blur(22px) brightness(0.48) saturate(1.3)'
+        ctx.drawImage(img, vx + (vw - bgW) / 2, vy + (vh - bgH) / 2, bgW, bgH)
+        ctx.restore()
+
+        const vigGrad = ctx.createLinearGradient(vx, vy, vx, vy + vh)
+        vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.28)')
+        vigGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
+        vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.42)')
+        ctx.fillStyle = vigGrad
+        ctx.fillRect(vx, vy, vw, vh)
+
+        const kenBurns = isAnimated.value ? (1.0 + Math.sin(t * 1.5) * 0.02) : 1.0
+        const userZoom = Number(imageZoomFactor.value) || 1.0
+        const totalScale = kenBurns * userZoom
+
+        let baseW, baseH
+        const pad = 16
+        if (imageFitMode.value === 'contain') {
+          if (visorAspect > imgAspect) {
+            baseH = vh - pad * 2
+            baseW = baseH * imgAspect
+          } else {
+            baseW = vw - pad * 2
+            baseH = baseW / imgAspect
+          }
+        } else {
+          if (visorAspect > imgAspect) {
+            baseW = vw
+            baseH = vw / imgAspect
+          } else {
+            baseH = vh
+            baseW = vh * imgAspect
+          }
+        }
+
+        const dw = baseW * totalScale
+        const dh = baseH * totalScale
+        const panX = ((Number(imageOffsetX.value) || 0) / 100) * vw
+        const panY = ((Number(imageOffsetY.value) || 0) / 100) * vh
+        const dx = vx + (vw - dw) / 2 + panX
+        const dy = vy + (vh - dh) / 2 + panY
+
+        ctx.save()
+        if (imageFitMode.value === 'contain') {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
+          ctx.shadowBlur = 24
+          ctx.shadowOffsetY = 8
+        }
+        ctx.drawImage(img, dx, dy, dw, dh)
+        ctx.restore()
+      } else {
+        drawDirectProceduralCover(ctx, vx, vy, vw, vh, t)
+      }
+      ctx.restore()
+
+      ctx.save()
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
+      ctx.lineWidth = 2
+      roundRect(ctx, vx, vy, vw, vh, cornerR)
+      ctx.stroke()
+      ctx.restore()
+
+      const badgeText = reelBadgeText.value || '🍿 PANTALLA ULTRA HD 4K · PERFIL PRIVADO'
+      if (badgeText) {
+        drawBadgePill(ctx, (W - 520) / 2, 835, 520, 56, badgeText, th.pillGrad)
+      }
+
+      ctx.save()
+      ctx.textAlign = 'center'
+      ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
+      ctx.shadowBlur = 12
+      const titleLines = wrapReelsText(reelHeadline.value, 28).slice(0, 2)
+      titleLines.forEach((tl, i) => ctx.fillText(tl, W / 2, 940 + i * 50))
+      ctx.shadowBlur = 0
+      const subY = 940 + titleLines.length * 50 + 8
+
+      ctx.font = 'bold 24px sans-serif'
+      ctx.fillStyle = th.accent
+      const subStr = reelSubline.value.length > 48 ? reelSubline.value.slice(0, 46) + '...' : reelSubline.value
+      ctx.fillText(subStr, W / 2, subY)
+      ctx.restore()
+
+      const pCardY = subY + 26
+      drawPriceBox(ctx, 110, pCardY, 860, 195, th, t)
+
+      const bulletsY = pCardY + 195 + 24
+      if (showReelBullets.value) {
+        drawAnimatedFlyerBullets(ctx, 130, bulletsY, 820, th, t)
+      }
+
+      const waY = showReelBullets.value ? (bulletsY + 84) : (bulletsY + 16)
+      if (showContactPhone.value && effectiveContactPhone.value) {
+        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, 108, t)
+      } else {
+        drawCtaButton(ctx, 140, waY, W - 280, 100, t)
+      }
+    }
+  }
+
+  // ----------------------------------------------------
   // PLANTILLA 1: CYBER PRO OFICIAL (HUD Y MARCO PRO)
   // ----------------------------------------------------
-  if (layout === 'cyber_pro') {
+  else if (layout === 'cyber_pro') {
     const cardX = 85
     const cardY = 350
     const cardW = W - 170
@@ -3976,6 +4418,9 @@ function initFromProps() {
     customContactPhone.value = props.contactPhone
   }
 
+  preloadFlyerTemplates()
+  currentLayoutId.value = 'flyer_official'
+
   const p = props.initialPayload
   if (p) {
     if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales' || p.gameId) {
@@ -3983,14 +4428,16 @@ function initFromProps() {
       pickedGameId.value = p.id || p.gameId || ''
       const rawTitle = p.title || p.name || 'Videojuego'
       reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
+      if (p.license) pickedGamingLicense.value = p.license
       const isPri = pickedGamingLicense.value === 'primary'
-      reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial'
-      reelPromoPrice.value = isPri ? Number(p.effectivePrimaryPrice || p.price || 15000) : Number(p.effectiveSecondaryPrice || p.price || 9000)
-      reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
-      reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
-      currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
-      reelBullet1.value = '⚡ Entrega Inmediata en 15 Minutos'
-      reelBullet2.value = isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado'
+      reelSubline.value = p.subtitle || (isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial')
+      reelPromoPrice.value = p.price ? Number(p.price) : (isPri ? Number(p.effectivePrimaryPrice || 15000) : Number(p.effectiveSecondaryPrice || 9000))
+      reelRegularPrice.value = p.originalPrice ? Number(p.originalPrice) : Math.round(reelPromoPrice.value * 1.3)
+      reelBadgeText.value = p.badge || (isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA')
+      currentSealText.value = p.guaranteeText || (isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN')
+      reelBullet1.value = p.bullet1 || '⚡ Entrega Inmediata en 15 Minutos'
+      reelBullet2.value = p.bullet2 || (isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado')
+      if (p.phone) customContactPhone.value = p.phone
       const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
       defaultProductCoverUrl.value = coverUrl
@@ -4002,19 +4449,45 @@ function initFromProps() {
       selectedMode.value = 'combo'
       pickedComboId.value = p.id || ''
       if (p.title) reelHeadline.value = p.title.toUpperCase().slice(0, 34)
-      if (p.description) reelSubline.value = p.description.slice(0, 48)
-      if (p.promoPrice) reelPromoPrice.value = Number(p.promoPrice)
-      if (p.regularPrice) reelRegularPrice.value = Number(p.regularPrice)
-      onComboChange()
+      if (p.subtitle) reelSubline.value = p.subtitle.slice(0, 48)
+      else if (p.description) reelSubline.value = p.description.slice(0, 48)
+      if (p.price || p.promoPrice) reelPromoPrice.value = Number(p.price || p.promoPrice)
+      if (p.originalPrice || p.regularPrice) reelRegularPrice.value = Number(p.originalPrice || p.regularPrice)
+      if (p.badge) reelBadgeText.value = p.badge
+      if (p.phone) customContactPhone.value = p.phone
+      if (p.bullet1) reelBullet1.value = p.bullet1
+      if (p.bullet2) reelBullet2.value = p.bullet2
+      if (p.image) {
+        reelArtworkUrl.value = p.image
+        defaultProductCoverUrl.value = p.image
+        loadArtwork(p.image)
+      } else {
+        onComboChange()
+      }
     } else if (p.prizeTitle || p.ticketsCount !== undefined) {
       selectedMode.value = 'giveaway'
       pickedGiveawayId.value = p.id || ''
       if (p.prizeTitle) reelHeadline.value = `SORTEO: ${p.prizeTitle.toUpperCase()}`
+      if (p.phone) customContactPhone.value = p.phone
       onGiveawayChange()
     } else {
       selectedMode.value = 'streaming'
       pickedStreamingKey.value = p.platform || p.service || p.name || 'Netflix'
-      onStreamingServiceChange()
+      if (p.title) reelHeadline.value = p.title.toUpperCase()
+      if (p.subtitle) reelSubline.value = p.subtitle
+      if (p.price) reelPromoPrice.value = Number(p.price)
+      if (p.originalPrice) reelRegularPrice.value = Number(p.originalPrice)
+      if (p.badge) reelBadgeText.value = p.badge
+      if (p.phone) customContactPhone.value = p.phone
+      if (p.bullet1) reelBullet1.value = p.bullet1
+      if (p.bullet2) reelBullet2.value = p.bullet2
+      if (p.image) {
+        reelArtworkUrl.value = p.image
+        defaultProductCoverUrl.value = p.image
+        loadArtwork(p.image)
+      } else {
+        onStreamingServiceChange()
+      }
     }
   } else {
     selectContentMode('streaming')
@@ -4027,6 +4500,7 @@ function initFromProps() {
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
+    preloadFlyerTemplates()
     nextTick(() => {
       initFromProps()
     })
@@ -4048,6 +4522,7 @@ watch(() => props.promoCode, (newVal) => {
 })
 
 onMounted(() => {
+  preloadFlyerTemplates()
   if (!adminStore.isGamingCatalogLoaded && typeof adminStore.loadFullGamingCatalog === 'function') {
     adminStore.loadFullGamingCatalog().catch(() => {})
   }

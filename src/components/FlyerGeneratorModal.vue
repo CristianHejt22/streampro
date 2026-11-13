@@ -14,7 +14,7 @@ const props = defineProps({
   defaultPhone: { type: String, default: '' }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'openReels'])
 
 const adminStore = useAdminStore()
 const toast = useToastStore()
@@ -2097,6 +2097,40 @@ const exportWithHtmlToImage = (node) => {
 }
 
 // ==========================================
+// PASE DIRECTO A ESTUDIO DE REELS / TIKTOK 9:16 (ANIMADO A 30 FPS)
+// ==========================================
+function getReelsPayload() {
+  const isGamer = flyerProductType.value === 'gaming'
+  const selGame = selectedGamingProduct.value
+  return {
+    itemType: isGamer ? 'gaming' : (flyerProductType.value === 'physical' ? 'physical' : (flyerProductType.value === 'combo' ? 'combo' : 'streaming')),
+    id: isGamer ? (selGame?.id || '') : '',
+    gameId: isGamer ? (selGame?.id || '') : '',
+    title: displayTitle.value,
+    subtitle: displaySubtitle.value,
+    price: Number(displayPriceNumeric.value || 0),
+    originalPrice: Number(displayOriginalPrice.value || 0),
+    effectivePrimaryPrice: isGamer ? (selGame?.primaryPrice || displayPriceNumeric.value) : undefined,
+    effectiveSecondaryPrice: isGamer ? (selGame?.secondaryPrice || undefined) : undefined,
+    badge: headlineBadge.value,
+    license: selectedGamingLicense.value,
+    platform: selectedGamingPlatform.value || selectedPlatform.value,
+    image: effectiveCoverImage.value,
+    phone: effectiveContactPhone.value,
+    bullet1: bullet1.value,
+    bullet2: bullet2.value,
+    bullet3: bullet3.value,
+    theme: flyerTheme.value,
+    guaranteeText: isGamer ? gamingFlyerGuaranteeText.value : '🛡️ Garantía Oficial 30 Días'
+  }
+}
+
+function handleOpenReels() {
+  const payload = getReelsPayload()
+  emit('openReels', payload)
+}
+
+// ==========================================
 // DESCARGA DE FLYER INFALIBLE CON DOBLE MOTOR
 // Prioriza Canvas 2D Studio (HD Nativo 1080p sin recortes)
 // ==========================================
@@ -3080,8 +3114,20 @@ const shareToWhatsAppStatus = () => {
             </div>
           </div>
 
+          <!-- BOTÓN DIRECTO: ANIMAR COMO REEL 9:16 (30 FPS) -->
+          <div class="pt-2">
+            <button 
+              @click="handleOpenReels"
+              type="button"
+              class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-indigo-950/60 transition-all flex items-center justify-center gap-2 text-xs cursor-pointer border border-indigo-400/30"
+            >
+              <span>🎬 Animar como Reel 9:16 (30 FPS)</span>
+              <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">NUEVO</span>
+            </button>
+          </div>
+
           <!-- BOTONES DE ACCIÓN -->
-          <div class="flex flex-col sm:flex-row gap-2.5 pt-2">
+          <div class="flex flex-col sm:flex-row gap-2.5 pt-1">
             <button 
               @click="downloadFlyerImage" 
               :disabled="isExporting"

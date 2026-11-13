@@ -4108,6 +4108,7 @@ const submitResellerGameInquiry = () => {
       :reseller-ref="currentResellerId"
       :default-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''"
       @close="showFlyerModal = false; flyerInitialProduct = null" 
+      @open-reels="(payload) => { showFlyerModal = false; reelsStudioPayload = payload; showReelsStudioModal = true }"
       :default-store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'" 
       website-domain="streamepro.me"
     />
