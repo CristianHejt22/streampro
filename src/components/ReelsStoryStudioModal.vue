@@ -1602,6 +1602,10 @@ function loadImage(src) {
       }
     }
     img.src = src
+    if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
+      imageCache.set(src, img)
+      resolve(img)
+    }
   })
 }
 
@@ -2073,15 +2077,118 @@ let recordingInterval = null
 let recordingTimeout = null
 
 function roundRect(ctx, x, y, w, h, r) {
-  if (w < 2 * r) r = w / 2
-  if (h < 2 * r) r = h / 2
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath()
+    ctx.roundRect(x, y, w, h, r)
+    return
+  }
+  let radius = Number(r) || 0
+  if (w < 2 * radius) radius = w / 2
+  if (h < 2 * radius) radius = h / 2
   ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y + x + w, y, r)
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + w - radius, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+  ctx.lineTo(x + w, y + h - radius)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+  ctx.lineTo(x + radius, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+  ctx.lineTo(x, y + radius)
+  ctx.quadraticCurveTo(x, y, x + radius, y)
   ctx.closePath()
+}
+
+// Generador procedural directo en el canvas (garantiza que NUNCA quede una placa o recuadro vacío)
+function drawDirectProceduralCover(ctx, x, y, w, h, t = 0) {
+  ctx.save()
+  const th = currentTheme.value
+  const cx = x + w / 2
+  const cy = y + h / 2
+  const maxR = Math.max(w, h) * 0.75
+
+  // 1. Fondo radial con gradiente profundo
+  const grad = ctx.createRadialGradient(cx, cy * 0.95, 30, cx, cy, maxR)
+  grad.addColorStop(0, th.bg1 || '#0f172a')
+  grad.addColorStop(0.65, th.bg2 || '#020617')
+  grad.addColorStop(1, '#000000')
+  ctx.fillStyle = grad
+  ctx.fillRect(x, y, w, h)
+
+  // 2. Cuadrícula cibernética sutil
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'
+  ctx.lineWidth = 1.5
+  for (let lx = x; lx < x + w; lx += 45) {
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, y + h); ctx.stroke()
+  }
+  for (let ly = y; ly < y + h; ly += 45) {
+    ctx.beginPath(); ctx.moveTo(x, ly); ctx.lineTo(x + w, ly); ctx.stroke()
+  }
+
+  // 3. Resplandor neón pulsante
+  const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.5) * 0.05) : 1.0
+  const glowR = Math.min(w, h) * 0.26 * pulse
+  const rGlow = ctx.createRadialGradient(cx, cy - 40, 10, cx, cy - 40, glowR * 1.6)
+  rGlow.addColorStop(0, th.glow || 'rgba(56, 189, 248, 0.45)')
+  rGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  ctx.fillStyle = rGlow
+  ctx.fillRect(x, y, w, h)
+
+  // 4. Medallón central circular con borde neón
+  ctx.save()
+  ctx.shadowColor = th.accent
+  ctx.shadowBlur = 35
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.94)'
+  ctx.beginPath()
+  ctx.arc(cx, cy - 40, glowR, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = th.accent
+  ctx.lineWidth = 4
+  ctx.stroke()
+  ctx.restore()
+
+  // 5. Emblema o Icono temático dinámico
+  let icon = '⚡'
+  if (selectedMode.value === 'streaming') {
+    const k = (pickedStreamingKey.value || '').toLowerCase()
+    if (k.includes('netflix')) icon = '🍿'
+    else if (k.includes('disney')) icon = '✨'
+    else if (k.includes('spotify') || k.includes('music')) icon = '🎵'
+    else if (k.includes('youtube')) icon = '▶️'
+    else if (k.includes('max') || k.includes('hbo')) icon = '🎬'
+    else if (k.includes('prime')) icon = '📦'
+    else icon = '📺'
+  } else if (selectedMode.value === 'gaming') {
+    icon = '🎮'
+  } else if (selectedMode.value === 'combo') {
+    icon = '🎁'
+  } else if (selectedMode.value === 'giveaway') {
+    icon = '🎟️'
+  }
+
+  ctx.font = `${Math.round(glowR * 0.9)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(icon, cx, cy - 40)
+
+  // 6. Tipografía del Producto
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `900 ${Math.min(38, Math.round(w * 0.052))}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
+  ctx.shadowBlur = 18
+  const headline = (reelHeadline.value || 'STREAMEPRO OFICIAL').toUpperCase().slice(0, 30)
+  ctx.fillText(headline, cx, cy + glowR + 32)
+
+  // 7. Subtítulo con color acentuado
+  ctx.fillStyle = th.accent
+  ctx.font = `bold ${Math.min(24, Math.round(w * 0.036))}px -apple-system, sans-serif`
+  ctx.fillText((reelSubline.value || 'Activación Inmediata').slice(0, 40), cx, cy + glowR + 70)
+
+  // 8. Distintivo inferior de confianza
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.85)'
+  ctx.font = 'bold 18px monospace'
+  ctx.fillText('⚡ ACTIVACIÓN OFICIAL · STREAMEPRO', cx, cy + glowR + 112)
+
+  ctx.restore()
 }
 
 function drawCornerBrackets(ctx, x, y, w, h, size = 30, color = 'rgba(56, 189, 248, 0.75)') {
@@ -2196,7 +2303,7 @@ function drawLaserScanline(ctx, x, y, w, h, t = 0, color = 'rgba(56, 189, 248, 0
 
 // Renderiza la imagen centrada con todos los ajustes finos y animación
 function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, options = {}) {
-  if (!img) return
+  if (!img || !(img.width > 0 || img.naturalWidth > 0)) return
 
   const { blurBg = true, showReticle = isPointerDragging, addVignette = true } = options
   const innerX = targetX
@@ -2328,7 +2435,7 @@ function renderFrame(timeMs = 0) {
   // ==========================================
   // 1. FONDO AMBIENTAL SEGÚN PLANTILLA
   // ==========================================
-  if (layout === 'cinematic' && loadedArtworkImage.value) {
+  if (layout === 'cinematic' && loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
     const img = loadedArtworkImage.value
     const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.2) * 0.02) : 1.0
     const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
@@ -2489,11 +2596,17 @@ function renderFrame(timeMs = 0) {
     ctx.stroke()
     ctx.restore()
 
-    if (loadedArtworkImage.value) {
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
       ctx.save()
       roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
       ctx.clip()
       drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
       ctx.restore()
     }
 
@@ -2527,6 +2640,14 @@ function renderFrame(timeMs = 0) {
 
     if (reelBadgeText.value) {
       drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (!(loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0))) {
+      ctx.save()
+      roundRect(ctx, cardX, 370, cardW, 710, 44)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX, 370, cardW, 710, t)
+      ctx.restore()
     }
 
     // Placa de Precio Glassmorphism Translúcida Flotante (Proporciones 9:16 Ajustadas)
@@ -2572,11 +2693,17 @@ function renderFrame(timeMs = 0) {
     ctx.stroke()
     ctx.restore()
 
-    if (loadedArtworkImage.value) {
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
       ctx.save()
       roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
       ctx.clip()
       drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
       ctx.restore()
     }
 
@@ -2633,11 +2760,17 @@ function renderFrame(timeMs = 0) {
     ctx.stroke()
     ctx.restore()
 
-    if (loadedArtworkImage.value) {
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
       ctx.save()
       roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
       ctx.clip()
       drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
       ctx.restore()
     }
 
@@ -3257,29 +3390,39 @@ function initFromProps() {
 
   const p = props.initialPayload
   if (p) {
-    if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales') {
+    if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales' || p.gameId) {
       selectedMode.value = 'gaming'
-      pickedGameId.value = p.id
-      reelHeadline.value = (p.title || 'Videojuego').toUpperCase().slice(0, 36)
-      reelPromoPrice.value = Number(p.effectivePrimaryPrice || p.price || 15000)
+      pickedGameId.value = p.id || p.gameId || ''
+      reelHeadline.value = (p.title || p.name || 'Videojuego').toUpperCase().slice(0, 36)
+      const isPri = pickedGamingLicense.value === 'primary'
+      reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario' : 'Cuenta Secundaria · Activación Oficial'
+      reelPromoPrice.value = isPri ? Number(p.effectivePrimaryPrice || p.price || 15000) : Number(p.effectiveSecondaryPrice || p.price || 9000)
       reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
-      if (p.image) {
-        reelArtworkUrl.value = p.image
-        defaultProductCoverUrl.value = p.image
-        loadArtwork(p.image)
+      reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
+      currentSealText.value = isPri ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
+      const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
+      reelArtworkUrl.value = coverUrl
+      defaultProductCoverUrl.value = coverUrl
+      loadArtwork(coverUrl)
+      if (adminStore.processedGamingProducts?.length) {
+        applyGamingProduct()
       }
-      applyGamingProduct()
-    } else if (p.services || p.promoPrice && p.packages) {
+    } else if (p.services || (p.promoPrice && p.packages)) {
       selectedMode.value = 'combo'
-      pickedComboId.value = p.id
+      pickedComboId.value = p.id || ''
+      if (p.title) reelHeadline.value = p.title.toUpperCase().slice(0, 34)
+      if (p.description) reelSubline.value = p.description.slice(0, 48)
+      if (p.promoPrice) reelPromoPrice.value = Number(p.promoPrice)
+      if (p.regularPrice) reelRegularPrice.value = Number(p.regularPrice)
       onComboChange()
     } else if (p.prizeTitle || p.ticketsCount !== undefined) {
       selectedMode.value = 'giveaway'
-      pickedGiveawayId.value = p.id
+      pickedGiveawayId.value = p.id || ''
+      if (p.prizeTitle) reelHeadline.value = `SORTEO: ${p.prizeTitle.toUpperCase()}`
       onGiveawayChange()
     } else {
       selectedMode.value = 'streaming'
-      pickedStreamingKey.value = p.platform || 'Netflix'
+      pickedStreamingKey.value = p.platform || p.service || p.name || 'Netflix'
       onStreamingServiceChange()
     }
   } else {
@@ -3312,7 +3455,9 @@ onMounted(() => {
     adminStore.loadFullGamingCatalog().catch(() => {})
   }
   if (props.show) {
-    initFromProps()
+    nextTick(() => {
+      initFromProps()
+    })
   }
 })
 
