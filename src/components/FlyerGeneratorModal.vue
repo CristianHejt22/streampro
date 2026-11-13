@@ -2121,7 +2121,10 @@ function getReelsPayload() {
     bullet2: bullet2.value,
     bullet3: bullet3.value,
     theme: flyerTheme.value,
-    guaranteeText: isGamer ? gamingFlyerGuaranteeText.value : '🛡️ Garantía Oficial 30 Días'
+    guaranteeText: isGamer ? gamingFlyerGuaranteeText.value : '🛡️ Garantía Oficial 30 Días',
+    zoom: imageZoom.value,
+    panX: imageOffsetX.value,
+    panY: imageOffsetY.value
   }
 }
 

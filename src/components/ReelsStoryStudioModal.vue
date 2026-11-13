@@ -111,7 +111,7 @@
                     :style="{ width: recordingProgress + '%' }"
                   ></div>
                 </div>
-                <span class="text-[10px] font-mono text-rose-300 font-bold">{{ recordingSeconds }}s / 5s</span>
+                <span class="text-[10px] font-mono text-rose-300 font-bold">{{ recordingSeconds }}s / {{ selectedDurationSec }}s</span>
               </div>
             </div>
 
@@ -164,7 +164,30 @@
           <!-- ======================================================== -->
           <div class="w-full max-w-[325px] space-y-2">
             
-            <!-- Botón Principal: Grabar Video Reel 5s (TikTok / Reels / Estados) -->
+            <!-- Selector de Duración del Reel Animado -->
+            <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 gap-1.5 text-xs">
+              <span class="text-[10px] uppercase font-bold text-slate-300 pl-1.5 flex items-center gap-1 shrink-0">
+                <span>⏱️ Duración:</span>
+              </span>
+              <div class="grid grid-cols-4 gap-1 w-full">
+                <button
+                  v-for="d in [5, 8, 10, 15]"
+                  :key="d"
+                  type="button"
+                  @click="selectedDurationSec = d"
+                  :class="[
+                    'py-1 rounded-lg text-xs font-mono font-bold transition cursor-pointer text-center',
+                    selectedDurationSec === d
+                      ? 'bg-pink-600 text-white shadow-md shadow-pink-900/50'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  ]"
+                >
+                  {{ d }}s
+                </button>
+              </div>
+            </div>
+
+            <!-- Botón Principal: Grabar Video Reel (TikTok / Reels / Estados) -->
             <button
               type="button"
               @click="recordVideoReel"
@@ -172,7 +195,7 @@
               class="w-full py-3 px-4 rounded-xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white shadow-pink-500/25 active:scale-98 disabled:opacity-50"
             >
               <span>🎬</span>
-              <span>{{ isRecording ? 'Grabando Video...' : 'Grabar Video Reel (5s @ 30 FPS)' }}</span>
+              <span>{{ isRecording ? `Grabando Video (${recordingSeconds}s)...` : `Grabar Video Reel (${selectedDurationSec}s @ 30 FPS)` }}</span>
             </button>
 
             <!-- Acciones Adaptadas Móvil y PC -->
@@ -1222,9 +1245,9 @@
                 <span class="text-[9px] text-slate-500">Insignias ✓ en el Reel</span>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 1 (Entrega / Velocidad)</label>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 1 (Velocidad)</label>
                   <input 
                     v-model="reelBullet1" 
                     @input="requestCanvasRedraw"
@@ -1235,12 +1258,23 @@
                 </div>
 
                 <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 2 (Garantía / Licencia)</label>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 2 (Licencia / Uso)</label>
                   <input 
                     v-model="reelBullet2" 
                     @input="requestCanvasRedraw"
                     type="text" 
                     placeholder="👑 Cuenta Oficial 100% Garantizada"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 3 (Garantía / Soporte)</label>
+                  <input 
+                    v-model="reelBullet3" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    placeholder="🛡️ Garantía Oficial 30 Días"
                     class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
                   >
                 </div>
@@ -1339,7 +1373,7 @@
       <div class="max-w-sm w-full bg-slate-900 border border-slate-700 rounded-3xl p-4 flex flex-col items-center text-center shadow-2xl space-y-3">
         <div class="flex items-center justify-between w-full">
           <span class="text-xs font-black text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
-            <span>📱</span> Guardar en Móvil
+            <span>📱</span> {{ mobileSaveMediaType === 'video' ? 'Guardar Video Reel' : 'Guardar Flyer en Móvil' }}
           </span>
           <button 
             type="button" 
@@ -1351,12 +1385,27 @@
         </div>
 
         <p class="text-xs text-slate-300 font-medium">
-          Mantén pulsada la imagen para <strong class="text-white">"Guardar en Fotos"</strong> o compartir a tus Estados.
+          <template v-if="mobileSaveMediaType === 'video'">
+            Mantén presionado el video o pulsa <strong class="text-white">"Descargar Video"</strong> para guardarlo en la galería de tu celular o compartirlo en TikTok, Reels o WhatsApp.
+          </template>
+          <template v-else>
+            Mantén pulsada la imagen para <strong class="text-white">"Guardar en Fotos"</strong> o compartir a tus Estados.
+          </template>
         </p>
 
-        <!-- Preview táctil de la imagen generada -->
-        <div class="w-full max-w-[240px] aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black">
+        <!-- Preview táctil del medio generado (Video o Imagen) -->
+        <div class="w-full max-w-[240px] aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black flex items-center justify-center">
+          <video 
+            v-if="mobileSaveMediaType === 'video'"
+            :src="mobileSaveVideoUrl" 
+            autoplay 
+            loop 
+            playsinline 
+            controls 
+            class="w-full h-full object-contain select-auto"
+          ></video>
           <img 
+            v-else
             :src="mobileSaveImageUrl" 
             alt="Flyer 9:16 StreamePro" 
             class="w-full h-full object-contain select-auto"
@@ -1375,6 +1424,16 @@
           </button>
           
           <button
+            v-if="mobileSaveMediaType === 'video'"
+            type="button"
+            @click="downloadVideoFromModal"
+            class="py-2.5 px-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>🎬</span>
+            <span>Descargar Video</span>
+          </button>
+          <button
+            v-else
             type="button"
             @click="downloadImagePng"
             class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow border border-slate-600 flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1428,10 +1487,15 @@ const isExportingImage = ref(false)
 const isDrawingForExport = ref(false)
 const recordingProgress = ref(0)
 const recordingSeconds = ref('0.0')
+const selectedDurationSec = ref(8) // 5 | 8 | 10 | 15 segundos
 
 // Modal de guardado para móviles
 const showMobileSaveModal = ref(false)
 const mobileSaveImageUrl = ref('')
+const mobileSaveVideoUrl = ref('')
+const mobileSaveMediaType = ref('image') // 'image' | 'video'
+const mobileSaveFileName = ref('reel_streamepro_9x16.webm')
+const mobileSaveVideoBlob = ref(null)
 
 // Detección reactiva de móvil vs PC
 const isMobileDevice = computed(() => {
@@ -1500,6 +1564,7 @@ const reelStoreName = ref('StreamePro Oficial')
 // Beneficios Oficiales Estilo Flyer
 const reelBullet1 = ref('⚡ Entrega Inmediata en 15 Minutos')
 const reelBullet2 = ref('👑 Cuenta Oficial 100% Garantizada')
+const reelBullet3 = ref('🛡️ Soporte VIP & Garantía 30 Días')
 
 // WhatsApp de Pedidos Personalizado y Animado
 const customContactPhone = ref('')
@@ -1651,15 +1716,46 @@ function getStreamingPlatformCover(srvKey) {
   return createProceduralCover((srvKey || 'STREAMING').toUpperCase(), 'Suscripción Oficial', '⚡', '#1e293b', '#020617', '#38bdf8')
 }
 
-// Inyector de duración para WebM (soluciona el error de 00.000001ms en Chrome/MediaRecorder)
-async function fixWebmDurationBlob(blob, durationMs = 5000) {
+function readEbmlVint(bytes, pos) {
+  if (pos >= bytes.length) return null
+  const b = bytes[pos]
+  let width = 0
+  let mask = 0x80
+  while (mask > 0) {
+    width++
+    if (b & mask) break
+    mask >>= 1
+  }
+  if (width > 8) return null
+  let val = b & (mask - 1)
+  for (let i = 1; i < width; i++) {
+    val = (val * 256) + bytes[pos + i]
+  }
+  return { width, value: val }
+}
+
+function writeEbmlVint(val, width) {
+  const res = new Uint8Array(width)
+  const mask = 0x80 >> (width - 1)
+  let cur = val
+  for (let i = width - 1; i > 0; i--) {
+    res[i] = cur & 0xFF
+    cur = Math.floor(cur / 256)
+  }
+  res[0] = (cur & (mask - 1)) | mask
+  return res
+}
+
+// Inyector de duración matemática exacta para WebM
+// Elimina de raíz el error de 00.000001ms y asegura compatibilidad 100% con reproductores móviles y PC
+async function fixWebmDurationBlob(blob, durationMs = 8000) {
   try {
     const buffer = await blob.arrayBuffer()
     const bytes = new Uint8Array(buffer)
 
     // Segment Info ID: 0x15, 0x49, 0xA9, 0x66
     let infoPos = -1
-    for (let i = 0; i < Math.min(bytes.length - 4, 1024); i++) {
+    for (let i = 0; i < Math.min(bytes.length - 4, 4096); i++) {
       if (bytes[i] === 0x15 && bytes[i + 1] === 0x49 && bytes[i + 2] === 0xA9 && bytes[i + 3] === 0x66) {
         infoPos = i
         break
@@ -1668,40 +1764,64 @@ async function fixWebmDurationBlob(blob, durationMs = 5000) {
 
     if (infoPos === -1) return blob
 
-    // Buscar tag de Duration: 0x44, 0x89 dentro de Segment Info
-    let durationPos = -1
-    for (let i = infoPos + 4; i < Math.min(bytes.length - 6, infoPos + 250); i++) {
-      if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
-        durationPos = i
+    const infoVint = readEbmlVint(bytes, infoPos + 4)
+    if (!infoVint) return blob
+
+    const infoContentStart = infoPos + 4 + infoVint.width
+    const infoContentEnd = infoContentStart + infoVint.value
+
+    // Obtener TimecodeScale (0x2A, 0xD7, 0xB1) para calcular ticks exactos de duración
+    let timecodeScaleNs = 1000000
+    for (let i = infoContentStart; i < Math.min(bytes.length - 3, infoContentEnd); i++) {
+      if (bytes[i] === 0x2A && bytes[i + 1] === 0xD7 && bytes[i + 2] === 0xB1) {
+        const tcVint = readEbmlVint(bytes, i + 3)
+        if (tcVint) {
+          let tcVal = 0
+          for (let j = 0; j < tcVint.value; j++) {
+            tcVal = (tcVal * 256) + bytes[i + 3 + tcVint.width + j]
+          }
+          if (tcVal > 0) timecodeScaleNs = tcVal
+        }
         break
       }
     }
 
-    if (durationPos !== -1) {
-      const lenByte = bytes[durationPos + 2]
-      const view = new DataView(buffer)
-      if (lenByte === 0x84 || lenByte === 4) {
-        view.setFloat32(durationPos + 3, durationMs, false)
-        return new Blob([buffer], { type: blob.type })
-      } else if (lenByte === 0x88 || lenByte === 8) {
-        view.setFloat64(durationPos + 3, durationMs, false)
-        return new Blob([buffer], { type: blob.type })
+    const durationTicks = (durationMs * 1000000) / timecodeScaleNs
+
+    // Buscar si ya existe la etiqueta Duration (0x44, 0x89)
+    for (let i = infoContentStart; i < Math.min(bytes.length - 2, infoContentEnd); i++) {
+      if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
+        const durVint = readEbmlVint(bytes, i + 2)
+        if (durVint) {
+          const valPos = i + 2 + durVint.width
+          const view = new DataView(buffer)
+          if (durVint.value === 4) {
+            view.setFloat32(valPos, durationTicks, false)
+            return new Blob([buffer], { type: blob.type })
+          } else if (durVint.value === 8) {
+            view.setFloat64(valPos, durationTicks, false)
+            return new Blob([buffer], { type: blob.type })
+          }
+        }
       }
     }
 
-    // Si no existía, insertamos la etiqueta de duración float32 (7 bytes)
-    const durBytes = new Uint8Array(7)
-    durBytes[0] = 0x44
-    durBytes[1] = 0x89
-    durBytes[2] = 0x84
-    const dView = new DataView(durBytes.buffer)
-    dView.setFloat32(3, durationMs, false)
+    // Si no existía, insertamos la etiqueta Duration (7 bytes) limpia al inicio del contenido de Info
+    const durElement = new Uint8Array(7)
+    durElement[0] = 0x44
+    durElement[1] = 0x89
+    durElement[2] = 0x84 // float32 de 4 bytes
+    const dView = new DataView(durElement.buffer)
+    dView.setFloat32(3, durationTicks, false)
 
-    const insertPos = infoPos + 8
-    const patched = new Uint8Array(bytes.length + durBytes.length)
-    patched.set(bytes.subarray(0, insertPos), 0)
-    patched.set(durBytes, insertPos)
-    patched.set(bytes.subarray(insertPos), insertPos + durBytes.length)
+    const newInfoSize = infoVint.value + 7
+    const newInfoVint = writeEbmlVint(newInfoSize, infoVint.width)
+
+    const patched = new Uint8Array(bytes.length + 7)
+    patched.set(bytes.subarray(0, infoPos + 4), 0)
+    patched.set(newInfoVint, infoPos + 4)
+    patched.set(durElement, infoContentStart)
+    patched.set(bytes.subarray(infoContentStart), infoContentStart + 7)
 
     return new Blob([patched.buffer], { type: blob.type })
   } catch (err) {
@@ -2020,13 +2140,14 @@ function applyGamingProduct(passedGame = null) {
   const rawTitle = g.title || g.name || 'Videojuego'
   reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
   const isPri = pickedGamingLicense.value === 'primary'
-  reelSubline.value = isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial'
-  reelPromoPrice.value = isPri ? Number(g.effectivePrimaryPrice || 15000) : Number(g.effectiveSecondaryPrice || 9000)
-  reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
-  reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
-  currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
-  reelBullet1.value = '⚡ Entrega Inmediata en 15 Minutos'
-  reelBullet2.value = isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado'
+  reelSubline.value = g.subtitle || (isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial')
+  reelPromoPrice.value = g.price ? Number(g.price) : (isPri ? Number(g.effectivePrimaryPrice || 15000) : Number(g.effectiveSecondaryPrice || 9000))
+  reelRegularPrice.value = g.originalPrice ? Number(g.originalPrice) : Math.round(reelPromoPrice.value * 1.3)
+  reelBadgeText.value = g.badge || (isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA')
+  currentSealText.value = g.guaranteeText || (isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN')
+  reelBullet1.value = g.bullet1 || '⚡ Entrega Inmediata en 15 Minutos'
+  reelBullet2.value = g.bullet2 || (isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado')
+  reelBullet3.value = g.bullet3 || '🛡️ Soporte VIP & Garantía 30 Días'
   const rawCover = g.image || g.cover || '/flyers/gaming-template-story.jpg'
   reelArtworkUrl.value = rawCover
   defaultProductCoverUrl.value = rawCover
@@ -2916,64 +3037,8 @@ function renderFrame(timeMs = 0) {
 
       const img = loadedArtworkImage.value
       if (img && (img.width > 0 || img.naturalWidth > 0)) {
-        const imgAspect = (img.width || 1) / (img.height || 1)
-        const visorAspect = fw / fh
-
-        // Fondo ambiental luminoso difuminado con saturación limpia
-        const bgScale = Math.max(fw / img.width, fh / img.height) * 1.25
-        const bgW = img.width * bgScale
-        const bgH = img.height * bgScale
-        ctx.save()
-        ctx.filter = 'blur(22px) brightness(0.48) saturate(1.3)'
-        ctx.drawImage(img, fx + (fw - bgW) / 2, fy + (fh - bgH) / 2, bgW, bgH)
-        ctx.restore()
-
-        const vigGrad = ctx.createLinearGradient(fx, fy, fx, fy + fh)
-        vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.28)')
-        vigGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
-        vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.42)')
-        ctx.fillStyle = vigGrad
-        ctx.fillRect(fx, fy, fw, fh)
-
-        const kenBurns = isAnimated.value ? (1.0 + Math.sin(t * 1.5) * 0.02) : 1.0
-        const userZoom = Number(imageZoomFactor.value) || 1.0
-        const totalScale = kenBurns * userZoom
-
-        const pad = Math.max(18, Math.round(fh * 0.05))
-        let baseW, baseH
-        if (imageFitMode.value === 'contain') {
-          if (visorAspect > imgAspect) {
-            baseH = fh - pad * 2
-            baseW = baseH * imgAspect
-          } else {
-            baseW = fw - pad * 2
-            baseH = baseW / imgAspect
-          }
-        } else {
-          if (visorAspect > imgAspect) {
-            baseW = fw
-            baseH = fw / imgAspect
-          } else {
-            baseH = fh
-            baseW = fh * imgAspect
-          }
-        }
-
-        const dw = baseW * totalScale
-        const dh = baseH * totalScale
-        const panX = ((Number(imageOffsetX.value) || 0) / 100) * fw
-        const panY = ((Number(imageOffsetY.value) || 0) / 100) * fh
-        const dx = fx + (fw - dw) / 2 + panX
-        const dy = fy + (fh - dh) / 2 + panY
-
-        ctx.save()
-        if (imageFitMode.value === 'contain') {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
-          ctx.shadowBlur = 24
-          ctx.shadowOffsetY = 8
-        }
-        ctx.drawImage(img, dx, dy, dw, dh)
-        ctx.restore()
+        // Renderizado del arte con ajustes finos (zoom, rotación, pan, brillo, contraste, saturación)
+        drawAdjustedArtwork(ctx, img, fx, fy, fw, fh, t)
       } else {
         drawDirectProceduralCover(ctx, fx, fy, fw, fh, t)
       }
@@ -3075,40 +3140,69 @@ function renderFrame(timeMs = 0) {
       ctx.fillText(subStr, W / 2, pTop + pH - 22)
       ctx.restore()
 
-      // 5. Zona Inferior de Precios con Halo Pulsante a 30 FPS
+      // 5. Zona Inferior de Precios con Halo Pulsante a 30 FPS y Descuento Oficial
       ctx.save()
       const haloRadius = isAnimated.value ? (320 + Math.sin(t * 3.2) * 25) : 320
-      const haloGrad = ctx.createRadialGradient(W / 2, H * 0.715, 20, W / 2, H * 0.715, haloRadius)
+      const haloGrad = ctx.createRadialGradient(W / 2, 1340, 20, W / 2, 1340, haloRadius)
       haloGrad.addColorStop(0, th.glow || 'rgba(0, 220, 255, 0.16)')
       haloGrad.addColorStop(1, 'rgba(0, 220, 255, 0)')
       ctx.fillStyle = haloGrad
-      ctx.fillRect(100, Math.round(H * 0.64), W - 200, 260)
+      ctx.fillRect(100, 1220, W - 200, 240)
 
       ctx.textAlign = 'center'
       const hasOrig = showRegularPrice.value && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)
       if (hasOrig) {
-        ctx.font = 'bold 22px sans-serif'
+        ctx.font = 'bold 21px sans-serif'
         ctx.fillStyle = '#94a3b8'
         const discPct = calculatedDiscountPercent.value
-        const origStr = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
-        const discStr = discPct ? `  (-${discPct}% OFF)` : ''
-        ctx.fillText(origStr + discStr, W / 2, Math.round(H * 0.674))
+        const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
+        const origW = ctx.measureText(origText).width
+        const discountShift = discPct ? 48 : 0
+        const textX = (W / 2) - discountShift
+        ctx.fillText(origText, textX, 1272)
+
+        // Línea roja tachada oficial exacta del Flyer
+        ctx.strokeStyle = '#ef4444'
+        ctx.lineWidth = 2.5
+        ctx.beginPath()
+        ctx.moveTo(textX - origW / 2, 1265)
+        ctx.lineTo(textX + origW / 2, 1265)
+        ctx.stroke()
+
+        // Píldora esmeralda con porcentaje de descuento
+        if (discPct) {
+          const badgeX = textX + origW / 2 + 10
+          const badgeW = 86
+          const badgeH = 28
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
+          roundRect(ctx, badgeX, 1250, badgeW, badgeH, 8)
+          ctx.fill()
+          ctx.strokeStyle = '#10b981'
+          ctx.lineWidth = 1.5
+          roundRect(ctx, badgeX, 1250, badgeW, badgeH, 8)
+          ctx.stroke()
+
+          ctx.fillStyle = '#34d399'
+          ctx.font = '900 16px monospace'
+          ctx.textAlign = 'center'
+          ctx.fillText(`-${discPct}%`, badgeX + badgeW / 2, 1270)
+        }
       } else {
         ctx.font = 'bold 20px sans-serif'
         ctx.fillStyle = '#94a3b8'
-        ctx.fillText('PRECIO EXCLUSIVO', W / 2, Math.round(H * 0.674))
+        ctx.fillText('PRECIO EXCLUSIVO', W / 2, 1272)
       }
 
       ctx.font = '900 78px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = th.glow
       ctx.shadowBlur = isAnimated.value ? (22 + Math.sin(t * 4.0) * 8) : 20
-      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, Math.round(H * 0.720))
+      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, 1344)
       ctx.shadowBlur = 0
 
-      ctx.font = 'bold 19px sans-serif'
+      ctx.font = 'bold 18px sans-serif'
       ctx.fillStyle = th.accent
-      ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, Math.round(H * 0.746))
+      ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, 1378)
 
       const divGrad = ctx.createLinearGradient(200, 0, W - 200, 0)
       divGrad.addColorStop(0, 'rgba(56, 189, 248, 0)')
@@ -3117,22 +3211,22 @@ function renderFrame(timeMs = 0) {
       ctx.strokeStyle = divGrad
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.moveTo(200, Math.round(H * 0.768))
-      ctx.lineTo(W - 200, Math.round(H * 0.768))
+      ctx.moveTo(200, 1400)
+      ctx.lineTo(W - 200, 1400)
       ctx.stroke()
       ctx.restore()
 
-      // 6. Beneficios Oficiales Animados (79.5%)
-      if (showReelBullets.value) {
-        drawAnimatedFlyerBullets(ctx, 130, Math.round(H * 0.796), W - 260, th, t)
-      }
+      // 6. Beneficios Oficiales Animados (calcula altura dinámica para evitar solapamientos)
+      const bulletsY = 1424
+      const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, 130, bulletsY, W - 260, th, t) : 0
 
-      // 7. Botón de Acción WhatsApp Oficial Animado (84.8%)
-      const waY = Math.round(H * 0.846)
+      // 7. Botón de Acción WhatsApp Oficial Animado (ubicado de forma segura sin tapar nada)
+      const waY = Math.min(1595, bulletsY + bulletsUsedH + 20)
+      const waH = 96
       if (showContactPhone.value && effectiveContactPhone.value) {
-        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, 108, t)
+        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, waH, t)
       } else {
-        drawCtaButton(ctx, 140, waY, W - 280, 100, t)
+        drawCtaButton(ctx, 140, waY, W - 280, waH, t)
       }
 
     } else {
@@ -3152,63 +3246,7 @@ function renderFrame(timeMs = 0) {
 
       const img = loadedArtworkImage.value
       if (img && (img.width > 0 || img.naturalWidth > 0)) {
-        const imgAspect = (img.width || 1) / (img.height || 1)
-        const visorAspect = vw / vh
-
-        const bgScale = Math.max(vw / img.width, vh / img.height) * 1.25
-        const bgW = img.width * bgScale
-        const bgH = img.height * bgScale
-        ctx.save()
-        ctx.filter = 'blur(22px) brightness(0.48) saturate(1.3)'
-        ctx.drawImage(img, vx + (vw - bgW) / 2, vy + (vh - bgH) / 2, bgW, bgH)
-        ctx.restore()
-
-        const vigGrad = ctx.createLinearGradient(vx, vy, vx, vy + vh)
-        vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.28)')
-        vigGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
-        vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.42)')
-        ctx.fillStyle = vigGrad
-        ctx.fillRect(vx, vy, vw, vh)
-
-        const kenBurns = isAnimated.value ? (1.0 + Math.sin(t * 1.5) * 0.02) : 1.0
-        const userZoom = Number(imageZoomFactor.value) || 1.0
-        const totalScale = kenBurns * userZoom
-
-        let baseW, baseH
-        const pad = 16
-        if (imageFitMode.value === 'contain') {
-          if (visorAspect > imgAspect) {
-            baseH = vh - pad * 2
-            baseW = baseH * imgAspect
-          } else {
-            baseW = vw - pad * 2
-            baseH = baseW / imgAspect
-          }
-        } else {
-          if (visorAspect > imgAspect) {
-            baseW = vw
-            baseH = vw / imgAspect
-          } else {
-            baseH = vh
-            baseW = vh * imgAspect
-          }
-        }
-
-        const dw = baseW * totalScale
-        const dh = baseH * totalScale
-        const panX = ((Number(imageOffsetX.value) || 0) / 100) * vw
-        const panY = ((Number(imageOffsetY.value) || 0) / 100) * vh
-        const dx = vx + (vw - dw) / 2 + panX
-        const dy = vy + (vh - dh) / 2 + panY
-
-        ctx.save()
-        if (imageFitMode.value === 'contain') {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
-          ctx.shadowBlur = 24
-          ctx.shadowOffsetY = 8
-        }
-        ctx.drawImage(img, dx, dy, dw, dh)
-        ctx.restore()
+        drawAdjustedArtwork(ctx, img, vx, vy, vw, vh, t)
       } else {
         drawDirectProceduralCover(ctx, vx, vy, vw, vh, t)
       }
@@ -3243,19 +3281,18 @@ function renderFrame(timeMs = 0) {
       ctx.fillText(subStr, W / 2, subY)
       ctx.restore()
 
-      const pCardY = subY + 26
-      drawPriceBox(ctx, 110, pCardY, 860, 195, th, t)
+      const pCardY = subY + 22
+      drawPriceBox(ctx, 110, pCardY, 860, 190, th, t)
 
-      const bulletsY = pCardY + 195 + 24
-      if (showReelBullets.value) {
-        drawAnimatedFlyerBullets(ctx, 130, bulletsY, 820, th, t)
-      }
+      const bulletsY = pCardY + 190 + 20
+      const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, 130, bulletsY, 820, th, t) : 0
 
-      const waY = showReelBullets.value ? (bulletsY + 84) : (bulletsY + 16)
+      const waY = bulletsY + bulletsUsedH + 20
+      const waH = 96
       if (showContactPhone.value && effectiveContactPhone.value) {
-        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, 108, t)
+        drawAnimatedWhatsAppPill(ctx, 140, waY, W - 280, waH, t)
       } else {
-        drawCtaButton(ctx, 140, waY, W - 280, 100, t)
+        drawCtaButton(ctx, 140, waY, W - 280, waH, t)
       }
     }
   }
@@ -3312,16 +3349,15 @@ function renderFrame(timeMs = 0) {
 
     // Beneficios Oficiales Estilo Flyer
     const bulletsY = priceY + priceH + 16
-    if (showReelBullets.value) {
-      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
-    }
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
     // Barra / Botón de Acción Oficial de WhatsApp Animado (o CTA alternativo)
-    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
     if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
     } else {
-      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
     }
   }
 
@@ -3373,15 +3409,14 @@ function renderFrame(timeMs = 0) {
     }
 
     const bulletsY = glassY + glassH + 16
-    if (showReelBullets.value) {
-      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
-    }
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
-    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
     if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
     } else {
-      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
     }
   }
 
@@ -3452,15 +3487,14 @@ function renderFrame(timeMs = 0) {
     drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
 
     const bulletsY = priceY + priceH + 16
-    if (showReelBullets.value) {
-      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
-    }
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
-    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
     if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
     } else {
-      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
     }
   }
 
@@ -3546,15 +3580,14 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
 
     const bulletsY = lowerY + lowerH + 16
-    if (showReelBullets.value) {
-      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
-    }
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
-    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
     if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
     } else {
-      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
     }
   }
 
@@ -3568,16 +3601,16 @@ function renderFrame(timeMs = 0) {
     ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
     : `${props.websiteDomain || 'streamepro.me'}`
   const domW = 460
-  const domH = 46
+  const domH = 44
   const domX = (W - domW) / 2
-  const domY = 1632
+  const domY = 1718
 
   ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
-  roundRect(ctx, domX, domY, domW, domH, 23)
+  roundRect(ctx, domX, domY, domW, domH, 22)
   ctx.fill()
   ctx.strokeStyle = th.accent
   ctx.lineWidth = 1.5
-  roundRect(ctx, domX, domY, domW, domH, 23)
+  roundRect(ctx, domX, domY, domW, domH, 22)
   ctx.stroke()
 
   ctx.fillStyle = '#ffffff'
@@ -3585,13 +3618,13 @@ function renderFrame(timeMs = 0) {
   ctx.textAlign = 'center'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
   ctx.shadowBlur = 6
-  ctx.fillText(`🔗 ${domainText}`, W / 2, domY + 31)
+  ctx.fillText(`🔗 ${domainText}`, W / 2, domY + 30)
 
   // Sello de Garantía y Confianza
   ctx.fillStyle = 'rgba(148, 163, 184, 0.90)'
-  ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1702)
+  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1782)
   ctx.restore()
 
   // Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
@@ -3800,74 +3833,41 @@ function drawAnimatedWhatsAppPill(ctx, pillX, pillY, pillW, pillH = 110, t = 0) 
 function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
   const b1 = (reelBullet1.value || '').trim()
   const b2 = (reelBullet2.value || '').trim()
-  if (!b1 && !b2) return
+  const b3 = (reelBullet3.value || '').trim()
+  const bullets = [b1, b2, b3].filter(Boolean)
+  if (bullets.length === 0) return 0
 
   ctx.save()
-  const bullets = [b1, b2].filter(Boolean)
-  const isStacked = bullets.some(b => b.length > 25)
+  const isStacked = bullets.length > 2 || bullets.some(b => b.length > 24)
 
   if (!isStacked && bullets.length === 2) {
     // Modo Horizontal: 2 Píldoras lado a lado
     const gap = 16
     const pillW = (totalW - gap) / 2
-    const pillH = 50
+    const pillH = 48
     bullets.forEach((b, idx) => {
       const px = startX + idx * (pillW + gap)
       const py = startY
 
       // Fondo cápsula translúcida
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'
-      roundRect(ctx, px, py, pillW, pillH, 25)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+      roundRect(ctx, px, py, pillW, pillH, 24)
       ctx.fill()
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
       ctx.lineWidth = 1.5
-      roundRect(ctx, px, py, pillW, pillH, 25)
+      roundRect(ctx, px, py, pillW, pillH, 24)
       ctx.stroke()
 
       // Icono de checkmark animado
       const pulse = isAnimated.value ? (1.0 + Math.sin(t * 4 + idx * 1.5) * 0.08) : 1.0
-      const cx = px + 28
+      const cx = px + 26
       const cy = py + pillH / 2
 
       ctx.save()
       ctx.translate(cx, cy)
       ctx.scale(pulse, pulse)
-      ctx.fillStyle = '#22c55e'
-      ctx.shadowColor = '#22c55e'
-      ctx.shadowBlur = isAnimated.value ? 10 : 4
-      ctx.beginPath()
-      ctx.arc(0, 0, 13, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#020617'
-      ctx.font = '900 15px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('✓', 0, 5)
-      ctx.restore()
-
-      // Texto
-      ctx.fillStyle = '#f1f5f9'
-      ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.textAlign = 'left'
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
-      ctx.shadowBlur = 6
-      const maxLen = 25
-      const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
-      ctx.fillText(clipText, px + 52, py + 32)
-    })
-  } else {
-    // Modo Vertical: 2 filas limpias
-    const rowH = 34
-    bullets.forEach((b, idx) => {
-      const py = startY + idx * rowH
-      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.5 + idx * 1.5) * 0.06) : 1.0
-      const cx = startX + 36
-      const cy = py + 12
-
-      ctx.save()
-      ctx.translate(cx, cy)
-      ctx.scale(pulse, pulse)
-      ctx.fillStyle = '#22c55e'
-      ctx.shadowColor = '#22c55e'
+      ctx.fillStyle = th.bulletColor || '#22c55e'
+      ctx.shadowColor = th.glow || '#22c55e'
       ctx.shadowBlur = isAnimated.value ? 10 : 4
       ctx.beginPath()
       ctx.arc(0, 0, 12, 0, Math.PI * 2)
@@ -3878,18 +3878,56 @@ function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
       ctx.fillText('✓', 0, 5)
       ctx.restore()
 
+      // Texto
       ctx.fillStyle = '#f1f5f9'
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.textAlign = 'left'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
       ctx.shadowBlur = 6
-      const maxLen = 44
+      const maxLen = 25
       const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
-      ctx.fillText(clipText, startX + 62, py + 20)
+      ctx.fillText(clipText, px + 48, py + 31)
     })
-  }
+    ctx.restore()
+    return pillH
+  } else {
+    // Modo Vertical: Hasta 3 filas limpias con viñeta verde y texto nítido
+    const rowH = 38
+    bullets.forEach((b, idx) => {
+      const py = startY + idx * rowH
+      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.5 + idx * 1.5) * 0.06) : 1.0
+      const cx = startX + 22
+      const cy = py + 14
 
-  ctx.restore()
+      // Checkmark circular pulsante
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(pulse, pulse)
+      ctx.fillStyle = th.bulletColor || '#22c55e'
+      ctx.shadowColor = th.glow || '#22c55e'
+      ctx.shadowBlur = isAnimated.value ? 10 : 4
+      ctx.beginPath()
+      ctx.arc(0, 0, 12, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#020617'
+      ctx.font = '900 14px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('✓', 0, 5)
+      ctx.restore()
+
+      // Texto de beneficio
+      ctx.fillStyle = '#f8fafc'
+      ctx.font = '600 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.textAlign = 'left'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+      ctx.shadowBlur = 6
+      const maxLen = 42
+      const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
+      ctx.fillText(clipText, startX + 46, py + 22)
+    })
+    ctx.restore()
+    return bullets.length * rowH
+  }
 }
 
 function drawPriceBox(ctx, boxX, boxY, boxW, boxH, th, t) {
@@ -4096,7 +4134,8 @@ async function recordVideoReel() {
       }
     }
 
-    const durationMs = 5000
+    const durationSec = Number(selectedDurationSec.value || 8)
+    const durationMs = durationSec * 1000
     const startTime = performance.now()
 
     if (recordingInterval) clearInterval(recordingInterval)
@@ -4112,43 +4151,37 @@ async function recordVideoReel() {
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
         const rawBlob = new Blob(chunks, { type: mimeType })
 
-        // Solución al bug de 00.000001ms: Inyectar duración exacta de 5.000s en la cabecera EBML de WebM
+        // Solución al bug de 00.000001ms: Inyectar duración exacta en la cabecera EBML de WebM
         const finalBlob = mimeType.includes('webm')
-          ? await fixWebmDurationBlob(rawBlob, 5000)
+          ? await fixWebmDurationBlob(rawBlob, durationMs)
           : rawBlob
 
         const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20) || 'reel_9x16'
         const fileName = `reel_streamepro_${cleanTitle}_9x16.${ext}`
+        const url = URL.createObjectURL(finalBlob)
 
-        // Si está en móvil y soporta compartir archivos nativos
-        if (isMobileDevice.value && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
-          const file = new File([finalBlob], fileName, { type: mimeType })
-          if (navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({
-                files: [file],
-                title: reelHeadline.value,
-                text: currentReelPackage.value?.caption || 'Promoción oficial StreamePro'
-              })
-              toast.add('🎬 ¡Video Reel compartido con éxito!', 'success')
-              return
-            } catch (shareErr) {
-              if (shareErr.name === 'AbortError') return
-            }
-          }
+        mobileSaveMediaType.value = 'video'
+        mobileSaveVideoUrl.value = url
+        mobileSaveFileName.value = fileName
+        mobileSaveVideoBlob.value = finalBlob
+
+        // Si está en móvil, abrir el modal táctil para previsualización inmediata y guardado/compartido seguro
+        if (isMobileDevice.value) {
+          showMobileSaveModal.value = true
+          toast.add(`🎬 ¡Video Reel listo (${durationSec}s)! Puedes verlo, guardarlo o compartirlo.`, 'success')
+          return
         }
 
-        // Descarga directa habitual para PC o fallback móvil
-        const url = URL.createObjectURL(finalBlob)
+        // Descarga directa habitual para PC
         const a = document.createElement('a')
         a.href = url
         a.download = fileName
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 10000)
+        setTimeout(() => URL.revokeObjectURL(url), 15000)
 
-        toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · 5.0s)! Listo para TikTok, Reels o Estados.`, 'success')
+        toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · ${durationSec}s)! Listo para TikTok, Reels o Estados.`, 'success')
       } catch (err) {
         console.error('Error procesando archivo de video:', err)
         toast.add('Ocurrió un error al empaquetar el video. Descargando imagen HD...', 'info')
@@ -4180,7 +4213,19 @@ async function recordVideoReel() {
   }
 }
 
-// 2. Descargar Imagen PNG 1080x1920 (PC y Móvil)
+// 2. Descargar Video desde el Modal de Guardado Móvil
+function downloadVideoFromModal() {
+  if (!mobileSaveVideoUrl.value) return
+  const a = document.createElement('a')
+  a.href = mobileSaveVideoUrl.value
+  a.download = mobileSaveFileName.value || 'reel_streamepro_9x16.webm'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  toast.add('🎬 Descargando video a tu dispositivo...', 'success')
+}
+
+// 3. Descargar Imagen PNG 1080x1920 (PC y Móvil)
 async function downloadImagePng() {
   const canvas = canvasRef.value
   if (!canvas || isExportingImage.value) return
@@ -4230,11 +4275,12 @@ async function downloadImagePng() {
   }
 }
 
-// 3. Acción Adaptada Móvil: Compartir o Abrir Visor Táctil
+// 4. Acción Adaptada Móvil: Compartir o Abrir Visor Táctil
 async function handleMobileOrShareAction() {
   const canvas = canvasRef.value
   if (!canvas) return
 
+  mobileSaveMediaType.value = 'image'
   isDrawingForExport.value = true
   renderFrame(performance.now() - animationStartTime)
   try {
@@ -4286,6 +4332,30 @@ async function handleMobileOrShareAction() {
 }
 
 async function shareDirect() {
+  // Si el modal está abierto para video, compartir el archivo de video
+  if (mobileSaveMediaType.value === 'video' && mobileSaveVideoBlob.value) {
+    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+      try {
+        const file = new File([mobileSaveVideoBlob.value], mobileSaveFileName.value || 'reel_streamepro_9x16.webm', {
+          type: mobileSaveVideoBlob.value.type || 'video/webm'
+        })
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: reelHeadline.value,
+            text: currentReelPackage.value?.caption || 'Promoción oficial StreamePro'
+          })
+          toast.add('🎬 ¡Video Reel compartido con éxito!', 'success')
+          return
+        }
+      } catch (shareErr) {
+        if (shareErr.name === 'AbortError') return
+      }
+    }
+    downloadVideoFromModal()
+    return
+  }
+
   const canvas = canvasRef.value
   if (!canvas) return
   try {
@@ -4437,7 +4507,24 @@ function initFromProps() {
       currentSealText.value = p.guaranteeText || (isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN')
       reelBullet1.value = p.bullet1 || '⚡ Entrega Inmediata en 15 Minutos'
       reelBullet2.value = p.bullet2 || (isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado')
+      reelBullet3.value = p.bullet3 || '🛡️ Soporte VIP & Garantía 30 Días'
       if (p.phone) customContactPhone.value = p.phone
+      if (p.theme) {
+        if (['cyber_glow', 'blue', 'cyber'].includes(p.theme)) currentThemeId.value = 'cyber_glow'
+        else if (['fire_sale', 'red', 'crimson'].includes(p.theme)) currentThemeId.value = 'fire_sale'
+        else if (['gold_vip', 'gold', 'amber'].includes(p.theme)) currentThemeId.value = 'gold_vip'
+        else if (['emerald_pro', 'green', 'emerald'].includes(p.theme)) currentThemeId.value = 'emerald_pro'
+        else if (['purple_galaxy', 'purple', 'violet'].includes(p.theme)) currentThemeId.value = 'purple_galaxy'
+      }
+      if (p.zoom !== undefined) imageZoomFactor.value = Number(p.zoom)
+      if (p.fitMode) imageFitMode.value = p.fitMode
+      if (p.brightness !== undefined) imageBrightness.value = Number(p.brightness)
+      if (p.contrast !== undefined) imageContrast.value = Number(p.contrast)
+      if (p.saturation !== undefined) imageSaturation.value = Number(p.saturation)
+      if (p.rotation !== undefined) imageRotation.value = Number(p.rotation)
+      if (p.panX !== undefined) imageOffsetX.value = Number(p.panX)
+      if (p.panY !== undefined) imageOffsetY.value = Number(p.panY)
+
       const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
       defaultProductCoverUrl.value = coverUrl
@@ -4457,6 +4544,7 @@ function initFromProps() {
       if (p.phone) customContactPhone.value = p.phone
       if (p.bullet1) reelBullet1.value = p.bullet1
       if (p.bullet2) reelBullet2.value = p.bullet2
+      if (p.bullet3) reelBullet3.value = p.bullet3
       if (p.image) {
         reelArtworkUrl.value = p.image
         defaultProductCoverUrl.value = p.image
@@ -4481,6 +4569,14 @@ function initFromProps() {
       if (p.phone) customContactPhone.value = p.phone
       if (p.bullet1) reelBullet1.value = p.bullet1
       if (p.bullet2) reelBullet2.value = p.bullet2
+      if (p.bullet3) reelBullet3.value = p.bullet3
+      if (p.theme) {
+        if (['cyber_glow', 'blue', 'cyber'].includes(p.theme)) currentThemeId.value = 'cyber_glow'
+        else if (['fire_sale', 'red', 'crimson'].includes(p.theme)) currentThemeId.value = 'fire_sale'
+        else if (['gold_vip', 'gold', 'amber'].includes(p.theme)) currentThemeId.value = 'gold_vip'
+        else if (['emerald_pro', 'green', 'emerald'].includes(p.theme)) currentThemeId.value = 'emerald_pro'
+        else if (['purple_galaxy', 'purple', 'violet'].includes(p.theme)) currentThemeId.value = 'purple_galaxy'
+      }
       if (p.image) {
         reelArtworkUrl.value = p.image
         defaultProductCoverUrl.value = p.image
