@@ -24,6 +24,17 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <!-- Botón de Optimización Automática Rápida -->
+          <button
+            type="button"
+            @click="autoOptimizeReel"
+            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-pink-500 hover:from-amber-400 hover:to-pink-400 text-slate-950 font-black text-xs shadow-md transition cursor-pointer"
+            title="Calibra automáticamente encuadre, tema, badges y proporciones perfectas"
+          >
+            <span>⚡</span>
+            <span>Auto-Optimizar</span>
+          </button>
+
           <!-- Toggle Vista Móvil (Preview vs Editor) solo en pantallas pequeñas -->
           <div class="flex lg:hidden bg-slate-950 p-0.5 rounded-xl border border-slate-800 text-xs">
             <button
@@ -129,18 +140,28 @@
             <!-- Hint de arrastre táctil / mouse -->
             <div class="absolute bottom-2.5 left-2.5 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg border border-white/15 text-[9px] text-slate-300 flex items-center gap-1 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
               <span>🖐️</span>
-              <span>Arrastra para mover imagen</span>
+              <span>Arrastra para encuadrar</span>
             </div>
 
-            <!-- Botón flotante para ver en grande / pantalla completa -->
-            <button
-              type="button"
-              @click.stop="toggleFullscreenPreview"
-              class="absolute bottom-2.5 right-2.5 bg-black/70 hover:bg-black/90 text-white text-xs p-2 rounded-xl border border-white/20 backdrop-blur-md transition shadow cursor-pointer opacity-70 hover:opacity-100 pointer-events-auto"
-              title="Ver en Pantalla Completa"
-            >
-              🔍
-            </button>
+            <!-- Botones flotantes inferiores derechos (Zonas seguras y Fullscreen) -->
+            <div class="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 pointer-events-auto">
+              <button
+                type="button"
+                @click.stop="showSafeZoneOverlay = !showSafeZoneOverlay; requestCanvasRedraw()"
+                :class="['text-xs p-1.5 rounded-xl border backdrop-blur-md transition shadow cursor-pointer', showSafeZoneOverlay ? 'bg-pink-600 border-pink-400 text-white' : 'bg-black/70 hover:bg-black/90 border-white/20 text-slate-300']"
+                title="Mostrar/Ocultar Guías de Zonas Seguras de TikTok e Instagram"
+              >
+                🛡️
+              </button>
+              <button
+                type="button"
+                @click.stop="toggleFullscreenPreview"
+                class="bg-black/70 hover:bg-black/90 text-white text-xs p-1.5 rounded-xl border border-white/20 backdrop-blur-md transition shadow cursor-pointer opacity-75 hover:opacity-100"
+                title="Ver en Pantalla Completa"
+              >
+                🔍
+              </button>
+            </div>
           </div>
 
           <!-- ======================================================== -->
@@ -247,14 +268,14 @@
               @click="studioTab = 'image'"
               :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'image' ? 'bg-cyan-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
-              <span>🖼️ Cambiar &amp; Ajustar Imagen</span>
+              <span>🖼️ Cambiar &amp; Encuadre</span>
             </button>
             <button
               type="button"
               @click="studioTab = 'design'"
               :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'design' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
-              <span>🎨 Plantillas &amp; Estilo</span>
+              <span>🎨 Plantillas, FX &amp; Herramientas</span>
             </button>
             <button
               type="button"
@@ -279,9 +300,20 @@
             
             <!-- Selector de Tipo de Contenido -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
-              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                1. ¿Qué producto vas a promocionar?
-              </label>
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                  1. ¿Qué producto vas a promocionar?
+                </label>
+                <button
+                  type="button"
+                  @click="autoOptimizeReel"
+                  class="text-[10px] font-bold text-amber-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  <span>⚡</span>
+                  <span>Auto-Optimizar Estilo</span>
+                </button>
+              </div>
+
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   v-for="mode in contentModes"
@@ -748,15 +780,15 @@
 
           </div>
 
-          <!-- ========================================== -->
-          <!-- TAB 3: PLANTILLAS DE DISEÑO & ESTILO       -->
-          <!-- ========================================== -->
+          <!-- ======================================================== -->
+          <!-- TAB 3: PLANTILLAS, HERRAMIENTAS AJUSTADAS & EFECTOS      -->
+          <!-- ======================================================== -->
           <div v-else-if="studioTab === 'design'" class="space-y-4">
             
-            <!-- Selector de Plantilla Estructural (Layout) -->
+            <!-- 1. SELECTOR DE PLANTILLA ESTRUCTURAL 9:16 -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                1. Plantilla Estructural 9:16 (Cambia dinámicamente el diseño)
+                1. Plantilla Estructural 9:16 (Cambia radicalmente la arquitectura)
               </label>
               <div class="grid grid-cols-2 gap-2.5">
                 <button
@@ -780,10 +812,166 @@
               </div>
             </div>
 
-            <!-- Selector de Tema de Color Neón / Gradiente -->
+            <!-- 2. HERRAMIENTAS ESPECÍFICAS AJUSTADAS A CADA DISEÑO -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-indigo-500/30 space-y-3 animate-in fade-in">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-indigo-300 block tracking-wider flex items-center gap-1.5">
+                  <span>🎛️ Herramientas Específicas de {{ currentLayoutName }}</span>
+                </label>
+                <span class="text-[10px] text-slate-400">Personalización exclusiva</span>
+              </div>
+
+              <!-- HERRAMIENTAS: CYBER PRO -->
+              <div v-if="currentLayoutId === 'cyber_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Malla Holográfica</span>
+                  <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Esquinas HUD Metálicas</span>
+                  <input type="checkbox" v-model="showHudBrackets" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
+                <div class="p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 flex items-center justify-between gap-1">
+                  <span class="text-slate-300 text-[11px]">Escáner Láser:</span>
+                  <select v-model="cyberScanlineSpeed" @change="requestCanvasRedraw" class="bg-slate-950 text-indigo-300 text-[11px] rounded-lg p-1 outline-none font-bold">
+                    <option value="normal">Normal</option>
+                    <option value="fast">Rápido</option>
+                    <option value="off">Apagado</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- HERRAMIENTAS: PÓSTER CINEMÁTICO -->
+              <div v-else-if="currentLayoutId === 'cinematic'" class="space-y-2.5 text-xs">
+                <div>
+                  <label class="text-[10px] text-slate-400 font-bold block mb-1">Texto de Marquesina de Cine:</label>
+                  <input 
+                    v-model="cinematicStudioText" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-white font-bold outline-none"
+                  >
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                      <span>Viñeta de Cine</span>
+                      <span class="text-indigo-400">{{ cinematicVignetteDepth }}%</span>
+                    </div>
+                    <input v-model.number="cinematicVignetteDepth" @input="requestCanvasRedraw" type="range" min="60" max="95" step="1" class="w-full accent-indigo-400 cursor-pointer">
+                  </div>
+                  <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                      <span>Opacidad Placa Cristal</span>
+                      <span class="text-indigo-400">{{ cinematicGlassOpacity }}%</span>
+                    </div>
+                    <input v-model.number="cinematicGlassOpacity" @input="requestCanvasRedraw" type="range" min="50" max="95" step="1" class="w-full accent-indigo-400 cursor-pointer">
+                  </div>
+                </div>
+              </div>
+
+              <!-- HERRAMIENTAS: GLASSMORPHISM VIP -->
+              <div v-else-if="currentLayoutId === 'glass_vip'" class="space-y-2.5 text-xs">
+                <div>
+                  <label class="text-[10px] text-slate-400 font-bold block mb-1">Texto de la Cinta Dorada VIP:</label>
+                  <input 
+                    v-model="vipRibbonText" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-xs text-amber-300 font-bold outline-none"
+                  >
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                      <span>Profundidad Frosted Glass</span>
+                      <span class="text-amber-400">{{ glassBlurFactor }}px</span>
+                    </div>
+                    <input v-model.number="glassBlurFactor" @input="requestCanvasRedraw" type="range" min="10" max="45" step="1" class="w-full accent-amber-400 cursor-pointer">
+                  </div>
+                  <div class="p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 flex items-center justify-between gap-1">
+                    <span class="text-slate-300 text-[11px]">Estrellas de Lujo:</span>
+                    <select v-model="vipStarsDensity" @change="requestCanvasRedraw" class="bg-slate-950 text-amber-300 text-[11px] rounded-lg p-1 outline-none font-bold">
+                      <option value="baja">Sutiles</option>
+                      <option value="media">Medias</option>
+                      <option value="alta">Lluvia VIP</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- HERRAMIENTAS: SPLIT FLASH -->
+              <div v-else-if="currentLayoutId === 'split_flash'" class="space-y-2.5 text-xs">
+                <div>
+                  <label class="text-[10px] text-slate-400 font-bold block mb-1">Texto de la Franja Eléctrica:</label>
+                  <input 
+                    v-model="flashBannerText" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    class="w-full bg-slate-900 border border-rose-500/40 rounded-xl p-2 text-xs text-rose-300 font-bold outline-none"
+                  >
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div class="p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 flex items-center justify-between gap-1">
+                    <span class="text-slate-300 text-[11px]">Cuenta Regresiva:</span>
+                    <select v-model.number="countdownHours" @change="requestCanvasRedraw" class="bg-slate-950 text-rose-400 text-[11px] rounded-lg p-1 outline-none font-bold">
+                      <option :value="2">2 Horas</option>
+                      <option :value="6">6 Horas</option>
+                      <option :value="12">12 Horas</option>
+                      <option :value="24">24 Horas</option>
+                    </select>
+                  </div>
+                  <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                    <span class="text-slate-300">Pulso Eléctrico</span>
+                    <input type="checkbox" v-model="electricPulse" @change="requestCanvasRedraw" class="accent-rose-500">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. EFECTOS MULTIMEDIA ADAPTABLES (ONDAS DE AUDIO & PARTÍCULAS) -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                2. Paleta de Color &amp; Efectos Neón
+                3. Efectos Dinámicos en Tendencia (Sin Romper el Diseño)
+              </label>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Estilo de Ondas de Audio -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                  <label class="text-[10px] font-bold text-slate-300 block mb-1">🎵 Efecto de Audio (Trending Sound):</label>
+                  <select 
+                    v-model="audioWaveStyle" 
+                    @change="requestCanvasRedraw"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none"
+                  >
+                    <option value="bars">📊 Ecualizador Neón (9 Barras)</option>
+                    <option value="wave">〰️ Onda Sonora Analógica</option>
+                    <option value="pulse">⭕ Anillo Pulsante</option>
+                    <option value="none">🚫 Desactivado</option>
+                  </select>
+                </div>
+
+                <!-- Estilo de Partículas Neón -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                  <label class="text-[10px] font-bold text-slate-300 block mb-1">✨ Partículas de Ambiente:</label>
+                  <select 
+                    v-model="particleStyle" 
+                    @change="requestCanvasRedraw"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none"
+                  >
+                    <option value="neon_dots">💠 Partículas Cyber Neón</option>
+                    <option value="gold_dust">⭐ Polvo de Estrellas Dorado</option>
+                    <option value="fire_sparks">🔥 Chispas de Fuego Relámpago</option>
+                    <option value="none">🚫 Sin Partículas (Limpio)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. PALETA DE COLOR NEÓN -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                4. Paleta de Color &amp; Efectos Neón
               </label>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
@@ -804,10 +992,10 @@
               </div>
             </div>
 
-            <!-- Sello Holográfico de Confianza -->
+            <!-- 5. SELLO HOLOGRÁFICO DE CONFIANZA -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                3. Sello Holográfico / Insignia de Confianza
+                5. Sello Holográfico / Insignia de Confianza
               </label>
               <div class="flex flex-wrap gap-2">
                 <button
@@ -827,10 +1015,10 @@
               </div>
             </div>
 
-            <!-- Interruptores de Visibilidad de Elementos -->
+            <!-- 6. ELEMENTOS VISIBLES -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                4. Elementos Visibles en la Pieza
+                6. Elementos Visibles en la Pieza
               </label>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
@@ -1125,6 +1313,7 @@ const currentLayoutId = ref('cyber_pro') // 'cyber_pro' | 'cinematic' | 'glass_v
 const isAnimated = ref(true)
 const isRecording = ref(false)
 const isExportingImage = ref(false)
+const isDrawingForExport = ref(false)
 const recordingProgress = ref(0)
 const recordingSeconds = ref('0.0')
 
@@ -1149,6 +1338,34 @@ const imageFitMode = ref('contain') // 'contain' | 'cover'
 const imageBrightness = ref(100)
 const imageContrast = ref(100)
 const imageSaturation = ref(100)
+
+// ==========================================
+// HERRAMIENTAS ESPECÍFICAS DE CADA DISEÑO
+// ==========================================
+// Cyber Pro
+const showCyberGrid = ref(true)
+const showHudBrackets = ref(true)
+const cyberScanlineSpeed = ref('normal') // 'normal' | 'fast' | 'off'
+
+// Póster Cinemático
+const cinematicVignetteDepth = ref(85) // 60 a 95
+const cinematicStudioText = ref('★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★')
+const cinematicGlassOpacity = ref(88) // 50 a 95
+
+// Glassmorphism VIP
+const glassBlurFactor = ref(25) // 10 a 45
+const vipRibbonText = ref('👑 EDICIÓN VIP OFICIAL')
+const vipStarsDensity = ref('media') // 'baja' | 'media' | 'alta'
+
+// Split Flash
+const flashBannerText = ref('⚡ OFERTA FLASH RELÁMPAGO ⚡')
+const countdownHours = ref(6) // 2, 6, 12, 24
+const electricPulse = ref(true)
+
+// Efectos Multimedia Globales
+const audioWaveStyle = ref('bars') // 'bars' | 'wave' | 'pulse' | 'none'
+const particleStyle = ref('neon_dots') // 'neon_dots' | 'gold_dust' | 'fire_sparks' | 'none'
+const showSafeZoneOverlay = ref(false)
 
 // Interruptores de visibilidad
 const showRegularPrice = ref(true)
@@ -1198,7 +1415,6 @@ function loadImage(src) {
         localImg.onerror = () => resolve(null)
         localImg.src = src
       } else {
-        // Fallback seguro a portada local para evitar taining del canvas
         const fallback = new Image()
         fallback.onload = () => resolve(fallback)
         fallback.onerror = () => resolve(null)
@@ -1530,6 +1746,47 @@ function resetImageTransformations() {
   requestCanvasRedraw()
 }
 
+// AUTOMATIZACIÓN Y PULIDO INTELIGENTE
+function autoOptimizeReel() {
+  const mode = selectedMode.value
+  imageOffsetX.value = 0
+  imageOffsetY.value = 0
+  imageRotation.value = 0
+  imageZoomFactor.value = 1.0
+  imageBrightness.value = 100
+  imageContrast.value = 105
+  imageSaturation.value = 115
+
+  if (mode === 'gaming') {
+    currentLayoutId.value = 'cyber_pro'
+    currentThemeId.value = 'cyber_glow'
+    imageFitMode.value = 'contain'
+    showBrandPill.value = true
+    showRegularPrice.value = true
+    showPromoPill.value = true
+    showContactPhone.value = true
+    currentSealText.value = pickedGamingLicense.value === 'primary' ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
+  } else if (mode === 'streaming') {
+    currentLayoutId.value = 'cinematic'
+    currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
+    imageFitMode.value = 'contain'
+    currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
+  } else if (mode === 'combo') {
+    currentLayoutId.value = 'glass_vip'
+    currentThemeId.value = 'gold_vip'
+    imageFitMode.value = 'cover'
+    currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
+  } else if (mode === 'giveaway') {
+    currentLayoutId.value = 'split_flash'
+    currentThemeId.value = 'fire_sale'
+    imageFitMode.value = 'cover'
+    currentSealText.value = '🎟️ ACTA PÚBLICA TRANSPARENTE'
+  }
+
+  requestCanvasRedraw()
+  toast.add('⚡ ¡Reel optimizado automáticamente con proporciones y estilo profesional!', 'success')
+}
+
 // ========================================================
 // INTERACCIÓN TÁCTIL Y MOUSE DRAG DIRECTO SOBRE EL CANVAS
 // ========================================================
@@ -1592,7 +1849,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x + w, y, x + w, y + h, r)
   ctx.arcTo(x + w, y + h, x, y + h, r)
   ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
+  ctx.arcTo(x, y + x + w, y, r)
   ctx.closePath()
 }
 
@@ -1608,27 +1865,85 @@ function drawCornerBrackets(ctx, x, y, w, h, size = 30, color = 'rgba(56, 189, 2
   ctx.restore()
 }
 
-// Visualizador de Audio Animado (Trending TikTok/Reels Audio Wave)
-function drawAudioEqualizer(ctx, x, y, barCount = 7, color = '#38bdf8', t = 0) {
+// Visualizador de Audio Adaptable
+function drawAudioVisualizer(ctx, x, y, color = '#38bdf8', t = 0) {
+  if (audioWaveStyle.value === 'none') return
   ctx.save()
-  const barW = 6
-  const gap = 4
-  const totalW = barCount * barW + (barCount - 1) * gap
-  const startX = x - totalW / 2
-  ctx.fillStyle = color
-  for (let i = 0; i < barCount; i++) {
-    const h = 10 + Math.abs(Math.sin(t * 7 + i * 0.9)) * 26
-    const bx = startX + i * (barW + gap)
-    const by = y - h / 2
-    roundRect(ctx, bx, by, barW, h, 3)
-    ctx.fill()
+
+  if (audioWaveStyle.value === 'bars') {
+    const barCount = 9
+    const barW = 6
+    const gap = 4
+    const totalW = barCount * barW + (barCount - 1) * gap
+    const startX = x - totalW / 2
+    ctx.fillStyle = color
+    for (let i = 0; i < barCount; i++) {
+      const h = 8 + Math.abs(Math.sin(t * 7 + i * 0.9)) * 24
+      const bx = startX + i * (barW + gap)
+      const by = y - h / 2
+      roundRect(ctx, bx, by, barW, h, 3)
+      ctx.fill()
+    }
+  } else if (audioWaveStyle.value === 'wave') {
+    ctx.beginPath()
+    for (let px = -70; px <= 70; px += 4) {
+      const py = Math.sin(t * 6 + px * 0.08) * 12
+      if (px === -70) ctx.moveTo(x + px, y + py)
+      else ctx.lineTo(x + px, y + py)
+    }
+    ctx.strokeStyle = color
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    ctx.stroke()
+  } else if (audioWaveStyle.value === 'pulse') {
+    const radius = 14 + Math.sin(t * 5) * 6
+    ctx.strokeStyle = color
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.stroke()
   }
+
+  ctx.restore()
+}
+
+// Partículas Adaptables (Neón, Oro o Fuego)
+function drawAdaptiveParticles(ctx, W, H, t = 0) {
+  if (!isAnimated.value || particleStyle.value === 'none') return
+  ctx.save()
+
+  const count = particleStyle.value === 'gold_dust' && vipStarsDensity.value === 'alta' ? 36 : 22
+  for (let i = 0; i < count; i++) {
+    const px = (W * ((i * 0.047 + t * 0.025) % 1))
+    const py = (H * ((i * 0.063 + Math.sin(t + i) * 0.04 + 0.08) % 0.95))
+    const pAlpha = 0.2 + Math.sin(t * 3 + i) * 0.15
+
+    if (particleStyle.value === 'gold_dust') {
+      ctx.fillStyle = `rgba(245, 158, 11, ${Math.max(0.05, pAlpha)})`
+      ctx.beginPath()
+      ctx.arc(px, py, (i % 3) + 2, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (particleStyle.value === 'fire_sparks') {
+      ctx.fillStyle = `rgba(239, 68, 68, ${Math.max(0.05, pAlpha * 1.2)})`
+      ctx.beginPath()
+      ctx.arc(px, py, (i % 2) + 2.5, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.04, pAlpha)})`
+      ctx.beginPath()
+      ctx.arc(px, py, (i % 3) + 2.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
   ctx.restore()
 }
 
 // Haz de luz / Escáner Cyber horizontal
 function drawLaserScanline(ctx, x, y, w, h, t = 0, color = 'rgba(56, 189, 248, 0.45)') {
-  const scanY = y + ((t * 260) % (h + 80)) - 40
+  if (cyberScanlineSpeed.value === 'off') return
+  const mult = cyberScanlineSpeed.value === 'fast' ? 420 : 260
+  const scanY = y + ((t * mult) % (h + 80)) - 40
   if (scanY >= y && scanY <= y + h) {
     const scanGrad = ctx.createLinearGradient(0, scanY - 14, 0, scanY + 14)
     scanGrad.addColorStop(0, 'rgba(0,0,0,0)')
@@ -1698,7 +2013,7 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   ctx.restore()
 
   // 3. Efecto Escáner Neón en Movimiento
-  if (isAnimated.value) {
+  if (isAnimated.value && currentLayoutId.value === 'cyber_pro') {
     drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
   }
 
@@ -1725,6 +2040,37 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   }
 }
 
+// Dibuja las Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
+function drawSafeZonesGuide(ctx, W, H) {
+  if (isDrawingForExport.value || !showSafeZoneOverlay.value) return
+  ctx.save()
+
+  // Margen superior (avatar, status bar)
+  ctx.fillStyle = 'rgba(236, 72, 153, 0.12)'
+  ctx.fillRect(0, 0, W, 130)
+  ctx.strokeStyle = 'rgba(236, 72, 153, 0.45)'
+  ctx.lineWidth = 2
+  ctx.setLineDash([8, 8])
+  ctx.beginPath(); ctx.moveTo(0, 130); ctx.lineTo(W, 130); ctx.stroke()
+  ctx.fillStyle = '#f472b6'
+  ctx.font = 'bold 20px monospace'
+  ctx.fillText('🛡️ MARGEN SUPERIOR TIKTOK / REELS', 30, 80)
+
+  // Margen inferior (descripción, audio ticker)
+  ctx.fillStyle = 'rgba(236, 72, 153, 0.12)'
+  ctx.fillRect(0, 1720, W, 200)
+  ctx.beginPath(); ctx.moveTo(0, 1720); ctx.lineTo(W, 1720); ctx.stroke()
+  ctx.fillText('💬 ZONA DE DESCRIPCIÓN & AUDIO DE LA RED SOCIAL', 30, 1760)
+
+  // Margen lateral derecho (botones like, compartir, comentarios)
+  ctx.fillStyle = 'rgba(236, 72, 153, 0.10)'
+  ctx.fillRect(W - 120, 600, 120, 950)
+  ctx.strokeRect(W - 120, 600, 120, 950)
+  ctx.fillText('❤️ BOTONES', W - 110, 650)
+
+  ctx.restore()
+}
+
 // RENDERIZADO COMPLETO DEL FRAME 9:16 (1080x1920) CON 4 PLANTILLAS VISUALES DISTINTAS
 function renderFrame(timeMs = 0) {
   const canvas = canvasRef.value
@@ -1742,39 +2088,53 @@ function renderFrame(timeMs = 0) {
   // 1. FONDO AMBIENTAL SEGÚN PLANTILLA
   // ==========================================
   if (layout === 'cinematic' && loadedArtworkImage.value) {
-    // EN CINEMÁTICO: LA IMAGEN CUBRE TODO EL 9:16 CON VIÑETAS DRAMÁTICAS
     const img = loadedArtworkImage.value
     const bgScale = Math.max(W / (img.width || 1), H / (img.height || 1))
     const bw = (img.width || 1) * bgScale
-    const bh = (img.height || 1) * bgScale
+    const bh = (img.height || 1) * bhScale || (img.height || 1) * bgScale
     ctx.save()
     ctx.filter = `brightness(${imageBrightness.value * 0.85}%) contrast(${imageContrast.value * 1.1}%) saturate(${imageSaturation.value * 1.2}%)`
     ctx.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh)
     ctx.restore()
 
-    // Viñeta Cinematográfica Profunda Superior e Inferior
+    // Viñeta Cinematográfica Configurable
+    const vigRatio = (cinematicVignetteDepth.value || 85) / 100
     const topVig = ctx.createLinearGradient(0, 0, 0, 520)
-    topVig.addColorStop(0, 'rgba(2, 6, 23, 0.95)')
-    topVig.addColorStop(0.65, 'rgba(2, 6, 23, 0.65)')
+    topVig.addColorStop(0, `rgba(2, 6, 23, ${vigRatio})`)
+    topVig.addColorStop(0.65, `rgba(2, 6, 23, ${vigRatio * 0.7})`)
     topVig.addColorStop(1, 'rgba(2, 6, 23, 0)')
     ctx.fillStyle = topVig
     ctx.fillRect(0, 0, W, 520)
 
     const botVig = ctx.createLinearGradient(0, H - 980, 0, H)
     botVig.addColorStop(0, 'rgba(2, 6, 23, 0)')
-    botVig.addColorStop(0.35, 'rgba(2, 6, 23, 0.78)')
-    botVig.addColorStop(1, 'rgba(2, 6, 23, 0.98)')
+    botVig.addColorStop(0.35, `rgba(2, 6, 23, ${vigRatio * 0.85})`)
+    botVig.addColorStop(1, `rgba(2, 6, 23, ${vigRatio})`)
     ctx.fillStyle = botVig
     ctx.fillRect(0, H - 980, W, 980)
 
   } else {
-    // FONDOS CON GRADIENTE Y PARTÍCULAS (CYBER PRO, GLASS VIP, SPLIT FLASH)
+    // FONDOS CON GRADIENTE Y PARTÍCULAS
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
     bgGrad.addColorStop(0, th.bg1)
     bgGrad.addColorStop(0.45, th.bg2)
     bgGrad.addColorStop(1, th.bg3)
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
+
+    // Malla Holográfica de fondo en Cyber Pro si está activa
+    if (layout === 'cyber_pro' && showCyberGrid.value) {
+      ctx.save()
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)'
+      ctx.lineWidth = 1
+      for (let x = 0; x < W; x += 60) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
+      }
+      for (let y = 0; y < H; y += 60) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+      }
+      ctx.restore()
+    }
 
     // Resplandor Neón Central
     const radialGlow = ctx.createRadialGradient(W * 0.5, H * 0.38, 40, W * 0.5, H * 0.38, 720)
@@ -1784,20 +2144,8 @@ function renderFrame(timeMs = 0) {
     ctx.fillRect(0, 0, W, H)
   }
 
-  // Partículas Neón flotantes animadas
-  if (isAnimated.value) {
-    ctx.save()
-    for (let i = 0; i < 22; i++) {
-      const px = (W * ((i * 0.047 + t * 0.025) % 1))
-      const py = (H * ((i * 0.063 + Math.sin(t + i) * 0.04 + 0.08) % 0.95))
-      const pAlpha = 0.2 + Math.sin(t * 3 + i) * 0.15
-      ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.04, pAlpha)})`
-      ctx.beginPath()
-      ctx.arc(px, py, (i % 3) + 2.5, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.restore()
-  }
+  // Partículas Adaptables (Neón, Oro o Fuego)
+  drawAdaptiveParticles(ctx, W, H, t)
 
   // Marco Cyber 9:16 con esquinas HUD (en Cyber Pro, Glass VIP y Split Flash)
   if (layout !== 'cinematic') {
@@ -1806,35 +2154,35 @@ function renderFrame(timeMs = 0) {
     ctx.lineWidth = 4
     roundRect(ctx, 32, 32, W - 64, H - 64, 48)
     ctx.stroke()
-    drawCornerBrackets(ctx, 32, 32, W - 64, H - 64, 40, th.accent)
+    if (showHudBrackets.value || layout !== 'cyber_pro') {
+      drawCornerBrackets(ctx, 32, 32, W - 64, H - 64, 40, th.accent)
+    }
     ctx.restore()
   }
 
-  // Header: Insignia de Tienda / Distribuidor
+  // Header: Insignia de Tienda / Distribuidor (Proporción perfecta dentro de zona segura)
   if (showBrandPill.value) {
     ctx.save()
     const brandPillW = 460
-    const brandPillH = 72
+    const brandPillH = 68
     const brandPillX = (W - brandPillW) / 2
-    const brandPillY = 80
+    const brandPillY = 125
     ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
-    roundRect(ctx, brandPillX, brandPillY, brandPillW, brandPillH, 36)
+    roundRect(ctx, brandPillX, brandPillY, brandPillW, brandPillH, 34)
     ctx.fill()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
     ctx.lineWidth = 2
     ctx.stroke()
 
     ctx.fillStyle = '#ffffff'
-    ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.font = '900 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`⚡ ${reelStoreName.value.toUpperCase()} · OFICIAL`, W / 2, brandPillY + 45)
+    ctx.fillText(`⚡ ${reelStoreName.value.toUpperCase()} · OFICIAL`, W / 2, brandPillY + 42)
     ctx.restore()
   }
 
   // Ecualizador de Audio / Trending Sound Bar en Header
-  if (isAnimated.value) {
-    drawAudioEqualizer(ctx, W / 2, 168, 9, th.accent, t)
-  }
+  drawAudioVisualizer(ctx, W / 2, 208, th.accent, t)
 
   // Titular Principal y Subtítulo
   ctx.save()
@@ -1843,11 +2191,11 @@ function renderFrame(timeMs = 0) {
   ctx.textAlign = 'center'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
   ctx.shadowBlur = 20
-  ctx.fillText(reelHeadline.value.slice(0, 36), W / 2, 230)
+  ctx.fillText(reelHeadline.value.slice(0, 36), W / 2, 265)
 
   ctx.fillStyle = th.accent
   ctx.font = 'bold 30px sans-serif'
-  ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 282)
+  ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 312)
   ctx.restore()
 
   // ==========================================
@@ -1859,7 +2207,7 @@ function renderFrame(timeMs = 0) {
   // ----------------------------------------------------
   if (layout === 'cyber_pro') {
     const cardX = 85
-    const cardY = 325
+    const cardY = 350
     const cardW = W - 170
     const cardH = 810
 
@@ -1884,67 +2232,58 @@ function renderFrame(timeMs = 0) {
       ctx.restore()
     }
 
-    // Badge en portada
     if (reelBadgeText.value) {
       drawBadgePill(ctx, cardX + 30, cardY + 30, 360, 68, reelBadgeText.value, th.pillGrad)
     }
 
-    // Sello de confianza
     if (currentSealText.value) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
-    // Zona de Precios
-    drawPriceBox(ctx, cardX, 1170, cardW, 310, th, t)
-
-    // Botón CTA Pulsante
-    drawCtaButton(ctx, cardX, 1515, cardW, 104, t)
+    // Zona de Precios & CTA (Proporción exacta para no invadir pie de página)
+    drawPriceBox(ctx, cardX, 1190, cardW, 280, th, t)
+    drawCtaButton(ctx, cardX, 1490, cardW, 100, t)
   }
 
   // ----------------------------------------------------
   // PLANTILLA 2: PÓSTER CINEMÁTICO 9:16 (FULL-BLEED)
   // ----------------------------------------------------
   else if (layout === 'cinematic') {
-    // En cinemático la imagen cubre todo el fondo (ya dibujada arriba).
-    // Aquí destacamos elementos flotantes tipo cartelera de cine
     const cardX = 85
     const cardW = W - 170
 
-    // Marquee de estreno
+    // Marquesina de cine personalizada
     ctx.save()
     ctx.fillStyle = th.accent
     ctx.font = '900 22px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText('★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 335)
+    ctx.fillText(cinematicStudioText.value || '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 345)
     ctx.restore()
 
-    // Badge Flotante Cinemático
     if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 20, 370, 360, 68, reelBadgeText.value, th.pillGrad)
+      drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
     }
 
     // Placa de Precio Glassmorphism Translúcida Flotante
     ctx.save()
-    const glassY = 1100
-    const glassH = 340
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+    const glassY = 1140
+    const glassH = 310
+    const op = (cinematicGlassOpacity.value || 88) / 100
+    ctx.fillStyle = `rgba(2, 6, 23, ${op})`
     roundRect(ctx, cardX, glassY, cardW, glassH, 44)
     ctx.fill()
     ctx.strokeStyle = th.accent
     ctx.lineWidth = 3
     ctx.stroke()
 
-    // Precios
     drawPriceContent(ctx, glassY, cardW, th, t)
     ctx.restore()
 
-    // Sello de confianza
     if (currentSealText.value) {
-      drawTrustSealPill(ctx, (W - 480) / 2, 1475, 480, 56, currentSealText.value, th.accent)
+      drawTrustSealPill(ctx, (W - 480) / 2, 1475, 480, 54, currentSealText.value, th.accent)
     }
 
-    // Botón CTA Cinemático
-    drawCtaButton(ctx, cardX, 1560, cardW, 104, t)
+    drawCtaButton(ctx, cardX, 1545, cardW, 100, t)
   }
 
   // ----------------------------------------------------
@@ -1952,11 +2291,10 @@ function renderFrame(timeMs = 0) {
   // ----------------------------------------------------
   else if (layout === 'glass_vip') {
     const cardX = 85
-    const cardY = 320
+    const cardY = 350
     const cardW = W - 170
     const cardH = 790
 
-    // Tarjeta VIP de Cristal Esmerilado Profundo
     ctx.save()
     ctx.shadowColor = th.glow
     ctx.shadowBlur = 55
@@ -1977,9 +2315,9 @@ function renderFrame(timeMs = 0) {
       ctx.restore()
     }
 
-    // Cinta VIP Superior
+    // Cinta VIP Superior Personalizada
     ctx.save()
-    const vipW = 380
+    const vipW = 400
     const vipH = 60
     const vx = (W - vipW) / 2
     const vy = cardY - 26
@@ -1992,7 +2330,7 @@ function renderFrame(timeMs = 0) {
     ctx.fillStyle = '#020617'
     ctx.font = '900 22px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('👑 EDICIÓN VIP OFICIAL', W / 2, vy + 38)
+    ctx.fillText(vipRibbonText.value || '👑 EDICIÓN VIP OFICIAL', W / 2, vy + 38)
     ctx.restore()
 
     if (reelBadgeText.value) {
@@ -2003,8 +2341,8 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
-    drawPriceBox(ctx, cardX, 1150, cardW, 310, th, t)
-    drawCtaButton(ctx, cardX, 1495, cardW, 104, t)
+    drawPriceBox(ctx, cardX, 1170, cardW, 280, th, t)
+    drawCtaButton(ctx, cardX, 1475, cardW, 100, t)
   }
 
   // ----------------------------------------------------
@@ -2012,17 +2350,16 @@ function renderFrame(timeMs = 0) {
   // ----------------------------------------------------
   else if (layout === 'split_flash') {
     const cardX = 85
-    const cardY = 310
+    const cardY = 340
     const cardW = W - 170
-    const cardH = 680
+    const cardH = 660
 
-    // Marco Superior de Acción
     ctx.save()
     ctx.fillStyle = '#050a18'
     roundRect(ctx, cardX, cardY, cardW, cardH, 40)
     ctx.fill()
-    ctx.strokeStyle = '#ef4444' // Borde Rojo Fuego Urgente
-    ctx.lineWidth = 4
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = electricPulse.value && isAnimated.value ? (3 + Math.sin(t * 8) * 1.5) : 4
     roundRect(ctx, cardX, cardY, cardW, cardH, 40)
     ctx.stroke()
     ctx.restore()
@@ -2047,21 +2384,21 @@ function renderFrame(timeMs = 0) {
     roundRect(ctx, cardX, stripY, cardW, stripH, 32)
     ctx.fill()
 
-    // Cuenta regresiva dinámica
-    const baseSec = 15838 - Math.floor((t * 2) % 3600)
+    const maxSec = (countdownHours.value || 6) * 3600
+    const baseSec = maxSec - Math.floor((t * 2) % maxSec)
     const hrs = String(Math.floor(baseSec / 3600)).padStart(2, '0')
     const mins = String(Math.floor((baseSec % 3600) / 60)).padStart(2, '0')
     const secs = String(baseSec % 60).padStart(2, '0')
 
     ctx.fillStyle = '#ffffff'
-    ctx.font = '900 26px monospace'
+    ctx.font = '900 25px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText(`⚡ OFERTA FLASH · TERMINA EN ${hrs}:${mins}:${secs} ⚡`, W / 2, stripY + 42)
+    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 41)
     ctx.restore()
 
     // Panel Inferior de Conversión Urgente
     const lowerY = stripY + stripH + 18
-    const lowerH = 430
+    const lowerH = 390
     ctx.save()
     ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
     roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
@@ -2074,7 +2411,7 @@ function renderFrame(timeMs = 0) {
     drawPriceContent(ctx, lowerY, cardW, th, t)
     ctx.restore()
 
-    drawCtaButton(ctx, cardX, 1540, cardW, 104, t)
+    drawCtaButton(ctx, cardX, 1515, cardW, 100, t)
   }
 
   // ==========================================
@@ -2085,7 +2422,7 @@ function renderFrame(timeMs = 0) {
     ctx.fillStyle = '#ffffff'
     ctx.font = '900 28px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`📲 WhatsApp de Pedidos: ${props.contactPhone}`, W / 2, 1705)
+    ctx.fillText(`📲 WhatsApp de Pedidos: ${props.contactPhone}`, W / 2, 1640)
   }
 
   ctx.fillStyle = th.accent
@@ -2094,12 +2431,15 @@ function renderFrame(timeMs = 0) {
     ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
     : `${props.websiteDomain || 'streamepro.me'}`
   ctx.textAlign = 'center'
-  ctx.fillText(`🔗 ${domainText}`, W / 2, 1752)
+  ctx.fillText(`🔗 ${domainText}`, W / 2, 1682)
 
   ctx.fillStyle = 'rgba(148, 163, 184, 0.82)'
   ctx.font = '20px sans-serif'
-  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1798)
+  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1715)
   ctx.restore()
+
+  // Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
+  drawSafeZonesGuide(ctx, W, H)
 }
 
 // Helpers modulares de dibujo
@@ -2153,45 +2493,45 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
     ctx.font = 'bold 30px sans-serif'
     ctx.textAlign = 'center'
     const regText = `Precio Regular: $${Number(reelRegularPrice.value).toLocaleString('es-AR')} ARS`
-    ctx.fillText(regText, W / 2, boxY + 58)
+    ctx.fillText(regText, W / 2, boxY + 54)
 
     const tw = ctx.measureText(regText).width
     ctx.strokeStyle = '#f43f5e'
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 48)
-    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 48)
+    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 44)
+    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 44)
     ctx.stroke()
   }
 
   // Precio Promocional Gigante
   if (Number(reelPromoPrice.value) > 0) {
     ctx.fillStyle = '#4ade80'
-    ctx.font = '900 88px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.font = '900 86px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
     ctx.shadowColor = 'rgba(74, 222, 128, 0.45)'
     ctx.shadowBlur = 28
-    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, boxY + 160)
+    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, boxY + 148)
   } else {
     ctx.fillStyle = '#fde047'
-    ctx.font = '900 80px -apple-system, sans-serif'
+    ctx.font = '900 78px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('¡SORTEO GRATIS!', W / 2, boxY + 160)
+    ctx.fillText('¡SORTEO GRATIS!', W / 2, boxY + 148)
   }
 
   // Pill del Cupón Promocional con Destello Animado
   if (showPromoPill.value && reelPromoCode.value) {
     ctx.save()
     const cpW = boxW - 60
-    const cpH = 74
+    const cpH = 70
     const cpX = (W - cpW) / 2
-    const cpY = boxY + 205
+    const cpY = boxY + 188
 
     const cpGrad = ctx.createLinearGradient(cpX, cpY, cpX + cpW, cpY)
     cpGrad.addColorStop(0, '#f59e0b')
     cpGrad.addColorStop(1, '#d97706')
     ctx.fillStyle = cpGrad
-    roundRect(ctx, cpX, cpY, cpW, cpH, 37)
+    roundRect(ctx, cpX, cpY, cpW, cpH, 35)
     ctx.fill()
 
     if (isAnimated.value) {
@@ -2201,20 +2541,21 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
       shimGrad.addColorStop(0.5, 'rgba(255,255,255,0.48)')
       shimGrad.addColorStop(1, 'rgba(255,255,255,0)')
       ctx.fillStyle = shimGrad
-      roundRect(ctx, cpX, cpY, cpW, cpH, 37)
+      roundRect(ctx, cpX, cpY, cpW, cpH, 35)
       ctx.fill()
     }
 
     ctx.fillStyle = '#020617'
-    ctx.font = '900 27px -apple-system, sans-serif'
+    ctx.font = '900 26px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`🎟️ USA EL CÓDIGO: ${reelPromoCode.value.toUpperCase()} (DESCUENTO EXTRA)`, W / 2, cpY + 46)
+    ctx.fillText(`🎟️ USA EL CÓDIGO: ${reelPromoCode.value.toUpperCase()} (DESCUENTO EXTRA)`, W / 2, cpY + 44)
     ctx.restore()
   }
 }
 
-function drawCtaButton(ctx, ctaX, ctaY, ctaW, ctaH, t) {
+function drawCtaButton(ctx, ctaX, ctaY, ctaH = 100, t) {
   const W = 1080
+  const ctaW = W - 170
   ctx.save()
   const ctaPulse = isAnimated.value ? (1.0 + Math.sin(t * 3.6) * 0.02) : 1.0
 
@@ -2229,15 +2570,15 @@ function drawCtaButton(ctx, ctaX, ctaY, ctaW, ctaH, t) {
   ctx.fillStyle = ctaGrad
   ctx.shadowColor = 'rgba(236, 72, 153, 0.5)'
   ctx.shadowBlur = 32
-  roundRect(ctx, ctaX, ctaY, ctaW, ctaH, 52)
+  roundRect(ctx, ctaX, ctaY, ctaW, ctaH, 50)
   ctx.fill()
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.font = '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.textAlign = 'center'
   ctx.shadowColor = 'rgba(0,0,0,0.5)'
   ctx.shadowBlur = 12
-  ctx.fillText(reelCtaText.value || '📲 PEDILO AL WHATSAPP', W / 2, ctaY + 65)
+  ctx.fillText(reelCtaText.value || '📲 PEDILO AL WHATSAPP', W / 2, ctaY + 62)
   ctx.restore()
 }
 
@@ -2278,6 +2619,7 @@ async function recordVideoReel() {
     return
   }
 
+  isDrawingForExport.value = true
   isAnimated.value = true
   isRecording.value = true
   recordingProgress.value = 0
@@ -2320,6 +2662,7 @@ async function recordVideoReel() {
     }, 100)
 
     recorder.onstop = async () => {
+      isDrawingForExport.value = false
       if (recordingInterval) clearInterval(recordingInterval)
       isRecording.value = false
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
@@ -2369,6 +2712,7 @@ async function recordVideoReel() {
 
   } catch (err) {
     console.error('Error grabando reel en canvas:', err)
+    isDrawingForExport.value = false
     isRecording.value = false
     if (recordingInterval) clearInterval(recordingInterval)
     toast.add('No se pudo grabar video en este navegador. Usa "Descargar PNG".', 'error')
@@ -2382,6 +2726,7 @@ async function downloadImagePng() {
   isExportingImage.value = true
 
   try {
+    isDrawingForExport.value = true
     renderFrame(performance.now() - animationStartTime)
     const blob = await new Promise((res, rej) => {
       try {
@@ -2416,6 +2761,7 @@ async function downloadImagePng() {
       toast.add('Error al exportar imagen en este dispositivo.', 'error')
     }
   } finally {
+    isDrawingForExport.value = false
     isExportingImage.value = false
   }
 }
@@ -2425,6 +2771,7 @@ async function handleMobileOrShareAction() {
   const canvas = canvasRef.value
   if (!canvas) return
 
+  isDrawingForExport.value = true
   renderFrame(performance.now() - animationStartTime)
   try {
     const dataUrl = canvas.toDataURL('image/png', 0.95)
@@ -2432,6 +2779,7 @@ async function handleMobileOrShareAction() {
   } catch (err) {
     if (err.name === 'SecurityError' || String(err).includes('Tainted')) {
       resetToOriginalProductCover()
+      isDrawingForExport.value = false
       return
     }
   }
@@ -2455,14 +2803,19 @@ async function handleMobileOrShareAction() {
             text: currentReelPackage.value.caption
           })
           toast.add('📲 Compartido con éxito', 'success')
+          isDrawingForExport.value = false
           return
         }
       }
     } catch (err) {
-      if (err.name === 'AbortError') return
+      if (err.name === 'AbortError') {
+        isDrawingForExport.value = false
+        return
+      }
     }
   }
 
+  isDrawingForExport.value = false
   // Fallback / Experiencia móvil dedicada: Abrir Visor de Guardado Táctil
   showMobileSaveModal.value = true
 }
@@ -2471,6 +2824,7 @@ async function shareDirect() {
   const canvas = canvasRef.value
   if (!canvas) return
   try {
+    isDrawingForExport.value = true
     renderFrame(performance.now() - animationStartTime)
     const blob = await new Promise((res, rej) => {
       try {
@@ -2489,11 +2843,14 @@ async function shareDirect() {
           text: currentReelPackage.value.caption
         })
         toast.add('Compartido con éxito', 'success')
+        isDrawingForExport.value = false
         return
       }
     }
+    isDrawingForExport.value = false
     downloadImagePng()
   } catch (err) {
+    isDrawingForExport.value = false
     if (err.name !== 'AbortError') {
       downloadImagePng()
     }
@@ -2506,6 +2863,7 @@ async function copyImageToClipboard() {
   if (!canvas) return
 
   try {
+    isDrawingForExport.value = true
     renderFrame(performance.now() - animationStartTime)
     const blob = await new Promise((res, rej) => {
       try {
@@ -2526,6 +2884,8 @@ async function copyImageToClipboard() {
   } catch (err) {
     console.warn('Fallo copia al portapapeles, usando descarga directa:', err)
     downloadImagePng()
+  } finally {
+    isDrawingForExport.value = false
   }
 }
 
@@ -2592,7 +2952,6 @@ function initFromProps() {
     if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales') {
       selectedMode.value = 'gaming'
       pickedGameId.value = p.id
-      // Inmediatamente usar datos del item sin esperar a que termine de cargar el catálogo completo
       reelHeadline.value = (p.title || 'Videojuego').toUpperCase().slice(0, 36)
       reelPromoPrice.value = Number(p.effectivePrimaryPrice || p.price || 15000)
       reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
