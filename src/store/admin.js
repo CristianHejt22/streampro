@@ -3,7 +3,6 @@ import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import gamingCategoriesData from '../assets/gamingCategories.json'
 import gamingSubcategoriesData from '../assets/gamingSubcategories.json'
-import gamingProductsData from '../assets/gamingProducts.json'
 import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
@@ -56,6 +55,19 @@ import {
 } from '../services/firebase'
 
 let _marketingHubListenersStarted = false
+let _loadedBaseGamingData = null
+let _gamingCatalogPromise = null
+let _cachedGamingResult = null
+let _cachedGamingKey = ''
+let _cachedGamingSummaryResult = null
+let _cachedGamingSummaryKey = ''
+
+export function invalidateGamingCache() {
+  _cachedGamingResult = null
+  _cachedGamingKey = ''
+  _cachedGamingSummaryResult = null
+  _cachedGamingSummaryKey = ''
+}
 
 const DEFAULT_MARKETING_CAMPAIGN = {
   bannerEnabled: true,
@@ -109,7 +121,10 @@ function buildGamingDiffs(currentList = [], baseList = []) {
 }
 
 function persistGamingCatalogDeltas(currentList, baseList) {
-  const payload = buildGamingDiffs(currentList, baseList)
+  const referenceBase = (Array.isArray(baseList) && baseList.length > 0)
+    ? baseList
+    : (_loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
+  const payload = buildGamingDiffs(currentList, referenceBase)
   saveDb(DB_KEYS.GAMING_OVERRIDES, payload)
 }
 
@@ -709,8 +724,12 @@ export const useAdminStore = defineStore('admin', {
       return 1000 // Ganancia mínima garantizada al revendedor en ARS
     })(),
 
-    // CATÁLOGO COMPLETO DE VIDEOJUEGOS DIGITALES (Multi-Sitio Scrapeado + Overrides Locales Compactos)
-    gamingProducts: (() => buildMergedGamingCatalog(gamingProductsData))(),
+    // CATÁLOGO DE VIDEOJUEGOS DIGITALES (Starter ultra-liviano; el catálogo completo se carga bajo demanda)
+    isGamingCatalogLoaded: false,
+    isLoadingGamingCatalog: false,
+    _gamingCatalogVersion: 0,
+    totalCatalogGamingCount: 15328,
+    gamingProducts: (() => buildMergedGamingCatalog(INITIAL_GAMING_PRODUCTS))(),
     gamingCategories: (() => {
       const stored = loadDb(DB_KEYS.GAMING_CATEGORIES, null)
       if (Array.isArray(stored) && stored.length > 0) {
@@ -807,14 +826,26 @@ export const useAdminStore = defineStore('admin', {
     approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
     directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
+    totalGamingProductsCount: (state) => {
+      return state.isGamingCatalogLoaded ? (state.gamingProducts?.length || 15328) : 15328
+    },
     processedGamingProducts: (state) => {
       const list = state.gamingProducts || []
       const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
       const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
       const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
+      const sitesVer = (state.gamingProviderSites || []).map(s => `${s.key}:${s.enabled}:${s.includeInPvp}`).join('|')
+      const currentKey = `${list.length}_${state._gamingCatalogVersion || 0}_${storeMargin}_${resellerCommission}_${minProfit}_${sitesVer}`
+
+      if (_cachedGamingResult && _cachedGamingKey === currentKey) {
+        return _cachedGamingResult
+      }
+
       const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
       const processed = list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites))
-      return deduplicateGamingProducts(processed)
+      _cachedGamingResult = deduplicateGamingProducts(processed)
+      _cachedGamingKey = currentKey
+      return _cachedGamingResult
     },
 
     gamingPricingSummary(state) {
@@ -822,7 +853,12 @@ export const useAdminStore = defineStore('admin', {
       const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
       const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
       const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
-      const processed = this.processedGamingProducts || []
+      const processed = state.processedGamingProducts || []
+      const currentKey = `${processed.length}_${state._gamingCatalogVersion || 0}_${storeMargin}_${resellerCommission}_${minProfit}`
+
+      if (_cachedGamingSummaryResult && _cachedGamingSummaryKey === currentKey) {
+        return _cachedGamingSummaryResult
+      }
 
       let totalPrimaryCost = 0
       let totalSecondaryCost = 0
@@ -869,8 +905,9 @@ export const useAdminStore = defineStore('admin', {
       const activeSitesCount = (sites || []).filter(s => s.enabled !== false).length
       const pvpSitesCount = (sites || []).filter(s => s.enabled !== false && s.includeInPvp !== false).length
 
-      return {
+      const result = {
         totalGames: processed.length,
+        totalCatalogCount: state.isGamingCatalogLoaded ? processed.length : 15328,
         storeMarginPercent: storeMargin,
         resellerCommissionPercent: resellerCommission,
         minResellerProfit: minProfit,
@@ -892,15 +929,15 @@ export const useAdminStore = defineStore('admin', {
         avgSecondaryResellerProfit,
         avgSecondaryNetStore
       }
+
+      _cachedGamingSummaryResult = result
+      _cachedGamingSummaryKey = currentKey
+      return result
     },
 
     gamingSitesStats: (state) => {
       const sites = state.gamingProviderSites || DEFAULT_GAMING_PROVIDER_SITES
-      const list = state.gamingProducts || []
-      const storeMargin = Number(state.gamingStoreMarginPercent ?? 20)
-      const resellerCommission = Number(state.gamingResellerCommissionPercent ?? 10)
-      const minProfit = Number(state.gamingMinResellerProfit ?? 1000)
-      const processed = deduplicateGamingProducts(list.map(p => processGamingProduct(p, storeMargin, resellerCommission, minProfit, sites)))
+      const processed = state.processedGamingProducts || []
 
       const statsMap = new Map()
       sites.forEach(s => {
@@ -1135,7 +1172,7 @@ export const useAdminStore = defineStore('admin', {
       } else if (key === DB_KEYS.FIREBASE_CONFIG) {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
-        persistGamingCatalogDeltas(this.gamingProducts, gamingProductsData)
+        persistGamingCatalogDeltas(this.gamingProducts, _loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else if (key === DB_KEYS.GAMING_CATEGORIES) {
@@ -1188,7 +1225,7 @@ export const useAdminStore = defineStore('admin', {
           gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
           gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000)
         })
-        persistGamingCatalogDeltas(this.gamingProducts, gamingProductsData)
+        persistGamingCatalogDeltas(this.gamingProducts, _loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
@@ -5062,11 +5099,40 @@ export const useAdminStore = defineStore('admin', {
       return { success: true, ticket: t }
     },
 
-    ensureGamingProductsLoaded() {
+    async loadFullGamingCatalog(force = false) {
+      if (this.isGamingCatalogLoaded && !force) {
+        return this.gamingProducts
+      }
+      if (this.isLoadingGamingCatalog && _gamingCatalogPromise) {
+        return _gamingCatalogPromise
+      }
+      this.isLoadingGamingCatalog = true
+      _gamingCatalogPromise = (async () => {
+        try {
+          const module = await import('../assets/gamingProducts.json')
+          const fullData = module.default || module
+          _loadedBaseGamingData = fullData
+          this.gamingProducts = buildMergedGamingCatalog(fullData)
+          this.isGamingCatalogLoaded = true
+          this.totalCatalogGamingCount = this.gamingProducts.length
+          this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+          invalidateGamingCache()
+          return this.gamingProducts
+        } catch (err) {
+          console.error('[adminStore.loadFullGamingCatalog] Error cargando catálogo completo:', err)
+          return this.gamingProducts
+        } finally {
+          this.isLoadingGamingCatalog = false
+          _gamingCatalogPromise = null
+        }
+      })()
+      return _gamingCatalogPromise
+    },
+
+    async ensureGamingProductsLoaded() {
       this.ensureGamingProviderSitesLoaded()
-      if (!this.gamingProducts || !Array.isArray(this.gamingProducts) || this.gamingProducts.length < (gamingProductsData?.length || 23)) {
-        this.gamingProducts = buildMergedGamingCatalog(gamingProductsData)
-        this.persist(DB_KEYS.GAMING_PRODUCTS)
+      if (!this.isGamingCatalogLoaded) {
+        await this.loadFullGamingCatalog()
       }
       if (!this.gamingCategories || !Array.isArray(this.gamingCategories) || this.gamingCategories.length === 0 || !this.gamingCategories.includes('PS3')) {
         this.gamingCategories = (gamingCategoriesData && gamingCategoriesData.length > 0) 
@@ -5083,6 +5149,10 @@ export const useAdminStore = defineStore('admin', {
     updateGamingProductsFromJson(productsList, categoriesList = null, subcategoriesMap = null) {
       if (Array.isArray(productsList) && productsList.length > 0) {
         this.gamingProducts = productsList
+        this.isGamingCatalogLoaded = true
+        this.totalCatalogGamingCount = productsList.length
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        invalidateGamingCache()
         this.persist(DB_KEYS.GAMING_PRODUCTS)
 
         if (categoriesList && Array.isArray(categoriesList) && categoriesList.length > 0) {
@@ -5106,6 +5176,10 @@ export const useAdminStore = defineStore('admin', {
         const data = await res.json()
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
           this.gamingProducts = data.products
+          this.isGamingCatalogLoaded = true
+          this.totalCatalogGamingCount = data.products.length
+          this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+          invalidateGamingCache()
           this.persist(DB_KEYS.GAMING_PRODUCTS)
           if (Array.isArray(data.categories) && data.categories.length > 0) {
             this.gamingCategories = data.categories
@@ -5120,9 +5194,13 @@ export const useAdminStore = defineStore('admin', {
         throw new Error(data.error || 'Respuesta inválida de la API de videojuegos')
       } catch (err) {
         console.warn('Sync API gaming falló o entorno estático, aplicando catálogo base sincronizado...', err)
-        if (gamingProductsData && gamingProductsData.length > 0) {
-          return this.updateGamingProductsFromJson(gamingProductsData, gamingCategoriesData, gamingSubcategoriesData)
+        if (_loadedBaseGamingData && _loadedBaseGamingData.length > 0) {
+          return this.updateGamingProductsFromJson(_loadedBaseGamingData, gamingCategoriesData, gamingSubcategoriesData)
         }
+        try {
+          const loaded = await this.loadFullGamingCatalog()
+          return { success: true, count: loaded.length }
+        } catch {}
         return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
       }
     }

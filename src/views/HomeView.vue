@@ -376,7 +376,16 @@ const storeSection = ref('all')
 
 watch(currentPageSection, (sec) => {
   storeSection.value = sec === 'home' ? 'all' : sec
+  if (storeSection.value === 'gaming' && !adminStore.isGamingCatalogLoaded) {
+    adminStore.loadFullGamingCatalog().catch(() => {})
+  }
 }, { immediate: true })
+
+watch(storeSection, (sec) => {
+  if (sec === 'gaming' && !adminStore.isGamingCatalogLoaded) {
+    adminStore.loadFullGamingCatalog().catch(() => {})
+  }
+})
 
 // ==========================================
 // CUPONES PROMOCIONALES & USUARIOS DESCUENTO EN CARRITO
@@ -650,6 +659,9 @@ const changeGamingPage = (page) => {
 
 watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingSortBy, gamingPriceCeiling, onlyGamingFavorites, gamingItemsPerPage], () => {
   gamingCurrentPage.value = 1
+  if (!adminStore.isGamingCatalogLoaded) {
+    adminStore.loadFullGamingCatalog().catch(() => {})
+  }
 })
 
 const openGamingDetail = (game) => {
@@ -1182,7 +1194,25 @@ const applyRouteParams = () => {
 
 onMounted(() => {
   adminStore.ensurePhysicalProductsLoaded()
-  adminStore.ensureGamingProductsLoaded()
+  const isDirectGamingRoute = route.path === '/juegos' || 
+    route.path.startsWith('/juego') || 
+    Boolean(route.query.game || route.query.g) || 
+    storeSection.value === 'gaming'
+
+  if (isDirectGamingRoute) {
+    adminStore.ensureGamingProductsLoaded().catch(() => {})
+  } else {
+    // Carga no bloqueante en tiempo libre (idle) para mantener TTI inmediato en home
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(() => {
+        adminStore.loadFullGamingCatalog().catch(() => {})
+      }, { timeout: 3500 })
+    } else {
+      setTimeout(() => {
+        adminStore.loadFullGamingCatalog().catch(() => {})
+      }, 2500)
+    }
+  }
   adminStore.initStoreSettingsSync().catch(() => {})
   applyRouteParams()
 })
@@ -1391,7 +1421,7 @@ const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 const homeFeaturedCategories = computed(() => {
   const list = [
     { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
-    { id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${adminStore.processedGamingProducts?.length || 1084} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+    { id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
     { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' }
   ]
 
@@ -2554,7 +2584,7 @@ const submitOrder = async () => {
             class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-indigo-500 via-purple-600 to-blue-600 text-white shadow-indigo-500/25 hover:scale-[1.02]"
           >
             <span>🎮</span>
-            <span>Juegos Digitales ({{ adminStore.processedGamingProducts?.length || 1084 }})</span>
+            <span>Juegos Digitales ({{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }})</span>
           </RouterLink>
 
           <RouterLink 
@@ -2679,7 +2709,7 @@ const submitOrder = async () => {
           <span>🎮</span>
           <span>Juegos PS4/PS5</span>
           <span class="bg-slate-950/80 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-indigo-400/30">
-            {{ adminStore.processedGamingProducts?.length || 12 }}
+            {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }}
           </span>
         </RouterLink>
 
@@ -3124,7 +3154,7 @@ const submitOrder = async () => {
             to="/juegos"
             class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow flex items-center gap-1.5 transition"
           >
-            <span>Explorar {{ adminStore.processedGamingProducts.length }} Juegos</span>
+            <span>Explorar {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }} Juegos</span>
             <span>→</span>
           </RouterLink>
         </div>

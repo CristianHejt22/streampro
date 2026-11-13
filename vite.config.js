@@ -94,8 +94,25 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 25000000,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}']
+        maximumFileSizeToCacheInBytes: 3500000,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        globIgnores: ['**/catalog-gaming*.js'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('catalog-gaming'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'streamepro-gaming-catalog',
+              expiration: {
+                maxEntries: 2,
+                maxAgeSeconds: 60 * 60 * 24 * 7
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
       },
       manifest: {
         name: 'StreamePro | Streaming & Tecnología Oficial',
