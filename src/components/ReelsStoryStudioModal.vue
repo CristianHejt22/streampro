@@ -443,34 +443,101 @@
               </div>
 
               <!-- Selector de Licencia Primaria / Secundaria con Badges Oficiales -->
-              <div class="pt-2 border-t border-slate-800/80 space-y-1.5">
-                <label class="text-[10px] font-bold uppercase text-slate-400 block">Tipo de Licencia a Promocionar:</label>
+              <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] font-bold uppercase text-slate-400 block">Tipo de Licencia a Promocionar:</label>
+                  <span class="text-[10px] font-mono text-indigo-400 font-bold">
+                    {{ pickedGamingLicense === 'primary' ? '⭐️ Primaria Oficial' : '⚡️ Secundaria Económica' }}
+                  </span>
+                </div>
                 <div class="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     @click="pickedGamingLicense = 'primary'; applyGamingProduct()"
                     :class="[
-                      'py-2 px-3 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center justify-center gap-1.5',
+                      'py-2 px-3 rounded-xl text-xs font-bold transition border cursor-pointer flex flex-col items-center justify-center gap-0.5',
                       pickedGamingLicense === 'primary' 
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow' 
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
                     ]"
                   >
-                    <span>👑</span>
-                    <span>Cuenta Primaria (Jugar con tu perfil)</span>
+                    <div class="flex items-center gap-1.5">
+                      <span>👑</span>
+                      <span>⭐️ Primaria</span>
+                    </div>
+                    <span v-if="gamePrimaryPrice" class="text-[10px] font-mono opacity-80">${{ gamePrimaryPrice.toLocaleString('es-AR') }} ARS</span>
                   </button>
                   <button
                     type="button"
                     @click="pickedGamingLicense = 'secondary'; applyGamingProduct()"
                     :class="[
-                      'py-2 px-3 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center justify-center gap-1.5',
+                      'py-2 px-3 rounded-xl text-xs font-bold transition border cursor-pointer flex flex-col items-center justify-center gap-0.5',
                       pickedGamingLicense === 'secondary' 
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow' 
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
                     ]"
                   >
-                    <span>🎮</span>
-                    <span>Cuenta Secundaria (Económica)</span>
+                    <div class="flex items-center gap-1.5">
+                      <span>🎮</span>
+                      <span>⚡️ Secundaria</span>
+                    </div>
+                    <span v-if="gameSecondaryPrice" class="text-[10px] font-mono opacity-80">${{ gameSecondaryPrice.toLocaleString('es-AR') }} ARS</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selector de Plataforma / Consola -->
+              <div class="pt-2 border-t border-slate-800/80 space-y-1.5">
+                <label class="text-[10px] font-bold uppercase text-slate-400 block">Consola / Plataforma:</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="plat in ['PS5', 'PS4', 'PC (Steam)', 'Nintendo Switch', 'Xbox']"
+                    :key="plat"
+                    type="button"
+                    @click="selectedGamingPlatform = plat; applyGamingProduct()"
+                    :class="[
+                      'py-1 px-2.5 rounded-lg font-bold text-xs transition cursor-pointer border',
+                      selectedGamingPlatform === plat 
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow' 
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    ]"
+                  >
+                    {{ plat }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selector de Insignia Oficial de Licencia (PS5/PS4 Primaria/Secundaria, PS3) -->
+              <div class="pt-2 border-t border-slate-800/80 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] font-bold uppercase text-cyan-400 block flex items-center gap-1">
+                    <span>🏷️</span> Insignia Oficial de Licencia (Flyer):
+                  </label>
+                  <span class="text-[9px] font-mono text-slate-400">Arte PNG Oficial</span>
+                </div>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                  <button
+                    type="button"
+                    @click="gamingBadgeOverride = 'auto'; requestCanvasRedraw()"
+                    :class="['py-1 px-1.5 rounded-lg font-bold text-[10px] transition cursor-pointer border text-center truncate', gamingBadgeOverride === 'auto' ? 'bg-cyan-600/30 border-cyan-400 text-white font-black' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white']"
+                  >
+                    🤖 Auto
+                  </button>
+                  <button
+                    v-for="b in Object.values(GAMING_LICENSE_BADGES_MAP)"
+                    :key="b.key"
+                    type="button"
+                    @click="gamingBadgeOverride = b.key; requestCanvasRedraw()"
+                    :class="['py-1 px-1.5 rounded-lg font-bold text-[10px] transition cursor-pointer border text-center truncate', gamingBadgeOverride === b.key ? 'bg-indigo-600 border-indigo-400 text-white font-black' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white']"
+                  >
+                    {{ b.label }}
+                  </button>
+                  <button
+                    type="button"
+                    @click="gamingBadgeOverride = 'none'; requestCanvasRedraw()"
+                    :class="['py-1 px-1.5 rounded-lg font-bold text-[10px] transition cursor-pointer border text-center truncate', gamingBadgeOverride === 'none' ? 'bg-rose-600/30 border-rose-400 text-rose-200 font-black' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white']"
+                  >
+                    🚫 Ocultar
                   </button>
                 </div>
               </div>
@@ -1134,23 +1201,63 @@
                 </div>
 
                 <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Precio Promocional (ARS)</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-[10px] uppercase font-bold text-slate-400">Precio Promocional (ARS)</label>
+                    <span v-if="calculatedDiscountPercent" class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      -{{ calculatedDiscountPercent }}% OFF
+                    </span>
+                  </div>
                   <input 
                     v-model.number="reelPromoPrice" 
                     @input="requestCanvasRedraw"
                     type="number" 
-                    class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl p-2.5 text-sm text-emerald-400 font-black font-mono outline-none"
+                    class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl p-2.5 text-sm text-emerald-400 font-black font-mono outline-none focus:border-emerald-400"
                   >
                 </div>
 
                 <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Precio Regular Tachado (ARS)</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-[10px] uppercase font-bold text-slate-400">Precio Regular Tachado (ARS)</label>
+                    <span v-if="reelRegularPrice && reelPromoPrice && Number(reelRegularPrice) > Number(reelPromoPrice)" class="text-[10px] font-mono text-emerald-300 font-bold truncate">
+                      Ahorro: ${{ (Number(reelRegularPrice) - Number(reelPromoPrice)).toLocaleString('es-AR') }}
+                    </span>
+                  </div>
                   <input 
                     v-model.number="reelRegularPrice" 
                     @input="requestCanvasRedraw"
                     type="number" 
-                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-400 font-mono outline-none"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-300 font-mono outline-none focus:border-slate-600"
                   >
+                </div>
+
+                <!-- Descuentos Rápidos (Estilo Flyer) -->
+                <div class="sm:col-span-2 flex flex-wrap items-center gap-1.5 pt-1">
+                  <span class="text-[10px] uppercase font-bold text-slate-400">Descuento Rápido:</span>
+                  <button
+                    v-for="pct in [15, 25, 30, 40, 50]"
+                    :key="pct"
+                    type="button"
+                    @click="applyQuickDiscount(pct)"
+                    class="py-1 px-2.5 rounded-lg text-[10px] font-black bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-800 hover:text-white transition cursor-pointer"
+                  >
+                    -{{ pct }}% OFF
+                  </button>
+                </div>
+
+                <!-- Sugerencias Rápidas de Impacto Comercial -->
+                <div class="sm:col-span-2 space-y-1.5 pt-1 border-t border-slate-800/80">
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block">Sugerencias Rápidas de Impacto Comercial (Flyer):</label>
+                  <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar">
+                    <button
+                      v-for="b in suggestedImpactBadges"
+                      :key="b"
+                      type="button"
+                      @click="currentSealText = b; requestCanvasRedraw()"
+                      class="py-1 px-2 rounded-lg text-[10px] font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white transition cursor-pointer truncate max-w-full"
+                    >
+                      {{ b }}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1566,6 +1673,96 @@ const reelBullet1 = ref('⚡ Entrega Inmediata en 15 Minutos')
 const reelBullet2 = ref('👑 Cuenta Oficial 100% Garantizada')
 const reelBullet3 = ref('🛡️ Soporte VIP & Garantía 30 Días')
 
+// Plataforma y Precios Duales (Primaria vs Secundaria) como en Flyers
+const selectedGamingPlatform = ref('PS5')
+const gamePrimaryPrice = ref(0)
+const gameSecondaryPrice = ref(0)
+
+// Insignias Oficiales Gráficas de Licencia (PS5/PS4 Primaria/Secundaria, PS3)
+const GAMING_LICENSE_BADGES_MAP = {
+  ps4_primaria: { key: 'ps4_primaria', label: 'PS4 PRIMARIA', imgUrl: '/flyers/badge-ps4-primaria.png' },
+  ps4_secundaria: { key: 'ps4_secundaria', label: 'PS4 SECUNDARIA', imgUrl: '/flyers/badge-ps4-secundaria.png' },
+  ps5_primaria: { key: 'ps5_primaria', label: 'PS5 PRIMARIA', imgUrl: '/flyers/badge-ps5-primaria.png' },
+  ps5_secundaria: { key: 'ps5_secundaria', label: 'PS5 SECUNDARIA', imgUrl: '/flyers/badge-ps5-secundaria.png' },
+  ps3_digital: { key: 'ps3_digital', label: 'PS3 DIGITAL', imgUrl: '/flyers/badge-ps3-digital.png' }
+}
+const gamingBadgeOverride = ref('auto') // 'auto' | key | 'none'
+const loadedBadgeImages = reactive({
+  ps5_primaria: null,
+  ps5_secundaria: null,
+  ps4_primaria: null,
+  ps4_secundaria: null,
+  ps3_digital: null
+})
+
+function preloadBadgeImages() {
+  const map = {
+    ps5_primaria: '/flyers/badge-ps5-primaria.png',
+    ps5_secundaria: '/flyers/badge-ps5-secundaria.png',
+    ps4_primaria: '/flyers/badge-ps4-primaria.png',
+    ps4_secundaria: '/flyers/badge-ps4-secundaria.png',
+    ps3_digital: '/flyers/badge-ps3-digital.png'
+  }
+  for (const [key, url] of Object.entries(map)) {
+    if (!loadedBadgeImages[key]) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.src = url
+      img.onload = () => {
+        loadedBadgeImages[key] = img
+        requestCanvasRedraw()
+      }
+    }
+  }
+}
+
+const detectedGamingBadgeKey = computed(() => {
+  const plat = String(selectedGamingPlatform.value || '').toUpperCase()
+  const titleUpper = String(reelHeadline.value || '').toUpperCase()
+  const isSec = pickedGamingLicense.value === 'secondary'
+
+  if ((plat.includes('PS3') && !plat.includes('PS4') && !plat.includes('PS5')) || (/\bPS3\b/.test(titleUpper) && !/\bPS[45]\b/.test(titleUpper))) {
+    return 'ps3_digital'
+  }
+  if (plat.includes('PS4') && !plat.includes('PS5')) {
+    return isSec ? 'ps4_secundaria' : 'ps4_primaria'
+  }
+  return isSec ? 'ps5_secundaria' : 'ps5_primaria'
+})
+
+const suggestedImpactBadges = computed(() => {
+  const pct = calculatedDiscountPercent.value
+  const list = []
+  if (pct) {
+    list.push(`🔥 ${pct}% OFF - RECOMENDADO`)
+    list.push(`⚡ ${pct}% DE DESCUENTO`)
+    list.push(`💥 MEGA PROMO ${pct}% OFF`)
+    list.push(`🔥 AHORRA ${pct}% HOY`)
+  } else {
+    list.push('🔥 25% OFF - RECOMENDADO')
+    list.push('🔥 ¡OFERTA EXCLUSIVA!')
+  }
+  list.push(
+    '🎮 JUGÁ CON TU PERFIL PERSONAL (PSN)',
+    '⚡ ENTREGA INMEDIATA EN 15 MIN',
+    '🛡️ GARANTÍA TOTAL 100% OFICIAL',
+    '⏱️ ENTREGA 10 MIN A 1 HORA',
+    '💎 CALIDAD ULTRA HD 4K',
+    '🍿 CINE EN CASA ULTRA HD',
+    '🎁 COMBO RECOMENDADO'
+  )
+  return list
+})
+
+function applyQuickDiscount(pct) {
+  if (reelRegularPrice.value <= 0 || reelRegularPrice.value <= reelPromoPrice.value) {
+    reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.35)
+  }
+  reelPromoPrice.value = Math.round(reelRegularPrice.value * (1 - pct / 100))
+  currentSealText.value = `💥 MEGA PROMO ${pct}% OFF · GARANTÍA OFICIAL`
+  requestCanvasRedraw()
+}
+
 // WhatsApp de Pedidos Personalizado y Animado
 const customContactPhone = ref('')
 const whatsappActionText = ref('PEDIDOS & CONSULTAS WHATSAPP')
@@ -1890,6 +2087,7 @@ const loadedFlyerTemplates = {
 
 async function preloadFlyerTemplates() {
   try {
+    preloadBadgeImages()
     const [gImg, cImg] = await Promise.all([
       loadImage('/flyers/gaming-template-story.jpg'),
       loadImage('/flyer-template-cyber-story.png')
@@ -2137,17 +2335,49 @@ function onStreamingPlanChange() {
 function applyGamingProduct(passedGame = null) {
   const g = passedGame || (adminStore.processedGamingProducts || []).find(x => x.id === pickedGameId.value)
   if (!g) return
+  pickedGameId.value = g.id || pickedGameId.value
   const rawTitle = g.title || g.name || 'Videojuego'
   reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
+
+  // Guardar y resolver precios base para Primaria y Secundaria exactamente como en FlyerGenerator
+  const pri = Number(g.effectivePrimaryPrice || g.primaryPrice || gamePrimaryPrice.value || 15000)
+  const sec = Number(g.effectiveSecondaryPrice || g.secondaryPrice || gameSecondaryPrice.value || Math.round(pri * 0.65))
+  gamePrimaryPrice.value = pri
+  gameSecondaryPrice.value = sec
+
+  if (g.platform) {
+    if (g.platform.includes('PS4') && !g.platform.includes('PS5')) selectedGamingPlatform.value = 'PS4'
+    else if (g.platform.includes('PS5')) selectedGamingPlatform.value = 'PS5'
+    else if (g.platform.includes('PC') || g.platform.includes('Steam')) selectedGamingPlatform.value = 'PC (Steam)'
+    else if (g.platform.includes('Xbox')) selectedGamingPlatform.value = 'Xbox'
+    else if (g.platform.includes('Switch')) selectedGamingPlatform.value = 'Nintendo Switch'
+  }
+
   const isPri = pickedGamingLicense.value === 'primary'
-  reelSubline.value = g.subtitle || (isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial')
-  reelPromoPrice.value = g.price ? Number(g.price) : (isPri ? Number(g.effectivePrimaryPrice || 15000) : Number(g.effectiveSecondaryPrice || 9000))
-  reelRegularPrice.value = g.originalPrice ? Number(g.originalPrice) : Math.round(reelPromoPrice.value * 1.3)
-  reelBadgeText.value = g.badge || (isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA')
-  currentSealText.value = g.guaranteeText || (isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN')
-  reelBullet1.value = g.bullet1 || '⚡ Entrega Inmediata en 15 Minutos'
-  reelBullet2.value = g.bullet2 || (isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado')
-  reelBullet3.value = g.bullet3 || '🛡️ Soporte VIP & Garantía 30 Días'
+  reelPromoPrice.value = isPri ? pri : sec
+  reelRegularPrice.value = (passedGame?.originalPrice && isPri) 
+    ? Number(passedGame.originalPrice) 
+    : Math.round(reelPromoPrice.value * 1.35)
+
+  const plat = selectedGamingPlatform.value || 'PS5'
+  reelSubline.value = isPri
+    ? `⭐️ Cuenta Primaria · ${plat} Digital Oficial`
+    : `⚡️ Cuenta Secundaria · ${plat} Digital Oficial`
+
+  reelBadgeText.value = isPri
+    ? (plat.includes('PS4') ? 'PS4 PRIMARIA' : 'PS5 PRIMARIA')
+    : (plat.includes('PS4') ? 'PS4 SECUNDARIA' : 'PS5 SECUNDARIA')
+
+  currentSealText.value = isPri
+    ? '🎮 JUGÁ CON TU PERFIL PERSONAL (PSN)'
+    : '⚡ ENTREGA INMEDIATA · GARANTÍA 100%'
+
+  reelBullet1.value = isPri
+    ? 'Juega con tu Perfil Personal (Trofeos en tu cuenta)'
+    : 'Juega desde el usuario asignado 100% oficial'
+  reelBullet2.value = 'Descarga directa desde PlayStation Store'
+  reelBullet3.value = 'Garantía oficial y entrega en 60 a 90 min 24/7'
+
   const rawCover = g.image || g.cover || '/flyers/gaming-template-story.jpg'
   reelArtworkUrl.value = rawCover
   defaultProductCoverUrl.value = rawCover
@@ -3052,8 +3282,37 @@ function renderFrame(timeMs = 0) {
       ctx.stroke()
       ctx.restore()
 
-      // 2. Etiqueta Oficial de Licencia Superior (bx = 201, by = 216, bw = 678, bh = 56)
-      if (reelBadgeText.value) {
+      // 2. Etiqueta Oficial de Licencia Superior (Insignia Oficial 3D o Píldora Neón)
+      const activeBadgeKey = gamingBadgeOverride.value !== 'auto' ? gamingBadgeOverride.value : detectedGamingBadgeKey.value
+      const badgeImg = (activeBadgeKey && activeBadgeKey !== 'none') ? loadedBadgeImages[activeBadgeKey] : null
+
+      if (badgeImg && (badgeImg.width > 0 || badgeImg.naturalWidth > 0)) {
+        const bw = Math.min(522, W - 120)
+        const bh = Math.round(bw * (badgeImg.height / badgeImg.width))
+        const bx = (W - bw) / 2
+        const by = 204
+
+        ctx.save()
+        ctx.shadowColor = 'rgba(0, 220, 255, 0.75)'
+        ctx.shadowBlur = 18
+        ctx.drawImage(badgeImg, bx, by, bw, bh)
+
+        // Shimmer animado sutil atravesando la insignia oficial
+        if (isAnimated.value) {
+          ctx.beginPath()
+          roundRect(ctx, bx, by, bw, bh, 8)
+          ctx.clip()
+
+          const shimmerPos = ((t * 0.4) % 1) * (bw + 200) - 100
+          const sGrad = ctx.createLinearGradient(bx + shimmerPos, by, bx + shimmerPos + 70, by)
+          sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+          sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)')
+          sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          ctx.fillStyle = sGrad
+          ctx.fillRect(bx, by, bw, bh)
+        }
+        ctx.restore()
+      } else if (reelBadgeText.value && activeBadgeKey !== 'none') {
         const bw = 678
         const bh = 56
         const bx = (W - bw) / 2
@@ -3080,6 +3339,7 @@ function renderFrame(timeMs = 0) {
           sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)')
           sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
           ctx.fillStyle = sGrad
+          roundRect(ctx, bx, by, bw, bh, bh / 2)
           ctx.clip()
           ctx.fillRect(bx, by, bw, bh)
         }
@@ -3633,6 +3893,20 @@ function renderFrame(timeMs = 0) {
 
 // Helpers modulares de dibujo
 function drawBadgePill(ctx, bx, by, badgeW, badgeH, text, pillGrad) {
+  if (selectedMode.value === 'gaming') {
+    const activeBadgeKey = gamingBadgeOverride.value !== 'auto' ? gamingBadgeOverride.value : detectedGamingBadgeKey.value
+    if (activeBadgeKey === 'none') return
+    const badgeImg = activeBadgeKey ? loadedBadgeImages[activeBadgeKey] : null
+    if (badgeImg && (badgeImg.width > 0 || badgeImg.naturalWidth > 0)) {
+      ctx.save()
+      const bh = Math.round(badgeW * (badgeImg.height / badgeImg.width))
+      ctx.shadowColor = 'rgba(0, 220, 255, 0.70)'
+      ctx.shadowBlur = 14
+      ctx.drawImage(badgeImg, bx, by, badgeW, bh)
+      ctx.restore()
+      return
+    }
+  }
   ctx.save()
   const bGrad = ctx.createLinearGradient(bx, by, bx + badgeW, by)
   bGrad.addColorStop(0, pillGrad[0])
@@ -3957,22 +4231,50 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
     ctx.restore()
   }
 
-  // 2. Precio regular tachado con porcentaje de descuento
+  // 2. Precio regular tachado con píldora de descuento oficial
   if (showRegularPrice.value && Number(reelRegularPrice.value) > 0 && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)) {
-    ctx.fillStyle = '#94a3b8'
-    ctx.font = 'bold 28px sans-serif'
-    ctx.textAlign = 'center'
+    ctx.save()
+    ctx.font = 'bold 26px sans-serif'
     const discPct = Math.round((1 - (Number(reelPromoPrice.value) / Number(reelRegularPrice.value))) * 100)
-    const regText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}${discPct > 0 ? ` (-${discPct}% OFF)` : ''}`
-    ctx.fillText(regText, W / 2, boxY + 46)
+    const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
+    const origW = ctx.measureText(origText).width
+    const badgeW = discPct > 0 ? 116 : 0
+    const gap = 12
+    const totalGroupW = origW + (discPct > 0 ? (gap + badgeW) : 0)
+    const startX = (W - totalGroupW) / 2
 
-    const tw = ctx.measureText(regText).width
-    ctx.strokeStyle = '#f43f5e'
-    ctx.lineWidth = 3
+    // Texto Antes: $XX.XXX
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#94a3b8'
+    ctx.fillText(origText, startX, boxY + 44)
+
+    // Línea roja tachada SOLO sobre el precio original
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = 2.5
     ctx.beginPath()
-    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 36)
-    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 36)
+    ctx.moveTo(startX - 6, boxY + 35)
+    ctx.lineTo(startX + origW + 6, boxY + 35)
     ctx.stroke()
+
+    // Píldora esmeralda destacada con el porcentaje OFF
+    if (discPct > 0) {
+      const bX = startX + origW + gap
+      const bY = boxY + 18
+      const bH = 34
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.22)'
+      roundRect(ctx, bX, bY, badgeW, bH, 8)
+      ctx.fill()
+      ctx.strokeStyle = '#10b981'
+      ctx.lineWidth = 1.5
+      roundRect(ctx, bX, bY, badgeW, bH, 8)
+      ctx.stroke()
+
+      ctx.fillStyle = '#34d399'
+      ctx.font = '900 18px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`-${discPct}% OFF`, bX + badgeW / 2, bY + 23)
+    }
+    ctx.restore()
   }
 
   // 3. Precio Promocional Gigante con pulso neón
@@ -4500,9 +4802,25 @@ function initFromProps() {
       reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
       if (p.license) pickedGamingLicense.value = p.license
       const isPri = pickedGamingLicense.value === 'primary'
-      reelSubline.value = p.subtitle || (isPri ? 'Cuenta Primaria · Jugá desde tu usuario (PSN)' : 'Cuenta Secundaria · Activación Oficial')
-      reelPromoPrice.value = p.price ? Number(p.price) : (isPri ? Number(p.effectivePrimaryPrice || 15000) : Number(p.effectiveSecondaryPrice || 9000))
-      reelRegularPrice.value = p.originalPrice ? Number(p.originalPrice) : Math.round(reelPromoPrice.value * 1.3)
+
+      if (p.platform) {
+        if (p.platform.includes('PS4') && !p.platform.includes('PS5')) selectedGamingPlatform.value = 'PS4'
+        else if (p.platform.includes('PS5')) selectedGamingPlatform.value = 'PS5'
+        else if (p.platform.includes('PC') || p.platform.includes('Steam')) selectedGamingPlatform.value = 'PC (Steam)'
+        else if (p.platform.includes('Xbox')) selectedGamingPlatform.value = 'Xbox'
+        else if (p.platform.includes('Switch')) selectedGamingPlatform.value = 'Nintendo Switch'
+      }
+
+      if (p.badgeKey) gamingBadgeOverride.value = p.badgeKey
+
+      const pri = Number(p.effectivePrimaryPrice || p.primaryPrice || (isPri ? p.price : 0) || 15000)
+      const sec = Number(p.effectiveSecondaryPrice || p.secondaryPrice || (!isPri ? p.price : 0) || Math.round(pri * 0.65))
+      gamePrimaryPrice.value = pri
+      gameSecondaryPrice.value = sec
+
+      reelSubline.value = p.subtitle || (isPri ? `⭐️ Cuenta Primaria · ${selectedGamingPlatform.value || 'PS5'} Digital Oficial` : `⚡️ Cuenta Secundaria · ${selectedGamingPlatform.value || 'PS5'} Digital Oficial`)
+      reelPromoPrice.value = isPri ? pri : sec
+      reelRegularPrice.value = p.originalPrice ? Number(p.originalPrice) : Math.round(reelPromoPrice.value * 1.35)
       reelBadgeText.value = p.badge || (isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA')
       currentSealText.value = p.guaranteeText || (isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN')
       reelBullet1.value = p.bullet1 || '⚡ Entrega Inmediata en 15 Minutos'
