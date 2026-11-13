@@ -8,6 +8,7 @@ import { generateMarketingCopy } from '../utils/marketing'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
+const ReelsStoryStudioModal = defineAsyncComponent(() => import('../components/ReelsStoryStudioModal.vue'))
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { 
   isBiometricsAvailable, 
@@ -25,6 +26,19 @@ const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
 const showSharePlaqueModal = ref(false)
 const sharePlaquePayload = ref(null)
+const showReelsStudioModal = ref(false)
+const reelsStudioPayload = ref(null)
+
+const activeResellerPromoCode = computed(() => {
+  const rId = currentResellerId.value
+  const dUser = (adminStore.discountUsers || []).find(u => u.resellerId === rId || u.phone === resellerStore.sessionUser?.contactNumber || u.code === rId)
+  return dUser?.code || ''
+})
+
+const openReelsStudio = (item = null) => {
+  reelsStudioPayload.value = item
+  showReelsStudioModal.value = true
+}
 
 const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
@@ -2543,6 +2557,13 @@ const submitResellerGameInquiry = () => {
           </button>
           <button 
             type="button"
+            @click="openReelsStudio(null)"
+            class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-black text-xs px-3.5 py-2.5 rounded-xl transition-all shadow-md shadow-pink-500/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🎬 Reel / Story 9:16</span>
+          </button>
+          <button 
+            type="button"
             @click="copyAffiliateLink" 
             class="bg-brand-accent text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow flex items-center gap-1.5 cursor-pointer"
           >
@@ -3423,6 +3444,13 @@ const submitResellerGameInquiry = () => {
                 <span>📤 Placa</span>
               </button>
               <button 
+                @click="openReelsStudio(game)" 
+                class="bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                title="Crear Video Reel o Estado 9:16 para TikTok e Instagram"
+              >
+                <span>🎬 Reel</span>
+              </button>
+              <button 
                 @click="openFlyerForProduct(game)" 
                 class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
                 title="Estudio Flyers Multi-Formato"
@@ -4103,4 +4131,15 @@ const submitResellerGameInquiry = () => {
       @receipt-purged="handleReceiptPurgedReseller"
     />
   </div>
+    <!-- MODAL: ESTUDIO DE REELS, TIKTOK & ESTADOS 9:16 -->
+    <ReelsStoryStudioModal
+      :show="showReelsStudioModal"
+      :initial-payload="reelsStudioPayload"
+      :reseller-ref="currentResellerId"
+      :store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'"
+      :contact-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || '+54 9 11 4050-6070'"
+      :promo-code="activeResellerPromoCode"
+      :website-domain="'streamepro.me'"
+      @close="showReelsStudioModal = false; reelsStudioPayload = null"
+    />
 </template>

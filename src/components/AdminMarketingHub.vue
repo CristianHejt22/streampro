@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import {
@@ -13,7 +13,15 @@ const emit = defineEmits(['openPlaque'])
 const adminStore = useAdminStore()
 const toast = useToastStore()
 
-const subTab = ref('discount_users') // 'campaign' | 'discount_users' | 'giveaways' | 'coupons' | 'analytics'
+const subTab = ref('discount_users') // 'campaign' | 'discount_users' | 'giveaways' | 'coupons' | 'analytics' | 'reels_studio'
+const ReelsStoryStudioModal = defineAsyncComponent(() => import('./ReelsStoryStudioModal.vue'))
+const showAdminReelsModal = ref(false)
+const adminReelsPayload = ref(null)
+
+const openAdminReelsStudio = (payload = null) => {
+  adminReelsPayload.value = payload
+  showAdminReelsModal.value = true
+}
 
 // ==========================================
 // 1. CAMPAÑA GLOBAL & REDES SOCIALES
@@ -462,6 +470,13 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'analytics' ? 'bg-emerald-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
         >
           <span>📊 Métricas &amp; Créditos ({{ (adminStore.discountCreditsLog || []).length }})</span>
+        </button>
+        <button
+          type="button"
+          @click="subTab = 'reels_studio'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'reels_studio' ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+        >
+          <span>🎬 Estudio Reels &amp; Estados 9:16</span>
         </button>
       </div>
     </div>
@@ -999,6 +1014,95 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
       </div>
     </div>
 
+    <!-- ============================================================== -->
+    <!-- SUB-TAB 6: ESTUDIO AUTOMÁTICO DE REELS, TIKTOK & ESTADOS 9:16  -->
+    <!-- ============================================================== -->
+    <div v-else-if="subTab === 'reels_studio'" class="space-y-6 animate-in fade-in">
+      <div class="bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900 p-6 rounded-3xl border border-pink-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider bg-pink-500/20 text-pink-300 border border-pink-500/30 px-2.5 py-0.5 rounded-full">
+            🎬 Generador de Contenido Vertical 9:16
+          </span>
+          <h3 class="text-2xl font-black text-white mt-1">Estudio de Reels, TikTok &amp; Estados de WhatsApp</h3>
+          <p class="text-xs text-slate-300 mt-1 max-w-2xl">
+            Genera automáticamente videos animados suaves de 5 segundos a 30 FPS o imágenes Ultra HD 9:16 con portadas oficiales, precios y cupones de StreamePro, listos para descargar o publicar en redes.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          @click="openAdminReelsStudio(null)"
+          class="bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-xl shadow-pink-500/25 flex items-center gap-2 cursor-pointer shrink-0 active:scale-95 transition"
+        >
+          <span>🎬</span>
+          <span>Abrir Estudio Completo 9:16</span>
+        </button>
+      </div>
+
+      <!-- ACCESOS RÁPIDOS POR CATEGORÍA PARA EL ADMIN -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 hover:border-pink-500/40 transition space-y-3 flex flex-col justify-between">
+          <div class="space-y-1">
+            <span class="text-2xl">🎬</span>
+            <h4 class="font-bold text-white text-sm">Streaming Oficial</h4>
+            <p class="text-xs text-slate-400">Reels verticales para Netflix, Max, Spotify con cuentas privadas 4K y PIN exclusivo.</p>
+          </div>
+          <button
+            type="button"
+            @click="openAdminReelsStudio({ platform: 'Netflix' })"
+            class="w-full py-2 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-bold transition cursor-pointer"
+          >
+            Crear Reel Streaming
+          </button>
+        </div>
+
+        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/40 transition space-y-3 flex flex-col justify-between">
+          <div class="space-y-1">
+            <span class="text-2xl">🎮</span>
+            <h4 class="font-bold text-white text-sm">Videojuegos Digitales PS5/PS4</h4>
+            <p class="text-xs text-slate-400">Placas 9:16 de FC 25, GTA V, God of War con portadas oficiales de PS Store.</p>
+          </div>
+          <button
+            type="button"
+            @click="openAdminReelsStudio({ itemType: 'gaming' })"
+            class="w-full py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition cursor-pointer"
+          >
+            Crear Reel Gaming
+          </button>
+        </div>
+
+        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 hover:border-fuchsia-500/40 transition space-y-3 flex flex-col justify-between">
+          <div class="space-y-1">
+            <span class="text-2xl">🎉</span>
+            <h4 class="font-bold text-white text-sm">Sorteos Oficiales Activos</h4>
+            <p class="text-xs text-slate-400">Videos y estados para promocionar el sorteo en curso y atraer cientos de nuevos registros.</p>
+          </div>
+          <button
+            type="button"
+            @click="openAdminReelsStudio({ prizeTitle: 'Cuenta Anual' })"
+            class="w-full py-2 px-3 rounded-xl bg-fuchsia-600/20 hover:bg-fuchsia-600 text-fuchsia-300 hover:text-white border border-fuchsia-500/30 text-xs font-bold transition cursor-pointer"
+          >
+            Crear Reel Sorteo
+          </button>
+        </div>
+
+        <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 hover:border-purple-500/40 transition space-y-3 flex flex-col justify-between">
+          <div class="space-y-1">
+            <span class="text-2xl">🎁</span>
+            <h4 class="font-bold text-white text-sm">Combos &amp; Paquetes VIP</h4>
+            <p class="text-xs text-slate-400">Reels comparativos mostrando el super ahorro al comprar combos múltiples.</p>
+          </div>
+          <button
+            type="button"
+            @click="openAdminReelsStudio({ services: true })"
+            class="w-full py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition cursor-pointer"
+          >
+            Crear Reel Combo
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL CANJE / LIQUIDACIÓN DE CRÉDITO -->
     <div v-if="redeemModalUser" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div class="bg-slate-900 border border-sky-500/40 w-full max-w-md rounded-3xl p-5 space-y-4 text-xs">
@@ -1030,4 +1134,15 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
       </div>
     </div>
   </div>
+
+    <!-- MODAL: ESTUDIO DE REELS, TIKTOK & ESTADOS 9:16 -->
+    <ReelsStoryStudioModal
+      :show="showAdminReelsModal"
+      :initial-payload="adminReelsPayload"
+      :store-name="'StreamePro Oficial'"
+      :contact-phone="'+54 9 11 4050-6070'"
+      :promo-code="adminStore.marketingCampaign?.highlightedCode || 'BIENVENIDO10'"
+      :website-domain="'streamepro.me'"
+      @close="showAdminReelsModal = false; adminReelsPayload = null"
+    />
 </template>

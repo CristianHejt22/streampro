@@ -276,3 +276,119 @@ export function generateMarketingCopy({
     `👉 *Ingresá acá:* ${url}`
   ].filter(Boolean).join('\n\n')
 }
+
+/**
+ * Genera un paquete integral de Guiones, Copys y Subtítulos para TikTok, Reels y Estados 9:16
+ */
+export function generateReelStoryPackage({
+  type = 'streaming', // 'streaming' | 'gaming' | 'combo' | 'giveaway' | 'flash'
+  title = '',
+  planLabel = '',
+  promoPrice = 0,
+  regularPrice = 0,
+  promoCode = '',
+  discountPct = 0,
+  storeName = 'StreamePro Oficial',
+  phone = '',
+  url = 'https://streamepro.me',
+  isReseller = false
+}) {
+  const cleanCode = normalizePromoCode(promoCode)
+  const priceFormatted = Number(promoPrice || 0) > 0 ? `$${Number(promoPrice).toLocaleString('es-AR')} ARS` : ''
+  const regFormatted = Number(regularPrice || 0) > 0 ? `$${Number(regularPrice).toLocaleString('es-AR')} ARS` : ''
+  const discountStr = discountPct ? `${discountPct}% OFF` : (cleanCode ? 'DESCUENTO EXCLUSIVO' : 'PRECIO PROMOCIONAL')
+
+  let hook = ''
+  let voiceover = ''
+  let onScreenText = []
+  let hashtags = []
+
+  if (type === 'streaming') {
+    hook = `¿Todavía pagás una fortuna por tus suscripciones en Argentina?`
+    voiceover = `Dejá de tirar plata todos los meses. En ${storeName} conseguís ${title || 'Streaming 4K'} original con tu propio perfil privado y PIN exclusivo. La entrega es inmediata por WhatsApp con soporte y garantía oficial todo el mes. Si usás el cupón ${cleanCode || 'OFERTA'} te queda en tan solo ${priceFormatted || 'precio mayorista'}.`
+    onScreenText = [
+      `❌ Pagando de más en plataformas`,
+      `✅ ${title || 'Streaming'} 4K Oficial`,
+      `🔒 Perfil Privado con PIN`,
+      `⚡ Entrega en 10-15 min`,
+      priceFormatted ? `💰 Hoy a solo ${priceFormatted}` : `💰 Super Precio`,
+      cleanCode ? `🎟️ Cupón: ${cleanCode}` : '📲 Pedilo al link del perfil'
+    ]
+    hashtags = ['#streamingargentina', '#netflixargentina', '#maxargentina', '#spotifyargentina', '#ahorroargentina', '#streamepro', '#cuentasoficiales']
+  } else if (type === 'gaming') {
+    hook = `¡No gastes 80 dólares en juegos de PlayStation!`
+    voiceover = `Conseguí ${title || 'tu juego favorito'} para PS5 y PS4 en formato digital oficial, para jugar directo desde tu consola sin bloqueos y con activación guiada paso a paso. Entrega al instante con garantía. Aprovechá hoy por solo ${priceFormatted || 'precio especial'}${cleanCode ? ` con el cupón ${cleanCode}` : ''}.`
+    onScreenText = [
+      `🎮 ${title || 'Videojuegos Digitales'}`,
+      `🕹️ PlayStation 5 & PS4 Oficial`,
+      `🏆 Jugá desde tu usuario personal`,
+      `⚡ Activación Digital Inmediata`,
+      priceFormatted ? `🔥 Precio especial: ${priceFormatted}` : '🔥 Gran Oferta Gamer',
+      cleanCode ? `🎟️ Cupón: ${cleanCode}` : '📲 Link en bio / mensaje directo'
+    ]
+    hashtags = ['#ps5argentina', '#ps4argentina', '#gamingargentina', '#playstationargentina', '#juegosdigitales', '#ofertasgamer']
+  } else if (type === 'combo') {
+    hook = `El combo definitivo de entretenimiento que no sabías que existía.`
+    voiceover = `Armamos este mega combo con tus plataformas favoritas juntas por una fracción de lo que pagarías por separado. Todo 100% privado, oficial y con entrega ultra-rápida. Pedilo hoy a solo ${priceFormatted || 'un super precio'}.`
+    onScreenText = [
+      `🍿 Mega Combo Entretenimiento`,
+      `✨ Múltiples plataformas en 1 solo pack`,
+      `💸 Ahorrá hasta 40%`,
+      `⚡ Entrega inmediata por WhatsApp`,
+      priceFormatted ? `🔥 Solo ${priceFormatted}` : '🔥 Ahorro Garantizado',
+      cleanCode ? `🎟️ Código: ${cleanCode}` : '📲 Escribinos al WhatsApp'
+    ]
+    hashtags = ['#combostreaming', '#ahorro', '#argentinapromos', '#netflixyrelax', '#seriesypelis', '#streamepro']
+  } else if (type === 'giveaway') {
+    hook = `¡Estamos sorteando una cuenta oficial gratis y participar te lleva 10 segundos!`
+    voiceover = `En ${storeName} lanzamos un sorteo oficial para toda la comunidad. Solo tenés que registrar tu número gratis en nuestro sitio y ya estás participando por ${title || 'premios increíbles'}. El sorteo es transparente con acta criptográfica pública. ¡No te quedes afuera!`
+    onScreenText = [
+      `🎉 SORTEO OFICIAL ACTIVO`,
+      `🎁 Premio: ${title || 'Cuenta Oficial'}`,
+      `🎟️ Participación 100% Gratuita`,
+      `🔒 Sorteo transparente con acta pública`,
+      `👉 Registrate en el link de bio / historia`
+    ]
+    hashtags = ['#sorteoargentina', '#sorteogamer', '#sorteostreaming', '#sorteogratis', '#argentina', '#streamepro']
+  } else {
+    hook = `¡Aprovechá esta oportunidad antes de que se agoten los cupos!`
+    voiceover = `En ${storeName} tenemos disponible ${title || 'este servicio'} con precio promocional por tiempo limitado. Cuentas privadas y garantizadas con soporte en Argentina. Pedí la tuya ahora.`
+    onScreenText = [
+      `🔥 OFERTA EXCLUSIVA`,
+      `⚡ ${title || 'Servicio Oficial'}`,
+      `💎 ${discountStr}`,
+      priceFormatted ? `💰 Precio: ${priceFormatted}` : '💰 Oferta Imperdible',
+      cleanCode ? `🎟️ Código: ${cleanCode}` : '📲 Pedilo al WhatsApp'
+    ]
+    hashtags = ['#ofertasargentina', '#descuentos', '#promociones', '#streamepro']
+  }
+
+  const cta = cleanCode
+    ? `📲 Pedilo al WhatsApp o tocá el link del perfil ingresando el cupón *${cleanCode}* para congelar la oferta.`
+    : `📲 Escribinos por WhatsApp o visitá ${url} para activar tu cuenta hoy mismo.`
+
+  const caption = [
+    `🔥 ${(title || 'OFERTA ESPECIAL').toUpperCase()} — ${discountStr} 🔥`,
+    '',
+    `⚡ ${onScreenText.slice(1, 4).join('\n⚡ ')}`,
+    '',
+    priceFormatted ? `💰 *Precio Promocional:* ${priceFormatted}${regFormatted ? ` (Antes ~${regFormatted}~)` : ''}` : '',
+    cleanCode ? `🎟️ *CUPÓN ACTIVO:* ${cleanCode}` : '',
+    '',
+    cta,
+    '',
+    hashtags.join(' ')
+  ].filter(Boolean).join('\n')
+
+  return {
+    type,
+    title,
+    hook,
+    voiceover,
+    onScreenText,
+    cta,
+    caption,
+    hashtags,
+    soundTip: '💡 Consejo TikTok/Reels: Usa un audio viral en tendencia a volumen bajo (5-10%) de fondo y leé el guión con voz enérgica o activa la voz de IA de TikTok.'
+  }
+}
