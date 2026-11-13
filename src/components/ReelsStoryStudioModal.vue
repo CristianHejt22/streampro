@@ -95,29 +95,24 @@
               class="w-full h-full object-contain pointer-events-none"
             ></canvas>
 
-            <!-- Overlay de Grabación de Video en Progreso -->
+            <!-- Banner Flotante Superior de Grabación (Lienzo 100% Despejado y Visible) -->
             <div 
               v-if="isRecording" 
-              class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in z-20 pointer-events-auto"
+              class="absolute top-2.5 inset-x-2.5 bg-slate-950/92 backdrop-blur-md border border-rose-500/60 p-2 sm:p-2.5 rounded-xl flex items-center justify-between shadow-2xl z-30 animate-in fade-in pointer-events-none"
             >
-              <div class="relative mb-4">
-                <div class="w-16 h-16 rounded-full border-4 border-pink-500/30 border-t-pink-500 animate-spin"></div>
-                <span class="absolute inset-0 flex items-center justify-center text-xl">🎬</span>
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                <span class="text-[11px] font-black text-white uppercase tracking-wider">🔴 Grabando Reel 9:16</span>
               </div>
-              <div class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-                <span>Renderizando Video 9:16...</span>
+              <div class="flex items-center gap-2">
+                <div class="w-20 sm:w-24 bg-slate-800 h-2 rounded-full overflow-hidden border border-white/10">
+                  <div 
+                    class="bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 h-full transition-all duration-100" 
+                    :style="{ width: recordingProgress + '%' }"
+                  ></div>
+                </div>
+                <span class="text-[10px] font-mono text-rose-300 font-bold">{{ recordingSeconds }}s / 5s</span>
               </div>
-              <p class="text-xs text-slate-300 mt-1">Animación fluida a 30 FPS en resolución 1080p</p>
-              
-              <!-- Barra de progreso con gradiente neón -->
-              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mt-4 border border-white/10">
-                <div 
-                  class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 h-full transition-all duration-100" 
-                  :style="{ width: recordingProgress + '%' }"
-                ></div>
-              </div>
-              <span class="text-xs font-mono text-pink-300 mt-2 font-black">{{ recordingSeconds }}s / 5.0s</span>
             </div>
 
             <!-- Badges flotantes en vista previa -->
@@ -1383,14 +1378,187 @@ const reelPromoPrice = ref(5999)
 const reelRegularPrice = ref(8500)
 const reelPromoCode = ref('')
 const reelStoreName = ref('StreamePro Oficial')
-const reelArtworkUrl = ref('/hero.png')
+const reelArtworkUrl = ref('/flyers/gaming-template-story.jpg')
 const loadedArtworkImage = ref(null)
-const defaultProductCoverUrl = ref('/hero.png')
+const defaultProductCoverUrl = ref('/flyers/gaming-template-story.jpg')
 const customUrlInput = ref('')
 
 // Buscador de Gaming
 const gamingSearchTerm = ref('')
 const gamingQuickCategory = ref('all')
+
+// Helper para garantizar carga de imagen con CORS sin taint en el Canvas
+function getCORSImageUrl(rawUrl) {
+  if (!rawUrl) return ''
+  if (rawUrl.startsWith('data:') || rawUrl.startsWith('blob:')) return rawUrl
+  let fullUrl = rawUrl
+  if (!fullUrl.startsWith('http')) {
+    if (fullUrl.startsWith('/')) return fullUrl
+    fullUrl = `https://streamepro.me/${fullUrl}`
+  }
+  // Enrutamiento mediante proxy global seguro con CORS habilitado
+  return `https://wsrv.nl/?url=${encodeURIComponent(fullUrl)}&w=1080&output=jpg`
+}
+
+// Sintetizador de carátula procedural en memoria (100% libre de CORS, nunca falla ni queda negro)
+function createProceduralCover(title = 'StreamePro', subtitle = 'Edición Oficial', icon = '🎬', bg1 = '#0f172a', bg2 = '#020617', accent = '#38bdf8') {
+  if (typeof document === 'undefined') return ''
+  try {
+    const c = document.createElement('canvas')
+    c.width = 1000
+    c.height = 1000
+    const ctx = c.getContext('2d')
+    if (!ctx) return ''
+
+    // Fondo radial profundo
+    const grad = ctx.createRadialGradient(500, 480, 50, 500, 480, 650)
+    grad.addColorStop(0, bg1)
+    grad.addColorStop(1, bg2)
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 1000, 1000)
+
+    // Cuadrícula cyberpunk sutil
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'
+    ctx.lineWidth = 2
+    for (let x = 0; x < 1000; x += 50) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1000); ctx.stroke()
+    }
+    for (let y = 0; y < 1000; y += 50) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1000, y); ctx.stroke()
+    }
+
+    // Marco central circular con resplandor neón
+    ctx.save()
+    ctx.shadowColor = accent
+    ctx.shadowBlur = 45
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'
+    ctx.beginPath()
+    ctx.arc(500, 410, 210, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = accent
+    ctx.lineWidth = 5
+    ctx.stroke()
+    ctx.restore()
+
+    // Icono / Símbolo gigante en el centro
+    ctx.font = '160px "Apple Color Emoji", "Segoe UI Emoji", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(icon, 500, 410)
+
+    // Título Principal
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.fillText(title.toUpperCase().slice(0, 24), 500, 700)
+
+    // Subtítulo
+    ctx.fillStyle = accent
+    ctx.font = 'bold 28px -apple-system, sans-serif'
+    ctx.fillText(subtitle.slice(0, 36), 500, 760)
+
+    // Insignia oficial inferior
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.8)'
+    ctx.font = 'bold 22px monospace'
+    ctx.fillText('⚡ ACTIVACIÓN OFICIAL · STREAMEPRO', 500, 850)
+
+    return c.toDataURL('image/png')
+  } catch (e) {
+    console.warn('Error sintetizando carátula:', e)
+    return ''
+  }
+}
+
+// Carátula procedural temática por plataforma de streaming
+function getStreamingPlatformCover(srvKey) {
+  const p = (srvKey || '').toLowerCase()
+  if (p.includes('netflix')) {
+    return createProceduralCover('NETFLIX 4K ULTRA', 'Perfil Privado con PIN', '🍿', '#3b0764', '#020617', '#ec4899')
+  }
+  if (p.includes('disney')) {
+    return createProceduralCover('DISNEY+ OFICIAL', 'Disney · Pixar · Marvel', '✨', '#0369a1', '#020617', '#38bdf8')
+  }
+  if (p.includes('spotify') || p.includes('music')) {
+    return createProceduralCover('SPOTIFY PREMIUM', 'Música en Alta Fidelidad', '🎵', '#065f46', '#020617', '#22c55e')
+  }
+  if (p.includes('max') || p.includes('hbo')) {
+    return createProceduralCover('MAX ULTRA HD', 'Warner Bros & HBO Original', '🎬', '#312e81', '#020617', '#818cf8')
+  }
+  if (p.includes('prime') || p.includes('amazon')) {
+    return createProceduralCover('PRIME VIDEO', 'Series y Películas 4K', '📦', '#0e7490', '#020617', '#22d3ee')
+  }
+  if (p.includes('youtube')) {
+    return createProceduralCover('YOUTUBE PREMIUM', 'Sin Anuncios + Music', '▶️', '#991b1b', '#020617', '#f87171')
+  }
+  if (p.includes('paramount')) {
+    return createProceduralCover('PARAMOUNT+', 'Películas & Deportes', '⛰️', '#1e3a8a', '#020617', '#60a5fa')
+  }
+  if (p.includes('crunchy')) {
+    return createProceduralCover('CRUNCHYROLL', 'Anime en Simulcast', '🍥', '#7c2d12', '#020617', '#fb923c')
+  }
+  if (p.includes('iptv') || p.includes('magis') || p.includes('tele')) {
+    return createProceduralCover('IPTV PRO 4K', '+1.500 Canales en Vivo', '📺', '#4c1d95', '#020617', '#c084fc')
+  }
+  return createProceduralCover((srvKey || 'STREAMING').toUpperCase(), 'Suscripción Oficial', '⚡', '#1e293b', '#020617', '#38bdf8')
+}
+
+// Inyector de duración para WebM (soluciona el error de 00.000001ms en Chrome/MediaRecorder)
+async function fixWebmDurationBlob(blob, durationMs = 5000) {
+  try {
+    const buffer = await blob.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+
+    // Segment Info ID: 0x15, 0x49, 0xA9, 0x66
+    let infoPos = -1
+    for (let i = 0; i < Math.min(bytes.length - 4, 1024); i++) {
+      if (bytes[i] === 0x15 && bytes[i + 1] === 0x49 && bytes[i + 2] === 0xA9 && bytes[i + 3] === 0x66) {
+        infoPos = i
+        break
+      }
+    }
+
+    if (infoPos === -1) return blob
+
+    // Buscar tag de Duration: 0x44, 0x89 dentro de Segment Info
+    let durationPos = -1
+    for (let i = infoPos + 4; i < Math.min(bytes.length - 6, infoPos + 250); i++) {
+      if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
+        durationPos = i
+        break
+      }
+    }
+
+    if (durationPos !== -1) {
+      const lenByte = bytes[durationPos + 2]
+      const view = new DataView(buffer)
+      if (lenByte === 0x84 || lenByte === 4) {
+        view.setFloat32(durationPos + 3, durationMs, false)
+        return new Blob([buffer], { type: blob.type })
+      } else if (lenByte === 0x88 || lenByte === 8) {
+        view.setFloat64(durationPos + 3, durationMs, false)
+        return new Blob([buffer], { type: blob.type })
+      }
+    }
+
+    // Si no existía, insertamos la etiqueta de duración float32 (7 bytes)
+    const durBytes = new Uint8Array(7)
+    durBytes[0] = 0x44
+    durBytes[1] = 0x89
+    durBytes[2] = 0x84
+    const dView = new DataView(durBytes.buffer)
+    dView.setFloat32(3, durationMs, false)
+
+    const insertPos = infoPos + 8
+    const patched = new Uint8Array(bytes.length + durBytes.length)
+    patched.set(bytes.subarray(0, insertPos), 0)
+    patched.set(durBytes, insertPos)
+    patched.set(bytes.subarray(insertPos), insertPos + durBytes.length)
+
+    return new Blob([patched.buffer], { type: blob.type })
+  } catch (err) {
+    console.warn('Could not patch WebM duration:', err)
+    return blob
+  }
+}
 
 // Cache en memoria para imágenes precargadas
 const imageCache = new Map()
@@ -1418,10 +1586,19 @@ function loadImage(src) {
         localImg.onerror = () => resolve(null)
         localImg.src = src
       } else {
-        const fallback = new Image()
-        fallback.onload = () => resolve(fallback)
-        fallback.onerror = () => resolve(null)
-        fallback.src = '/hero.png'
+        // Fallback seguro inmediato que NUNCA falla ni deja la pantalla negra
+        const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
+        if (fallbackData) {
+          const fallback = new Image()
+          fallback.onload = () => {
+            imageCache.set(src, fallback)
+            resolve(fallback)
+          }
+          fallback.onerror = () => resolve(null)
+          fallback.src = fallbackData
+        } else {
+          resolve(null)
+        }
       }
     }
     img.src = src
@@ -1514,10 +1691,10 @@ const gamingQuickFilters = [
 ]
 
 const artworkPresets = [
-  { id: 'cyber_gamer', icon: '🎮', label: 'Cyber Gaming', url: '/hero.png' },
-  { id: 'ps5_neon', icon: '⚡', label: 'PS5 Neon Blue', url: '/flyers/gaming-template-story.jpg' },
-  { id: 'cinema_pop', icon: '🍿', label: 'Cinema Lounge', url: '/flyers/combo-cover.jpg' },
-  { id: 'gold_vip', icon: '💎', label: 'Gold Luxury', url: '/flyers/cover-netflix.jpg' }
+  { id: 'ps5_neon', icon: '🎮', label: 'PS5 Gaming', url: '/flyers/gaming-template-story.jpg' },
+  { id: 'cyber_stream', icon: '⚡', label: 'Cyber Stream', url: '/flyer-template-cyber-story.png' },
+  { id: 'vip_banner', icon: '💎', label: 'VIP Gold', url: '/og-banner.jpg' },
+  { id: 'arcade_feed', icon: '🕹️', label: 'Retro Arcade', url: '/flyers/gaming-template-feed.jpg' }
 ]
 
 const currentTheme = computed(() => {
@@ -1628,7 +1805,7 @@ function onStreamingPlanChange() {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.35)
   reelBadgeText.value = '🔥 ENTREGA EN 10 MIN'
   currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
-  const cover = `/flyers/cover-${srvKey.toLowerCase().replace(/[^a-z0-9]/g, '')}.jpg`
+  const cover = getStreamingPlatformCover(srvKey)
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
   loadArtwork(cover)
@@ -1644,7 +1821,8 @@ function applyGamingProduct() {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
   reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
   currentSealText.value = isPri ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
-  const cover = g.image || '/hero.png'
+  const rawCover = g.image || '/flyers/gaming-template-story.jpg'
+  const cover = getCORSImageUrl(rawCover)
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
   loadArtwork(cover)
@@ -1659,7 +1837,7 @@ function onComboChange() {
   reelRegularPrice.value = Number(c.regularPrice || Math.round(reelPromoPrice.value * 1.4))
   reelBadgeText.value = c.badge || '🎁 SUPER AHORRO'
   currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
-  const cover = '/flyers/combo-cover.jpg'
+  const cover = '/flyer-template-cyber-story.png'
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
   loadArtwork(cover)
@@ -1675,7 +1853,7 @@ function onGiveawayChange() {
   reelBadgeText.value = '🎉 PARTICIPÁ GRATIS'
   reelCtaText.value = '👉 REGISTRATE AL LINK'
   currentSealText.value = '🎟️ ACTA PÚBLICA TRANSPARENTE'
-  const cover = '/hero.png'
+  const cover = '/og-banner.jpg'
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
   loadArtwork(cover)
@@ -1683,12 +1861,19 @@ function onGiveawayChange() {
 
 async function loadArtwork(src) {
   if (!src) return
-  const img = await loadImage(src)
+  const safeSrc = getCORSImageUrl(src)
+  const img = await loadImage(safeSrc)
   if (img) {
     loadedArtworkImage.value = img
     requestCanvasRedraw()
-  } else if (src !== '/hero.png') {
-    loadArtwork('/hero.png')
+  } else {
+    // Generar respaldo procedural garantizado
+    const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
+    const fallbackImg = await loadImage(fallbackData)
+    if (fallbackImg) {
+      loadedArtworkImage.value = fallbackImg
+      requestCanvasRedraw()
+    }
   }
 }
 
@@ -1718,21 +1903,23 @@ function handleCustomFileUpload(e) {
 function applyCustomUrlImage() {
   const url = customUrlInput.value.trim()
   if (!url) return
-  reelArtworkUrl.value = url
-  loadArtwork(url)
+  const safeUrl = getCORSImageUrl(url)
+  reelArtworkUrl.value = safeUrl
+  loadArtwork(safeUrl)
   customUrlInput.value = ''
-  toast.add('🖼️ Imagen web aplicada', 'success')
+  toast.add('🖼️ Imagen web aplicada con protección CORS', 'success')
 }
 
 function selectArtworkPreset(url) {
   if (!url) return
-  reelArtworkUrl.value = url
-  loadArtwork(url)
+  const safeUrl = getCORSImageUrl(url)
+  reelArtworkUrl.value = safeUrl
+  loadArtwork(safeUrl)
   toast.add('🎨 Fondo temático aplicado', 'success')
 }
 
 function resetToOriginalProductCover() {
-  reelArtworkUrl.value = defaultProductCoverUrl.value || '/hero.png'
+  reelArtworkUrl.value = defaultProductCoverUrl.value || '/flyers/gaming-template-story.jpg'
   loadArtwork(reelArtworkUrl.value)
   resetImageTransformations()
   toast.add('↺ Portada original restaurada', 'success')
@@ -2709,25 +2896,33 @@ async function recordVideoReel() {
     return
   }
 
+  // Garantizar que el bucle de animación esté activo para alimentar frames frescos a 30 FPS
   isDrawingForExport.value = true
   isAnimated.value = true
   isRecording.value = true
   recordingProgress.value = 0
   recordingSeconds.value = '0.0'
+  startAnimationLoop()
 
   try {
     const stream = captureStreamFn.call(canvas, 30)
     
+    // Priorizar MP4 nativo si está disponible en el navegador; si no, WebM
     const candidates = [
+      'video/mp4;codecs=avc1',
+      'video/mp4;codecs=h264',
+      'video/mp4',
       'video/webm;codecs=vp9',
       'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4;codecs=h264',
-      'video/mp4'
+      'video/webm'
     ]
     let mimeType = 'video/webm'
-    const supported = candidates.find(t => MediaRecorder.isTypeSupported(t))
-    if (supported) mimeType = supported
+    for (const cand of candidates) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(cand)) {
+        mimeType = cand
+        break
+      }
+    }
 
     const recorder = new MediaRecorder(stream, {
       mimeType,
@@ -2752,43 +2947,59 @@ async function recordVideoReel() {
     }, 100)
 
     recorder.onstop = async () => {
-      isDrawingForExport.value = false
-      if (recordingInterval) clearInterval(recordingInterval)
-      isRecording.value = false
-      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
-      const blob = new Blob(chunks, { type: mimeType })
-      const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
-      const fileName = `reel_streamepro_${cleanTitle}_9x16.${ext}`
+      try {
+        if (recordingInterval) clearInterval(recordingInterval)
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
+        const rawBlob = new Blob(chunks, { type: mimeType })
 
-      // Si está en móvil y soporta compartir archivos nativos
-      if (isMobileDevice.value && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
-        const file = new File([blob], fileName, { type: mimeType })
-        if (navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: reelHeadline.value,
-              text: currentReelPackage.value.caption
-            })
-            toast.add('🎬 Video compartido con éxito', 'success')
-            return
-          } catch (shareErr) {
-            if (shareErr.name === 'AbortError') return
+        // Solución al bug de 00.000001ms: Inyectar duración exacta de 5.000s en la cabecera EBML de WebM
+        const finalBlob = mimeType.includes('webm')
+          ? await fixWebmDurationBlob(rawBlob, 5000)
+          : rawBlob
+
+        const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20) || 'reel_9x16'
+        const fileName = `reel_streamepro_${cleanTitle}_9x16.${ext}`
+
+        // Si está en móvil y soporta compartir archivos nativos
+        if (isMobileDevice.value && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+          const file = new File([finalBlob], fileName, { type: mimeType })
+          if (navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: reelHeadline.value,
+                text: currentReelPackage.value?.caption || 'Promoción oficial StreamePro'
+              })
+              toast.add('🎬 ¡Video Reel compartido con éxito!', 'success')
+              return
+            } catch (shareErr) {
+              if (shareErr.name === 'AbortError') return
+            }
           }
         }
+
+        // Descarga directa habitual para PC o fallback móvil
+        const url = URL.createObjectURL(finalBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10000)
+
+        toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · 5.0s)! Listo para TikTok, Reels o Estados.`, 'success')
+      } catch (err) {
+        console.error('Error procesando archivo de video:', err)
+        toast.add('Ocurrió un error al empaquetar el video. Descargando imagen HD...', 'info')
+        downloadImagePng()
+      } finally {
+        isDrawingForExport.value = false
+        isRecording.value = false
+        recordingProgress.value = 0
+        recordingSeconds.value = '0.0'
+        requestCanvasRedraw()
       }
-
-      // Descarga directa habitual para PC o fallback móvil
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
-
-      toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()})! Listo para TikTok, Reels o Estados.`, 'success')
     }
 
     recorder.start(100)
@@ -2829,7 +3040,7 @@ async function downloadImagePng() {
       }
     })
 
-    const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
+    const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20) || 'flyer_9x16'
     const fileName = `estado_streamepro_${cleanTitle}_9x16.png`
 
     const url = URL.createObjectURL(blob)
@@ -2841,18 +3052,21 @@ async function downloadImagePng() {
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 10000)
 
-    toast.add('📸 ¡Imagen HD 9:16 descargada! Lista para Estados e Historias.', 'success')
+    toast.add('📸 ¡Flyer HD 9:16 descargado con éxito!', 'success')
   } catch (err) {
     console.error('Error exportando PNG:', err)
     if (err.name === 'SecurityError' || String(err).includes('Tainted')) {
-      toast.add('La carátula externa tiene protección CORS. Se ha restaurado la oficial para descargar.', 'error')
-      resetToOriginalProductCover()
+      toast.add('Sincronizando carátula segura con protección CORS...', 'info')
+      const safeDataUrl = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
+      await loadArtwork(safeDataUrl)
+      setTimeout(() => downloadImagePng(), 200)
     } else {
       toast.add('Error al exportar imagen en este dispositivo.', 'error')
     }
   } finally {
     isDrawingForExport.value = false
     isExportingImage.value = false
+    requestCanvasRedraw()
   }
 }
 
@@ -2868,9 +3082,10 @@ async function handleMobileOrShareAction() {
     mobileSaveImageUrl.value = dataUrl
   } catch (err) {
     if (err.name === 'SecurityError' || String(err).includes('Tainted')) {
-      resetToOriginalProductCover()
+      const safeDataUrl = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
+      await loadArtwork(safeDataUrl)
       isDrawingForExport.value = false
-      return
+      return handleMobileOrShareAction()
     }
   }
 
