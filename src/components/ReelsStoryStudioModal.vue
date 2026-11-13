@@ -1015,7 +1015,7 @@
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
                 6. Elementos Visibles en la Pieza
               </label>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                 <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
                   <input type="checkbox" v-model="showRegularPrice" @change="requestCanvasRedraw" class="accent-pink-500">
                   <span class="text-slate-300">Precio Regular</span>
@@ -1024,9 +1024,13 @@
                   <input type="checkbox" v-model="showPromoPill" @change="requestCanvasRedraw" class="accent-pink-500">
                   <span class="text-slate-300">Cupón Promo</span>
                 </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-emerald-500/30 cursor-pointer bg-emerald-950/20">
+                  <input type="checkbox" v-model="showContactPhone" @change="requestCanvasRedraw" class="accent-emerald-500">
+                  <span class="text-emerald-300 font-bold">Barra WhatsApp</span>
+                </label>
                 <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
-                  <input type="checkbox" v-model="showContactPhone" @change="requestCanvasRedraw" class="accent-pink-500">
-                  <span class="text-slate-300">Teléfono WhatsApp</span>
+                  <input type="checkbox" v-model="showReelBullets" @change="requestCanvasRedraw" class="accent-pink-500">
+                  <span class="text-slate-300">Beneficios Flyer</span>
                 </label>
                 <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
                   <input type="checkbox" v-model="showBrandPill" @change="requestCanvasRedraw" class="accent-pink-500">
@@ -1125,6 +1129,101 @@
                     @input="requestCanvasRedraw"
                     type="text" 
                     class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- CONFIGURACIÓN DE WHATSAPP PROFESIONAL -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-emerald-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-emerald-400 block tracking-wider flex items-center gap-1.5">
+                  <span>📲 WhatsApp Oficial de Pedidos (Destacado en Reel)</span>
+                </label>
+                <span class="text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Animado 30 FPS</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Número de WhatsApp</label>
+                  <input 
+                    v-model="customContactPhone" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    placeholder="Ej: +54 9 11 4050-6070"
+                    class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl p-2.5 text-xs text-emerald-300 font-mono font-bold outline-none focus:border-emerald-400"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Llamado de WhatsApp (Micro-etiqueta)</label>
+                  <input 
+                    v-model="whatsappActionText" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    placeholder="PEDIDOS & CONSULTAS WHATSAPP"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none"
+                  >
+                </div>
+              </div>
+
+              <div>
+                <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Estilo Visual de la Barra WhatsApp</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button 
+                    type="button" 
+                    @click="whatsappStyle = 'official_emerald'; requestCanvasRedraw()"
+                    :class="['p-2 rounded-xl text-[11px] font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer', whatsappStyle === 'official_emerald' ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-950' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800']"
+                  >
+                    <span>🟢</span> <span>Verde Oficial</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="whatsappStyle = 'cyber_neon'; requestCanvasRedraw()"
+                    :class="['p-2 rounded-xl text-[11px] font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer', whatsappStyle === 'cyber_neon' ? 'bg-cyan-600 text-white border-cyan-400 shadow-lg shadow-cyan-950' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800']"
+                  >
+                    <span>💎</span> <span>Neón Cyber</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="whatsappStyle = 'glass_luxury'; requestCanvasRedraw()"
+                    :class="['p-2 rounded-xl text-[11px] font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer', whatsappStyle === 'glass_luxury' ? 'bg-amber-600 text-white border-amber-400 shadow-lg shadow-amber-950' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800']"
+                  >
+                    <span>👑</span> <span>VIP Obsidiana</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- BENEFICIOS OFICIALES ESTILO FLYER -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                  ✓ Beneficios y Garantías Oficiales (Estilo Flyer)
+                </label>
+                <span class="text-[9px] text-slate-500">Insignias ✓ en el Reel</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 1 (Entrega / Velocidad)</label>
+                  <input 
+                    v-model="reelBullet1" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    placeholder="⚡ Entrega Inmediata en 15 Minutos"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Beneficio 2 (Garantía / Licencia)</label>
+                  <input 
+                    v-model="reelBullet2" 
+                    @input="requestCanvasRedraw"
+                    type="text" 
+                    placeholder="👑 Cuenta Oficial 100% Garantizada"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
                   >
                 </div>
               </div>
@@ -1366,6 +1465,7 @@ const showSafeZoneOverlay = ref(false)
 const showRegularPrice = ref(true)
 const showPromoPill = ref(true)
 const showContactPhone = ref(true)
+const showReelBullets = ref(true)
 const showBrandPill = ref(true)
 const currentSealText = ref('🛡️ GARANTÍA OFICIAL 30 DÍAS')
 
@@ -1378,6 +1478,22 @@ const reelPromoPrice = ref(5999)
 const reelRegularPrice = ref(8500)
 const reelPromoCode = ref('')
 const reelStoreName = ref('StreamePro Oficial')
+
+// Beneficios Oficiales Estilo Flyer
+const reelBullet1 = ref('⚡ Entrega Inmediata en 15 Minutos')
+const reelBullet2 = ref('👑 Cuenta Oficial 100% Garantizada')
+
+// WhatsApp de Pedidos Personalizado y Animado
+const customContactPhone = ref('')
+const whatsappActionText = ref('PEDIDOS & CONSULTAS WHATSAPP')
+const whatsappStyle = ref('official_emerald') // 'official_emerald' | 'cyber_neon' | 'glass_luxury'
+
+const effectiveContactPhone = computed(() => {
+  const manual = String(customContactPhone.value || '').trim()
+  if (manual) return manual
+  if (props.contactPhone && props.contactPhone.trim()) return props.contactPhone.trim()
+  return adminStore.providerBankInfo?.whatsapp || '+54 9 11 4050-6070'
+})
 const reelArtworkUrl = ref('/flyers/gaming-template-story.jpg')
 const loadedArtworkImage = ref(null)
 const defaultProductCoverUrl = ref('/flyers/gaming-template-story.jpg')
@@ -1763,7 +1879,7 @@ const currentReelPackage = computed(() => {
     promoCode: reelPromoCode.value,
     discountPct: props.promoDiscountPct || (reelPromoCode.value ? 15 : 0),
     storeName: reelStoreName.value,
-    phone: props.contactPhone,
+    phone: effectiveContactPhone.value,
     url: props.websiteDomain ? `https://${props.websiteDomain}` : 'https://streamepro.me',
     isReseller: props.resellerRef && props.resellerRef !== 'DIRECT'
   })
@@ -1831,6 +1947,8 @@ function onStreamingPlanChange() {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.35)
   reelBadgeText.value = '🔥 ENTREGA EN 10 MIN'
   currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
+  reelBullet1.value = '⚡ Entrega Inmediata en 15 Minutos'
+  reelBullet2.value = '🔒 Perfil Privado con PIN Exclusivo'
   const cover = getStreamingPlatformCover(srvKey)
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
@@ -1848,6 +1966,8 @@ function applyGamingProduct(passedGame = null) {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
   reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
   currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
+  reelBullet1.value = '⚡ Entrega Inmediata en 15 Minutos'
+  reelBullet2.value = isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado'
   const rawCover = g.image || g.cover || '/flyers/gaming-template-story.jpg'
   reelArtworkUrl.value = rawCover
   defaultProductCoverUrl.value = rawCover
@@ -1863,6 +1983,8 @@ function onComboChange() {
   reelRegularPrice.value = Number(c.regularPrice || Math.round(reelPromoPrice.value * 1.4))
   reelBadgeText.value = c.badge || '🎁 SUPER AHORRO'
   currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
+  reelBullet1.value = '⚡ Activación Simultánea de Pantallas'
+  reelBullet2.value = '🛡️ Ahorro Máximo con Soporte 24/7'
   const cover = '/flyer-template-cyber-story.png'
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
@@ -1879,6 +2001,8 @@ function onGiveawayChange() {
   reelBadgeText.value = '🎉 PARTICIPÁ GRATIS'
   reelCtaText.value = '👉 REGISTRATE AL LINK'
   currentSealText.value = '🎟️ ACTA PÚBLICA TRANSPARENTE'
+  reelBullet1.value = '🎁 Participación 100% Gratuita'
+  reelBullet2.value = '🏆 Sorteo Transparente y Oficial'
   const cover = '/og-banner.jpg'
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
@@ -2701,7 +2825,7 @@ function renderFrame(timeMs = 0) {
     const cardX = 85
     const cardY = 350
     const cardW = W - 170
-    const cardH = 810
+    const cardH = 780
 
     // Fondo y borde del visor
     ctx.save()
@@ -2738,9 +2862,25 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
-    // Zona de Precios & CTA (Proporción exacta para no invadir pie de página)
-    drawPriceBox(ctx, cardX, 1190, cardW, 280, th, t)
-    drawCtaButton(ctx, cardX, 1490, cardW, 100, t)
+    // Zona de Precios con proporciones refinadas estilo Flyer
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1148
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    // Beneficios Oficiales Estilo Flyer
+    const bulletsY = priceY + priceH + 16
+    if (showReelBullets.value) {
+      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
+    }
+
+    // Barra / Botón de Acción Oficial de WhatsApp Animado (o CTA alternativo)
+    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+    }
   }
 
   // ----------------------------------------------------
@@ -2764,16 +2904,17 @@ function renderFrame(timeMs = 0) {
 
     if (!(loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0))) {
       ctx.save()
-      roundRect(ctx, cardX, 370, cardW, 710, 44)
+      roundRect(ctx, cardX, 370, cardW, 700, 44)
       ctx.clip()
-      drawDirectProceduralCover(ctx, cardX, 370, cardW, 710, t)
+      drawDirectProceduralCover(ctx, cardX, 370, cardW, 700, t)
       ctx.restore()
     }
 
-    // Placa de Precio Glassmorphism Translúcida Flotante (Proporciones 9:16 Ajustadas)
+    // Placa de Precio Glassmorphism Translúcida Flotante
     ctx.save()
-    const glassY = 1110
-    const glassH = 290
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const glassY = 1105
+    const glassH = hasPromoCoupon ? 232 : 166
     const op = (cinematicGlassOpacity.value || 88) / 100
     ctx.fillStyle = `rgba(2, 6, 23, ${op})`
     roundRect(ctx, cardX, glassY, cardW, glassH, 44)
@@ -2786,10 +2927,20 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
 
     if (currentSealText.value) {
-      drawTrustSealPill(ctx, (W - 480) / 2, 1420, 480, 52, currentSealText.value, th.accent)
+      drawTrustSealPill(ctx, (W - 480) / 2, glassY - 56, 480, 48, currentSealText.value, th.accent)
     }
 
-    drawCtaButton(ctx, cardX, 1490, cardW, 100, t)
+    const bulletsY = glassY + glassH + 16
+    if (showReelBullets.value) {
+      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
+    }
+
+    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+    }
   }
 
   // ----------------------------------------------------
@@ -2799,7 +2950,7 @@ function renderFrame(timeMs = 0) {
     const cardX = 85
     const cardY = 350
     const cardW = W - 170
-    const cardH = 790
+    const cardH = 760
 
     ctx.save()
     ctx.shadowColor = th.glow
@@ -2853,8 +3004,22 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
-    drawPriceBox(ctx, cardX, 1170, cardW, 280, th, t)
-    drawCtaButton(ctx, cardX, 1475, cardW, 100, t)
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1140
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    const bulletsY = priceY + priceH + 16
+    if (showReelBullets.value) {
+      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
+    }
+
+    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+    }
   }
 
   // ----------------------------------------------------
@@ -2864,7 +3029,7 @@ function renderFrame(timeMs = 0) {
     const cardX = 85
     const cardY = 340
     const cardW = W - 170
-    const cardH = 660
+    const cardH = 620
 
     ctx.save()
     ctx.fillStyle = '#050a18'
@@ -2896,8 +3061,8 @@ function renderFrame(timeMs = 0) {
 
     // Tira Neón Divisora Relámpago con Cuenta Regresiva
     ctx.save()
-    const stripY = cardY + cardH + 16
-    const stripH = 64
+    const stripY = cardY + cardH + 14
+    const stripH = 58
     const sGrad = ctx.createLinearGradient(cardX, stripY, cardX + cardW, stripY)
     sGrad.addColorStop(0, '#ef4444')
     sGrad.addColorStop(0.5, '#f97316')
@@ -2907,7 +3072,7 @@ function renderFrame(timeMs = 0) {
       ctx.shadowColor = '#f97316'
       ctx.shadowBlur = 14 + Math.sin(t * 8) * 6
     }
-    roundRect(ctx, cardX, stripY, cardW, stripH, 32)
+    roundRect(ctx, cardX, stripY, cardW, stripH, 30)
     ctx.fill()
 
     const maxSec = (countdownHours.value || 6) * 3600
@@ -2917,14 +3082,15 @@ function renderFrame(timeMs = 0) {
     const secs = String(baseSec % 60).padStart(2, '0')
 
     ctx.fillStyle = '#ffffff'
-    ctx.font = '900 25px monospace'
+    ctx.font = '900 24px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 41)
+    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 38)
     ctx.restore()
 
     // Panel Inferior de Conversión Urgente
-    const lowerY = stripY + stripH + 18
-    const lowerH = 380
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const lowerY = stripY + stripH + 16
+    const lowerH = hasPromoCoupon ? 232 : 166
     ctx.save()
     ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
     roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
@@ -2935,37 +3101,55 @@ function renderFrame(timeMs = 0) {
     ctx.stroke()
 
     drawPriceContent(ctx, lowerY, cardW, th, t)
-
-    if (currentSealText.value) {
-      drawTrustSealPill(ctx, cardX + 30, lowerY + 280, cardW - 60, 52, currentSealText.value, '#ef4444')
-    }
     ctx.restore()
 
-    drawCtaButton(ctx, cardX, 1500, cardW, 100, t)
+    const bulletsY = lowerY + lowerH + 16
+    if (showReelBullets.value) {
+      drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t)
+    }
+
+    const waY = showReelBullets.value ? (bulletsY + 68) : bulletsY
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, 110, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, 100, t)
+    }
   }
 
   // ==========================================
   // 3. PIE DE PÁGINA Y CONTACTO DE CIERRE
   // ==========================================
   ctx.save()
-  if (showContactPhone.value && props.contactPhone) {
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 28px -apple-system, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`📲 WhatsApp de Pedidos: ${props.contactPhone}`, W / 2, 1640)
-  }
 
-  ctx.fillStyle = th.accent
-  ctx.font = 'bold 24px monospace'
+  // Enlace Web Oficial / Referido con estilo pill translúcido de alta gama
   const domainText = props.resellerRef && props.resellerRef !== 'DIRECT'
     ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
     : `${props.websiteDomain || 'streamepro.me'}`
-  ctx.textAlign = 'center'
-  ctx.fillText(`🔗 ${domainText}`, W / 2, 1682)
+  const domW = 460
+  const domH = 46
+  const domX = (W - domW) / 2
+  const domY = 1632
 
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.82)'
-  ctx.font = '20px sans-serif'
-  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1715)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
+  roundRect(ctx, domX, domY, domW, domH, 23)
+  ctx.fill()
+  ctx.strokeStyle = th.accent
+  ctx.lineWidth = 1.5
+  roundRect(ctx, domX, domY, domW, domH, 23)
+  ctx.stroke()
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 22px monospace'
+  ctx.textAlign = 'center'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
+  ctx.shadowBlur = 6
+  ctx.fillText(`🔗 ${domainText}`, W / 2, domY + 31)
+
+  // Sello de Garantía y Confianza
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.90)'
+  ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1702)
   ctx.restore()
 
   // Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
@@ -3003,6 +3187,269 @@ function drawTrustSealPill(ctx, sx, sy, sealW, sealH, text, accentColor) {
   ctx.restore()
 }
 
+// Icono vectorial oficial de WhatsApp (100% nítido, sin depender de imágenes de red)
+function drawVectorWhatsAppIcon(ctx, cx, cy, size = 68) {
+  ctx.save()
+  const r = size / 2
+
+  // 1. Círculo blanco de base para contraste perfecto
+  ctx.fillStyle = '#ffffff'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.40)'
+  ctx.shadowBlur = 10
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 2. Círculo interior verde oficial
+  ctx.fillStyle = '#25d366'
+  ctx.beginPath()
+  ctx.arc(cx, cy, r - 3.5, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 3. Pequeña colita de burbuja de diálogo abajo a la izquierda
+  ctx.beginPath()
+  ctx.moveTo(cx - r * 0.45, cy + r * 0.55)
+  ctx.lineTo(cx - r * 0.82, cy + r * 0.95)
+  ctx.lineTo(cx - r * 0.12, cy + r * 0.72)
+  ctx.fill()
+
+  // 4. Auricular de teléfono clásico en blanco
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(-0.15)
+  ctx.fillStyle = '#ffffff'
+
+  const hr = size * 0.32
+  ctx.beginPath()
+  ctx.arc(-hr * 0.45, -hr * 0.45, hr * 0.28, 0, Math.PI * 2)
+  ctx.arc(hr * 0.45, hr * 0.45, hr * 0.28, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.lineWidth = hr * 0.48
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = '#ffffff'
+  ctx.beginPath()
+  ctx.arc(0, 0, hr * 0.52, Math.PI * 0.25, Math.PI * 0.82)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.restore()
+}
+
+// Barra / Píldora de Acción Oficial de WhatsApp Animada de Alto Impacto (30 FPS)
+function drawAnimatedWhatsAppPill(ctx, pillX, pillY, pillW, pillH = 110, t = 0) {
+  const phone = effectiveContactPhone.value || props.contactPhone || '+54 9 11 4050-6070'
+  const cx = pillX + pillW / 2
+  const cy = pillY + pillH / 2
+
+  ctx.save()
+
+  // 1. Pulso suave de respiración en tiempo real (30 FPS)
+  const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.6) * 0.02) : 1.0
+  ctx.translate(cx, cy)
+  ctx.scale(pulse, pulse)
+  ctx.translate(-cx, -cy)
+
+  // 2. Resplandor exterior Neón Esmeralda pulsante
+  const glowAlpha = isAnimated.value ? (0.42 + Math.sin(t * 3.6) * 0.22) : 0.42
+  ctx.shadowColor = `rgba(37, 211, 102, ${glowAlpha})`
+  ctx.shadowBlur = isAnimated.value ? (28 + Math.sin(t * 3.6) * 12) : 28
+
+  // 3. Fondo según estilo seleccionado
+  if (whatsappStyle.value === 'official_emerald') {
+    const waGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH)
+    waGrad.addColorStop(0, '#25d366') // Verde oficial WhatsApp
+    waGrad.addColorStop(0.55, '#1fb855')
+    waGrad.addColorStop(1, '#128c7e') // Teal profundo WhatsApp
+    ctx.fillStyle = waGrad
+  } else if (whatsappStyle.value === 'glass_luxury') {
+    const waGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY)
+    waGrad.addColorStop(0, 'rgba(15, 23, 42, 0.96)')
+    waGrad.addColorStop(0.5, 'rgba(6, 78, 59, 0.92)')
+    waGrad.addColorStop(1, 'rgba(15, 23, 42, 0.96)')
+    ctx.fillStyle = waGrad
+  } else {
+    // cyber_neon
+    const waGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY)
+    waGrad.addColorStop(0, '#020617')
+    waGrad.addColorStop(0.5, '#064e3b')
+    waGrad.addColorStop(1, '#020617')
+    ctx.fillStyle = waGrad
+  }
+
+  roundRect(ctx, pillX, pillY, pillW, pillH, 36)
+  ctx.fill()
+
+  // Borde nítido
+  ctx.strokeStyle = whatsappStyle.value === 'official_emerald' ? 'rgba(255, 255, 255, 0.45)' : '#25d366'
+  ctx.lineWidth = 3
+  roundRect(ctx, pillX, pillY, pillW, pillH, 36)
+  ctx.stroke()
+
+  // 4. Haz de brillo Shimmer que recorre la píldora horizontalmente
+  if (isAnimated.value) {
+    ctx.save()
+    roundRect(ctx, pillX, pillY, pillW, pillH, 36)
+    ctx.clip()
+    const shimX = pillX + ((t * 420) % (pillW + 360)) - 180
+    const shimGrad = ctx.createLinearGradient(shimX, pillY, shimX + 110, pillY)
+    shimGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    shimGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.40)')
+    shimGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = shimGrad
+    ctx.fillRect(shimX, pillY, 110, pillH)
+    ctx.restore()
+  }
+
+  // 5. Icono Oficial Vectorial de WhatsApp con Ondas de Radar
+  const iconSize = 72
+  const iconX = pillX + 54
+  const iconY = cy
+
+  if (isAnimated.value) {
+    const waveProgress = (t * 1.2) % 1.0
+    const waveR = (iconSize / 2) + waveProgress * 26
+    const waveAlpha = (1.0 - waveProgress) * 0.55
+    ctx.save()
+    ctx.strokeStyle = `rgba(255, 255, 255, ${waveAlpha})`
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.arc(iconX, iconY, waveR, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  drawVectorWhatsAppIcon(ctx, iconX, iconY, iconSize)
+
+  // 6. Textos: Micro-etiqueta superior y Número en Grande
+  ctx.save()
+  const textStartX = iconX + iconSize / 2 + 28
+  const actionLabel = (whatsappActionText.value || 'PEDIDOS & CONSULTAS WHATSAPP').toUpperCase()
+
+  // Micro-etiqueta
+  ctx.textAlign = 'left'
+  ctx.fillStyle = whatsappStyle.value === 'official_emerald' ? '#f0fdf4' : '#86efac'
+  ctx.font = '900 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.70)'
+  ctx.shadowBlur = 8
+  ctx.fillText(actionLabel, textStartX, cy - 12)
+
+  // Número destacado
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+  ctx.shadowBlur = 16
+  ctx.shadowOffsetY = 3
+  ctx.fillText(phone, textStartX, cy + 30)
+
+  // Flecha o Símbolo CTA a la derecha con animación
+  const rightArrowX = pillX + pillW - 46
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 34px sans-serif'
+  ctx.textAlign = 'center'
+  const arrowBounce = isAnimated.value ? Math.sin(t * 6) * 4 : 0
+  ctx.fillText('➔', rightArrowX + arrowBounce, cy + 12)
+
+  ctx.restore()
+  ctx.restore()
+}
+
+// Dibuja los beneficios y garantías oficiales estilo Flyer con animación a 30 FPS
+function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
+  const b1 = (reelBullet1.value || '').trim()
+  const b2 = (reelBullet2.value || '').trim()
+  if (!b1 && !b2) return
+
+  ctx.save()
+  const bullets = [b1, b2].filter(Boolean)
+  const isStacked = bullets.some(b => b.length > 25)
+
+  if (!isStacked && bullets.length === 2) {
+    // Modo Horizontal: 2 Píldoras lado a lado
+    const gap = 16
+    const pillW = (totalW - gap) / 2
+    const pillH = 50
+    bullets.forEach((b, idx) => {
+      const px = startX + idx * (pillW + gap)
+      const py = startY
+
+      // Fondo cápsula translúcida
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'
+      roundRect(ctx, px, py, pillW, pillH, 25)
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+      ctx.lineWidth = 1.5
+      roundRect(ctx, px, py, pillW, pillH, 25)
+      ctx.stroke()
+
+      // Icono de checkmark animado
+      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 4 + idx * 1.5) * 0.08) : 1.0
+      const cx = px + 28
+      const cy = py + pillH / 2
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(pulse, pulse)
+      ctx.fillStyle = '#22c55e'
+      ctx.shadowColor = '#22c55e'
+      ctx.shadowBlur = isAnimated.value ? 10 : 4
+      ctx.beginPath()
+      ctx.arc(0, 0, 13, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#020617'
+      ctx.font = '900 15px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('✓', 0, 5)
+      ctx.restore()
+
+      // Texto
+      ctx.fillStyle = '#f1f5f9'
+      ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.textAlign = 'left'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
+      ctx.shadowBlur = 6
+      const maxLen = 25
+      const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
+      ctx.fillText(clipText, px + 52, py + 32)
+    })
+  } else {
+    // Modo Vertical: 2 filas limpias
+    const rowH = 34
+    bullets.forEach((b, idx) => {
+      const py = startY + idx * rowH
+      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.5 + idx * 1.5) * 0.06) : 1.0
+      const cx = startX + 36
+      const cy = py + 12
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(pulse, pulse)
+      ctx.fillStyle = '#22c55e'
+      ctx.shadowColor = '#22c55e'
+      ctx.shadowBlur = isAnimated.value ? 10 : 4
+      ctx.beginPath()
+      ctx.arc(0, 0, 12, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#020617'
+      ctx.font = '900 14px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('✓', 0, 5)
+      ctx.restore()
+
+      ctx.fillStyle = '#f1f5f9'
+      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.textAlign = 'left'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
+      ctx.shadowBlur = 6
+      const maxLen = 44
+      const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
+      ctx.fillText(clipText, startX + 62, py + 20)
+    })
+  }
+
+  ctx.restore()
+}
+
 function drawPriceBox(ctx, boxX, boxY, boxW, boxH, th, t) {
   ctx.save()
   ctx.fillStyle = 'rgba(10, 16, 32, 0.94)'
@@ -3017,51 +3464,69 @@ function drawPriceBox(ctx, boxX, boxY, boxW, boxH, th, t) {
 
 function drawPriceContent(ctx, boxY, boxW, th, t) {
   const W = 1080
-  // Precio regular tachado
+
+  // 1. Halo radial de energía detrás del precio promocional (animado a 30 FPS como en Flyer)
+  if (isAnimated.value) {
+    ctx.save()
+    const haloR = 260 + Math.sin(t * 3.2) * 25
+    const haloGrad = ctx.createRadialGradient(W / 2, boxY + 115, 20, W / 2, boxY + 115, haloR)
+    haloGrad.addColorStop(0, th.glow || 'rgba(74, 222, 128, 0.22)')
+    haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = haloGrad
+    ctx.fillRect(W / 2 - haloR, boxY + 115 - haloR, haloR * 2, haloR * 2)
+    ctx.restore()
+  }
+
+  // 2. Precio regular tachado con porcentaje de descuento
   if (showRegularPrice.value && Number(reelRegularPrice.value) > 0 && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)) {
     ctx.fillStyle = '#94a3b8'
-    ctx.font = 'bold 30px sans-serif'
+    ctx.font = 'bold 28px sans-serif'
     ctx.textAlign = 'center'
-    const regText = `Precio Regular: $${Number(reelRegularPrice.value).toLocaleString('es-AR')} ARS`
-    ctx.fillText(regText, W / 2, boxY + 54)
+    const discPct = Math.round((1 - (Number(reelPromoPrice.value) / Number(reelRegularPrice.value))) * 100)
+    const regText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}${discPct > 0 ? ` (-${discPct}% OFF)` : ''}`
+    ctx.fillText(regText, W / 2, boxY + 46)
 
     const tw = ctx.measureText(regText).width
     ctx.strokeStyle = '#f43f5e'
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 44)
-    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 44)
+    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 36)
+    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 36)
     ctx.stroke()
   }
 
-  // Precio Promocional Gigante
+  // 3. Precio Promocional Gigante con pulso neón
   if (Number(reelPromoPrice.value) > 0) {
     ctx.fillStyle = '#4ade80'
-    ctx.font = '900 86px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.font = '900 82px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
-    ctx.shadowColor = 'rgba(74, 222, 128, 0.45)'
-    ctx.shadowBlur = 28
-    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, boxY + 148)
+    ctx.shadowColor = isAnimated.value ? `rgba(74, 222, 128, ${0.45 + Math.sin(t * 3.5) * 0.2})` : 'rgba(74, 222, 128, 0.45)'
+    ctx.shadowBlur = isAnimated.value ? (24 + Math.sin(t * 3.5) * 10) : 24
+    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, boxY + 132)
+    ctx.shadowBlur = 0
   } else {
     ctx.fillStyle = '#fde047'
-    ctx.font = '900 78px -apple-system, sans-serif'
+    ctx.font = '900 76px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('¡SORTEO GRATIS!', W / 2, boxY + 148)
+    ctx.shadowColor = 'rgba(253, 224, 71, 0.5)'
+    ctx.shadowBlur = 24
+    ctx.fillText('¡SORTEO GRATIS!', W / 2, boxY + 132)
+    ctx.shadowBlur = 0
   }
 
-  // Pill del Cupón Promocional con Destello Animado
+  // 4. Pill del Cupón Promocional con Destello Animado
   if (showPromoPill.value && reelPromoCode.value) {
     ctx.save()
     const cpW = boxW - 60
-    const cpH = 70
+    const cpH = 62
     const cpX = (W - cpW) / 2
-    const cpY = boxY + 188
+    const cpY = boxY + 158
 
     const cpGrad = ctx.createLinearGradient(cpX, cpY, cpX + cpW, cpY)
     cpGrad.addColorStop(0, '#f59e0b')
     cpGrad.addColorStop(1, '#d97706')
     ctx.fillStyle = cpGrad
-    roundRect(ctx, cpX, cpY, cpW, cpH, 35)
+    roundRect(ctx, cpX, cpY, cpW, cpH, 31)
     ctx.fill()
 
     if (isAnimated.value) {
@@ -3071,14 +3536,14 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
       shimGrad.addColorStop(0.5, 'rgba(255,255,255,0.48)')
       shimGrad.addColorStop(1, 'rgba(255,255,255,0)')
       ctx.fillStyle = shimGrad
-      roundRect(ctx, cpX, cpY, cpW, cpH, 35)
+      roundRect(ctx, cpX, cpY, cpW, cpH, 31)
       ctx.fill()
     }
 
     ctx.fillStyle = '#020617'
-    ctx.font = '900 26px -apple-system, sans-serif'
+    ctx.font = '900 24px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`🎟️ USA EL CÓDIGO: ${reelPromoCode.value.toUpperCase()} (DESCUENTO EXTRA)`, W / 2, cpY + 44)
+    ctx.fillText(`🎟️ USA EL CÓDIGO: ${reelPromoCode.value.toUpperCase()} (DESCUENTO EXTRA)`, W / 2, cpY + 39)
     ctx.restore()
   }
 }
@@ -3507,6 +3972,9 @@ function initFromProps() {
   if (props.storeName) {
     reelStoreName.value = props.storeName
   }
+  if (props.contactPhone) {
+    customContactPhone.value = props.contactPhone
+  }
 
   const p = props.initialPayload
   if (p) {
@@ -3521,6 +3989,8 @@ function initFromProps() {
       reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
       reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
       currentSealText.value = isPri ? '🎮 JUGÁ CON TU PERFIL PSN' : '⚡ ENTREGA INMEDIATA 15 MIN'
+      reelBullet1.value = '⚡ Entrega Inmediata en 15 Minutos'
+      reelBullet2.value = isPri ? '🎮 Jugá desde tu usuario personal (PSN)' : '🎮 Cuenta Secundaria Oficial Anti-Candado'
       const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
       defaultProductCoverUrl.value = coverUrl
@@ -3564,6 +4034,12 @@ watch(() => props.show, (newVal) => {
     if (animFrameId) cancelAnimationFrame(animFrameId)
     if (recordingInterval) clearInterval(recordingInterval)
     if (recordingTimeout) clearTimeout(recordingTimeout)
+  }
+})
+
+watch(() => props.contactPhone, (newPhone) => {
+  if (newPhone && !customContactPhone.value) {
+    customContactPhone.value = newPhone
   }
 })
 
