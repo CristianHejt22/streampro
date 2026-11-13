@@ -1399,14 +1399,17 @@ function loadImage(src) {
   if (!src) return Promise.resolve(null)
   if (imageCache.has(src)) return Promise.resolve(imageCache.get(src))
   return new Promise((resolve) => {
+    const isDataOrBlob = src.startsWith('data:') || src.startsWith('blob:')
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!isDataOrBlob) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => {
       imageCache.set(src, img)
       resolve(img)
     }
     img.onerror = () => {
-      if (src.startsWith('data:') || src.startsWith('blob:')) {
+      if (isDataOrBlob) {
         const localImg = new Image()
         localImg.onload = () => {
           imageCache.set(src, localImg)
@@ -1586,7 +1589,7 @@ function selectContentMode(modeId) {
     pickedStreamingKey.value = Object.keys(adminStore.pricingCatalog)[0] || 'Netflix'
     onStreamingServiceChange()
   } else if (modeId === 'gaming') {
-    if (!adminStore.isGamingCatalogLoaded) {
+    if (!adminStore.isGamingCatalogLoaded && typeof adminStore.loadFullGamingCatalog === 'function') {
       adminStore.loadFullGamingCatalog().catch(() => {})
     }
     const firstGame = (adminStore.processedGamingProducts || [])[0]
@@ -1765,22 +1768,62 @@ function autoOptimizeReel() {
     showRegularPrice.value = true
     showPromoPill.value = true
     showContactPhone.value = true
+    audioWaveStyle.value = 'bars'
+    particleStyle.value = 'neon_dots'
+    showCyberGrid.value = true
+    showHudBrackets.value = true
+    cyberScanlineSpeed.value = 'normal'
+    reelBadgeText.value = pickedGamingLicense.value === 'primary' ? '🔥 CUENTA PRIMARIA PS5/PS4' : '⚡ CUENTA SECUNDARIA PS5/PS4'
     currentSealText.value = pickedGamingLicense.value === 'primary' ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
+    reelCtaText.value = '🎮 PEDILO AL WHATSAPP'
   } else if (mode === 'streaming') {
     currentLayoutId.value = 'cinematic'
     currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
     imageFitMode.value = 'contain'
+    showBrandPill.value = true
+    showRegularPrice.value = true
+    showPromoPill.value = true
+    showContactPhone.value = true
+    audioWaveStyle.value = 'wave'
+    particleStyle.value = 'neon_dots'
+    cinematicStudioText.value = '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★'
+    cinematicVignetteDepth.value = 85
+    cinematicGlassOpacity.value = 88
+    reelBadgeText.value = '🍿 PANTALLA ULTRA HD 4K'
     currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
+    reelCtaText.value = '🍿 PEDÍ TU CUENTA HOY'
   } else if (mode === 'combo') {
     currentLayoutId.value = 'glass_vip'
     currentThemeId.value = 'gold_vip'
     imageFitMode.value = 'cover'
+    showBrandPill.value = true
+    showRegularPrice.value = true
+    showPromoPill.value = true
+    showContactPhone.value = true
+    audioWaveStyle.value = 'pulse'
+    particleStyle.value = 'gold_dust'
+    vipRibbonText.value = '👑 EDICIÓN VIP OFICIAL'
+    glassBlurFactor.value = 28
+    vipStarsDensity.value = 'alta'
+    reelBadgeText.value = '🎁 SUPER COMBO AHORRO'
     currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
+    reelCtaText.value = '📲 APROVECHAR COMBO VIP'
   } else if (mode === 'giveaway') {
     currentLayoutId.value = 'split_flash'
     currentThemeId.value = 'fire_sale'
     imageFitMode.value = 'cover'
+    showBrandPill.value = true
+    showRegularPrice.value = false
+    showPromoPill.value = true
+    showContactPhone.value = true
+    audioWaveStyle.value = 'bars'
+    particleStyle.value = 'fire_sparks'
+    flashBannerText.value = '⚡ OFERTA RELÁMPAGO ACTIVA'
+    countdownHours.value = 6
+    electricPulse.value = true
+    reelBadgeText.value = '🎉 SORTEO EXCLUSIVO'
     currentSealText.value = '🎟️ ACTA PÚBLICA TRANSPARENTE'
+    reelCtaText.value = '🎟️ PARTICIPAR GRATIS'
   }
 
   requestCanvasRedraw()
@@ -1831,6 +1874,7 @@ function onCanvasPointerUp(e) {
       e.currentTarget.releasePointerCapture?.(e.pointerId)
     } catch {}
   }
+  requestCanvasRedraw()
 }
 
 // ==========================================
@@ -1896,12 +1940,18 @@ function drawAudioVisualizer(ctx, x, y, color = '#38bdf8', t = 0) {
     ctx.lineCap = 'round'
     ctx.stroke()
   } else if (audioWaveStyle.value === 'pulse') {
-    const radius = 14 + Math.sin(t * 5) * 6
+    const radius = 13 + Math.abs(Math.sin(t * 5)) * 7
     ctx.strokeStyle = color
     ctx.lineWidth = 3
     ctx.beginPath()
     ctx.arc(x, y, radius, 0, Math.PI * 2)
     ctx.stroke()
+    ctx.save()
+    ctx.globalAlpha = 0.35
+    ctx.beginPath()
+    ctx.arc(x, y, radius + 10, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
   }
 
   ctx.restore()
@@ -1912,7 +1962,10 @@ function drawAdaptiveParticles(ctx, W, H, t = 0) {
   if (!isAnimated.value || particleStyle.value === 'none') return
   ctx.save()
 
-  const count = particleStyle.value === 'gold_dust' && vipStarsDensity.value === 'alta' ? 36 : 22
+  let count = 22
+  if (particleStyle.value === 'gold_dust') {
+    count = vipStarsDensity.value === 'baja' ? 14 : (vipStarsDensity.value === 'alta' ? 42 : 26)
+  }
   for (let i = 0; i < count; i++) {
     const px = (W * ((i * 0.047 + t * 0.025) % 1))
     const py = (H * ((i * 0.063 + Math.sin(t + i) * 0.04 + 0.08) % 0.95))
@@ -1964,13 +2017,14 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   const innerW = targetW
   const innerH = targetH
 
-  // 1. Fondo ambiental saturado difuso
+  // 1. Fondo ambiental saturado difuso (con blur adaptable en VIP)
   if (blurBg) {
     const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
     const bgW = (img.width || 1) * bgScale
     const bgH = (img.height || 1) * bgScale
+    const blurPx = currentLayoutId.value === 'glass_vip' ? (glassBlurFactor.value || 25) : 28
     ctx.save()
-    ctx.filter = 'blur(28px) brightness(0.40) saturate(1.4)'
+    ctx.filter = `blur(${blurPx}px) brightness(0.40) saturate(1.4)`
     ctx.drawImage(img, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
     ctx.restore()
   }
@@ -2017,8 +2071,8 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
     drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
   }
 
-  // 4. Retícula táctil de arrastre (cuando el usuario está interactuando)
-  if (showReticle) {
+  // 4. Retícula táctil de arrastre (solo si el usuario arrastra y no está exportando)
+  if (showReticle && !isDrawingForExport.value) {
     ctx.save()
     ctx.strokeStyle = currentTheme.value.accent
     ctx.lineWidth = 3
@@ -2089,13 +2143,37 @@ function renderFrame(timeMs = 0) {
   // ==========================================
   if (layout === 'cinematic' && loadedArtworkImage.value) {
     const img = loadedArtworkImage.value
-    const bgScale = Math.max(W / (img.width || 1), H / (img.height || 1))
+    const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.2) * 0.02) : 1.0
+    const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
+    const bgScale = Math.max(W / (img.width || 1), H / (img.height || 1)) * finalZoom
     const bw = (img.width || 1) * bgScale
-    const bh = (img.height || 1) * bhScale || (img.height || 1) * bgScale
+    const bh = (img.height || 1) * bgScale
+    const panX = ((Number(imageOffsetX.value) || 0) / 100) * W
+    const panY = ((Number(imageOffsetY.value) || 0) / 100) * H
+    const centerX = W / 2 + panX
+    const centerY = H / 2 + panY
+
     ctx.save()
+    ctx.translate(centerX, centerY)
+    if (imageRotation.value) {
+      ctx.rotate((imageRotation.value * Math.PI) / 180)
+    }
     ctx.filter = `brightness(${imageBrightness.value * 0.85}%) contrast(${imageContrast.value * 1.1}%) saturate(${imageSaturation.value * 1.2}%)`
-    ctx.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh)
+    ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh)
     ctx.restore()
+
+    // Retícula interactiva al arrastrar sobre el póster cinemático
+    if (isPointerDragging && !isDrawingForExport.value) {
+      ctx.save()
+      ctx.strokeStyle = th.accent
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(centerX, centerY, 36, 0, Math.PI * 2)
+      ctx.moveTo(centerX - 54, centerY); ctx.lineTo(centerX + 54, centerY)
+      ctx.moveTo(centerX, centerY - 54); ctx.lineTo(centerX, centerY + 54)
+      ctx.stroke()
+      ctx.restore()
+    }
 
     // Viñeta Cinematográfica Configurable
     const vigRatio = (cinematicVignetteDepth.value || 85) / 100
@@ -2264,10 +2342,10 @@ function renderFrame(timeMs = 0) {
       drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
     }
 
-    // Placa de Precio Glassmorphism Translúcida Flotante
+    // Placa de Precio Glassmorphism Translúcida Flotante (Proporciones 9:16 Ajustadas)
     ctx.save()
-    const glassY = 1140
-    const glassH = 310
+    const glassY = 1110
+    const glassH = 290
     const op = (cinematicGlassOpacity.value || 88) / 100
     ctx.fillStyle = `rgba(2, 6, 23, ${op})`
     roundRect(ctx, cardX, glassY, cardW, glassH, 44)
@@ -2280,10 +2358,10 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
 
     if (currentSealText.value) {
-      drawTrustSealPill(ctx, (W - 480) / 2, 1475, 480, 54, currentSealText.value, th.accent)
+      drawTrustSealPill(ctx, (W - 480) / 2, 1420, 480, 52, currentSealText.value, th.accent)
     }
 
-    drawCtaButton(ctx, cardX, 1545, cardW, 100, t)
+    drawCtaButton(ctx, cardX, 1490, cardW, 100, t)
   }
 
   // ----------------------------------------------------
@@ -2297,8 +2375,8 @@ function renderFrame(timeMs = 0) {
 
     ctx.save()
     ctx.shadowColor = th.glow
-    ctx.shadowBlur = 55
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    ctx.shadowBlur = 40 + (glassBlurFactor.value || 25)
+    ctx.fillStyle = `rgba(15, 23, 42, ${0.76 + ((glassBlurFactor.value || 25) / 180)})`
     roundRect(ctx, cardX, cardY, cardW, cardH, 48)
     ctx.fill()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
@@ -2356,6 +2434,10 @@ function renderFrame(timeMs = 0) {
 
     ctx.save()
     ctx.fillStyle = '#050a18'
+    if (electricPulse.value && isAnimated.value) {
+      ctx.shadowColor = '#ef4444'
+      ctx.shadowBlur = 18 + Math.sin(t * 8) * 8
+    }
     roundRect(ctx, cardX, cardY, cardW, cardH, 40)
     ctx.fill()
     ctx.strokeStyle = '#ef4444'
@@ -2381,6 +2463,10 @@ function renderFrame(timeMs = 0) {
     sGrad.addColorStop(0.5, '#f97316')
     sGrad.addColorStop(1, '#ef4444')
     ctx.fillStyle = sGrad
+    if (electricPulse.value && isAnimated.value) {
+      ctx.shadowColor = '#f97316'
+      ctx.shadowBlur = 14 + Math.sin(t * 8) * 6
+    }
     roundRect(ctx, cardX, stripY, cardW, stripH, 32)
     ctx.fill()
 
@@ -2398,7 +2484,7 @@ function renderFrame(timeMs = 0) {
 
     // Panel Inferior de Conversión Urgente
     const lowerY = stripY + stripH + 18
-    const lowerH = 390
+    const lowerH = 380
     ctx.save()
     ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
     roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
@@ -2409,9 +2495,13 @@ function renderFrame(timeMs = 0) {
     ctx.stroke()
 
     drawPriceContent(ctx, lowerY, cardW, th, t)
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + 30, lowerY + 280, cardW - 60, 52, currentSealText.value, '#ef4444')
+    }
     ctx.restore()
 
-    drawCtaButton(ctx, cardX, 1515, cardW, 100, t)
+    drawCtaButton(ctx, cardX, 1500, cardW, 100, t)
   }
 
   // ==========================================
@@ -2553,9 +2643,9 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
   }
 }
 
-function drawCtaButton(ctx, ctaX, ctaY, ctaH = 100, t) {
+function drawCtaButton(ctx, ctaX, ctaY, ctaW, ctaH = 100, t = 0) {
   const W = 1080
-  const ctaW = W - 170
+  const width = ctaW || (W - 170)
   ctx.save()
   const ctaPulse = isAnimated.value ? (1.0 + Math.sin(t * 3.6) * 0.02) : 1.0
 
@@ -2563,14 +2653,14 @@ function drawCtaButton(ctx, ctaX, ctaY, ctaH = 100, t) {
   ctx.scale(ctaPulse, ctaPulse)
   ctx.translate(-W / 2, -(ctaY + ctaH / 2))
 
-  const ctaGrad = ctx.createLinearGradient(ctaX, ctaY, ctaX + ctaW, ctaY)
+  const ctaGrad = ctx.createLinearGradient(ctaX, ctaY, ctaX + width, ctaY)
   ctaGrad.addColorStop(0, '#ec4899')
   ctaGrad.addColorStop(0.5, '#a855f7')
   ctaGrad.addColorStop(1, '#6366f1')
   ctx.fillStyle = ctaGrad
   ctx.shadowColor = 'rgba(236, 72, 153, 0.5)'
   ctx.shadowBlur = 32
-  roundRect(ctx, ctaX, ctaY, ctaW, ctaH, 50)
+  roundRect(ctx, ctaX, ctaY, width, ctaH, 50)
   ctx.fill()
 
   ctx.fillStyle = '#ffffff'
@@ -2924,8 +3014,11 @@ function copyCaptionOnly() {
 function toggleFullscreenPreview() {
   const canvas = canvasRef.value
   if (!canvas) return
+  const el = canvas.parentElement || canvas
   if (!document.fullscreenElement) {
-    canvas.requestFullscreen?.().catch(() => {})
+    el.requestFullscreen?.().catch(() => {
+      canvas.requestFullscreen?.().catch(() => {})
+    })
   } else {
     document.exitFullscreen?.().catch(() => {})
   }
@@ -3000,7 +3093,7 @@ watch(() => props.promoCode, (newVal) => {
 })
 
 onMounted(() => {
-  if (!adminStore.isGamingCatalogLoaded) {
+  if (!adminStore.isGamingCatalogLoaded && typeof adminStore.loadFullGamingCatalog === 'function') {
     adminStore.loadFullGamingCatalog().catch(() => {})
   }
   if (props.show) {
