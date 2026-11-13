@@ -111,7 +111,7 @@
 
             <!-- Badges flotantes en vista previa -->
             <div class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/15 text-[10px] font-mono text-slate-200 flex items-center gap-1.5 shadow pointer-events-none">
-              <span>📱 9:16 Story / Reel</span>
+              <span>📱 9:16 {{ currentLayoutName }}</span>
             </div>
 
             <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none">
@@ -201,15 +201,25 @@
 
             <!-- Control de Animación en Tiempo Real -->
             <div class="flex items-center justify-between bg-slate-900/60 border border-slate-800/80 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-              <span class="text-[11px] font-semibold text-slate-400">Efectos &amp; Movimiento:</span>
+              <span class="text-[11px] font-semibold text-slate-400">Dinámicas &amp; Animación:</span>
               <button
                 type="button"
                 @click="isAnimated = !isAnimated; requestCanvasRedraw()"
                 :class="['px-2.5 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition', isAnimated ? 'bg-indigo-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white']"
               >
-                {{ isAnimated ? '⏸️ Pausar' : '▶️ Animar' }}
+                {{ isAnimated ? '⏸️ Pausar Dinámicas' : '▶️ Activar Dinámicas' }}
               </button>
             </div>
+
+            <!-- En Móvil: Botón para cambiar a modo edición -->
+            <button
+              v-if="mobileViewMode === 'preview'"
+              type="button"
+              @click="mobileViewMode = 'editor'"
+              class="lg:hidden w-full py-2 px-3 rounded-xl font-bold text-xs bg-slate-800 text-slate-200 border border-slate-700 flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              <span>🛠️ Personalizar Textos y Ajustes</span>
+            </button>
           </div>
         </div>
 
@@ -436,7 +446,7 @@
                   <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Plan / Duración</label>
                   <select 
                     v-model="pickedStreamingPlanKey" 
-                    @change="onStreamingPlanChange"
+                    @change="onStreamingPlanChange" 
                     class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none"
                   >
                     <option v-for="(p, pKey) in currentStreamingPlans" :key="pKey" :value="pKey">
@@ -478,7 +488,7 @@
           </div>
 
           <!-- ======================================================== -->
-          <!-- TAB 2: CAMBIAR & AJUSTAR IMAGEN (NUEVA SUITE PRO)       -->
+          <!-- TAB 2: CAMBIAR & AJUSTAR IMAGEN (SUITE PRO)              -->
           <!-- ======================================================== -->
           <div v-else-if="studioTab === 'image'" class="space-y-4">
             
@@ -489,7 +499,7 @@
                   <h4 class="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
                     <span>🖼️ Cambiar Imagen de Portada</span>
                   </h4>
-                  <p class="text-[11px] text-slate-400">Sube una captura desde tu móvil o PC, ingresa una URL web o elige fondos pro.</p>
+                  <p class="text-[11px] text-slate-400">Sube una foto desde tu móvil o PC, ingresa una URL web o elige fondos pro.</p>
                 </div>
                 <button
                   type="button"
@@ -746,7 +756,7 @@
             <!-- Selector de Plantilla Estructural (Layout) -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                1. Plantilla Estructural 9:16
+                1. Plantilla Estructural 9:16 (Cambia dinámicamente el diseño)
               </label>
               <div class="grid grid-cols-2 gap-2.5">
                 <button
@@ -1179,7 +1189,21 @@ function loadImage(src) {
       resolve(img)
     }
     img.onerror = () => {
-      resolve(null)
+      if (src.startsWith('data:') || src.startsWith('blob:')) {
+        const localImg = new Image()
+        localImg.onload = () => {
+          imageCache.set(src, localImg)
+          resolve(localImg)
+        }
+        localImg.onerror = () => resolve(null)
+        localImg.src = src
+      } else {
+        // Fallback seguro a portada local para evitar taining del canvas
+        const fallback = new Image()
+        fallback.onload = () => resolve(fallback)
+        fallback.onerror = () => resolve(null)
+        fallback.src = '/hero.png'
+      }
     }
     img.src = src
   })
@@ -1201,10 +1225,10 @@ const contentModes = [
 ]
 
 const layoutTemplates = [
-  { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico oficial StreamePro con visores metálicos' },
-  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada en pantalla completa con viñeta cinemática' },
-  { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón profundo' },
-  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 enfocado en oferta gigante y conversión' }
+  { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico StreamePro con visores metálicos' },
+  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada a pantalla completa con viñeta cinemática' },
+  { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón de lujo' },
+  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 con cuenta regresiva en vivo' }
 ]
 
 const visualThemes = [
@@ -1215,7 +1239,7 @@ const visualThemes = [
     bg1: '#020617',
     bg2: '#0b1224',
     bg3: '#020617',
-    glow: 'rgba(6, 182, 212, 0.42)',
+    glow: 'rgba(6, 182, 212, 0.45)',
     accent: '#38bdf8',
     pillGrad: ['#06b6d4', '#6366f1']
   },
@@ -1226,7 +1250,7 @@ const visualThemes = [
     bg1: '#090803',
     bg2: '#1c1707',
     bg3: '#030200',
-    glow: 'rgba(245, 158, 11, 0.38)',
+    glow: 'rgba(245, 158, 11, 0.40)',
     accent: '#fbbf24',
     pillGrad: ['#f59e0b', '#d97706']
   },
@@ -1237,7 +1261,7 @@ const visualThemes = [
     bg1: '#120404',
     bg2: '#200a0b',
     bg3: '#040101',
-    glow: 'rgba(239, 68, 68, 0.42)',
+    glow: 'rgba(239, 68, 68, 0.45)',
     accent: '#f87171',
     pillGrad: ['#ef4444', '#f97316']
   },
@@ -1248,7 +1272,7 @@ const visualThemes = [
     bg1: '#0e0314',
     bg2: '#1d0b26',
     bg3: '#020104',
-    glow: 'rgba(236, 72, 153, 0.42)',
+    glow: 'rgba(236, 72, 153, 0.45)',
     accent: '#f472b6',
     pillGrad: ['#ec4899', '#8b5cf6']
   }
@@ -1270,7 +1294,6 @@ const gamingQuickFilters = [
   { id: 'terror', label: '🧟 Terror' }
 ]
 
-// Wallpapers y Fondos Temáticos Rápidos
 const artworkPresets = [
   { id: 'cyber_gamer', icon: '🎮', label: 'Cyber Gaming', url: '/hero.png' },
   { id: 'ps5_neon', icon: '⚡', label: 'PS5 Neon Blue', url: '/flyers/gaming-template-story.jpg' },
@@ -1280,6 +1303,10 @@ const artworkPresets = [
 
 const currentTheme = computed(() => {
   return visualThemes.find(t => t.id === currentThemeId.value) || visualThemes[0]
+})
+
+const currentLayoutName = computed(() => {
+  return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Cyber Pro'
 })
 
 const currentStreamingPlans = computed(() => {
@@ -1517,7 +1544,9 @@ let dragContainerHeight = 1
 function onCanvasPointerDown(e) {
   const container = e.currentTarget
   if (!container) return
-  container.setPointerCapture?.(e.pointerId)
+  try {
+    container.setPointerCapture?.(e.pointerId)
+  } catch {}
   const rect = container.getBoundingClientRect()
   isPointerDragging = true
   dragStartPointerX = e.clientX
@@ -1530,6 +1559,7 @@ function onCanvasPointerDown(e) {
 
 function onCanvasPointerMove(e) {
   if (!isPointerDragging) return
+  e.preventDefault?.()
   const dxPct = ((e.clientX - dragStartPointerX) / dragContainerWidth) * 100
   const dyPct = ((e.clientY - dragStartPointerY) / dragContainerHeight) * 100
   imageOffsetX.value = Math.max(-45, Math.min(45, Math.round(dragInitialOffsetX + dxPct)))
@@ -1537,8 +1567,13 @@ function onCanvasPointerMove(e) {
   requestCanvasRedraw()
 }
 
-function onCanvasPointerUp() {
+function onCanvasPointerUp(e) {
   isPointerDragging = false
+  if (e?.currentTarget && e.pointerId) {
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId)
+    } catch {}
+  }
 }
 
 // ==========================================
@@ -1546,6 +1581,8 @@ function onCanvasPointerUp() {
 // ==========================================
 let animFrameId = null
 let animationStartTime = 0
+let recordingInterval = null
+let recordingTimeout = null
 
 function roundRect(ctx, x, y, w, h, r) {
   if (w < 2 * r) r = w / 2
@@ -1571,26 +1608,60 @@ function drawCornerBrackets(ctx, x, y, w, h, size = 30, color = 'rgba(56, 189, 2
   ctx.restore()
 }
 
-// Renderiza la imagen centrada con todos los ajustes finos
-function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t) {
+// Visualizador de Audio Animado (Trending TikTok/Reels Audio Wave)
+function drawAudioEqualizer(ctx, x, y, barCount = 7, color = '#38bdf8', t = 0) {
+  ctx.save()
+  const barW = 6
+  const gap = 4
+  const totalW = barCount * barW + (barCount - 1) * gap
+  const startX = x - totalW / 2
+  ctx.fillStyle = color
+  for (let i = 0; i < barCount; i++) {
+    const h = 10 + Math.abs(Math.sin(t * 7 + i * 0.9)) * 26
+    const bx = startX + i * (barW + gap)
+    const by = y - h / 2
+    roundRect(ctx, bx, by, barW, h, 3)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+// Haz de luz / Escáner Cyber horizontal
+function drawLaserScanline(ctx, x, y, w, h, t = 0, color = 'rgba(56, 189, 248, 0.45)') {
+  const scanY = y + ((t * 260) % (h + 80)) - 40
+  if (scanY >= y && scanY <= y + h) {
+    const scanGrad = ctx.createLinearGradient(0, scanY - 14, 0, scanY + 14)
+    scanGrad.addColorStop(0, 'rgba(0,0,0,0)')
+    scanGrad.addColorStop(0.5, color)
+    scanGrad.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = scanGrad
+    ctx.fillRect(x, scanY - 14, w, 28)
+  }
+}
+
+// Renderiza la imagen centrada con todos los ajustes finos y animación
+function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, options = {}) {
   if (!img) return
 
+  const { blurBg = true, showReticle = isPointerDragging, addVignette = true } = options
   const innerX = targetX
   const innerY = targetY
   const innerW = targetW
   const innerH = targetH
 
   // 1. Fondo ambiental saturado difuso
-  const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
-  const bgW = (img.width || 1) * bgScale
-  const bgH = (img.height || 1) * bgScale
-  ctx.save()
-  ctx.filter = 'blur(28px) brightness(0.40) saturate(1.4)'
-  ctx.drawImage(img, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
-  ctx.restore()
+  if (blurBg) {
+    const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
+    const bgW = (img.width || 1) * bgScale
+    const bgH = (img.height || 1) * bgScale
+    ctx.save()
+    ctx.filter = 'blur(28px) brightness(0.40) saturate(1.4)'
+    ctx.drawImage(img, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
+    ctx.restore()
+  }
 
   // 2. Portada nítida en primer plano con Zoom, Desplazamiento X/Y, Inclinación y Filtros
-  const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.4) * 0.035) : 1.0
+  const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.4) * 0.03) : 1.0
   const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
   let baseW = innerW
   let baseH = innerH
@@ -1626,14 +1697,35 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t) {
   ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
   ctx.restore()
 
-  // 3. Viñeta oscura inferior para dar lectura a sellos
-  const vigGrad = ctx.createLinearGradient(0, innerY + innerH - 240, 0, innerY + innerH)
-  vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
-  vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
-  ctx.fillStyle = vigGrad
-  ctx.fillRect(innerX, innerY + innerH - 240, innerW, 240)
+  // 3. Efecto Escáner Neón en Movimiento
+  if (isAnimated.value) {
+    drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
+  }
+
+  // 4. Retícula táctil de arrastre (cuando el usuario está interactuando)
+  if (showReticle) {
+    ctx.save()
+    ctx.strokeStyle = currentTheme.value.accent
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, 32, 0, Math.PI * 2)
+    ctx.moveTo(centerX - 48, centerY); ctx.lineTo(centerX + 48, centerY)
+    ctx.moveTo(centerX, centerY - 48); ctx.lineTo(centerX, centerY + 48)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // 5. Viñeta oscura inferior para legibilidad
+  if (addVignette) {
+    const vigGrad = ctx.createLinearGradient(0, innerY + innerH - 240, 0, innerY + innerH)
+    vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
+    vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
+    ctx.fillStyle = vigGrad
+    ctx.fillRect(innerX, innerY + innerH - 240, innerW, 240)
+  }
 }
 
+// RENDERIZADO COMPLETO DEL FRAME 9:16 (1080x1920) CON 4 PLANTILLAS VISUALES DISTINTAS
 function renderFrame(timeMs = 0) {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -1646,22 +1738,53 @@ function renderFrame(timeMs = 0) {
   const t = timeMs * 0.001
   const layout = currentLayoutId.value
 
-  // 1. Fondo Base según plantilla
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
-  bgGrad.addColorStop(0, th.bg1)
-  bgGrad.addColorStop(0.45, th.bg2)
-  bgGrad.addColorStop(1, th.bg3)
-  ctx.fillStyle = bgGrad
-  ctx.fillRect(0, 0, W, H)
+  // ==========================================
+  // 1. FONDO AMBIENTAL SEGÚN PLANTILLA
+  // ==========================================
+  if (layout === 'cinematic' && loadedArtworkImage.value) {
+    // EN CINEMÁTICO: LA IMAGEN CUBRE TODO EL 9:16 CON VIÑETAS DRAMÁTICAS
+    const img = loadedArtworkImage.value
+    const bgScale = Math.max(W / (img.width || 1), H / (img.height || 1))
+    const bw = (img.width || 1) * bgScale
+    const bh = (img.height || 1) * bgScale
+    ctx.save()
+    ctx.filter = `brightness(${imageBrightness.value * 0.85}%) contrast(${imageContrast.value * 1.1}%) saturate(${imageSaturation.value * 1.2}%)`
+    ctx.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh)
+    ctx.restore()
 
-  // 2. Resplandor Neón Central
-  const radialGlow = ctx.createRadialGradient(W * 0.5, H * 0.38, 40, W * 0.5, H * 0.38, 720)
-  radialGlow.addColorStop(0, th.glow)
-  radialGlow.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = radialGlow
-  ctx.fillRect(0, 0, W, H)
+    // Viñeta Cinematográfica Profunda Superior e Inferior
+    const topVig = ctx.createLinearGradient(0, 0, 0, 520)
+    topVig.addColorStop(0, 'rgba(2, 6, 23, 0.95)')
+    topVig.addColorStop(0.65, 'rgba(2, 6, 23, 0.65)')
+    topVig.addColorStop(1, 'rgba(2, 6, 23, 0)')
+    ctx.fillStyle = topVig
+    ctx.fillRect(0, 0, W, 520)
 
-  // 3. Partículas flotantes
+    const botVig = ctx.createLinearGradient(0, H - 980, 0, H)
+    botVig.addColorStop(0, 'rgba(2, 6, 23, 0)')
+    botVig.addColorStop(0.35, 'rgba(2, 6, 23, 0.78)')
+    botVig.addColorStop(1, 'rgba(2, 6, 23, 0.98)')
+    ctx.fillStyle = botVig
+    ctx.fillRect(0, H - 980, W, 980)
+
+  } else {
+    // FONDOS CON GRADIENTE Y PARTÍCULAS (CYBER PRO, GLASS VIP, SPLIT FLASH)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
+    bgGrad.addColorStop(0, th.bg1)
+    bgGrad.addColorStop(0.45, th.bg2)
+    bgGrad.addColorStop(1, th.bg3)
+    ctx.fillStyle = bgGrad
+    ctx.fillRect(0, 0, W, H)
+
+    // Resplandor Neón Central
+    const radialGlow = ctx.createRadialGradient(W * 0.5, H * 0.38, 40, W * 0.5, H * 0.38, 720)
+    radialGlow.addColorStop(0, th.glow)
+    radialGlow.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = radialGlow
+    ctx.fillRect(0, 0, W, H)
+  }
+
+  // Partículas Neón flotantes animadas
   if (isAnimated.value) {
     ctx.save()
     for (let i = 0; i < 22; i++) {
@@ -1676,16 +1799,18 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // 4. Marco Exterior Cyber 9:16
-  ctx.save()
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
-  ctx.lineWidth = 4
-  roundRect(ctx, 32, 32, W - 64, H - 64, 48)
-  ctx.stroke()
-  drawCornerBrackets(ctx, 32, 32, W - 64, H - 64, 40, th.accent)
-  ctx.restore()
+  // Marco Cyber 9:16 con esquinas HUD (en Cyber Pro, Glass VIP y Split Flash)
+  if (layout !== 'cinematic') {
+    ctx.save()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+    ctx.lineWidth = 4
+    roundRect(ctx, 32, 32, W - 64, H - 64, 48)
+    ctx.stroke()
+    drawCornerBrackets(ctx, 32, 32, W - 64, H - 64, 40, th.accent)
+    ctx.restore()
+  }
 
-  // 5. Header: Insignia de Tienda / Distribuidor
+  // Header: Insignia de Tienda / Distribuidor
   if (showBrandPill.value) {
     ctx.save()
     const brandPillW = 460
@@ -1706,122 +1831,336 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // 6. Titular Principal y Subtítulo
+  // Ecualizador de Audio / Trending Sound Bar en Header
+  if (isAnimated.value) {
+    drawAudioEqualizer(ctx, W / 2, 168, 9, th.accent, t)
+  }
+
+  // Titular Principal y Subtítulo
   ctx.save()
   ctx.fillStyle = '#ffffff'
   ctx.font = '900 58px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   ctx.textAlign = 'center'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
   ctx.shadowBlur = 20
-  ctx.fillText(reelHeadline.value.slice(0, 36), W / 2, 218)
+  ctx.fillText(reelHeadline.value.slice(0, 36), W / 2, 230)
 
   ctx.fillStyle = th.accent
   ctx.font = 'bold 30px sans-serif'
-  ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 272)
+  ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 282)
   ctx.restore()
 
-  // 7. Visor / Tarjeta Central con Portada (Adaptada a Layout)
-  let cardX = 85
-  let cardY = 315
-  let cardW = W - 170
-  let cardH = 820
+  // ==========================================
+  // 2. RENDERIZADO SEGÚN PLANTILLA
+  // ==========================================
 
-  if (layout === 'split_flash') {
-    cardY = 300
-    cardH = 720
-  }
+  // ----------------------------------------------------
+  // PLANTILLA 1: CYBER PRO OFICIAL (HUD Y MARCO PRO)
+  // ----------------------------------------------------
+  if (layout === 'cyber_pro') {
+    const cardX = 85
+    const cardY = 325
+    const cardW = W - 170
+    const cardH = 810
 
-  // Fondo y borde del visor
-  ctx.save()
-  ctx.shadowColor = th.glow
-  ctx.shadowBlur = 45
-  ctx.fillStyle = '#050a18'
-  roundRect(ctx, cardX, cardY, cardW, cardH, 44)
-  ctx.fill()
-  ctx.restore()
-
-  ctx.save()
-  ctx.strokeStyle = th.accent
-  ctx.lineWidth = 4
-  roundRect(ctx, cardX, cardY, cardW, cardH, 44)
-  ctx.stroke()
-  ctx.restore()
-
-  // Dibujar Portada con todos los ajustes
-  if (loadedArtworkImage.value) {
+    // Fondo y borde del visor
     ctx.save()
-    roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
-    ctx.clip()
-    drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
-    ctx.restore()
-  }
-
-  // Badge Flotante en Portada
-  if (reelBadgeText.value) {
-    ctx.save()
-    const badgeW = 360
-    const badgeH = 68
-    const bx = cardX + 30
-    const by = cardY + 30
-    const bGrad = ctx.createLinearGradient(bx, by, bx + badgeW, by)
-    bGrad.addColorStop(0, th.pillGrad[0])
-    bGrad.addColorStop(1, th.pillGrad[1])
-    ctx.fillStyle = bGrad
-    roundRect(ctx, bx, by, badgeW, badgeH, 34)
-    ctx.fill()
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 25px -apple-system, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(reelBadgeText.value, bx + badgeW / 2, by + 43)
-    ctx.restore()
-  }
-
-  // Sello Holográfico de Confianza
-  if (currentSealText.value) {
-    ctx.save()
-    const sealW = 440
-    const sealH = 58
-    const sx = cardX + cardW - sealW - 24
-    const sy = cardY + cardH - sealH - 24
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
-    roundRect(ctx, sx, sy, sealW, sealH, 29)
+    ctx.shadowColor = th.glow
+    ctx.shadowBlur = 45
+    ctx.fillStyle = '#050a18'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
     ctx.fill()
     ctx.strokeStyle = th.accent
-    ctx.lineWidth = 2
+    ctx.lineWidth = 4
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
     ctx.stroke()
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 20px -apple-system, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(currentSealText.value, sx + sealW / 2, sy + 37)
     ctx.restore()
+
+    if (loadedArtworkImage.value) {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    }
+
+    // Badge en portada
+    if (reelBadgeText.value) {
+      drawBadgePill(ctx, cardX + 30, cardY + 30, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    // Sello de confianza
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    // Zona de Precios
+    drawPriceBox(ctx, cardX, 1170, cardW, 310, th, t)
+
+    // Botón CTA Pulsante
+    drawCtaButton(ctx, cardX, 1515, cardW, 104, t)
   }
 
-  // 8. Zona de Precios & Cupones
-  const priceBoxY = layout === 'split_flash' ? 1060 : 1170
-  const priceBoxH = layout === 'split_flash' ? 400 : 310
+  // ----------------------------------------------------
+  // PLANTILLA 2: PÓSTER CINEMÁTICO 9:16 (FULL-BLEED)
+  // ----------------------------------------------------
+  else if (layout === 'cinematic') {
+    // En cinemático la imagen cubre todo el fondo (ya dibujada arriba).
+    // Aquí destacamos elementos flotantes tipo cartelera de cine
+    const cardX = 85
+    const cardW = W - 170
 
+    // Marquee de estreno
+    ctx.save()
+    ctx.fillStyle = th.accent
+    ctx.font = '900 22px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText('★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 335)
+    ctx.restore()
+
+    // Badge Flotante Cinemático
+    if (reelBadgeText.value) {
+      drawBadgePill(ctx, cardX + 20, 370, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    // Placa de Precio Glassmorphism Translúcida Flotante
+    ctx.save()
+    const glassY = 1100
+    const glassH = 340
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+    roundRect(ctx, cardX, glassY, cardW, glassH, 44)
+    ctx.fill()
+    ctx.strokeStyle = th.accent
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    // Precios
+    drawPriceContent(ctx, glassY, cardW, th, t)
+    ctx.restore()
+
+    // Sello de confianza
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, (W - 480) / 2, 1475, 480, 56, currentSealText.value, th.accent)
+    }
+
+    // Botón CTA Cinemático
+    drawCtaButton(ctx, cardX, 1560, cardW, 104, t)
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 3: GLASSMORPHISM VIP LUXURY
+  // ----------------------------------------------------
+  else if (layout === 'glass_vip') {
+    const cardX = 85
+    const cardY = 320
+    const cardW = W - 170
+    const cardH = 790
+
+    // Tarjeta VIP de Cristal Esmerilado Profundo
+    ctx.save()
+    ctx.shadowColor = th.glow
+    ctx.shadowBlur = 55
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
+    ctx.lineWidth = 4
+    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    ctx.stroke()
+    ctx.restore()
+
+    if (loadedArtworkImage.value) {
+      ctx.save()
+      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      ctx.restore()
+    }
+
+    // Cinta VIP Superior
+    ctx.save()
+    const vipW = 380
+    const vipH = 60
+    const vx = (W - vipW) / 2
+    const vy = cardY - 26
+    const vipGrad = ctx.createLinearGradient(vx, vy, vx + vipW, vy)
+    vipGrad.addColorStop(0, '#f59e0b')
+    vipGrad.addColorStop(1, '#d97706')
+    ctx.fillStyle = vipGrad
+    roundRect(ctx, vx, vy, vipW, vipH, 30)
+    ctx.fill()
+    ctx.fillStyle = '#020617'
+    ctx.font = '900 22px -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('👑 EDICIÓN VIP OFICIAL', W / 2, vy + 38)
+    ctx.restore()
+
+    if (reelBadgeText.value) {
+      drawBadgePill(ctx, cardX + 30, cardY + 50, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    drawPriceBox(ctx, cardX, 1150, cardW, 310, th, t)
+    drawCtaButton(ctx, cardX, 1495, cardW, 104, t)
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 4: SPLIT FLASH / URGENCIA RELÁMPAGO (50/50)
+  // ----------------------------------------------------
+  else if (layout === 'split_flash') {
+    const cardX = 85
+    const cardY = 310
+    const cardW = W - 170
+    const cardH = 680
+
+    // Marco Superior de Acción
+    ctx.save()
+    ctx.fillStyle = '#050a18'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 40)
+    ctx.fill()
+    ctx.strokeStyle = '#ef4444' // Borde Rojo Fuego Urgente
+    ctx.lineWidth = 4
+    roundRect(ctx, cardX, cardY, cardW, cardH, 40)
+    ctx.stroke()
+    ctx.restore()
+
+    if (loadedArtworkImage.value) {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    }
+
+    // Tira Neón Divisora Relámpago con Cuenta Regresiva
+    ctx.save()
+    const stripY = cardY + cardH + 16
+    const stripH = 64
+    const sGrad = ctx.createLinearGradient(cardX, stripY, cardX + cardW, stripY)
+    sGrad.addColorStop(0, '#ef4444')
+    sGrad.addColorStop(0.5, '#f97316')
+    sGrad.addColorStop(1, '#ef4444')
+    ctx.fillStyle = sGrad
+    roundRect(ctx, cardX, stripY, cardW, stripH, 32)
+    ctx.fill()
+
+    // Cuenta regresiva dinámica
+    const baseSec = 15838 - Math.floor((t * 2) % 3600)
+    const hrs = String(Math.floor(baseSec / 3600)).padStart(2, '0')
+    const mins = String(Math.floor((baseSec % 3600) / 60)).padStart(2, '0')
+    const secs = String(baseSec % 60).padStart(2, '0')
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '900 26px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`⚡ OFERTA FLASH · TERMINA EN ${hrs}:${mins}:${secs} ⚡`, W / 2, stripY + 42)
+    ctx.restore()
+
+    // Panel Inferior de Conversión Urgente
+    const lowerY = stripY + stripH + 18
+    const lowerH = 430
+    ctx.save()
+    ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
+    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)'
+    ctx.lineWidth = 3
+    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
+    ctx.stroke()
+
+    drawPriceContent(ctx, lowerY, cardW, th, t)
+    ctx.restore()
+
+    drawCtaButton(ctx, cardX, 1540, cardW, 104, t)
+  }
+
+  // ==========================================
+  // 3. PIE DE PÁGINA Y CONTACTO DE CIERRE
+  // ==========================================
+  ctx.save()
+  if (showContactPhone.value && props.contactPhone) {
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '900 28px -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(`📲 WhatsApp de Pedidos: ${props.contactPhone}`, W / 2, 1705)
+  }
+
+  ctx.fillStyle = th.accent
+  ctx.font = 'bold 24px monospace'
+  const domainText = props.resellerRef && props.resellerRef !== 'DIRECT'
+    ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
+    : `${props.websiteDomain || 'streamepro.me'}`
+  ctx.textAlign = 'center'
+  ctx.fillText(`🔗 ${domainText}`, W / 2, 1752)
+
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.82)'
+  ctx.font = '20px sans-serif'
+  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1798)
+  ctx.restore()
+}
+
+// Helpers modulares de dibujo
+function drawBadgePill(ctx, bx, by, badgeW, badgeH, text, pillGrad) {
+  ctx.save()
+  const bGrad = ctx.createLinearGradient(bx, by, bx + badgeW, by)
+  bGrad.addColorStop(0, pillGrad[0])
+  bGrad.addColorStop(1, pillGrad[1])
+  ctx.fillStyle = bGrad
+  roundRect(ctx, bx, by, badgeW, badgeH, 34)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 25px -apple-system, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(text, bx + badgeW / 2, by + 43)
+  ctx.restore()
+}
+
+function drawTrustSealPill(ctx, sx, sy, sealW, sealH, text, accentColor) {
+  ctx.save()
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+  roundRect(ctx, sx, sy, sealW, sealH, 29)
+  ctx.fill()
+  ctx.strokeStyle = accentColor
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 20px -apple-system, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(text, sx + sealW / 2, sy + 37)
+  ctx.restore()
+}
+
+function drawPriceBox(ctx, boxX, boxY, boxW, boxH, th, t) {
   ctx.save()
   ctx.fillStyle = 'rgba(10, 16, 32, 0.94)'
-  roundRect(ctx, cardX, priceBoxY, cardW, priceBoxH, 38)
+  roundRect(ctx, boxX, boxY, boxW, boxH, 38)
   ctx.fill()
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)'
   ctx.lineWidth = 2
   ctx.stroke()
+  drawPriceContent(ctx, boxY, boxW, th, t)
+  ctx.restore()
+}
 
+function drawPriceContent(ctx, boxY, boxW, th, t) {
+  const W = 1080
   // Precio regular tachado
   if (showRegularPrice.value && Number(reelRegularPrice.value) > 0 && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)) {
     ctx.fillStyle = '#94a3b8'
     ctx.font = 'bold 30px sans-serif'
     ctx.textAlign = 'center'
     const regText = `Precio Regular: $${Number(reelRegularPrice.value).toLocaleString('es-AR')} ARS`
-    ctx.fillText(regText, W / 2, priceBoxY + 58)
+    ctx.fillText(regText, W / 2, boxY + 58)
 
     const tw = ctx.measureText(regText).width
     ctx.strokeStyle = '#f43f5e'
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(W / 2 - tw / 2 - 12, priceBoxY + 48)
-    ctx.lineTo(W / 2 + tw / 2 + 12, priceBoxY + 48)
+    ctx.moveTo(W / 2 - tw / 2 - 12, boxY + 48)
+    ctx.lineTo(W / 2 + tw / 2 + 12, boxY + 48)
     ctx.stroke()
   }
 
@@ -1832,22 +2171,21 @@ function renderFrame(timeMs = 0) {
     ctx.textAlign = 'center'
     ctx.shadowColor = 'rgba(74, 222, 128, 0.45)'
     ctx.shadowBlur = 28
-    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, priceBoxY + 160)
+    ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, boxY + 160)
   } else {
     ctx.fillStyle = '#fde047'
     ctx.font = '900 80px -apple-system, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('¡SORTEO GRATIS!', W / 2, priceBoxY + 160)
+    ctx.fillText('¡SORTEO GRATIS!', W / 2, boxY + 160)
   }
-  ctx.restore()
 
   // Pill del Cupón Promocional con Destello Animado
   if (showPromoPill.value && reelPromoCode.value) {
     ctx.save()
-    const cpW = cardW - 60
+    const cpW = boxW - 60
     const cpH = 74
     const cpX = (W - cpW) / 2
-    const cpY = priceBoxY + (layout === 'split_flash' ? 240 : 205)
+    const cpY = boxY + 205
 
     const cpGrad = ctx.createLinearGradient(cpX, cpY, cpX + cpW, cpY)
     cpGrad.addColorStop(0, '#f59e0b')
@@ -1873,13 +2211,11 @@ function renderFrame(timeMs = 0) {
     ctx.fillText(`🎟️ USA EL CÓDIGO: ${reelPromoCode.value.toUpperCase()} (DESCUENTO EXTRA)`, W / 2, cpY + 46)
     ctx.restore()
   }
+}
 
-  // 9. Botón Llamado a la Acción (CTA) Pulsante
+function drawCtaButton(ctx, ctaX, ctaY, ctaW, ctaH, t) {
+  const W = 1080
   ctx.save()
-  const ctaW = cardW
-  const ctaH = 104
-  const ctaX = (W - ctaW) / 2
-  const ctaY = layout === 'split_flash' ? 1490 : 1515
   const ctaPulse = isAnimated.value ? (1.0 + Math.sin(t * 3.6) * 0.02) : 1.0
 
   ctx.translate(W / 2, ctaY + ctaH / 2)
@@ -1902,28 +2238,6 @@ function renderFrame(timeMs = 0) {
   ctx.shadowColor = 'rgba(0,0,0,0.5)'
   ctx.shadowBlur = 12
   ctx.fillText(reelCtaText.value || '📲 PEDILO AL WHATSAPP', W / 2, ctaY + 65)
-  ctx.restore()
-
-  // 10. Pie de Página / Contacto
-  ctx.save()
-  if (showContactPhone.value && props.contactPhone) {
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 28px -apple-system, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`📲 WhatsApp de Pedidos: ${props.contactPhone}`, W / 2, 1705)
-  }
-
-  ctx.fillStyle = th.accent
-  ctx.font = 'bold 24px monospace'
-  const domainText = props.resellerRef && props.resellerRef !== 'DIRECT'
-    ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
-    : `${props.websiteDomain || 'streamepro.me'}`
-  ctx.textAlign = 'center'
-  ctx.fillText(`🔗 ${domainText}`, W / 2, 1752)
-
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.82)'
-  ctx.font = '20px sans-serif'
-  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1798)
   ctx.restore()
 }
 
@@ -1957,13 +2271,20 @@ async function recordVideoReel() {
   const canvas = canvasRef.value
   if (!canvas) return
 
+  const captureStreamFn = canvas.captureStream || canvas.mozCaptureStream
+  if (!captureStreamFn || typeof MediaRecorder === 'undefined') {
+    toast.add('Tu navegador móvil no soporta grabación directa de video. Descarga la imagen HD o comparte directo.', 'info')
+    downloadImagePng()
+    return
+  }
+
   isAnimated.value = true
   isRecording.value = true
   recordingProgress.value = 0
   recordingSeconds.value = '0.0'
 
   try {
-    const stream = canvas.captureStream(30)
+    const stream = captureStreamFn.call(canvas, 30)
     
     const candidates = [
       'video/webm;codecs=vp9',
@@ -1973,10 +2294,8 @@ async function recordVideoReel() {
       'video/mp4'
     ]
     let mimeType = 'video/webm'
-    if (typeof MediaRecorder !== 'undefined') {
-      const supported = candidates.find(t => MediaRecorder.isTypeSupported(t))
-      if (supported) mimeType = supported
-    }
+    const supported = candidates.find(t => MediaRecorder.isTypeSupported(t))
+    if (supported) mimeType = supported
 
     const recorder = new MediaRecorder(stream, {
       mimeType,
@@ -1993,14 +2312,15 @@ async function recordVideoReel() {
     const durationMs = 5000
     const startTime = performance.now()
 
-    const progressInterval = setInterval(() => {
+    if (recordingInterval) clearInterval(recordingInterval)
+    recordingInterval = setInterval(() => {
       const elapsed = performance.now() - startTime
       recordingProgress.value = Math.min(100, Math.round((elapsed / durationMs) * 100))
       recordingSeconds.value = (elapsed / 1000).toFixed(1)
     }, 100)
 
     recorder.onstop = async () => {
-      clearInterval(progressInterval)
+      if (recordingInterval) clearInterval(recordingInterval)
       isRecording.value = false
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
       const blob = new Blob(chunks, { type: mimeType })
@@ -2040,7 +2360,8 @@ async function recordVideoReel() {
 
     recorder.start(100)
 
-    setTimeout(() => {
+    if (recordingTimeout) clearTimeout(recordingTimeout)
+    recordingTimeout = setTimeout(() => {
       if (recorder.state !== 'inactive') {
         recorder.stop()
       }
@@ -2049,6 +2370,7 @@ async function recordVideoReel() {
   } catch (err) {
     console.error('Error grabando reel en canvas:', err)
     isRecording.value = false
+    if (recordingInterval) clearInterval(recordingInterval)
     toast.add('No se pudo grabar video en este navegador. Usa "Descargar PNG".', 'error')
   }
 }
@@ -2061,8 +2383,16 @@ async function downloadImagePng() {
 
   try {
     renderFrame(performance.now() - animationStartTime)
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
-    if (!blob) throw new Error('Error al generar imagen PNG')
+    const blob = await new Promise((res, rej) => {
+      try {
+        canvas.toBlob((b) => {
+          if (!b) rej(new Error('Fallo al generar Blob de Canvas'))
+          else res(b)
+        }, 'image/png', 0.95)
+      } catch (err) {
+        rej(err)
+      }
+    })
 
     const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
     const fileName = `estado_streamepro_${cleanTitle}_9x16.png`
@@ -2079,7 +2409,12 @@ async function downloadImagePng() {
     toast.add('📸 ¡Imagen HD 9:16 descargada! Lista para Estados e Historias.', 'success')
   } catch (err) {
     console.error('Error exportando PNG:', err)
-    toast.add('Error al exportar imagen', 'error')
+    if (err.name === 'SecurityError' || String(err).includes('Tainted')) {
+      toast.add('La carátula externa tiene protección CORS. Se ha restaurado la oficial para descargar.', 'error')
+      resetToOriginalProductCover()
+    } else {
+      toast.add('Error al exportar imagen en este dispositivo.', 'error')
+    }
   } finally {
     isExportingImage.value = false
   }
@@ -2091,13 +2426,26 @@ async function handleMobileOrShareAction() {
   if (!canvas) return
 
   renderFrame(performance.now() - animationStartTime)
-  const dataUrl = canvas.toDataURL('image/png', 0.95)
-  mobileSaveImageUrl.value = dataUrl
+  try {
+    const dataUrl = canvas.toDataURL('image/png', 0.95)
+    mobileSaveImageUrl.value = dataUrl
+  } catch (err) {
+    if (err.name === 'SecurityError' || String(err).includes('Tainted')) {
+      resetToOriginalProductCover()
+      return
+    }
+  }
 
   // Si el navegador soporta Web Share API con archivos, intentar compartir directamente
   if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
     try {
-      const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
+      const blob = await new Promise((res, rej) => {
+        try {
+          canvas.toBlob((b) => b ? res(b) : rej(new Error('Blob nulo')), 'image/png', 0.95)
+        } catch (err) {
+          rej(err)
+        }
+      })
       if (blob) {
         const file = new File([blob], 'streamepro_story_9x16.png', { type: 'image/png' })
         if (navigator.canShare({ files: [file] })) {
@@ -2124,8 +2472,13 @@ async function shareDirect() {
   if (!canvas) return
   try {
     renderFrame(performance.now() - animationStartTime)
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
-    if (!blob) throw new Error('Blob nulo')
+    const blob = await new Promise((res, rej) => {
+      try {
+        canvas.toBlob((b) => b ? res(b) : rej(new Error('Blob nulo')), 'image/png', 0.95)
+      } catch (err) {
+        rej(err)
+      }
+    })
 
     if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
       const file = new File([blob], 'streamepro_story_9x16.png', { type: 'image/png' })
@@ -2154,8 +2507,13 @@ async function copyImageToClipboard() {
 
   try {
     renderFrame(performance.now() - animationStartTime)
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
-    if (!blob) throw new Error('Error al preparar imagen')
+    const blob = await new Promise((res, rej) => {
+      try {
+        canvas.toBlob((b) => b ? res(b) : rej(new Error('Blob nulo')), 'image/png', 0.95)
+      } catch (err) {
+        rej(err)
+      }
+    })
 
     if (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write) {
       await navigator.clipboard.write([
@@ -2215,10 +2573,12 @@ function toggleFullscreenPreview() {
 
 function closeModal() {
   if (animFrameId) cancelAnimationFrame(animFrameId)
+  if (recordingInterval) clearInterval(recordingInterval)
+  if (recordingTimeout) clearTimeout(recordingTimeout)
   emit('close')
 }
 
-// Inicialización según props
+// Inicialización instantánea según props
 function initFromProps() {
   if (props.promoCode) {
     reelPromoCode.value = normalizePromoCode(props.promoCode)
@@ -2229,9 +2589,18 @@ function initFromProps() {
 
   const p = props.initialPayload
   if (p) {
-    if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice) {
+    if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales') {
       selectedMode.value = 'gaming'
       pickedGameId.value = p.id
+      // Inmediatamente usar datos del item sin esperar a que termine de cargar el catálogo completo
+      reelHeadline.value = (p.title || 'Videojuego').toUpperCase().slice(0, 36)
+      reelPromoPrice.value = Number(p.effectivePrimaryPrice || p.price || 15000)
+      reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
+      if (p.image) {
+        reelArtworkUrl.value = p.image
+        defaultProductCoverUrl.value = p.image
+        loadArtwork(p.image)
+      }
       applyGamingProduct()
     } else if (p.services || p.promoPrice && p.packages) {
       selectedMode.value = 'combo'
@@ -2262,6 +2631,8 @@ watch(() => props.show, (newVal) => {
     })
   } else {
     if (animFrameId) cancelAnimationFrame(animFrameId)
+    if (recordingInterval) clearInterval(recordingInterval)
+    if (recordingTimeout) clearTimeout(recordingTimeout)
   }
 })
 
@@ -2280,6 +2651,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (animFrameId) cancelAnimationFrame(animFrameId)
+  if (recordingInterval) clearInterval(recordingInterval)
+  if (recordingTimeout) clearTimeout(recordingTimeout)
 })
 </script>
 
