@@ -1,48 +1,80 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
-    <div class="max-w-7xl w-full bg-[#030712] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh]">
+  <div v-if="show" class="fixed inset-0 z-[120] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-0 sm:p-3 md:p-6 overflow-y-auto">
+    <div class="max-w-7xl w-full bg-[#030712] border-0 sm:border border-slate-800 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto max-h-[100dvh] sm:max-h-[96vh]">
       
-      <!-- HEADER -->
-      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60 shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-pink-500/25">
+      <!-- HEADER CON INFORMACIÓN Y BOTÓN DE CIERRE -->
+      <div class="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/70 shrink-0">
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 flex items-center justify-center text-lg sm:text-xl shadow-lg shadow-pink-500/25 shrink-0">
             🎬
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                Estudio de Reels, TikTok &amp; Estados 9:16
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <h2 class="text-sm sm:text-base md:text-lg font-black text-white flex items-center gap-1.5">
+                Estudio Reels, TikTok &amp; Estados 9:16
               </h2>
-              <span class="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30">
-                1080 × 1920 Ultra HD
+              <span class="hidden xs:inline-block text-[9px] sm:text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30">
+                1080 × 1920 HD
               </span>
             </div>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Crea contenido vertical cinemático con portadas oficiales, buscador de juegos, marcos cyber y guiones virales listos para publicar.
+            <p class="text-[11px] sm:text-xs text-slate-400 line-clamp-1">
+              Diseño tipo flyer profesional, personalización total de carátulas y descarga optimizada para móvil y PC.
             </p>
           </div>
         </div>
 
-        <button 
-          type="button" 
-          @click="closeModal" 
-          class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition text-lg"
-          title="Cerrar estudio"
-        >
-          ✕
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Toggle Vista Móvil (Preview vs Editor) solo en pantallas pequeñas -->
+          <div class="flex lg:hidden bg-slate-950 p-0.5 rounded-xl border border-slate-800 text-xs">
+            <button
+              type="button"
+              @click="mobileViewMode = 'preview'"
+              :class="['px-2.5 py-1 rounded-lg font-bold transition cursor-pointer', mobileViewMode === 'preview' ? 'bg-pink-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+            >
+              👁️ Ver 9:16
+            </button>
+            <button
+              type="button"
+              @click="mobileViewMode = 'editor'"
+              :class="['px-2.5 py-1 rounded-lg font-bold transition cursor-pointer', mobileViewMode === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+            >
+              🛠️ Editor
+            </button>
+          </div>
+
+          <button 
+            type="button" 
+            @click="closeModal" 
+            class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition text-lg cursor-pointer"
+            title="Cerrar estudio"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
-      <!-- MAIN STUDIO WORKSPACE (GRID 2 COLUMNAS) -->
+      <!-- MAIN WORKSPACE (GRID 2 COLUMNAS EN PC / CONDICIONAL EN MÓVIL) -->
       <div class="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         <!-- ========================================== -->
         <!-- COLUMNA IZQUIERDA: CANVAS 9:16 EN VIVO     -->
         <!-- ========================================== -->
-        <div class="lg:col-span-5 flex flex-col items-center space-y-3.5 lg:sticky lg:top-0">
+        <div 
+          :class="[
+            'lg:col-span-5 flex flex-col items-center space-y-3.5 lg:sticky lg:top-0',
+            mobileViewMode === 'preview' ? 'block' : 'hidden lg:flex'
+          ]"
+        >
           
-          <!-- CONTENEDOR 9:16 DE ALTA DEFINICIÓN -->
-          <div class="relative w-full max-w-[325px] aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black flex items-center justify-center group select-none">
+          <!-- CONTENEDOR 9:16 DE ALTA DEFINICIÓN CON INTERACCIÓN TÁCTIL / MOUSE DRAG -->
+          <div 
+            class="relative w-full max-w-[310px] sm:max-w-[325px] aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black flex items-center justify-center group select-none cursor-grab active:cursor-grabbing touch-none"
+            @pointerdown="onCanvasPointerDown"
+            @pointermove="onCanvasPointerMove"
+            @pointerup="onCanvasPointerUp"
+            @pointercancel="onCanvasPointerUp"
+            title="Toca o haz clic y arrastra para encuadrar la portada al instante"
+          >
             
             <!-- Canvas 9:16 Nativo (1080x1920) -->
             <canvas 
@@ -55,7 +87,7 @@
             <!-- Overlay de Grabación de Video en Progreso -->
             <div 
               v-if="isRecording" 
-              class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in z-20"
+              class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in z-20 pointer-events-auto"
             >
               <div class="relative mb-4">
                 <div class="w-16 h-16 rounded-full border-4 border-pink-500/30 border-t-pink-500 animate-spin"></div>
@@ -78,11 +110,11 @@
             </div>
 
             <!-- Badges flotantes en vista previa -->
-            <div class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/15 text-[10px] font-mono text-slate-200 flex items-center gap-1.5 shadow">
+            <div class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/15 text-[10px] font-mono text-slate-200 flex items-center gap-1.5 shadow pointer-events-none">
               <span>📱 9:16 Story / Reel</span>
             </div>
 
-            <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+            <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-none">
               <span 
                 :class="[
                   'px-2 py-0.5 rounded-md text-[9px] font-mono font-bold border backdrop-blur-md flex items-center gap-1',
@@ -94,21 +126,29 @@
               </span>
             </div>
 
-            <!-- Botón flotante para alternar pantalla completa / zoom de inspección -->
+            <!-- Hint de arrastre táctil / mouse -->
+            <div class="absolute bottom-2.5 left-2.5 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg border border-white/15 text-[9px] text-slate-300 flex items-center gap-1 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
+              <span>🖐️</span>
+              <span>Arrastra para mover imagen</span>
+            </div>
+
+            <!-- Botón flotante para ver en grande / pantalla completa -->
             <button
               type="button"
-              @click="toggleFullscreenPreview"
-              class="absolute bottom-2.5 right-2.5 bg-black/70 hover:bg-black/90 text-white text-xs p-2 rounded-xl border border-white/20 backdrop-blur-md transition shadow cursor-pointer opacity-70 hover:opacity-100"
-              title="Ver en Grande / Pantalla Completa"
+              @click.stop="toggleFullscreenPreview"
+              class="absolute bottom-2.5 right-2.5 bg-black/70 hover:bg-black/90 text-white text-xs p-2 rounded-xl border border-white/20 backdrop-blur-md transition shadow cursor-pointer opacity-70 hover:opacity-100 pointer-events-auto"
+              title="Ver en Pantalla Completa"
             >
               🔍
             </button>
           </div>
 
-          <!-- BOTONERA DE ACCIÓN Y EXPORTACIÓN -->
+          <!-- ======================================================== -->
+          <!-- BOTONERA DE ACCIÓN Y DESCARGAS ADAPTADAS (MÓVIL & PC)    -->
+          <!-- ======================================================== -->
           <div class="w-full max-w-[325px] space-y-2">
             
-            <!-- Botón Principal: Grabar Video Reel Animado -->
+            <!-- Botón Principal: Grabar Video Reel 5s (TikTok / Reels / Estados) -->
             <button
               type="button"
               @click="recordVideoReel"
@@ -116,31 +156,48 @@
               class="w-full py-3 px-4 rounded-xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white shadow-pink-500/25 active:scale-98 disabled:opacity-50"
             >
               <span>🎬</span>
-              <span>{{ isRecording ? 'Grabando Video...' : 'Grabar Video Reel / TikTok (5s)' }}</span>
+              <span>{{ isRecording ? 'Grabando Video...' : 'Grabar Video Reel (5s @ 30 FPS)' }}</span>
             </button>
 
-            <!-- Acciones Secundarias: Imagen HD y Compartir Directo -->
+            <!-- Acciones Adaptadas Móvil y PC -->
             <div class="grid grid-cols-2 gap-2">
+              <!-- Descargar PNG HD -->
               <button
                 type="button"
                 @click="downloadImagePng"
                 :disabled="isRecording || isExportingImage"
                 class="py-2.5 px-3 rounded-xl font-black text-xs transition-all shadow border border-slate-700 bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Descargar imagen en alta resolución 1080x1920"
               >
                 <span>📸</span>
                 <span>{{ isExportingImage ? 'Generando...' : 'Descargar PNG' }}</span>
               </button>
               
+              <!-- Compartir / Guardar en Móvil (Web Share API nativa o visor táctil) -->
               <button
                 type="button"
-                @click="shareDirect"
+                @click="handleMobileOrShareAction"
                 :disabled="isRecording || isExportingImage"
                 class="py-2.5 px-3 rounded-xl font-black text-xs transition-all shadow border border-emerald-500/40 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                :title="isMobileDevice ? 'Compartir a WhatsApp / Instagram o Guardar en Fotos' : 'Abrir opciones de guardado móvil'"
               >
                 <span>📲</span>
-                <span>Compartir</span>
+                <span>{{ isMobileDevice ? 'Compartir / Fotos' : 'Guardar en Celular' }}</span>
               </button>
             </div>
+
+            <!-- Función Especial para PC: Copiar al Portapapeles (Ctrl + V para WhatsApp Web) -->
+            <button
+              v-if="!isMobileDevice"
+              type="button"
+              @click="copyImageToClipboard"
+              :disabled="isRecording || isExportingImage"
+              class="w-full py-2 px-3 rounded-xl font-bold text-xs transition-all shadow border border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900 text-indigo-300 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Copia la imagen para pegarla directamente con Ctrl + V en WhatsApp Web o Telegram"
+            >
+              <span>📋</span>
+              <span>Copiar Imagen al Portapapeles (Ctrl + V)</span>
+            </button>
 
             <!-- Control de Animación en Tiempo Real -->
             <div class="flex items-center justify-between bg-slate-900/60 border border-slate-800/80 rounded-xl px-3 py-1.5 text-xs text-slate-300">
@@ -159,41 +216,55 @@
         <!-- ========================================== -->
         <!-- COLUMNA DERECHA: SUITE DE EDICIÓN & TABS   -->
         <!-- ========================================== -->
-        <div class="lg:col-span-7 space-y-4">
+        <div 
+          :class="[
+            'lg:col-span-7 space-y-4',
+            mobileViewMode === 'editor' ? 'block' : 'hidden lg:block'
+          ]"
+        >
           
-          <!-- NAVEGACIÓN ENTRE SECCIONES DEL ESTUDIO -->
-          <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <!-- NAVEGACIÓN ENTRE TABS DEL ESTUDIO -->
+          <div class="flex flex-wrap gap-1.5 sm:gap-2 border-b border-slate-800 pb-3">
             <button
               type="button"
               @click="studioTab = 'product'"
-              :class="['px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'product' ? 'bg-pink-500 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+              :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'product' ? 'bg-pink-500 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
-              <span>🎮 Producto &amp; Búsqueda</span>
+              <span>🎮 Catálogo &amp; Buscar</span>
+            </button>
+            <button
+              type="button"
+              @click="studioTab = 'image'"
+              :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'image' ? 'bg-cyan-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+            >
+              <span>🖼️ Cambiar &amp; Ajustar Imagen</span>
             </button>
             <button
               type="button"
               @click="studioTab = 'design'"
-              :class="['px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'design' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+              :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'design' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
               <span>🎨 Plantillas &amp; Estilo</span>
             </button>
             <button
               type="button"
               @click="studioTab = 'custom'"
-              :class="['px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'custom' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+              :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'custom' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
-              <span>⚙️ Adaptaciones &amp; Insignias</span>
+              <span>⚙️ Textos &amp; Precios</span>
             </button>
             <button
               type="button"
               @click="studioTab = 'script'"
-              :class="['px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'script' ? 'bg-purple-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+              :class="['px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', studioTab === 'script' ? 'bg-purple-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
             >
-              <span>🎙️ Guión TikTok / Reels</span>
+              <span>🎙️ Guión Viral</span>
             </button>
           </div>
 
-          <!-- TAB 1: PRODUCTO & BÚSQUEDA INTERACTIVA -->
+          <!-- ========================================== -->
+          <!-- TAB 1: PRODUCTO & BÚSQUEDA INTERACTIVA     -->
+          <!-- ========================================== -->
           <div v-if="studioTab === 'product'" class="space-y-4">
             
             <!-- Selector de Tipo de Contenido -->
@@ -223,7 +294,7 @@
               </div>
             </div>
 
-            <!-- SECCIÓN ESPECIAL: BUSCADOR EN VIVO DE VIDEOJUEGOS (GAMING) -->
+            <!-- SECCIÓN ESPECIAL: BUSCADOR EN VIVO DE VIDEOJUEGOS (+15.000 TÍTULOS) -->
             <div v-if="selectedMode === 'gaming'" class="bg-slate-950 p-4 rounded-2xl border border-indigo-500/40 space-y-3.5 animate-in fade-in">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -250,7 +321,7 @@
                   v-if="gamingSearchTerm" 
                   type="button" 
                   @click="gamingSearchTerm = ''" 
-                  class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white text-xs"
+                  class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white text-xs cursor-pointer"
                 >
                   ✕
                 </button>
@@ -406,7 +477,270 @@
 
           </div>
 
-          <!-- TAB 2: PLANTILLAS DE DISEÑO & ESTILO VISUAL -->
+          <!-- ======================================================== -->
+          <!-- TAB 2: CAMBIAR & AJUSTAR IMAGEN (NUEVA SUITE PRO)       -->
+          <!-- ======================================================== -->
+          <div v-else-if="studioTab === 'image'" class="space-y-4">
+            
+            <!-- 1. CAMBIAR IMAGEN (SUBIR ARCHIVO / PEGAR LINK / PRESETS) -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                    <span>🖼️ Cambiar Imagen de Portada</span>
+                  </h4>
+                  <p class="text-[11px] text-slate-400">Sube una captura desde tu móvil o PC, ingresa una URL web o elige fondos pro.</p>
+                </div>
+                <button
+                  type="button"
+                  @click="resetToOriginalProductCover"
+                  class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-bold transition cursor-pointer border border-amber-500/20"
+                  title="Restaurar la carátula oficial del producto"
+                >
+                  ↺ Carátula Original
+                </button>
+              </div>
+
+              <!-- Botones de Acción de Imagen -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <!-- Subir Archivo Local -->
+                <button
+                  type="button"
+                  @click="triggerCustomFileUpload"
+                  class="p-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>📁</span>
+                  <span>Subir Foto desde tu Equipo / Móvil</span>
+                </button>
+                <input 
+                  ref="fileInputRef" 
+                  type="file" 
+                  accept="image/*" 
+                  class="hidden" 
+                  @change="handleCustomFileUpload"
+                >
+
+                <!-- Pegar URL Web de Imagen -->
+                <div class="flex gap-1.5">
+                  <input 
+                    v-model="customUrlInput" 
+                    type="url" 
+                    placeholder="O pega link de imagen (https://...)" 
+                    class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500"
+                    @keyup.enter="applyCustomUrlImage"
+                  >
+                  <button 
+                    type="button" 
+                    @click="applyCustomUrlImage" 
+                    class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+
+              <!-- Galería de Wallpapers y Fondos Temáticos Rápidos -->
+              <div class="pt-2 border-t border-slate-800/80">
+                <span class="text-[10px] font-bold uppercase text-slate-400 block mb-2">Fondos Cinemáticos &amp; Wallpapers de Relleno:</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    v-for="preset in artworkPresets"
+                    :key="preset.id"
+                    type="button"
+                    @click="selectArtworkPreset(preset.url)"
+                    class="p-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 transition flex items-center gap-2 cursor-pointer text-left group"
+                  >
+                    <span class="text-base">{{ preset.icon }}</span>
+                    <span class="text-[10px] font-bold text-slate-300 group-hover:text-cyan-300 truncate">{{ preset.label }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. AJUSTES FINOS DE ENCUADRE (ZOOM, PAN X, PAN Y, INCLINACIÓN, MODO DE AJUSTE) -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3.5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                    <span>🎛️ Calibración Fina de Encuadre</span>
+                  </h4>
+                  <p class="text-[10px] text-slate-400">También puedes arrastrar directamente con el dedo o mouse sobre el flyer.</p>
+                </div>
+
+                <button
+                  type="button"
+                  @click="resetImageTransformations"
+                  class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-bold transition cursor-pointer border border-slate-800"
+                  title="Restaurar zoom y posición a cero"
+                >
+                  ⌖ Centrar
+                </button>
+              </div>
+
+              <!-- Sliders de Zoom y Desplazamientos X / Y -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                
+                <!-- Zoom -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>🔍 Zoom / Escala</span>
+                    <span class="text-cyan-400 font-mono">{{ Math.round(imageZoomFactor * 100) }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageZoomFactor" 
+                    @input="requestCanvasRedraw"
+                    type="range" 
+                    min="0.5" 
+                    max="2.2" 
+                    step="0.05" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+                <!-- Posición X -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>↔️ Posición Horizontal</span>
+                    <span class="text-cyan-400 font-mono">{{ imageOffsetX > 0 ? '+' + imageOffsetX : imageOffsetX }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageOffsetX" 
+                    @input="requestCanvasRedraw"
+                    type="range" 
+                    min="-45" 
+                    max="45" 
+                    step="1" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+                <!-- Posición Y -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>↕️ Posición Vertical</span>
+                    <span class="text-cyan-400 font-mono">{{ imageOffsetY > 0 ? '+' + imageOffsetY : imageOffsetY }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageOffsetY" 
+                    @input="requestCanvasRedraw"
+                    type="range" 
+                    min="-45" 
+                    max="45" 
+                    step="1" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+              </div>
+
+              <!-- Inclinación / Rotación + Modo de Ajuste -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                
+                <!-- Inclinación Dinámica -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>📐 Inclinación / Tilt Acción</span>
+                    <span class="text-cyan-400 font-mono">{{ imageRotation }}°</span>
+                  </div>
+                  <input 
+                    v-model.number="imageRotation" 
+                    @input="requestCanvasRedraw"
+                    type="range" 
+                    min="-15" 
+                    max="15" 
+                    step="1" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+                <!-- Modo de Ajuste (Contain vs Cover) -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>🎯 Modo de Encuadre</span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      @click="imageFitMode = 'contain'; requestCanvasRedraw()"
+                      :class="['py-1 px-2 rounded-lg text-xs font-bold transition cursor-pointer', imageFitMode === 'contain' ? 'bg-cyan-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white']"
+                    >
+                      Completa
+                    </button>
+                    <button
+                      type="button"
+                      @click="imageFitMode = 'cover'; requestCanvasRedraw()"
+                      :class="['py-1 px-2 rounded-lg text-xs font-bold transition cursor-pointer', imageFitMode === 'cover' ? 'bg-cyan-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white']"
+                    >
+                      Rellenar
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 3. FILTROS VISUALES (BRILLO, CONTRASTE, SATURACIÓN) -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                Filtros Visuales &amp; Realce Neón de Carátula
+              </label>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>☀️ Brillo</span>
+                    <span class="font-mono text-cyan-300">{{ imageBrightness }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageBrightness" 
+                    @input="requestCanvasRedraw" 
+                    type="range" 
+                    min="70" 
+                    max="140" 
+                    step="2" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>🌗 Contraste</span>
+                    <span class="font-mono text-cyan-300">{{ imageContrast }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageContrast" 
+                    @input="requestCanvasRedraw" 
+                    type="range" 
+                    min="80" 
+                    max="150" 
+                    step="2" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-1">
+                    <span>🎨 Saturación Neón</span>
+                    <span class="font-mono text-cyan-300">{{ imageSaturation }}%</span>
+                  </div>
+                  <input 
+                    v-model.number="imageSaturation" 
+                    @input="requestCanvasRedraw" 
+                    type="range" 
+                    min="80" 
+                    max="180" 
+                    step="2" 
+                    class="w-full accent-cyan-400 cursor-pointer"
+                  >
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ========================================== -->
+          <!-- TAB 3: PLANTILLAS DE DISEÑO & ESTILO       -->
+          <!-- ========================================== -->
           <div v-else-if="studioTab === 'design'" class="space-y-4">
             
             <!-- Selector de Plantilla Estructural (Layout) -->
@@ -460,77 +794,64 @@
               </div>
             </div>
 
-            <!-- Ajustes Finos de Portada / Imagen -->
-            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <!-- Sello Holográfico de Confianza -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                3. Ajustes de Encuadre &amp; Zoom de Portada
+                3. Sello Holográfico / Insignia de Confianza
               </label>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
-                    <span>Zoom de Portada</span>
-                    <span class="text-white font-mono">{{ imageZoomFactor.toFixed(1) }}x</span>
-                  </div>
-                  <input 
-                    v-model.number="imageZoomFactor" 
-                    @input="requestCanvasRedraw"
-                    type="range" 
-                    min="0.7" 
-                    max="1.6" 
-                    step="0.05" 
-                    class="w-full accent-pink-500 cursor-pointer"
-                  >
-                </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="seal in trustSeals"
+                  :key="seal.id"
+                  type="button"
+                  @click="currentSealText = seal.text; requestCanvasRedraw()"
+                  :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer',
+                    currentSealText === seal.text
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow'
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ]"
+                >
+                  {{ seal.label }}
+                </button>
+              </div>
+            </div>
 
-                <div>
-                  <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
-                    <span>Desplazamiento Vertical</span>
-                    <span class="text-white font-mono">{{ imageOffsetY }}%</span>
-                  </div>
-                  <input 
-                    v-model.number="imageOffsetY" 
-                    @input="requestCanvasRedraw"
-                    type="range" 
-                    min="-30" 
-                    max="30" 
-                    step="1" 
-                    class="w-full accent-pink-500 cursor-pointer"
-                  >
-                </div>
-
-                <div>
-                  <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
-                    <span>Modo de Ajuste</span>
-                  </div>
-                  <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-                    <button
-                      type="button"
-                      @click="imageFitMode = 'contain'; requestCanvasRedraw()"
-                      :class="['flex-1 py-1 rounded-lg text-[10px] font-bold cursor-pointer', imageFitMode === 'contain' ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white']"
-                    >
-                      Completa
-                    </button>
-                    <button
-                      type="button"
-                      @click="imageFitMode = 'cover'; requestCanvasRedraw()"
-                      :class="['flex-1 py-1 rounded-lg text-[10px] font-bold cursor-pointer', imageFitMode === 'cover' ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white']"
-                    >
-                      Rellenar
-                    </button>
-                  </div>
-                </div>
+            <!-- Interruptores de Visibilidad de Elementos -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                4. Elementos Visibles en la Pieza
+              </label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+                  <input type="checkbox" v-model="showRegularPrice" @change="requestCanvasRedraw" class="accent-pink-500">
+                  <span class="text-slate-300">Precio Regular</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+                  <input type="checkbox" v-model="showPromoPill" @change="requestCanvasRedraw" class="accent-pink-500">
+                  <span class="text-slate-300">Cupón Promo</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+                  <input type="checkbox" v-model="showContactPhone" @change="requestCanvasRedraw" class="accent-pink-500">
+                  <span class="text-slate-300">Teléfono WhatsApp</span>
+                </label>
+                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
+                  <input type="checkbox" v-model="showBrandPill" @change="requestCanvasRedraw" class="accent-pink-500">
+                  <span class="text-slate-300">Insignia Tienda</span>
+                </label>
               </div>
             </div>
 
           </div>
 
-          <!-- TAB 3: ADAPTACIONES & INSIGNIAS EXTRAS -->
+          <!-- ========================================== -->
+          <!-- TAB 4: TEXTOS & PRECIOS                    -->
+          <!-- ========================================== -->
           <div v-else-if="studioTab === 'custom'" class="space-y-4">
             
-            <!-- Textos Principales y Precios -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
               <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                1. Textos y Precios del Reel
+                Textos y Precios del Reel
               </label>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -616,57 +937,11 @@
               </div>
             </div>
 
-            <!-- Sello Holográfico de Confianza -->
-            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
-              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                2. Sello Holográfico / Insignia de Confianza
-              </label>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="seal in trustSeals"
-                  :key="seal.id"
-                  type="button"
-                  @click="currentSealText = seal.text; requestCanvasRedraw()"
-                  :class="[
-                    'px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer',
-                    currentSealText === seal.text
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow'
-                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-                  ]"
-                >
-                  {{ seal.label }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Interruptores de Visibilidad de Elementos -->
-            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5">
-              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                3. Elementos Visibles en la Pieza
-              </label>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
-                  <input type="checkbox" v-model="showRegularPrice" @change="requestCanvasRedraw" class="accent-pink-500">
-                  <span class="text-slate-300">Precio Regular</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
-                  <input type="checkbox" v-model="showPromoPill" @change="requestCanvasRedraw" class="accent-pink-500">
-                  <span class="text-slate-300">Cupón Promo</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
-                  <input type="checkbox" v-model="showContactPhone" @change="requestCanvasRedraw" class="accent-pink-500">
-                  <span class="text-slate-300">Teléfono WhatsApp</span>
-                </label>
-                <label class="flex items-center gap-2 p-2 bg-slate-900/60 rounded-xl border border-slate-800 cursor-pointer">
-                  <input type="checkbox" v-model="showBrandPill" @change="requestCanvasRedraw" class="accent-pink-500">
-                  <span class="text-slate-300">Insignia Tienda</span>
-                </label>
-              </div>
-            </div>
-
           </div>
 
-          <!-- TAB 4: GUIÓN VIRAL PARA TIKTOK & REELS -->
+          <!-- ========================================== -->
+          <!-- TAB 5: GUIÓN VIRAL PARA TIKTOK & REELS     -->
+          <!-- ========================================== -->
           <div v-else-if="studioTab === 'script'" class="space-y-4">
             
             <div class="bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-950 p-5 rounded-2xl border border-purple-500/30 flex items-center justify-between gap-3">
@@ -743,6 +1018,64 @@
       </div>
 
     </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAL DE GUARDADO EN MÓVIL (VISOR TÁCTIL PARA CELULARES) -->
+    <!-- ======================================================== -->
+    <div 
+      v-if="showMobileSaveModal" 
+      class="fixed inset-0 z-[130] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in"
+    >
+      <div class="max-w-sm w-full bg-slate-900 border border-slate-700 rounded-3xl p-4 flex flex-col items-center text-center shadow-2xl space-y-3">
+        <div class="flex items-center justify-between w-full">
+          <span class="text-xs font-black text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>📱</span> Guardar en Móvil
+          </span>
+          <button 
+            type="button" 
+            @click="showMobileSaveModal = false" 
+            class="text-slate-400 hover:text-white text-base p-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <p class="text-xs text-slate-300 font-medium">
+          Mantén pulsada la imagen para <strong class="text-white">"Guardar en Fotos"</strong> o compartir a tus Estados.
+        </p>
+
+        <!-- Preview táctil de la imagen generada -->
+        <div class="w-full max-w-[240px] aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black">
+          <img 
+            :src="mobileSaveImageUrl" 
+            alt="Flyer 9:16 StreamePro" 
+            class="w-full h-full object-contain select-auto"
+          >
+        </div>
+
+        <!-- Botonera de descarga directa y compartir -->
+        <div class="w-full grid grid-cols-2 gap-2 pt-1">
+          <button
+            type="button"
+            @click="shareDirect"
+            class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>📲</span>
+            <span>Compartir</span>
+          </button>
+          
+          <button
+            type="button"
+            @click="downloadImagePng"
+            class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow border border-slate-600 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>💾</span>
+            <span>Descargar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -769,8 +1102,12 @@ const adminStore = useAdminStore()
 const toast = useToastStore()
 
 const canvasRef = ref(null)
-const studioTab = ref('product') // 'product' | 'design' | 'custom' | 'script'
-const selectedMode = ref('streaming') // 'streaming' | 'gaming' | 'combo' | 'giveaway' | 'flash'
+const fileInputRef = ref(null)
+
+// Modos y navegación
+const studioTab = ref('product') // 'product' | 'image' | 'design' | 'custom' | 'script'
+const mobileViewMode = ref('preview') // 'preview' | 'editor'
+const selectedMode = ref('streaming') // 'streaming' | 'gaming' | 'combo' | 'giveaway'
 const currentThemeId = ref('cyber_glow')
 const currentLayoutId = ref('cyber_pro') // 'cyber_pro' | 'cinematic' | 'glass_vip' | 'split_flash'
 
@@ -781,10 +1118,27 @@ const isExportingImage = ref(false)
 const recordingProgress = ref(0)
 const recordingSeconds = ref('0.0')
 
-// Ajustes finos de imagen
+// Modal de guardado para móviles
+const showMobileSaveModal = ref(false)
+const mobileSaveImageUrl = ref('')
+
+// Detección reactiva de móvil vs PC
+const isMobileDevice = computed(() => {
+  if (typeof window === 'undefined') return false
+  return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+})
+
+// ==========================================
+// CALIBRACIÓN Y AJUSTES FINOS DE IMAGEN
+// ==========================================
 const imageZoomFactor = ref(1.0)
+const imageOffsetX = ref(0)
 const imageOffsetY = ref(0)
+const imageRotation = ref(0)
 const imageFitMode = ref('contain') // 'contain' | 'cover'
+const imageBrightness = ref(100)
+const imageContrast = ref(100)
+const imageSaturation = ref(100)
 
 // Interruptores de visibilidad
 const showRegularPrice = ref(true)
@@ -804,6 +1158,10 @@ const reelPromoCode = ref('')
 const reelStoreName = ref('StreamePro Oficial')
 const reelArtworkUrl = ref('/hero.png')
 const loadedArtworkImage = ref(null)
+const defaultProductCoverUrl = ref('/hero.png')
+const customUrlInput = ref('')
+
+// Buscador de Gaming
 const gamingSearchTerm = ref('')
 const gamingQuickCategory = ref('all')
 
@@ -844,9 +1202,9 @@ const contentModes = [
 
 const layoutTemplates = [
   { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico oficial StreamePro con visores metálicos' },
-  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada en pantalla completa con viñeta de cine' },
+  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada en pantalla completa con viñeta cinemática' },
   { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón profundo' },
-  { id: 'split_flash', icon: '🥊', name: 'Split Urgencia / Flash', desc: 'Enfocada en precio gigante y cuenta regresiva' }
+  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 enfocado en oferta gigante y conversión' }
 ]
 
 const visualThemes = [
@@ -912,6 +1270,14 @@ const gamingQuickFilters = [
   { id: 'terror', label: '🧟 Terror' }
 ]
 
+// Wallpapers y Fondos Temáticos Rápidos
+const artworkPresets = [
+  { id: 'cyber_gamer', icon: '🎮', label: 'Cyber Gaming', url: '/hero.png' },
+  { id: 'ps5_neon', icon: '⚡', label: 'PS5 Neon Blue', url: '/flyers/gaming-template-story.jpg' },
+  { id: 'cinema_pop', icon: '🍿', label: 'Cinema Lounge', url: '/flyers/combo-cover.jpg' },
+  { id: 'gold_vip', icon: '💎', label: 'Gold Luxury', url: '/flyers/cover-netflix.jpg' }
+]
+
 const currentTheme = computed(() => {
   return visualThemes.find(t => t.id === currentThemeId.value) || visualThemes[0]
 })
@@ -920,9 +1286,7 @@ const currentStreamingPlans = computed(() => {
   return adminStore.pricingCatalog[pickedStreamingKey.value]?.plans || {}
 })
 
-// ==========================================
-// FILTRADO REACTIVO DEL CATÁLOGO DE VIDEOJUEGOS
-// ==========================================
+// Filtrado de Videojuegos
 const filteredGamingGames = computed(() => {
   const q = gamingSearchTerm.value.toLowerCase().trim()
   const list = adminStore.processedGamingProducts || []
@@ -1018,8 +1382,10 @@ function onStreamingPlanChange() {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.35)
   reelBadgeText.value = '🔥 ENTREGA EN 10 MIN'
   currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
-  reelArtworkUrl.value = `/flyers/cover-${srvKey.toLowerCase().replace(/[^a-z0-9]/g, '')}.jpg`
-  loadArtwork(reelArtworkUrl.value)
+  const cover = `/flyers/cover-${srvKey.toLowerCase().replace(/[^a-z0-9]/g, '')}.jpg`
+  reelArtworkUrl.value = cover
+  defaultProductCoverUrl.value = cover
+  loadArtwork(cover)
 }
 
 function applyGamingProduct() {
@@ -1032,8 +1398,10 @@ function applyGamingProduct() {
   reelRegularPrice.value = Math.round(reelPromoPrice.value * 1.3)
   reelBadgeText.value = isPri ? '👑 PS STORE OFICIAL' : '⚡ OFERTA ECONÓMICA'
   currentSealText.value = isPri ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
-  reelArtworkUrl.value = g.image || '/hero.png'
-  loadArtwork(reelArtworkUrl.value)
+  const cover = g.image || '/hero.png'
+  reelArtworkUrl.value = cover
+  defaultProductCoverUrl.value = cover
+  loadArtwork(cover)
 }
 
 function onComboChange() {
@@ -1045,8 +1413,10 @@ function onComboChange() {
   reelRegularPrice.value = Number(c.regularPrice || Math.round(reelPromoPrice.value * 1.4))
   reelBadgeText.value = c.badge || '🎁 SUPER AHORRO'
   currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
-  reelArtworkUrl.value = '/flyers/combo-cover.jpg'
-  loadArtwork(reelArtworkUrl.value)
+  const cover = '/flyers/combo-cover.jpg'
+  reelArtworkUrl.value = cover
+  defaultProductCoverUrl.value = cover
+  loadArtwork(cover)
 }
 
 function onGiveawayChange() {
@@ -1059,8 +1429,10 @@ function onGiveawayChange() {
   reelBadgeText.value = '🎉 PARTICIPÁ GRATIS'
   reelCtaText.value = '👉 REGISTRATE AL LINK'
   currentSealText.value = '🎟️ ACTA PÚBLICA TRANSPARENTE'
-  reelArtworkUrl.value = '/hero.png'
-  loadArtwork(reelArtworkUrl.value)
+  const cover = '/hero.png'
+  reelArtworkUrl.value = cover
+  defaultProductCoverUrl.value = cover
+  loadArtwork(cover)
 }
 
 async function loadArtwork(src) {
@@ -1072,6 +1444,101 @@ async function loadArtwork(src) {
   } else if (src !== '/hero.png') {
     loadArtwork('/hero.png')
   }
+}
+
+// ==========================================
+// ACCIONES PARA CAMBIAR Y AJUSTAR IMÁGENES
+// ==========================================
+function triggerCustomFileUpload() {
+  fileInputRef.value?.click()
+}
+
+function handleCustomFileUpload(e) {
+  const file = e.target?.files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const dataUrl = event.target?.result
+    if (dataUrl) {
+      reelArtworkUrl.value = dataUrl
+      loadArtwork(dataUrl)
+      toast.add('🖼️ Imagen subida correctamente', 'success')
+    }
+  }
+  reader.readAsDataURL(file)
+  if (e.target) e.target.value = ''
+}
+
+function applyCustomUrlImage() {
+  const url = customUrlInput.value.trim()
+  if (!url) return
+  reelArtworkUrl.value = url
+  loadArtwork(url)
+  customUrlInput.value = ''
+  toast.add('🖼️ Imagen web aplicada', 'success')
+}
+
+function selectArtworkPreset(url) {
+  if (!url) return
+  reelArtworkUrl.value = url
+  loadArtwork(url)
+  toast.add('🎨 Fondo temático aplicado', 'success')
+}
+
+function resetToOriginalProductCover() {
+  reelArtworkUrl.value = defaultProductCoverUrl.value || '/hero.png'
+  loadArtwork(reelArtworkUrl.value)
+  resetImageTransformations()
+  toast.add('↺ Portada original restaurada', 'success')
+}
+
+function resetImageTransformations() {
+  imageZoomFactor.value = 1.0
+  imageOffsetX.value = 0
+  imageOffsetY.value = 0
+  imageRotation.value = 0
+  imageBrightness.value = 100
+  imageContrast.value = 100
+  imageSaturation.value = 100
+  requestCanvasRedraw()
+}
+
+// ========================================================
+// INTERACCIÓN TÁCTIL Y MOUSE DRAG DIRECTO SOBRE EL CANVAS
+// ========================================================
+let isPointerDragging = false
+let dragStartPointerX = 0
+let dragStartPointerY = 0
+let dragInitialOffsetX = 0
+let dragInitialOffsetY = 0
+let dragContainerWidth = 1
+let dragContainerHeight = 1
+
+function onCanvasPointerDown(e) {
+  const container = e.currentTarget
+  if (!container) return
+  container.setPointerCapture?.(e.pointerId)
+  const rect = container.getBoundingClientRect()
+  isPointerDragging = true
+  dragStartPointerX = e.clientX
+  dragStartPointerY = e.clientY
+  dragInitialOffsetX = imageOffsetX.value
+  dragInitialOffsetY = imageOffsetY.value
+  dragContainerWidth = Math.max(1, rect.width)
+  dragContainerHeight = Math.max(1, rect.height)
+}
+
+function onCanvasPointerMove(e) {
+  if (!isPointerDragging) return
+  const dxPct = ((e.clientX - dragStartPointerX) / dragContainerWidth) * 100
+  const dyPct = ((e.clientY - dragStartPointerY) / dragContainerHeight) * 100
+  imageOffsetX.value = Math.max(-45, Math.min(45, Math.round(dragInitialOffsetX + dxPct)))
+  imageOffsetY.value = Math.max(-45, Math.min(45, Math.round(dragInitialOffsetY + dyPct)))
+  requestCanvasRedraw()
+}
+
+function onCanvasPointerUp() {
+  isPointerDragging = false
 }
 
 // ==========================================
@@ -1092,20 +1559,79 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-function drawCornerBrackets(ctx, x, y, w, h, size = 28, color = 'rgba(56, 189, 248, 0.75)') {
+function drawCornerBrackets(ctx, x, y, w, h, size = 30, color = 'rgba(56, 189, 248, 0.75)') {
   ctx.save()
   ctx.strokeStyle = color
   ctx.lineWidth = 4
   ctx.lineCap = 'round'
-  // Arriba-Izquierda
   ctx.beginPath(); ctx.moveTo(x, y + size); ctx.lineTo(x, y); ctx.lineTo(x + size, y); ctx.stroke()
-  // Arriba-Derecha
   ctx.beginPath(); ctx.moveTo(x + w - size, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + size); ctx.stroke()
-  // Abajo-Izquierda
   ctx.beginPath(); ctx.moveTo(x, y + h - size); ctx.lineTo(x, y + h); ctx.lineTo(x + size, y + h); ctx.stroke()
-  // Abajo-Derecha
   ctx.beginPath(); ctx.moveTo(x + w - size, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - size); ctx.stroke()
   ctx.restore()
+}
+
+// Renderiza la imagen centrada con todos los ajustes finos
+function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t) {
+  if (!img) return
+
+  const innerX = targetX
+  const innerY = targetY
+  const innerW = targetW
+  const innerH = targetH
+
+  // 1. Fondo ambiental saturado difuso
+  const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
+  const bgW = (img.width || 1) * bgScale
+  const bgH = (img.height || 1) * bgScale
+  ctx.save()
+  ctx.filter = 'blur(28px) brightness(0.40) saturate(1.4)'
+  ctx.drawImage(img, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
+  ctx.restore()
+
+  // 2. Portada nítida en primer plano con Zoom, Desplazamiento X/Y, Inclinación y Filtros
+  const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.4) * 0.035) : 1.0
+  const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
+  let baseW = innerW
+  let baseH = innerH
+
+  if (imageFitMode.value === 'contain') {
+    const imgAspect = (img.width || 1) / (img.height || 1)
+    const boxAspect = innerW / innerH
+    if (boxAspect > imgAspect) {
+      baseH = innerH - 40
+      baseW = baseH * imgAspect
+    } else {
+      baseW = innerW - 40
+      baseH = baseW / imgAspect
+    }
+  }
+
+  const dw = baseW * finalZoom
+  const dh = baseH * finalZoom
+  const panX = ((Number(imageOffsetX.value) || 0) / 100) * innerW
+  const panY = ((Number(imageOffsetY.value) || 0) / 100) * innerH
+  const centerX = innerX + innerW / 2 + panX
+  const centerY = innerY + innerH / 2 + panY
+
+  ctx.save()
+  ctx.translate(centerX, centerY)
+  if (imageRotation.value) {
+    ctx.rotate((imageRotation.value * Math.PI) / 180)
+  }
+  ctx.filter = `brightness(${imageBrightness.value}%) contrast(${imageContrast.value}%) saturate(${imageSaturation.value}%)`
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
+  ctx.shadowBlur = 35
+  ctx.shadowOffsetY = 12
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
+  ctx.restore()
+
+  // 3. Viñeta oscura inferior para dar lectura a sellos
+  const vigGrad = ctx.createLinearGradient(0, innerY + innerH - 240, 0, innerY + innerH)
+  vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
+  vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
+  ctx.fillStyle = vigGrad
+  ctx.fillRect(innerX, innerY + innerH - 240, innerW, 240)
 }
 
 function renderFrame(timeMs = 0) {
@@ -1118,6 +1644,7 @@ function renderFrame(timeMs = 0) {
   const H = 1920
   const th = currentTheme.value
   const t = timeMs * 0.001
+  const layout = currentLayoutId.value
 
   // 1. Fondo Base según plantilla
   const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
@@ -1128,14 +1655,13 @@ function renderFrame(timeMs = 0) {
   ctx.fillRect(0, 0, W, H)
 
   // 2. Resplandor Neón Central
-  const glowPulse = isAnimated.value ? (0.85 + Math.sin(t * 2) * 0.15) : 1
   const radialGlow = ctx.createRadialGradient(W * 0.5, H * 0.38, 40, W * 0.5, H * 0.38, 720)
   radialGlow.addColorStop(0, th.glow)
   radialGlow.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = radialGlow
   ctx.fillRect(0, 0, W, H)
 
-  // 3. Partículas Neón flotantes
+  // 3. Partículas flotantes
   if (isAnimated.value) {
     ctx.save()
     for (let i = 0; i < 22; i++) {
@@ -1194,13 +1720,18 @@ function renderFrame(timeMs = 0) {
   ctx.fillText(reelSubline.value.slice(0, 52), W / 2, 272)
   ctx.restore()
 
-  // 7. Visor / Tarjeta Central con Portada (Coordinada según plantilla)
-  const cardX = 85
-  const cardY = 315
-  const cardW = W - 170
-  const cardH = 820
+  // 7. Visor / Tarjeta Central con Portada (Adaptada a Layout)
+  let cardX = 85
+  let cardY = 315
+  let cardW = W - 170
+  let cardH = 820
 
-  // Sombra y tarjeta
+  if (layout === 'split_flash') {
+    cardY = 300
+    cardH = 720
+  }
+
+  // Fondo y borde del visor
   ctx.save()
   ctx.shadowColor = th.glow
   ctx.shadowBlur = 45
@@ -1209,7 +1740,6 @@ function renderFrame(timeMs = 0) {
   ctx.fill()
   ctx.restore()
 
-  // Borde neón
   ctx.save()
   ctx.strokeStyle = th.accent
   ctx.lineWidth = 4
@@ -1217,69 +1747,16 @@ function renderFrame(timeMs = 0) {
   ctx.stroke()
   ctx.restore()
 
-  // Dibujar Portada con fondo ambiental desenfocado y zoom suave
+  // Dibujar Portada con todos los ajustes
   if (loadedArtworkImage.value) {
     ctx.save()
     roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
     ctx.clip()
-
-    const img = loadedArtworkImage.value
-    const innerW = cardW - 12
-    const innerH = cardH - 12
-    const innerX = cardX + 6
-    const innerY = cardY + 6
-
-    // Fondo ambiental saturado difuso
-    const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
-    const bgW = (img.width || 1) * bgScale
-    const bgH = (img.height || 1) * bgScale
-    ctx.save()
-    ctx.filter = 'blur(26px) brightness(0.42) saturate(1.3)'
-    ctx.drawImage(img, innerX + (innerW - bgW) / 2, innerY + (innerH - bgH) / 2, bgW, bgH)
-    ctx.restore()
-
-    // Portada nítida en primer plano con zoom y desplazamiento
-    const zoomAnim = isAnimated.value ? (1.0 + Math.sin(t * 1.4) * 0.035) : 1.0
-    const finalZoom = zoomAnim * (Number(imageZoomFactor.value) || 1.0)
-    let baseW = innerW
-    let baseH = innerH
-
-    if (imageFitMode.value === 'contain') {
-      const imgAspect = (img.width || 1) / (img.height || 1)
-      const boxAspect = innerW / innerH
-      if (boxAspect > imgAspect) {
-        baseH = innerH - 40
-        baseW = baseH * imgAspect
-      } else {
-        baseW = innerW - 40
-        baseH = baseW / imgAspect
-      }
-    }
-
-    const dw = baseW * finalZoom
-    const dh = baseH * finalZoom
-    const panY = ((Number(imageOffsetY.value) || 0) / 100) * innerH
-    const dx = innerX + (innerW - dw) / 2
-    const dy = innerY + (innerH - dh) / 2 + panY
-
-    ctx.save()
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
-    ctx.shadowBlur = 35
-    ctx.shadowOffsetY = 12
-    ctx.drawImage(img, dx, dy, dw, dh)
-    ctx.restore()
-
-    // Viñeta oscura inferior para dar lectura a sellos
-    const vigGrad = ctx.createLinearGradient(0, innerY + innerH - 240, 0, innerY + innerH)
-    vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
-    vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
-    ctx.fillStyle = vigGrad
-    ctx.fillRect(innerX, innerY + innerH - 240, innerW, 240)
-
+    drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
     ctx.restore()
   }
 
-  // Badge Flotante en Portada (ej: 🔥 25% OFF HOY o PS5 PRIMARIA)
+  // Badge Flotante en Portada
   if (reelBadgeText.value) {
     ctx.save()
     const badgeW = 360
@@ -1299,7 +1776,7 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // Sello Holográfico / Insignia de Confianza (Esquina inferior derecha de la portada)
+  // Sello Holográfico de Confianza
   if (currentSealText.value) {
     ctx.save()
     const sealW = 440
@@ -1319,9 +1796,10 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // 8. Zona de Precios & Cupones (Y: 1170 a 1480)
-  const priceBoxY = 1170
-  const priceBoxH = 310
+  // 8. Zona de Precios & Cupones
+  const priceBoxY = layout === 'split_flash' ? 1060 : 1170
+  const priceBoxH = layout === 'split_flash' ? 400 : 310
+
   ctx.save()
   ctx.fillStyle = 'rgba(10, 16, 32, 0.94)'
   roundRect(ctx, cardX, priceBoxY, cardW, priceBoxH, 38)
@@ -1330,7 +1808,7 @@ function renderFrame(timeMs = 0) {
   ctx.lineWidth = 2
   ctx.stroke()
 
-  // Precio regular tachado si está activado
+  // Precio regular tachado
   if (showRegularPrice.value && Number(reelRegularPrice.value) > 0 && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)) {
     ctx.fillStyle = '#94a3b8'
     ctx.font = 'bold 30px sans-serif'
@@ -1349,7 +1827,7 @@ function renderFrame(timeMs = 0) {
 
   // Precio Promocional Gigante
   if (Number(reelPromoPrice.value) > 0) {
-    ctx.fillStyle = '#4ade80' // Verde Neón
+    ctx.fillStyle = '#4ade80'
     ctx.font = '900 88px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
     ctx.shadowColor = 'rgba(74, 222, 128, 0.45)'
@@ -1363,13 +1841,13 @@ function renderFrame(timeMs = 0) {
   }
   ctx.restore()
 
-  // Pill del Cupón Promocional con Destello Neón Animado
+  // Pill del Cupón Promocional con Destello Animado
   if (showPromoPill.value && reelPromoCode.value) {
     ctx.save()
     const cpW = cardW - 60
     const cpH = 74
     const cpX = (W - cpW) / 2
-    const cpY = priceBoxY + 205
+    const cpY = priceBoxY + (layout === 'split_flash' ? 240 : 205)
 
     const cpGrad = ctx.createLinearGradient(cpX, cpY, cpX + cpW, cpY)
     cpGrad.addColorStop(0, '#f59e0b')
@@ -1378,7 +1856,6 @@ function renderFrame(timeMs = 0) {
     roundRect(ctx, cpX, cpY, cpW, cpH, 37)
     ctx.fill()
 
-    // Barrido de brillo animado
     if (isAnimated.value) {
       const shimmerX = cpX + ((t * 420) % (cpW + 240)) - 120
       const shimGrad = ctx.createLinearGradient(shimmerX, cpY, shimmerX + 90, cpY)
@@ -1397,12 +1874,12 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // 9. Botón Llamado a la Acción (CTA) Pulsante (Y: 1515 a 1635)
+  // 9. Botón Llamado a la Acción (CTA) Pulsante
   ctx.save()
   const ctaW = cardW
   const ctaH = 104
   const ctaX = (W - ctaW) / 2
-  const ctaY = 1515
+  const ctaY = layout === 'split_flash' ? 1490 : 1515
   const ctaPulse = isAnimated.value ? (1.0 + Math.sin(t * 3.6) * 0.02) : 1.0
 
   ctx.translate(W / 2, ctaY + ctaH / 2)
@@ -1427,7 +1904,7 @@ function renderFrame(timeMs = 0) {
   ctx.fillText(reelCtaText.value || '📲 PEDILO AL WHATSAPP', W / 2, ctaY + 65)
   ctx.restore()
 
-  // 10. Pie de Página / Contacto (Y: 1675 a 1870)
+  // 10. Pie de Página / Contacto
   ctx.save()
   if (showContactPhone.value && props.contactPhone) {
     ctx.fillStyle = '#ffffff'
@@ -1470,9 +1947,11 @@ function requestCanvasRedraw() {
   })
 }
 
-// ==========================================
-// GRABACIÓN DE VIDEO REEL / TIKTOK (MEDIA RECORDER)
-// ==========================================
+// ========================================================
+// DESCARGAS Y EXPORTACIÓN ADAPTADA PARA MÓVILES Y PC
+// ========================================================
+
+// 1. Grabación de Video Reel / TikTok 5s (30 FPS)
 async function recordVideoReel() {
   if (isRecording.value) return
   const canvas = canvasRef.value
@@ -1520,16 +1999,37 @@ async function recordVideoReel() {
       recordingSeconds.value = (elapsed / 1000).toFixed(1)
     }, 100)
 
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       clearInterval(progressInterval)
       isRecording.value = false
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
       const blob = new Blob(chunks, { type: mimeType })
+      const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
+      const fileName = `reel_streamepro_${cleanTitle}_9x16.${ext}`
+
+      // Si está en móvil y soporta compartir archivos nativos
+      if (isMobileDevice.value && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+        const file = new File([blob], fileName, { type: mimeType })
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: reelHeadline.value,
+              text: currentReelPackage.value.caption
+            })
+            toast.add('🎬 Video compartido con éxito', 'success')
+            return
+          } catch (shareErr) {
+            if (shareErr.name === 'AbortError') return
+          }
+        }
+      }
+
+      // Descarga directa habitual para PC o fallback móvil
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
       a.href = url
-      a.download = `reel_streamepro_${cleanTitle}_9x16.${ext}`
+      a.download = fileName
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -1553,9 +2053,7 @@ async function recordVideoReel() {
   }
 }
 
-// ==========================================
-// EXPORTACIÓN DE IMAGEN ESTÁTICA HD (PNG)
-// ==========================================
+// 2. Descargar Imagen PNG 1080x1920 (PC y Móvil)
 async function downloadImagePng() {
   const canvas = canvasRef.value
   if (!canvas || isExportingImage.value) return
@@ -1566,23 +2064,59 @@ async function downloadImagePng() {
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
     if (!blob) throw new Error('Error al generar imagen PNG')
 
+    const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
+    const fileName = `estado_streamepro_${cleanTitle}_9x16.png`
+
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    const cleanTitle = reelHeadline.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
     a.href = url
-    a.download = `estado_streamepro_${cleanTitle}_9x16.png`
+    a.download = fileName
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 10000)
 
-    toast.add('📸 ¡Imagen HD 9:16 descargada! Lista para Estados de WhatsApp e Historias de Instagram.', 'success')
+    toast.add('📸 ¡Imagen HD 9:16 descargada! Lista para Estados e Historias.', 'success')
   } catch (err) {
     console.error('Error exportando PNG:', err)
     toast.add('Error al exportar imagen', 'error')
   } finally {
     isExportingImage.value = false
   }
+}
+
+// 3. Acción Adaptada Móvil: Compartir o Abrir Visor Táctil
+async function handleMobileOrShareAction() {
+  const canvas = canvasRef.value
+  if (!canvas) return
+
+  renderFrame(performance.now() - animationStartTime)
+  const dataUrl = canvas.toDataURL('image/png', 0.95)
+  mobileSaveImageUrl.value = dataUrl
+
+  // Si el navegador soporta Web Share API con archivos, intentar compartir directamente
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    try {
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
+      if (blob) {
+        const file = new File([blob], 'streamepro_story_9x16.png', { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: reelHeadline.value,
+            text: currentReelPackage.value.caption
+          })
+          toast.add('📲 Compartido con éxito', 'success')
+          return
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return
+    }
+  }
+
+  // Fallback / Experiencia móvil dedicada: Abrir Visor de Guardado Táctil
+  showMobileSaveModal.value = true
 }
 
 async function shareDirect() {
@@ -1610,6 +2144,30 @@ async function shareDirect() {
     if (err.name !== 'AbortError') {
       downloadImagePng()
     }
+  }
+}
+
+// 4. Copiar Imagen al Portapapeles (Ctrl + V para PC)
+async function copyImageToClipboard() {
+  const canvas = canvasRef.value
+  if (!canvas) return
+
+  try {
+    renderFrame(performance.now() - animationStartTime)
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95))
+    if (!blob) throw new Error('Error al preparar imagen')
+
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ])
+      toast.add('📋 ¡Imagen copiada! Pégala con Ctrl + V en WhatsApp Web o Telegram.', 'success')
+    } else {
+      downloadImagePng()
+    }
+  } catch (err) {
+    console.warn('Fallo copia al portapapeles, usando descarga directa:', err)
+    downloadImagePng()
   }
 }
 
