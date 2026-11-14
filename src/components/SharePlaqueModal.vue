@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useToastStore } from '../store/toast'
+import { generateAttractiveShareCopy } from '../utils/marketing'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -12,9 +13,10 @@ const props = defineProps({
   promoLabel: { type: String, default: '' }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'openInStudio'])
 const toast = useToastStore()
 const isExporting = ref(false)
+const showFullCopy = ref(false)
 
 const activePromoCode = computed(() => String(props.payload?.promoCode || props.promoCode || '').trim().toUpperCase())
 const activePromoLabel = computed(() => String(props.payload?.promoLabel || props.promoLabel || 'Descuento Oficial').trim())
@@ -589,6 +591,56 @@ async function renderPlaqueBlob() {
   return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95))
 }
 
+const attractiveCopy = computed(() => {
+  const p = props.payload || {}
+  const pt = p.productType || (p.categoryIds ? 'physical' : 'streaming')
+  return generateAttractiveShareCopy({
+    type: pt === 'package' ? 'combo' : pt,
+    title: plaqueHeadline.value,
+    subtitle: plaqueSubline.value,
+    price: isMultiMode.value ? 0 : mainItem.value.price,
+    originalPrice: isMultiMode.value ? 0 : mainItem.value.originalPrice,
+    platform: p.platform || mainItem.value.tag || '',
+    license: p.licenseType || '',
+    storeName: props.storeName,
+    phone: props.contactPhone,
+    url: directShareUrl.value,
+    promoCode: activePromoCode.value,
+    promoDiscountPct: Number(p.discountPct || 0)
+  })
+})
+
+const copyAttractiveText = async () => {
+  try {
+    await navigator.clipboard.writeText(attractiveCopy.value)
+    toast.add('📋 ¡Texto promocional atractivo copiado para WhatsApp!', 'success')
+  } catch {
+    toast.add(attractiveCopy.value, 'info')
+  }
+}
+
+const openWhatsAppWithAttractiveText = () => {
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(attractiveCopy.value)}`
+  window.open(url, '_blank')
+}
+
+const handleOpenInStudio = () => {
+  const p = props.payload || {}
+  emit('openInStudio', {
+    itemType: p.productType || (p.categoryIds ? 'physical' : 'streaming'),
+    id: p.id || '',
+    gameId: p.id || '',
+    title: plaqueHeadline.value,
+    subtitle: plaqueSubline.value,
+    price: mainItem.value.price,
+    originalPrice: mainItem.value.originalPrice,
+    image: mainItem.value.image,
+    platform: p.platform || mainItem.value.tag || '',
+    license: p.licenseType || 'primary',
+    services: mainItem.value.services
+  })
+}
+
 const downloadPlaquePng = async () => {
   if (isExporting.value) return
   isExporting.value = true
@@ -603,7 +655,9 @@ const downloadPlaquePng = async () => {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => {
+      try { URL.revokeObjectURL(url) } catch (_) {}
+    }, 60000)
     toast.add('🖼️ ¡Placa para compartir descargada en HD!', 'success')
   } catch (e) {
     toast.add('No se pudo generar la placa en este dispositivo.', 'error')
@@ -624,12 +678,7 @@ const copyPlaqueLink = async () => {
 const sharePlaqueDirect = async () => {
   if (isExporting.value) return
   isExporting.value = true
-  const promoLine = activePromoCode.value
-    ? `\n🎟️ *CUPÓN ACTIVO: ${activePromoCode.value}* (${activePromoLabel.value})`
-    : ''
-  const shareText = isMultiMode.value
-    ? `🔥 *${plaqueHeadline.value} (${props.storeName})*${promoLine}\n\n${normalizedItems.value.map(i => `• *${i.title}* — $${i.price.toLocaleString()} ARS`).join('\n')}\n\n👉 Ver catálogo oficial:\n${directShareUrl.value}`
-    : `🔥 *${mainItem.value.title}*\n📌 ${plaqueSubline.value}\n💰 *Precio: $${mainItem.value.price.toLocaleString()} ARS*${promoLine}\n\n👉 Compra directa aquí:\n${directShareUrl.value}`
+  const shareText = attractiveCopy.value
 
   try {
     const blob = await renderPlaqueBlob()
@@ -645,7 +694,7 @@ const sharePlaqueDirect = async () => {
         return
       }
     }
-    // Fallback escritorio: abrir WhatsApp con mensaje + ofrecer descarga automática de placa
+    // Fallback escritorio: descargar placa y abrir WhatsApp con mensaje prearmado
     if (blob) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -654,10 +703,12 @@ const sharePlaqueDirect = async () => {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setTimeout(() => {
+        try { URL.revokeObjectURL(url) } catch (_) {}
+      }, 60000)
     }
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
-    toast.add('📲 Placa descargada y WhatsApp abierto para adjuntarla en un toque', 'success')
+    toast.add('📲 Placa descargada y WhatsApp abierto con el texto promocional listo', 'success')
   } catch (err) {
     if (err?.name !== 'AbortError') {
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
@@ -670,17 +721,17 @@ const sharePlaqueDirect = async () => {
 
 <template>
   <div v-if="show && payload" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700/80 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden text-white flex flex-col">
+    <div class="bg-slate-900 border border-slate-700/80 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden text-white flex flex-col my-auto max-h-[95vh]">
       
       <!-- Encabezado Simple -->
-      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/75">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 shrink-0">
         <div class="flex items-center gap-2.5 min-w-0">
           <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-black text-xs text-white shadow shrink-0">
             SP
           </div>
           <div class="min-w-0">
-            <h3 class="text-sm sm:text-base font-black text-white truncate">Placa Lista para Compartir</h3>
-            <p class="text-[11px] text-slate-400 truncate">Diseño con logo oficial directo para WhatsApp o redes</p>
+            <h3 class="text-sm sm:text-base font-black text-white truncate">Placa &amp; Enlace para Compartir</h3>
+            <p class="text-[11px] text-slate-400 truncate">Diseño oficial con enlace limpio y texto listo para enviar</p>
           </div>
         </div>
         <button @click="emit('close')" type="button" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-bold text-sm flex items-center justify-center cursor-pointer shrink-0">
@@ -688,100 +739,103 @@ const sharePlaqueDirect = async () => {
         </button>
       </div>
 
-      <!-- Vista Previa Exacta de Placa 1:1 -->
-      <div class="p-4 sm:p-5 flex flex-col items-center space-y-4 bg-[#020617]">
-        <div class="w-full max-w-[380px] aspect-square rounded-3xl overflow-hidden bg-gradient-to-b from-[#040814] via-[#0b1224] to-[#020617] border border-white/15 shadow-2xl p-3 flex flex-col justify-between relative">
-          
-          <!-- MODO MULTI-PRODUCTO -->
-          <template v-if="isMultiMode">
-            <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
-              <div class="flex items-center gap-2 bg-slate-950/90 border border-cyan-400/50 rounded-full pl-1.5 pr-3 py-1 shadow">
-                <span class="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[9px] font-black">SP</span>
-                <span class="text-[10px] font-black tracking-wide uppercase truncate max-w-[130px]">{{ storeName }}</span>
-              </div>
-              <span :class="['text-[9px] font-mono font-black px-2.5 py-1 rounded-full border uppercase', accentTheme.cssPill]">
-                {{ normalizedItems.length }} Elegidos
-              </span>
-            </div>
-
-            <div class="py-1">
-              <h4 class="text-sm font-black text-white leading-tight truncate">{{ plaqueHeadline }}</h4>
-              <p class="text-[10px] text-sky-300 truncate">{{ plaqueSubline }}</p>
-            </div>
-
-            <div class="flex-1 flex flex-col justify-center space-y-1.5 py-1 overflow-hidden">
-              <div v-for="(it, idx) in normalizedItems" :key="idx" class="flex items-center gap-2.5 bg-slate-900/90 border border-white/10 rounded-xl p-1.5">
-                <img v-if="it.image" :src="it.image" :alt="it.title" class="w-10 h-10 rounded-lg object-cover bg-black shrink-0">
-                <div class="flex-1 min-w-0">
-                  <div class="text-[10px] font-black text-white truncate">{{ it.title }}</div>
-                  <div class="text-[9px] text-slate-400 truncate">{{ it.tag }}</div>
+      <!-- Contenido Scrolleable -->
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-4 bg-[#020617] flex-1">
+        
+        <!-- Vista Previa de la Placa 1:1 -->
+        <div class="flex justify-center">
+          <div class="w-full max-w-[340px] aspect-square rounded-3xl overflow-hidden bg-gradient-to-b from-[#040814] via-[#0b1224] to-[#020617] border border-white/15 shadow-2xl p-3 flex flex-col justify-between relative">
+            
+            <!-- MODO MULTI-PRODUCTO -->
+            <template v-if="isMultiMode">
+              <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
+                <div class="flex items-center gap-2 bg-slate-950/90 border border-cyan-400/50 rounded-full pl-1.5 pr-3 py-1 shadow">
+                  <span class="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[9px] font-black">SP</span>
+                  <span class="text-[10px] font-black tracking-wide uppercase truncate max-w-[130px]">{{ storeName }}</span>
                 </div>
-                <span class="text-xs font-black text-emerald-300 font-mono shrink-0">${{ it.price.toLocaleString() }}</span>
-              </div>
-            </div>
-
-            <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow truncate">
-              🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
-            </div>
-            <div class="pt-2 border-t border-white/10 text-center text-[9px] font-mono text-slate-300 truncate">
-              🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}
-            </div>
-          </template>
-
-          <!-- MODO PRODUCTO ÚNICO (CON LOGO SOBRE LA IMAGEN DEL PRODUCTO) -->
-          <template v-else>
-            <!-- Marco superior de Imagen con Logo Superpuesto -->
-            <div class="relative w-full h-[58%] rounded-2xl overflow-hidden bg-slate-950 border border-white/15 flex items-center justify-center">
-              <img
-                v-if="mainItem.image"
-                :src="mainItem.image"
-                :alt="mainItem.title"
-                class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 brightness-50 saturate-125 pointer-events-none"
-              >
-              <img
-                v-if="mainItem.image"
-                :src="mainItem.image"
-                :alt="mainItem.title"
-                class="relative z-10 max-w-full max-h-full object-contain p-3 drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]"
-              >
-              <div v-else-if="mainItem.services?.length" class="relative z-10 flex flex-wrap items-center justify-center gap-2 p-4">
-                <div v-for="(srv, idx) in mainItem.services.slice(0, 4)" :key="idx" class="bg-slate-900/90 border border-pink-500/40 rounded-xl px-3 py-2 text-center shadow">
-                  <span class="text-xs font-black text-white block">{{ srv.platform }}</span>
-                  <span class="text-[9px] text-pink-300 font-mono">{{ srv.planLabel }}</span>
-                </div>
-              </div>
-              <div v-else class="relative z-10 text-2xl font-black text-sky-300 tracking-tight">{{ storeName }}</div>
-
-              <!-- LOGO SOBRE LA IMAGEN DEL PRODUCTO -->
-              <div class="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-400/60 rounded-full pl-1 pr-2.5 py-1 shadow-lg">
-                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[9px] font-black text-white shrink-0 border border-white/40">
-                  SP
-                </div>
-                <div class="leading-none">
-                  <span class="text-[9px] font-black text-white tracking-wide uppercase block max-w-[125px] truncate">{{ storeName }}</span>
-                  <span class="text-[7px] font-mono font-bold text-cyan-300 block">✓ OFICIAL</span>
-                </div>
-              </div>
-
-              <!-- Tag Consola / Categoría Top-Right -->
-              <div v-if="mainItem.tag" :class="['absolute top-2.5 right-2.5 z-20 text-[9px] font-black px-2.5 py-1 rounded-full border shadow uppercase font-mono', accentTheme.cssPill]">
-                {{ mainItem.tag }}
-              </div>
-            </div>
-
-            <!-- Título y Precio Limpios -->
-            <div class="flex-1 flex flex-col justify-center items-center text-center px-2 space-y-1">
-              <h4 class="text-sm sm:text-base font-black text-white line-clamp-2 leading-tight">{{ mainItem.title }}</h4>
-              <p :class="['text-[10px] font-semibold line-clamp-1', accentTheme.cssPrice]">{{ plaqueSubline }}</p>
-              <div class="pt-0.5 flex items-baseline justify-center gap-2">
-                <span v-if="mainItem.originalPrice > mainItem.price && mainItem.price > 0" class="text-[10px] text-slate-400 line-through font-mono">
-                  ${{ mainItem.originalPrice.toLocaleString() }}
-                </span>
-                <span class="text-xl sm:text-2xl font-black font-mono text-white drop-shadow">
-                  {{ mainItem.price > 0 ? `$${mainItem.price.toLocaleString()} ARS` : 'Consultar' }}
+                <span :class="['text-[9px] font-mono font-black px-2.5 py-1 rounded-full border uppercase', accentTheme.cssPill]">
+                  {{ normalizedItems.length }} Elegidos
                 </span>
               </div>
-            </div>
+
+              <div class="py-1">
+                <h4 class="text-sm font-black text-white leading-tight truncate">{{ plaqueHeadline }}</h4>
+                <p class="text-[10px] text-sky-300 truncate">{{ plaqueSubline }}</p>
+              </div>
+
+              <div class="flex-1 flex flex-col justify-center space-y-1.5 py-1 overflow-hidden">
+                <div v-for="(it, idx) in normalizedItems" :key="idx" class="flex items-center gap-2.5 bg-slate-900/90 border border-white/10 rounded-xl p-1.5">
+                  <img v-if="it.image" :src="it.image" :alt="it.title" class="w-10 h-10 rounded-lg object-cover bg-black shrink-0">
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[10px] font-black text-white truncate">{{ it.title }}</div>
+                    <div class="text-[9px] text-slate-400 truncate">{{ it.tag }}</div>
+                  </div>
+                  <span class="text-xs font-black text-emerald-300 font-mono shrink-0">${{ it.price.toLocaleString() }}</span>
+                </div>
+              </div>
+
+              <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow truncate">
+                🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
+              </div>
+              <div class="pt-2 border-t border-white/10 text-center text-[9px] font-mono text-slate-300 truncate">
+                🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}
+              </div>
+            </template>
+
+            <!-- MODO PRODUCTO ÚNICO (CON LOGO SOBRE LA IMAGEN DEL PRODUCTO) -->
+            <template v-else>
+              <!-- Marco superior de Imagen con Logo Superpuesto -->
+              <div class="relative w-full h-[58%] rounded-2xl overflow-hidden bg-slate-950 border border-white/15 flex items-center justify-center">
+                <img
+                  v-if="mainItem.image"
+                  :src="mainItem.image"
+                  :alt="mainItem.title"
+                  class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 brightness-50 saturate-125 pointer-events-none"
+                >
+                <img
+                  v-if="mainItem.image"
+                  :src="mainItem.image"
+                  :alt="mainItem.title"
+                  class="relative z-10 max-w-full max-h-full object-contain p-3 drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]"
+                >
+                <div v-else-if="mainItem.services?.length" class="relative z-10 flex flex-wrap items-center justify-center gap-2 p-4">
+                  <div v-for="(srv, idx) in mainItem.services.slice(0, 4)" :key="idx" class="bg-slate-900/90 border border-pink-500/40 rounded-xl px-3 py-2 text-center shadow">
+                    <span class="text-xs font-black text-white block">{{ srv.platform }}</span>
+                    <span class="text-[9px] text-pink-300 font-mono">{{ srv.planLabel }}</span>
+                  </div>
+                </div>
+                <div v-else class="relative z-10 text-2xl font-black text-sky-300 tracking-tight">{{ storeName }}</div>
+
+                <!-- LOGO SOBRE LA IMAGEN DEL PRODUCTO -->
+                <div class="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-400/60 rounded-full pl-1 pr-2.5 py-1 shadow-lg">
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[9px] font-black text-white shrink-0 border border-white/40">
+                    SP
+                  </div>
+                  <div class="leading-none">
+                    <span class="text-[9px] font-black text-white tracking-wide uppercase block max-w-[125px] truncate">{{ storeName }}</span>
+                    <span class="text-[7px] font-mono font-bold text-cyan-300 block">✓ OFICIAL</span>
+                  </div>
+                </div>
+
+                <!-- Tag Consola / Categoría Top-Right -->
+                <div v-if="mainItem.tag" :class="['absolute top-2.5 right-2.5 z-20 text-[9px] font-black px-2.5 py-1 rounded-full border shadow uppercase font-mono', accentTheme.cssPill]">
+                  {{ mainItem.tag }}
+                </div>
+              </div>
+
+              <!-- Título y Precio Limpios -->
+              <div class="flex-1 flex flex-col justify-center items-center text-center px-2 space-y-1">
+                <h4 class="text-sm font-black text-white line-clamp-2 leading-tight">{{ mainItem.title }}</h4>
+                <p :class="['text-[10px] font-semibold line-clamp-1', accentTheme.cssPrice]">{{ plaqueSubline }}</p>
+                <div class="pt-0.5 flex items-baseline justify-center gap-2">
+                  <span v-if="mainItem.originalPrice > mainItem.price && mainItem.price > 0" class="text-[10px] text-slate-400 line-through font-mono">
+                    ${{ mainItem.originalPrice.toLocaleString() }}
+                  </span>
+                  <span class="text-xl font-black font-mono text-white drop-shadow">
+                    {{ mainItem.price > 0 ? `$${mainItem.price.toLocaleString()} ARS` : 'Consultar' }}
+                  </span>
+                </div>
+              </div>
 
               <!-- Pie con Link Directo + Badge Promo -->
               <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow mb-1 truncate">
@@ -791,10 +845,42 @@ const sharePlaqueDirect = async () => {
                 🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}{{ contactPhone ? ` · 📲 ${contactPhone}` : '' }}
               </div>
             </template>
+          </div>
         </div>
 
-        <!-- 3 BOTONES DIRECTOS Y SIMPLES -->
-        <div class="w-full space-y-2">
+        <!-- CAJA DE TEXTO ATRACTIVO AUTO-GENERADO PARA WHATSAPP / REDES -->
+        <div class="bg-slate-950/80 rounded-2xl border border-slate-800 p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+              <span>💬</span>
+              <span>Texto Atractivo para WhatsApp &amp; Redes</span>
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                @click="copyAttractiveText"
+                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold border border-slate-700 flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                title="Copiar texto al portapapeles"
+              >
+                <span>📋 Copiar Texto</span>
+              </button>
+              <button
+                type="button"
+                @click="openWhatsAppWithAttractiveText"
+                class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer shadow"
+                title="Abrir WhatsApp directo con este texto"
+              >
+                <span>💬 WhatsApp</span>
+              </button>
+            </div>
+          </div>
+          <div class="bg-slate-900/90 rounded-xl p-2.5 border border-white/5 text-[11px] font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto select-all">
+            {{ attractiveCopy }}
+          </div>
+        </div>
+
+        <!-- BOTONERA DE ACCIÓN FLUIDA -->
+        <div class="space-y-2 pt-1">
           <div class="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -816,13 +902,22 @@ const sharePlaqueDirect = async () => {
             </button>
           </div>
 
-          <button
-            type="button"
-            @click="copyPlaqueLink"
-            class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-2.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition"
-          >
-            <span>🔗 Copiar Enlace Directo ({{ directShareUrl.replace(/^https?:\/\//i, '').slice(0, 38) }})</span>
-          </button>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              @click="copyPlaqueLink"
+              class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-2.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition"
+            >
+              <span>🔗 Copiar Enlace Directo</span>
+            </button>
+            <button
+              type="button"
+              @click="handleOpenInStudio"
+              class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow"
+            >
+              <span>🎨 Abrir en Estudio (Flyer / Reel)</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

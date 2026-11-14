@@ -1900,7 +1900,8 @@ const openAdminPlaqueForGaming = (game) => {
     subtitle: `${game.platform || 'PS4 / PS5'} · Cuenta Primaria Oficial · Entrega 60/90 min`,
     priceNumeric: Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0),
     image: game.image || '',
-    tag: `${game.platform || 'DIGITAL'} · PRIMARIA`
+    tag: `${game.platform || 'DIGITAL'} · PRIMARIA`,
+    platform: game.platform || 'PS4 / PS5'
   }
   showSharePlaqueModal.value = true
 }
@@ -8504,6 +8505,26 @@ const deletePackageItem = (pkgId) => {
                 ✏️
               </button>
             </div>
+
+            <!-- Acciones de Marketing Rápido -->
+            <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+              <button 
+                type="button" 
+                @click="openAdminPlaqueForGaming(game)"
+                class="py-2 px-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500 text-sky-200 hover:text-slate-950 border border-sky-500/35 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                title="Placa & Enlace Oficial para Compartir"
+              >
+                <span>📲 Compartir</span>
+              </button>
+              <button 
+                type="button" 
+                @click="openFlyerForGaming(game)"
+                class="py-2 px-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-200 hover:text-white border border-purple-500/35 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                title="Estudio de Flyer & Reel 9:16"
+              >
+                <span>🎨 Diseñar</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -11490,6 +11511,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
     <AdminMarketingHub
       v-if="adminTab === 'marketing'"
       @open-plaque="openAdminHubPlaque"
+      @open-flyer="(payload) => { flyerInitialProduct = payload; showFlyerModal = true }"
     />
 
     <!-- PESTAÑA: SISTEMA & BASE DE DATOS DEPURADA (PRODUCCIÓN LIMPIA) -->
@@ -12837,6 +12859,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       :store-name="adminStore.adminAuth.name || 'StreamePro Mayorista'"
       :contact-phone="adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '+54 9 11 4050-6070'"
       @close="showAdminReelsModal = false; adminReelsPayload = null"
+      @open-flyer="(payload) => { showAdminReelsModal = false; flyerInitialProduct = payload; showFlyerModal = true }"
     />
 
     <!-- MODAL: PLACA DIRECTA CON LOGO SOBRE PRODUCTO -->
@@ -12849,6 +12872,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       :promo-code="sharePlaquePayload?.promoCode || ''"
       :promo-label="sharePlaquePayload?.promoLabel || ''"
       @close="showSharePlaqueModal = false; sharePlaquePayload = null"
+      @open-in-studio="(p) => { showSharePlaqueModal = false; flyerInitialProduct = p; showFlyerModal = true }"
     />
 
     <!-- MODAL DE GESTIÓN: CREAR / EDITAR PRODUCTO FÍSICO O PÁGINA (ADMIN) -->

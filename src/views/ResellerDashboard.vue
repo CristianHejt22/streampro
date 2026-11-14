@@ -130,7 +130,8 @@ const openResellerSharePlaque = (prod) => {
       subtitle: `${prod.platform || 'PS4 / PS5'} · Cuenta Primaria Oficial · Entrega 60/90 min`,
       priceNumeric: Number(prod.effectivePrimaryPrice || prod.effectiveSecondaryPrice || 0),
       image: prod.image || '',
-      tag: `${prod.platform || 'DIGITAL'} · PRIMARIA`
+      tag: `${prod.platform || 'DIGITAL'} · PRIMARIA`,
+      platform: prod.platform || 'PS4 / PS5'
     }
   } else if (isPackage) {
     const promo = Number(prod.promoPrice || 0)
@@ -3435,33 +3436,20 @@ const submitResellerGameInquiry = () => {
               </button>
             </div>
 
-            <div class="grid grid-cols-3 gap-1.5">
+            <div class="grid grid-cols-2 gap-2">
               <button 
                 @click="openResellerSharePlaque(game)" 
-                class="bg-sky-500/20 hover:bg-sky-500 text-sky-200 hover:text-slate-950 border border-sky-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-                title="Generar placa 1:1 con logo sobre portada"
+                class="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+                title="Compartir placa con logo oficial y texto atractivo para WhatsApp"
               >
-                <span>📤 Placa</span>
-              </button>
-              <button 
-                @click="openReelsStudio(game)" 
-                class="bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-                title="Crear Video Reel o Estado 9:16 para TikTok e Instagram"
-              >
-                <span>🎬 Reel</span>
+                <span>📲 Compartir</span>
               </button>
               <button 
                 @click="openFlyerForProduct(game)" 
-                class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-                title="Estudio Flyers Multi-Formato"
+                class="bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-black py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow cursor-pointer active:scale-95"
+                title="Estudio de Diseño: Flyer 1:1, 4:5, 16:9 y Reel Animado 9:16"
               >
-                <span>🎨 Flyer</span>
-              </button>
-              <button 
-                @click="shareGamingOnWhatsApp(game)" 
-                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-[11px] font-bold py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <span>📲 WhatsApp</span>
+                <span>🎨 Diseñar</span>
               </button>
             </div>
           </div>
@@ -4121,6 +4109,7 @@ const submitResellerGameInquiry = () => {
       :reseller-ref="currentResellerId"
       :contact-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''"
       @close="showSharePlaqueModal = false; sharePlaquePayload = null"
+      @open-in-studio="(p) => { showSharePlaqueModal = false; flyerInitialProduct = p; showFlyerModal = true }"
     />
 
     <!-- MODAL DE VISUALIZACIÓN Y CONFIRMACIÓN DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF) -->
@@ -4142,5 +4131,6 @@ const submitResellerGameInquiry = () => {
       :promo-code="activeResellerPromoCode"
       :website-domain="'streamepro.me'"
       @close="showReelsStudioModal = false; reelsStudioPayload = null"
+      @open-flyer="(payload) => { showReelsStudioModal = false; flyerInitialProduct = payload; showFlyerModal = true }"
     />
 </template>

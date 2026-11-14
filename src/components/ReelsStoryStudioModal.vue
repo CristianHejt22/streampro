@@ -24,6 +24,18 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <!-- Botón de Retorno a Formatos Estáticos (1:1 / 4:5 / 16:9) -->
+          <button
+            type="button"
+            @click="goToFlyerStudio"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-500/30 shadow transition cursor-pointer"
+            title="Cambiar a formatos 1:1 Cuadrado, 4:5 Feed o Banner"
+          >
+            <span>🎨</span>
+            <span class="hidden sm:inline">Formatos (1:1 / 4:5)</span>
+            <span class="sm:hidden">Formatos</span>
+          </button>
+
           <!-- Botón de Optimización Automática Rápida -->
           <button
             type="button"
@@ -1710,7 +1722,26 @@ const props = defineProps({
   websiteDomain: { type: String, default: 'streamepro.me' }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'openFlyer'])
+
+const goToFlyerStudio = () => {
+  const payload = {
+    itemType: selectedMode.value === 'gaming' ? 'gaming' : (selectedMode.value === 'combo' ? 'combo' : (selectedMode.value === 'physical' ? 'physical' : 'streaming')),
+    id: pickedGameId.value || '',
+    gameId: pickedGameId.value || '',
+    title: reelHeadline.value,
+    subtitle: reelSubline.value,
+    price: Number(reelPromoPrice.value || 0),
+    originalPrice: Number(reelRegularPrice.value || 0),
+    effectivePrimaryPrice: Number(gamePrimaryPrice.value || reelPromoPrice.value || 0),
+    effectiveSecondaryPrice: Number(gameSecondaryPrice.value || 0),
+    platform: selectedGamingPlatform.value || '',
+    license: pickedGamingLicense.value || 'primary',
+    badge: reelBadgeText.value,
+    image: customCoverUrl.value || (selectedMode.value === 'gaming' ? selectedGamingProduct.value?.image : null) || ''
+  }
+  emit('openFlyer', payload)
+}
 
 const adminStore = useAdminStore()
 const toast = useToastStore()
@@ -5554,7 +5585,7 @@ async function recordVideoReel() {
           toast.add(`🎬 ¡Video Reel listo (${durationSec}s)! Descargando y listo para compartir.`, 'success')
         } else {
           toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · ${durationSec}s)! Listo para TikTok, Reels o Estados.`, 'success')
-          setTimeout(() => URL.revokeObjectURL(url), 15000)
+          setTimeout(() => URL.revokeObjectURL(url), 60000)
         }
       } catch (err) {
         console.error('Error procesando archivo de video:', err)
@@ -5635,7 +5666,7 @@ async function downloadImagePng() {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 15000)
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
 
     toast.add('📸 ¡Flyer HD 9:16 descargado con éxito!', 'success')
   } catch (err) {

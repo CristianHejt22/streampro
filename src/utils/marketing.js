@@ -392,3 +392,88 @@ export function generateReelStoryPackage({
     soundTip: '💡 Consejo TikTok/Reels: Usa un audio viral en tendencia a volumen bajo (5-10%) de fondo y leé el guión con voz enérgica o activa la voz de IA de TikTok.'
   }
 }
+
+/**
+ * Genera textos atractivos de alto impacto para compartir en WhatsApp, historias o mensajes directos
+ * adaptados por rubro (Gaming, Streaming, Combos, Físico) con enlaces oficiales limpios.
+ */
+export function generateAttractiveShareCopy({
+  type = 'streaming',
+  title = '',
+  subtitle = '',
+  price = 0,
+  originalPrice = 0,
+  platform = '',
+  license = '',
+  storeName = 'StreamePro Oficial',
+  phone = '',
+  url = 'https://streamepro.me',
+  promoCode = '',
+  promoDiscountPct = 0
+}) {
+  const cleanCode = normalizePromoCode(promoCode)
+  const priceFormatted = Number(price || 0) > 0 ? `$${Number(price).toLocaleString('es-AR')} ARS` : 'Consultar'
+  const origFormatted = Number(originalPrice || 0) > Number(price || 0) ? `$${Number(originalPrice).toLocaleString('es-AR')} ARS` : ''
+  const promoLine = cleanCode
+    ? `🎟️ *Cupón de Descuento:* *${cleanCode}*${promoDiscountPct ? ` (${promoDiscountPct}% OFF)` : ''}`
+    : ''
+
+  if (type === 'gaming') {
+    const licText = license === 'secondary'
+      ? 'Cuenta Secundaria Oficial (Jugás desde el usuario asignado)'
+      : 'Cuenta Primaria Oficial (Jugás desde tu usuario personal con trofeos)'
+    return [
+      `🎮🔥 *${title.toUpperCase()}* 🔥🎮`,
+      platform ? `🕹️ *Plataforma:* ${platform}` : '',
+      `🏷️ *Precio Especial:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `✅ *Modalidad:* ${licText}`,
+      `⚡ Activación guiada inmediata • Garantía oficial ${storeName}`,
+      promoLine,
+      `📲 *Pedilo y jugá hoy mismo:*`,
+      url,
+      phone ? `💬 WhatsApp: ${phone}` : ''
+    ].filter(Boolean).join('\n')
+  }
+
+  if (type === 'combo') {
+    return [
+      `🎁⚡ *SUPER COMBO: ${title.toUpperCase()}* ⚡🎁`,
+      subtitle ? `📌 ${subtitle}` : '',
+      `🏷️ *Precio Promo:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🔒 Perfiles 100% privados con PIN exclusivo`,
+      `⚡ Entrega express en 10-60 min • Garantía SLA 30 días`,
+      promoLine,
+      `📲 *Aprovechá la oferta acá:*`,
+      url,
+      phone ? `💬 WhatsApp: ${phone}` : ''
+    ].filter(Boolean).join('\n')
+  }
+
+  if (type === 'physical') {
+    return [
+      `📦✨ *${title.toUpperCase()}* ✨📦`,
+      subtitle ? `📌 ${subtitle}` : '',
+      `🏷️ *Precio:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🚚 Envíos a todo el país con seguimiento en tiempo real`,
+      `🛡️ Garantía oficial ${storeName}`,
+      promoLine,
+      `📲 *Comprá online acá:*`,
+      url,
+      phone ? `💬 WhatsApp: ${phone}` : ''
+    ].filter(Boolean).join('\n')
+  }
+
+  // Default: Streaming
+  return [
+    `🎬🍿 *${title.toUpperCase()}* 🍿🎬`,
+    subtitle ? `✨ ${subtitle}` : 'Calidad Ultra HD 4K con Audio Espacial',
+    `🏷️ *Precio:* *${priceFormatted}* / mes`,
+    `🔒 Perfil 100% individual con PIN propio de 4 dígitos`,
+    `🏠 Sin bloqueos de hogar en Argentina • Misma cuenta mes a mes`,
+    `⚡ Entrega oficial en 10 a 60 min • Garantía oficial`,
+    promoLine,
+    `📲 *Activá tu cuenta oficial acá:*`,
+    url,
+    phone ? `💬 WhatsApp: ${phone}` : ''
+  ].filter(Boolean).join('\n')
+}

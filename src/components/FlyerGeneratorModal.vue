@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { toPng } from 'html-to-image'
+import { generateAttractiveShareCopy } from '../utils/marketing'
 import { useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 
@@ -18,6 +19,9 @@ const emit = defineEmits(['close', 'openReels'])
 
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+// Modo móvil: 'preview' (vista previa y descargas) | 'editor' (herramientas)
+const mobileTab = ref('preview')
 
 // Modo de flyer: 'individual' | 'combo' | 'physical'
 const flyerProductType = ref('individual')
@@ -2069,9 +2073,15 @@ const triggerFileDownload = (fileUrl, filename) => {
   const link = document.createElement('a')
   link.download = filename
   link.href = fileUrl
+  link.rel = 'noopener'
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+  if (fileUrl.startsWith('blob:')) {
+    setTimeout(() => {
+      try { URL.revokeObjectURL(fileUrl) } catch (_) {}
+    }, 60000)
+  }
 }
 
 // Exportador seguro con timeout para html-to-image
@@ -2157,7 +2167,6 @@ const downloadFlyerImage = async () => {
       if (blob) {
         const url = URL.createObjectURL(blob)
         triggerFileDownload(url, filename)
-        URL.revokeObjectURL(url)
         toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
         exported = true
       }
@@ -2181,6 +2190,71 @@ const downloadFlyerImage = async () => {
   } catch (err) {
     console.error('Error generando flyer:', err)
     toast.add('Ocurrió un error al descargar el flyer. Por favor, reintenta.', 'error')
+  } finally {
+    isExporting.value = false
+  }
+}
+
+// Texto comercial atractivo autogenerado con emojis, garantía y enlace oficial
+const attractiveFlyerCopy = computed(() => {
+  const isGamer = flyerProductType.value === 'gaming'
+  const selGame = selectedGamingProduct.value
+  return generateAttractiveShareCopy({
+    type: isGamer ? 'gaming' : (flyerProductType.value === 'physical' ? 'physical' : (flyerProductType.value === 'combo' ? 'combo' : 'streaming')),
+    title: displayTitle.value,
+    subtitle: displaySubtitle.value,
+    price: Number(displayPriceNumeric.value || 0),
+    originalPrice: Number(displayOriginalPrice.value || 0),
+    platform: isGamer ? (selGame?.platform || selectedGamingPlatform.value) : (selectedPlatform.value || ''),
+    license: isGamer ? selectedGamingLicense.value : '',
+    storeName: effectiveStoreLabel.value,
+    phone: effectiveContactPhone.value,
+    url: fullProductReferralUrl.value
+  })
+})
+
+const copyAttractiveFlyerCopy = async () => {
+  try {
+    await navigator.clipboard.writeText(attractiveFlyerCopy.value)
+    toast.add('📋 ¡Texto promocional atractivo copiado para WhatsApp o Redes!', 'success')
+  } catch {
+    toast.add(attractiveFlyerCopy.value, 'info')
+  }
+}
+
+const shareFlyerWithText = async () => {
+  if (flyerProductType.value === 'physical' && !isPhysicalFlyerAvailable.value) {
+    toast.add('La tienda física está desactivada.', 'warning')
+    return
+  }
+  const shareText = attractiveFlyerCopy.value
+  try {
+    isExporting.value = true
+    let blob = null
+    try {
+      blob = await renderCanvasFlyerBlob()
+    } catch (_) {}
+
+    if (blob && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+      const safeName = displayTitle.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 24) || 'flyer'
+      const file = new File([blob], `flyer_${safeName}.png`, { type: 'image/png' })
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: displayTitle.value,
+          text: shareText,
+          files: [file]
+        })
+        toast.add('✅ ¡Flyer y texto compartidos con éxito!', 'success')
+        return
+      }
+    }
+    // Fallback WhatsApp directo con texto atractivo
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
+    toast.add('📲 WhatsApp abierto con el texto promocional listo', 'success')
+  } catch (err) {
+    if (err?.name !== 'AbortError') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
+    }
   } finally {
     isExporting.value = false
   }
@@ -2274,8 +2348,28 @@ const shareToWhatsAppStatus = () => {
       <!-- CONTENIDO PRINCIPAL: 2 COLUMNAS (CONFIGURACIÓN + PREVISUALIZACIÓN) -->
       <div class="p-4 sm:p-5 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 custom-scrollbar">
         
+        <!-- SELECTOR DE VISTA MÓVIL STICKY (< lg) -->
+        <div class="lg:hidden col-span-1 flex items-center p-1 bg-slate-950 rounded-2xl border border-slate-800 sticky top-0 z-30 shadow-md">
+          <button
+            type="button"
+            @click="mobileTab = 'preview'"
+            :class="['flex-1 py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer', mobileTab === 'preview' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-400 hover:text-white']"
+          >
+            <span>👁️</span>
+            <span>Ver Flyer / Previa</span>
+          </button>
+          <button
+            type="button"
+            @click="mobileTab = 'editor'"
+            :class="['flex-1 py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer', mobileTab === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+          >
+            <span>🛠️</span>
+            <span>Personalizar Opciones</span>
+          </button>
+        </div>
+
         <!-- COLUMNA IZQUIERDA: CONTROLES DE GENERACIÓN (7 cols) -->
-        <div class="lg:col-span-7 space-y-4">
+        <div :class="['lg:col-span-7 space-y-4', mobileTab === 'editor' ? 'block' : 'hidden lg:block']">
           
           <!-- SELECTOR DE TIPO DE FLYER: MODOS OFICIALES -->
           <div v-if="!clientOnlyPhysical || !isPhysicalFlyerAvailable" class="space-y-1.5">
@@ -2390,6 +2484,28 @@ const shareToWhatsAppStatus = () => {
                 <span class="text-base">🖥️</span>
                 <span class="font-black text-[11px]">16:9 Banner Web</span>
                 <span class="text-[9px] text-slate-500 font-mono">Horizontal Cover</span>
+              </button>
+            </div>
+
+            <!-- SUITE UNIFICADA 9:16 (STORY / REEL 30 FPS) -->
+            <div v-if="flyerFormat === 'story'" class="mt-2.5 p-3 bg-gradient-to-r from-purple-950/70 via-slate-950 to-indigo-950/70 rounded-2xl border border-purple-500/40 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center text-base shrink-0">
+                  🎬
+                </span>
+                <div class="min-w-0">
+                  <div class="font-black text-xs text-purple-200">Suite 9:16 Unificada (Story &amp; Reel)</div>
+                  <div class="text-[10px] text-slate-400 truncate">Elige flyer estático para estados o video animado 30 FPS</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                @click="handleOpenReels"
+                class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition active:scale-95 shrink-0 cursor-pointer"
+                title="Abrir estudio de animación 30 FPS para este flyer"
+              >
+                <span>✨ Animar como Reel 9:16</span>
+                <span class="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full font-bold">30 FPS</span>
               </button>
             </div>
           </div>
@@ -3156,7 +3272,7 @@ const shareToWhatsAppStatus = () => {
         </div>
 
         <!-- COLUMNA DERECHA: VISTA PREVIA EXACTA DEL FLYER (5 cols) -->
-        <div class="lg:col-span-5 flex flex-col items-center justify-center bg-slate-950/90 p-4 rounded-3xl border border-slate-800">
+        <div :class="['lg:col-span-5 flex flex-col items-center bg-slate-950/90 p-4 rounded-3xl border border-slate-800 space-y-3.5', mobileTab === 'preview' ? 'flex' : 'hidden lg:flex']">
           <div class="flex items-center justify-between w-full mb-3">
             <span class="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
               Vista Previa en Vivo
@@ -3665,6 +3781,69 @@ const shareToWhatsAppStatus = () => {
               </div>
 
             </div>
+          </div>
+
+          <!-- CAJA DE TEXTO ATRACTIVO AUTO-GENERADO PARA WHATSAPP / REDES -->
+          <div class="w-full bg-[#020617] rounded-2xl border border-slate-800 p-3 space-y-2 mt-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+                <span>💬</span>
+                <span>Texto Promocional Atractivo</span>
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  @click="copyAttractiveFlyerCopy"
+                  class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold border border-slate-700 flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                  title="Copiar texto con emojis y garantía"
+                >
+                  <span>📋 Copiar</span>
+                </button>
+                <button
+                  type="button"
+                  @click="shareFlyerWithText"
+                  class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer shadow"
+                  title="Compartir directo a WhatsApp"
+                >
+                  <span>📲 WhatsApp</span>
+                </button>
+              </div>
+            </div>
+            <div class="bg-slate-900/90 rounded-xl p-2.5 border border-white/5 text-[10.5px] font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-28 overflow-y-auto select-all">
+              {{ attractiveFlyerCopy }}
+            </div>
+          </div>
+
+          <!-- BOTONES DE ACCIÓN FLUIDOS DE PREVISUALIZACIÓN -->
+          <div class="w-full space-y-2 pt-1">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                @click="downloadFlyerImage"
+                :disabled="isExporting"
+                class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <span>{{ isExporting ? '⏳ Generando HD...' : `⬇️ Descargar Flyer (${flyerFormatLabels[flyerFormat].split(' ')[0]})` }}</span>
+              </button>
+              <button
+                type="button"
+                @click="shareFlyerWithText"
+                :disabled="isExporting"
+                class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <span>📲 Compartir Flyer</span>
+              </button>
+            </div>
+
+            <button
+              v-if="flyerFormat === 'story'"
+              type="button"
+              @click="handleOpenReels"
+              class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-black py-2.5 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95 border border-indigo-400/30"
+            >
+              <span>🎬 Animar como Reel 9:16 (Video 30 FPS)</span>
+              <span class="text-[9px] bg-white/20 px-2 py-0.5 rounded-full font-bold">NUEVO</span>
+            </button>
           </div>
         </div>
       </div>

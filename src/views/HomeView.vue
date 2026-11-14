@@ -266,7 +266,8 @@ const openSharePlaqueForGaming = (game, licenseType = null) => {
     subtitle: `${game.platform || 'PS4 / PS5'} · Cuenta ${lic === 'primary' ? 'Primaria (Tu Usuario)' : 'Secundaria'} · Entrega 60/90 min`,
     priceNumeric: chosenPrice,
     image: game.image || '',
-    tag: `${game.platform || 'DIGITAL'} · ${lic === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'}`
+    tag: `${game.platform || 'DIGITAL'} · ${lic === 'primary' ? 'PRIMARIA' : 'SECUNDARIA'}`,
+    platform: game.platform || 'PS4 / PS5'
   }
   showSharePlaqueModal.value = true
 }

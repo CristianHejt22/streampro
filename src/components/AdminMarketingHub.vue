@@ -9,7 +9,7 @@ import {
   maskPhonePublic
 } from '../utils/marketing'
 
-const emit = defineEmits(['openPlaque'])
+const emit = defineEmits(['openPlaque', 'openFlyer'])
 const adminStore = useAdminStore()
 const toast = useToastStore()
 
@@ -1164,5 +1164,6 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
       :promo-code="adminStore.marketingCampaign?.highlightedCode || 'BIENVENIDO10'"
       :website-domain="'streamepro.me'"
       @close="showAdminReelsModal = false; adminReelsPayload = null"
+      @open-flyer="(payload) => { showAdminReelsModal = false; emit('openFlyer', payload) }"
     />
 </template>
