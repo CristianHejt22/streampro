@@ -863,6 +863,51 @@
               </div>
             </div>
 
+            <!-- 4. EFECTOS ESPECIALES DEL RECUADRO GENERAL DE IMAGEN -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-cyan-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                    <span>✨</span>
+                    <span>Efectos del Recuadro de Portada</span>
+                  </h4>
+                  <p class="text-[10px] text-slate-400">Personaliza los efectos visuales y la iluminación del marco central.</p>
+                </div>
+                <button
+                  type="button"
+                  @click="syncColorWithCover"
+                  class="text-[10px] font-bold text-amber-300 hover:text-white flex items-center gap-1 cursor-pointer bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20"
+                  title="Extraer el color predominante de la portada y sincronizarlo en todo el diseño"
+                >
+                  <span>🎨</span>
+                  <span>Sincronizar Color</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">✨ Barrido Holográfico</span>
+                  <input type="checkbox" v-model="showHoloSweep" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">⚡ Escáner Láser Cyber</span>
+                  <input type="checkbox" v-model="showLaserScan" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">💡 Borde Neón Pulsante</span>
+                  <input type="checkbox" v-model="showVisorBorderGlow" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">📐 Esquinas HUD Cyber</span>
+                  <input type="checkbox" v-model="showCornerBrackets" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">🌌 Fondo Bokeh Difuso</span>
+                  <input type="checkbox" v-model="showAmbientBackdrop" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+              </div>
+            </div>
+
           </div>
 
           <!-- ======================================================== -->
@@ -1073,12 +1118,23 @@
 
             <!-- 4. PALETA DE COLOR NEÓN -->
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                4. Paleta de Color &amp; Efectos Neón
-              </label>
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
+                  4. Paleta de Color &amp; Efectos Neón
+                </label>
+                <button
+                  type="button"
+                  @click="syncColorWithCover"
+                  class="text-[10px] font-bold text-amber-300 hover:text-white flex items-center gap-1 cursor-pointer bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 transition hover:bg-amber-500/20"
+                  title="Calibra los colores del reel y del fondo con la carátula activa"
+                >
+                  <span>🎨</span>
+                  <span>Calibrar con Portada</span>
+                </button>
+              </div>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
-                  v-for="th in visualThemes"
+                  v-for="th in availableThemesList"
                   :key="th.id"
                   type="button"
                   @click="currentThemeId = th.id; requestCanvasRedraw()"
@@ -1090,7 +1146,7 @@
                   ]"
                 >
                   <span class="w-4 h-4 rounded-full border border-white/20 shrink-0" :style="{ background: th.previewGrad }"></span>
-                  <span class="text-xs">{{ th.name }}</span>
+                  <span class="text-xs truncate">{{ th.name }}</span>
                 </button>
               </div>
             </div>
@@ -1623,6 +1679,23 @@ const imageBrightness = ref(100)
 const imageContrast = ref(100)
 const imageSaturation = ref(100)
 
+// Efectos Especiales del Recuadro General de Portada
+const showHoloSweep = ref(true)
+const showLaserScan = ref(false)
+const showVisorBorderGlow = ref(true)
+const showCornerBrackets = ref(true)
+const showAmbientBackdrop = ref(true)
+
+// Tema dinámico auto-calibrado desde la portada
+const customCoverTheme = ref(null)
+
+const displayDomain = computed(() => {
+  if (props.resellerRef && props.resellerRef !== 'DIRECT') {
+    return `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
+  }
+  return props.websiteDomain || 'streamepro.me'
+})
+
 // ==========================================
 // HERRAMIENTAS ESPECÍFICAS DE CADA DISEÑO
 // ==========================================
@@ -2023,52 +2096,218 @@ const layoutTemplates = [
   { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 con cuenta regresiva en vivo' }
 ]
 
+// ==========================================
+// PALETA DE COLORES NEÓN Y AUTO-CALIBRACIÓN CON PORTADA
+// ==========================================
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  let h = 0, s = 0, l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break
+      case g: h = (b - r) / d + 2; break
+      case b: h = (r - g) / d + 4; break
+    }
+    h /= 6
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
+}
+
+function extractCoverPalette(img) {
+  try {
+    if (!img || !(img.width > 0 || img.naturalWidth > 0)) return null
+    const mini = document.createElement('canvas')
+    mini.width = 48
+    mini.height = 48
+    const mctx = mini.getContext('2d')
+    mctx.drawImage(img, 0, 0, 48, 48)
+    const imgData = mctx.getImageData(0, 0, 48, 48).data
+    let maxSat = 0
+    let bestR = 6, bestG = 182, bestB = 212
+
+    for (let i = 0; i < imgData.length; i += 16) {
+      const r = imgData[i]
+      const g = imgData[i + 1]
+      const b = imgData[i + 2]
+      const a = imgData[i + 3]
+      if (a < 180) continue
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      const lum = (max + min) / 2
+      if (lum < 35 || lum > 225) continue
+      const sat = max === 0 ? 0 : (max - min) / max
+      if (sat > maxSat) {
+        maxSat = sat
+        bestR = r
+        bestG = g
+        bestB = b
+      }
+    }
+    return { r: bestR, g: bestG, b: bestB }
+  } catch (err) {
+    console.warn('[ReelsStudio] No se pudo extraer la paleta de la portada:', err)
+    return null
+  }
+}
+
+function generateCoverTheme(pal) {
+  const { r, g, b } = pal
+  const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
+  const darkerHex = '#' + [Math.round(r * 0.6), Math.round(g * 0.6), Math.round(b * 0.6)].map(x => x.toString(16).padStart(2, '0')).join('')
+  const hsl = rgbToHsl(r, g, b)
+  let hueDiff = Math.round(hsl.h - 190)
+  if (hueDiff < -180) hueDiff += 360
+  if (hueDiff > 180) hueDiff -= 360
+  const filter = Math.abs(hueDiff) < 12 ? 'none' : `hue-rotate(${hueDiff}deg) saturate(1.25) contrast(1.05)`
+
+  return {
+    id: 'auto_cover',
+    name: '🎨 Calibrado Portada',
+    previewGrad: `linear-gradient(135deg, ${hex}, #0f172a)`,
+    filter,
+    bg1: '#020617',
+    bg2: `rgba(${Math.round(r * 0.16)}, ${Math.round(g * 0.16)}, ${Math.round(b * 0.16)}, 1)`,
+    bg3: '#020617',
+    glow: `rgba(${r}, ${g}, ${b}, 0.55)`,
+    accent: hex,
+    accentLight: hex,
+    border: `rgba(${r}, ${g}, ${b}, 0.70)`,
+    cardBg: `rgba(${Math.round(r * 0.12)}, ${Math.round(g * 0.12)}, ${Math.round(b * 0.12)}, 0.95)`,
+    pillGrad: [hex, darkerHex]
+  }
+}
+
+function syncColorWithCover() {
+  if (!loadedArtworkImage.value) {
+    toast.add('Carga primero una portada para extraer sus colores', 'info')
+    return
+  }
+  const pal = extractCoverPalette(loadedArtworkImage.value)
+  if (pal) {
+    customCoverTheme.value = generateCoverTheme(pal)
+    currentThemeId.value = 'auto_cover'
+    requestCanvasRedraw()
+    toast.add('🎨 Paleta sincronizada con los colores de la portada', 'success')
+  }
+}
+
 const visualThemes = [
   {
     id: 'cyber_glow',
     name: 'Cyber Neón',
-    previewGrad: 'linear-gradient(135deg, #06b6d4, #6366f1)',
+    previewGrad: 'linear-gradient(135deg, #00f0ff, #0284c7)',
+    filter: 'none',
     bg1: '#020617',
     bg2: '#0b1224',
     bg3: '#020617',
-    glow: 'rgba(6, 182, 212, 0.45)',
-    accent: '#38bdf8',
-    pillGrad: ['#06b6d4', '#6366f1']
-  },
-  {
-    id: 'gold_vip',
-    name: 'Gold Luxury',
-    previewGrad: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    bg1: '#090803',
-    bg2: '#1c1707',
-    bg3: '#030200',
-    glow: 'rgba(245, 158, 11, 0.40)',
-    accent: '#fbbf24',
-    pillGrad: ['#f59e0b', '#d97706']
+    glow: 'rgba(0, 240, 255, 0.45)',
+    accent: '#00f0ff',
+    border: 'rgba(56, 189, 248, 0.65)',
+    cardBg: 'rgba(5, 10, 24, 0.95)',
+    pillGrad: ['#00f0ff', '#0284c7']
   },
   {
     id: 'fire_sale',
-    name: 'Fuego Urgente',
-    previewGrad: 'linear-gradient(135deg, #ef4444, #f97316)',
+    name: 'Fuego / Red Dark',
+    previewGrad: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    filter: 'hue-rotate(170deg) saturate(1.25) contrast(1.05)',
     bg1: '#120404',
-    bg2: '#200a0b',
+    bg2: '#22080a',
     bg3: '#040101',
-    glow: 'rgba(239, 68, 68, 0.45)',
-    accent: '#f87171',
-    pillGrad: ['#ef4444', '#f97316']
+    glow: 'rgba(239, 68, 68, 0.50)',
+    accent: '#ef4444',
+    border: 'rgba(239, 68, 68, 0.65)',
+    cardBg: 'rgba(28, 6, 14, 0.95)',
+    pillGrad: ['#dc2626', '#b91c1c']
+  },
+  {
+    id: 'emerald_pro',
+    name: 'Esmeralda Deal',
+    previewGrad: 'linear-gradient(135deg, #10b981, #059669)',
+    filter: 'hue-rotate(-50deg) saturate(1.2) contrast(1.05)',
+    bg1: '#03140d',
+    bg2: '#062417',
+    bg3: '#010906',
+    glow: 'rgba(16, 185, 129, 0.45)',
+    accent: '#10b981',
+    border: 'rgba(16, 185, 129, 0.65)',
+    cardBg: 'rgba(6, 26, 18, 0.95)',
+    pillGrad: ['#059669', '#047857']
+  },
+  {
+    id: 'deep_blue',
+    name: 'Deep Blue PSN',
+    previewGrad: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+    filter: 'hue-rotate(30deg) saturate(1.3) contrast(1.05)',
+    bg1: '#030b1c',
+    bg2: '#081738',
+    bg3: '#01050e',
+    glow: 'rgba(59, 130, 246, 0.50)',
+    accent: '#3b82f6',
+    border: 'rgba(59, 130, 246, 0.65)',
+    cardBg: 'rgba(6, 16, 38, 0.95)',
+    pillGrad: ['#1d4ed8', '#1e40af']
+  },
+  {
+    id: 'gold_vip',
+    name: 'Gold Luxury VIP',
+    previewGrad: 'linear-gradient(135deg, #f59e0b, #d97706)',
+    filter: 'sepia(0.8) hue-rotate(5deg) saturate(1.5) contrast(1.1)',
+    bg1: '#0e0b04',
+    bg2: '#221908',
+    bg3: '#050401',
+    glow: 'rgba(245, 158, 11, 0.45)',
+    accent: '#fbbf24',
+    border: 'rgba(245, 158, 11, 0.65)',
+    cardBg: 'rgba(25, 17, 4, 0.95)',
+    pillGrad: ['#f59e0b', '#d97706']
+  },
+  {
+    id: 'purple_galaxy',
+    name: 'Púrpura Galáctico',
+    previewGrad: 'linear-gradient(135deg, #a855f7, #7c3aed)',
+    filter: 'hue-rotate(85deg) saturate(1.3) contrast(1.05)',
+    bg1: '#0d0418',
+    bg2: '#1b092f',
+    bg3: '#04010a',
+    glow: 'rgba(168, 85, 247, 0.45)',
+    accent: '#c084fc',
+    border: 'rgba(168, 85, 247, 0.65)',
+    cardBg: 'rgba(19, 7, 34, 0.95)',
+    pillGrad: ['#7c3aed', '#6d28d9']
   },
   {
     id: 'tokyo_pink',
-    name: 'Tokyo Synth',
-    previewGrad: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    bg1: '#0e0314',
-    bg2: '#1d0b26',
-    bg3: '#020104',
+    name: 'Tokyo Synthwave',
+    previewGrad: 'linear-gradient(135deg, #ec4899, #db2777)',
+    filter: 'hue-rotate(125deg) saturate(1.35) contrast(1.05)',
+    bg1: '#14030f',
+    bg2: '#28071f',
+    bg3: '#050104',
     glow: 'rgba(236, 72, 153, 0.45)',
     accent: '#f472b6',
-    pillGrad: ['#ec4899', '#8b5cf6']
+    border: 'rgba(236, 72, 153, 0.65)',
+    cardBg: 'rgba(28, 5, 20, 0.95)',
+    pillGrad: ['#ec4899', '#db2777']
   }
 ]
+
+const currentTheme = computed(() => {
+  if (currentThemeId.value === 'auto_cover' && customCoverTheme.value) {
+    return customCoverTheme.value
+  }
+  return visualThemes.find(t => t.id === currentThemeId.value) || visualThemes[0]
+})
+
+const availableThemesList = computed(() => {
+  if (customCoverTheme.value) {
+    return [customCoverTheme.value, ...visualThemes]
+  }
+  return visualThemes
+})
 
 const trustSeals = [
   { id: 'warranty', label: '🛡️ Garantía 30 Días', text: '🛡️ GARANTÍA OFICIAL 30 DÍAS' },
@@ -2092,10 +2331,6 @@ const artworkPresets = [
   { id: 'vip_banner', icon: '💎', label: 'VIP Gold', url: '/og-banner.jpg' },
   { id: 'arcade_feed', icon: '🕹️', label: 'Retro Arcade', url: '/flyers/gaming-template-feed.jpg' }
 ]
-
-const currentTheme = computed(() => {
-  return visualThemes.find(t => t.id === currentThemeId.value) || visualThemes[0]
-})
 
 const currentLayoutName = computed(() => {
   return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Flyer Oficial'
@@ -2317,6 +2552,10 @@ async function loadArtwork(src) {
   }
   if (img) {
     loadedArtworkImage.value = img
+    const pal = extractCoverPalette(img)
+    if (pal) {
+      customCoverTheme.value = generateCoverTheme(pal)
+    }
     requestCanvasRedraw()
     return
   }
@@ -2325,6 +2564,10 @@ async function loadArtwork(src) {
   const fallbackImg = await loadImage(fallbackData)
   if (fallbackImg) {
     loadedArtworkImage.value = fallbackImg
+    const pal = extractCoverPalette(fallbackImg)
+    if (pal) {
+      customCoverTheme.value = generateCoverTheme(pal)
+    }
     requestCanvasRedraw()
   }
 }
@@ -2385,6 +2628,11 @@ function resetImageTransformations() {
   imageBrightness.value = 100
   imageContrast.value = 100
   imageSaturation.value = 100
+  showHoloSweep.value = true
+  showLaserScan.value = false
+  showVisorBorderGlow.value = true
+  showCornerBrackets.value = true
+  showAmbientBackdrop.value = true
   requestCanvasRedraw()
 }
 
@@ -2398,10 +2646,23 @@ function autoOptimizeReel() {
   imageBrightness.value = 100
   imageContrast.value = 105
   imageSaturation.value = 115
+  showHoloSweep.value = true
+  showLaserScan.value = false
+  showVisorBorderGlow.value = true
+  showCornerBrackets.value = true
+  showAmbientBackdrop.value = true
+
+  if (loadedArtworkImage.value) {
+    const pal = extractCoverPalette(loadedArtworkImage.value)
+    if (pal) {
+      customCoverTheme.value = generateCoverTheme(pal)
+      currentThemeId.value = 'auto_cover'
+    }
+  }
 
   if (mode === 'gaming') {
     currentLayoutId.value = 'flyer_official'
-    currentThemeId.value = 'cyber_glow'
+    if (!customCoverTheme.value) currentThemeId.value = 'cyber_glow'
     imageFitMode.value = 'contain'
     showBrandPill.value = true
     showRegularPrice.value = true
@@ -2417,7 +2678,9 @@ function autoOptimizeReel() {
     reelCtaText.value = '🎮 PEDILO AL WHATSAPP'
   } else if (mode === 'streaming') {
     currentLayoutId.value = 'flyer_official'
-    currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
+    if (!customCoverTheme.value) {
+      currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
+    }
     imageFitMode.value = 'contain'
     showBrandPill.value = true
     showRegularPrice.value = true
@@ -2433,7 +2696,7 @@ function autoOptimizeReel() {
     reelCtaText.value = '🍿 PEDÍ TU CUENTA HOY'
   } else if (mode === 'combo') {
     currentLayoutId.value = 'flyer_official'
-    currentThemeId.value = 'gold_vip'
+    if (!customCoverTheme.value) currentThemeId.value = 'gold_vip'
     imageFitMode.value = 'cover'
     showBrandPill.value = true
     showRegularPrice.value = true
@@ -2886,9 +3149,10 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   const innerY = targetY
   const innerW = targetW
   const innerH = targetH
+  const th = currentTheme.value
 
-  // 1. Fondo ambiental saturado difuso (con blur adaptable en VIP)
-  if (blurBg) {
+  // 1. Fondo ambiental saturado difuso bokeh (con blur adaptable en VIP)
+  if (blurBg && showAmbientBackdrop.value) {
     const bgScale = Math.max(innerW / (img.width || 1), innerH / (img.height || 1)) * 1.25
     const bgW = (img.width || 1) * bgScale
     const bgH = (img.height || 1) * bgScale
@@ -2946,23 +3210,29 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
   ctx.restore()
 
-  // 3. Efecto Escáner Neón / Barrido Holográfico en Movimiento
-  if (isAnimated.value) {
-    if (currentLayoutId.value === 'cyber_pro') {
-      drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
-    } else if (currentLayoutId.value === 'flyer_official') {
-      // Haz holográfico diagonal que recorre el visor de la portada cada 3.2 segundos
-      ctx.save()
-      const sweepProgress = ((t * 0.30) % 1)
-      const sweepX = innerX - innerW * 0.4 + sweepProgress * (innerW * 1.8)
-      const sweepGrad = ctx.createLinearGradient(sweepX, innerY, sweepX + 110, innerY + innerH)
-      sweepGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
-      sweepGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.16)')
-      sweepGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = sweepGrad
-      ctx.fillRect(innerX, innerY, innerW, innerH)
-      ctx.restore()
-    }
+  // 3. Efectos Especiales en el Recuadro Central
+  // A) Escáner Láser Cyber
+  if (showLaserScan.value && isAnimated.value) {
+    drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, th.glow || 'rgba(0, 220, 255, 0.75)')
+  }
+
+  // B) Barrido Holográfico / Luz Shimmer
+  if (showHoloSweep.value && isAnimated.value) {
+    ctx.save()
+    const sweepProgress = ((t * 0.30) % 1)
+    const sweepX = innerX - innerW * 0.4 + sweepProgress * (innerW * 1.8)
+    const sweepGrad = ctx.createLinearGradient(sweepX, innerY, sweepX + 110, innerY + innerH)
+    sweepGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    sweepGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.20)')
+    sweepGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = sweepGrad
+    ctx.fillRect(innerX, innerY, innerW, innerH)
+    ctx.restore()
+  }
+
+  // C) Esquinas HUD Cyber si están activas
+  if (showCornerBrackets.value) {
+    drawCornerBrackets(ctx, innerX, innerY, innerW, innerH, 28, th.accent || 'rgba(56, 189, 248, 0.85)')
   }
 
   // 4. Retícula táctil de arrastre (solo si el usuario arrastra y no está exportando)
@@ -3143,25 +3413,9 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
   }
 
-  // Header: Insignia de Tienda / Distribuidor (Proporción perfecta dentro de zona segura)
-  if (showBrandPill.value && layout !== 'flyer_official') {
-    ctx.save()
-    const brandPillW = 460
-    const brandPillH = 68
-    const brandPillX = (W - brandPillW) / 2
-    const brandPillY = 125
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
-    roundRect(ctx, brandPillX, brandPillY, brandPillW, brandPillH, 34)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
-    ctx.lineWidth = 2
-    ctx.stroke()
-
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 23px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`⚡ ${reelStoreName.value.toUpperCase()} · OFICIAL`, W / 2, brandPillY + 42)
-    ctx.restore()
+  // Header: Insignia Crest Oficial STREAMEPRO unificada para todos los formatos
+  if (showBrandPill.value) {
+    drawStreameProCrest(ctx, W / 2, 115, reelStoreName.value, t)
   }
 
   // Ecualizador de Audio / Trending Sound Bar en Header
@@ -3182,19 +3436,22 @@ function renderFrame(timeMs = 0) {
     const tplImg = selectedMode.value === 'gaming' ? loadedFlyerTemplates.gaming : loadedFlyerTemplates.cyber
     if (tplImg && (tplImg.width > 0 || tplImg.naturalWidth > 0)) {
       ctx.save()
+      if (th.filter && th.filter !== 'none') {
+        ctx.filter = th.filter
+      }
       ctx.drawImage(tplImg, 0, 0, W, H)
       ctx.restore()
     } else {
       const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
       bgGrad.addColorStop(0, '#020617')
-      bgGrad.addColorStop(0.5, '#082f49')
+      bgGrad.addColorStop(0.5, (th && th.cardBg) ? th.cardBg : '#082f49')
       bgGrad.addColorStop(1, '#020617')
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, W, H)
     }
 
     drawAdaptiveParticles(ctx, W, H, t)
-    drawAudioVisualizer(ctx, W / 2, 140, th.accent, t)
+    drawAudioVisualizer(ctx, W / 2, 168, th.accent, t)
 
     if (selectedMode.value === 'gaming') {
       // 1. Marco metálico visor gaming exacto (fx = 201, fy = 290, fw = 678, fh = 516, radius = 46)
@@ -3221,15 +3478,17 @@ function renderFrame(timeMs = 0) {
       ctx.restore()
 
       // Borde metálico pulsante con resplandor neón adaptativo
-      ctx.save()
-      const borderAlpha = isAnimated.value ? (0.35 + Math.sin(t * 3.0) * 0.15) : 0.4
-      ctx.strokeStyle = `rgba(56, 189, 248, ${borderAlpha})`
-      ctx.lineWidth = 2.5
-      ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
-      ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
-      roundRect(ctx, fx, fy, fw, fh, cornerR)
-      ctx.stroke()
-      ctx.restore()
+      if (showVisorBorderGlow.value) {
+        ctx.save()
+        const borderAlpha = isAnimated.value ? (0.45 + Math.sin(t * 3.0) * 0.2) : 0.5
+        ctx.strokeStyle = th.border || `rgba(56, 189, 248, ${borderAlpha})`
+        ctx.lineWidth = 2.5
+        ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
+        ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
+        roundRect(ctx, fx, fy, fw, fh, cornerR)
+        ctx.stroke()
+        ctx.restore()
+      }
 
       // 2. Etiqueta Oficial de Licencia Superior (Insignia Oficial 3D o Píldora Neón)
       const activeBadgeKey = gamingBadgeOverride.value !== 'auto' ? gamingBadgeOverride.value : detectedGamingBadgeKey.value
@@ -3521,15 +3780,17 @@ function renderFrame(timeMs = 0) {
       ctx.restore()
 
       // Borde metálico pulsante con resplandor neón adaptativo
-      ctx.save()
-      const borderAlpha = isAnimated.value ? (0.35 + Math.sin(t * 3.0) * 0.15) : 0.4
-      ctx.strokeStyle = `rgba(56, 189, 248, ${borderAlpha})`
-      ctx.lineWidth = 2.5
-      ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
-      ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
-      roundRect(ctx, vx, vy, vw, vh, cornerR)
-      ctx.stroke()
-      ctx.restore()
+      if (showVisorBorderGlow.value) {
+        ctx.save()
+        const borderAlpha = isAnimated.value ? (0.45 + Math.sin(t * 3.0) * 0.2) : 0.5
+        ctx.strokeStyle = th.border || `rgba(56, 189, 248, ${borderAlpha})`
+        ctx.lineWidth = 2.5
+        ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
+        ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
+        roundRect(ctx, vx, vy, vw, vh, cornerR)
+        ctx.stroke()
+        ctx.restore()
+      }
 
       const badgeText = reelBadgeText.value || '🍿 PANTALLA ULTRA HD 4K · PERFIL PRIVADO'
       if (badgeText) {
@@ -3595,10 +3856,12 @@ function renderFrame(timeMs = 0) {
     ctx.fillStyle = '#050a18'
     roundRect(ctx, cardX, cardY, cardW, cardH, 44)
     ctx.fill()
-    ctx.strokeStyle = th.accent
-    ctx.lineWidth = 4
-    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
-    ctx.stroke()
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = th.border || th.accent
+      ctx.lineWidth = 4
+      roundRect(ctx, cardX, cardY, cardW, cardH, 44)
+      ctx.stroke()
+    }
     ctx.restore()
 
     if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
@@ -3797,10 +4060,12 @@ function renderFrame(timeMs = 0) {
     }
     roundRect(ctx, cardX, cardY, cardW, cardH, 40)
     ctx.fill()
-    ctx.strokeStyle = '#ef4444'
-    ctx.lineWidth = electricPulse.value && isAnimated.value ? (3 + Math.sin(t * 8) * 1.5) : 4
-    roundRect(ctx, cardX, cardY, cardW, cardH, 40)
-    ctx.stroke()
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = '#ef4444'
+      ctx.lineWidth = electricPulse.value && isAnimated.value ? (3 + Math.sin(t * 8) * 1.5) : 4
+      roundRect(ctx, cardX, cardY, cardW, cardH, 40)
+      ctx.stroke()
+    }
     ctx.restore()
 
     if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
@@ -3874,43 +4139,126 @@ function renderFrame(timeMs = 0) {
   }
 
   // ==========================================
-  // 3. PIE DE PÁGINA Y CONTACTO DE CIERRE
+  // 3. PIE DE PÁGINA OFICIAL STREAMEPRO.ME
   // ==========================================
-  ctx.save()
-
-  // Enlace Web Oficial / Referido con estilo pill translúcido de alta gama
-  const domainText = props.resellerRef && props.resellerRef !== 'DIRECT'
-    ? `${props.websiteDomain || 'streamepro.me'}/ref/${props.resellerRef}`
-    : `${props.websiteDomain || 'streamepro.me'}`
-  const domW = 460
-  const domH = 44
-  const domX = (W - domW) / 2
-  const domY = 1718
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
-  roundRect(ctx, domX, domY, domW, domH, 22)
-  ctx.fill()
-  ctx.strokeStyle = th.accent
-  ctx.lineWidth = 1.5
-  roundRect(ctx, domX, domY, domW, domH, 22)
-  ctx.stroke()
-
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 22px monospace'
-  ctx.textAlign = 'center'
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
-  ctx.shadowBlur = 6
-  ctx.fillText(`🔗 ${domainText}`, W / 2, domY + 30)
-
-  // Sello de Garantía y Confianza
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.90)'
-  ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('Activación guiada · Cuentas oficiales garantizadas · StreamePro', W / 2, 1782)
-  ctx.restore()
+  drawStreameProFooter(ctx, W / 2, 1755, displayDomain.value, t)
 
   // Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
   drawSafeZonesGuide(ctx, W, H)
+}
+
+// ==========================================
+// COMPONENTES DE MARCA OFICIAL STREAMEPRO
+// ==========================================
+function drawStreameProCrest(ctx, cx, cy, storeLabel = 'STREAMEPRO', t = 0) {
+  ctx.save()
+  const crestW = 480
+  const crestH = 64
+  const crestX = cx - crestW / 2
+  const crestY = cy - crestH / 2
+  const th = currentTheme.value
+
+  // Fondo glassmorphic oscuro
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.92)'
+  roundRect(ctx, crestX, crestY, crestW, crestH, crestH / 2)
+  ctx.fill()
+
+  // Borde neón con respiración sutil si está animado
+  const borderAlpha = isAnimated.value ? (0.45 + Math.sin(t * 3.0) * 0.2) : 0.5
+  ctx.strokeStyle = th.border || `rgba(56, 189, 248, ${borderAlpha})`
+  ctx.lineWidth = 1.8
+  ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.6)'
+  ctx.shadowBlur = isAnimated.value ? (12 + Math.sin(t * 3.0) * 5) : 8
+  roundRect(ctx, crestX, crestY, crestW, crestH, crestH / 2)
+  ctx.stroke()
+
+  // Escudo Monograma "SP"
+  const badgeR = 20
+  const badgeCx = crestX + 34
+  const badgeCy = cy
+  const badgeGrad = ctx.createLinearGradient(badgeCx - badgeR, badgeCy - badgeR, badgeCx + badgeR, badgeCy + badgeR)
+  badgeGrad.addColorStop(0, th.pillGrad ? th.pillGrad[0] : '#00f0ff')
+  badgeGrad.addColorStop(1, th.pillGrad ? th.pillGrad[1] : '#3b82f6')
+  ctx.fillStyle = badgeGrad
+  ctx.beginPath()
+  ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Letras SP en blanco bold
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('SP', badgeCx, badgeCy + 1)
+
+  // Nombre de marca STREAMEPRO
+  ctx.textAlign = 'left'
+  ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.fillStyle = '#ffffff'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
+  ctx.shadowBlur = 6
+  const brandName = (storeLabel || 'STREAMEPRO').toUpperCase()
+  ctx.fillText(brandName, badgeCx + badgeR + 14, cy - 3)
+
+  // Subtítulo con verificación oficial
+  ctx.font = 'bold 12px monospace'
+  ctx.fillStyle = th.accent || '#38bdf8'
+  ctx.shadowBlur = 0
+  ctx.fillText('✓ OFICIAL · STREAMEPRO.ME', badgeCx + badgeR + 14, cy + 17)
+
+  // Shimmer luxury animado que atraviesa el crest
+  if (isAnimated.value) {
+    ctx.save()
+    roundRect(ctx, crestX, crestY, crestW, crestH, crestH / 2)
+    ctx.clip()
+    const sProg = ((t * 0.25) % 1)
+    const sX = crestX - 100 + sProg * (crestW + 200)
+    const sGrad = ctx.createLinearGradient(sX, crestY, sX + 60, crestY + crestH)
+    sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)')
+    sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = sGrad
+    ctx.fillRect(crestX, crestY, crestW, crestH)
+    ctx.restore()
+  }
+
+  ctx.restore()
+}
+
+function drawStreameProFooter(ctx, cx, cy, domain = 'streamepro.me', t = 0) {
+  ctx.save()
+  const th = currentTheme.value
+  const footW = 540
+  const footH = 46
+  const footX = cx - footW / 2
+  const footY = cy - footH / 2
+
+  // Píldora de cristal oscuro
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.92)'
+  roundRect(ctx, footX, footY, footW, footH, footH / 2)
+  ctx.fill()
+
+  ctx.strokeStyle = th.border || 'rgba(56, 189, 248, 0.45)'
+  ctx.lineWidth = 1.5
+  roundRect(ctx, footX, footY, footW, footH, footH / 2)
+  ctx.stroke()
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 19px monospace'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+  ctx.shadowBlur = 4
+  const domText = (domain || 'streamepro.me').toUpperCase()
+  ctx.fillText(`🌐 WWW.${domText}`, cx, cy)
+
+  // Subtítulo de garantía debajo de la barra
+  ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.90)'
+  ctx.shadowBlur = 0
+  ctx.fillText('Activación Inmediata · Garantía Oficial · Soporte VIP', cx, cy + 32)
+
+  ctx.restore()
 }
 
 // Helpers modulares de dibujo
