@@ -4013,14 +4013,169 @@ const submitAddPlatform = () => {
 // GESTIÓN Y ARMADO DE PAQUETES & OFERTAS (PROVEEDOR)
 const newPackageForm = ref({
   title: '',
+  category: 'streaming',
   description: '',
   badge: '🔥 25% OFF',
+  durationDays: '30',
+  devices: '1',
+  image: '',
   selectedServices: [
     { platform: 'Netflix', planKey: '1_perfil', units: 1 },
     { platform: 'Spotify', planKey: '1_perfil', units: 1 }
   ],
   promoPrice: 0
 })
+
+const packageCategoryFilter = ref('all') // 'all' | 'streaming' | 'internet' | 'panel'
+const packageSearchQuery = ref('')
+const packageSortOrder = ref('default')
+
+const filteredAdminPackages = computed(() => {
+  let list = adminStore.packages || []
+  if (packageCategoryFilter.value !== 'all') {
+    list = list.filter(p => (p.category || 'streaming') === packageCategoryFilter.value)
+  }
+  const q = packageSearchQuery.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(p =>
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.sku || '').toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q) ||
+      (p.services || []).some(s => (s.platform || '').toLowerCase().includes(q))
+    )
+  }
+  if (packageSortOrder.value === 'price_asc') {
+    list = [...list].sort((a, b) => (Number(a.promoPrice) || 0) - (Number(b.promoPrice) || 0))
+  } else if (packageSortOrder.value === 'price_desc') {
+    list = [...list].sort((a, b) => (Number(b.promoPrice) || 0) - (Number(a.promoPrice) || 0))
+  }
+  return list
+})
+
+const showEditPackageModal = ref(false)
+const editingPackageForm = ref({
+  id: '',
+  title: '',
+  category: 'streaming',
+  description: '',
+  badge: '',
+  durationDays: '30',
+  devices: '1',
+  promoPrice: 0,
+  originalPrice: 0,
+  image: '',
+  active: true
+})
+
+const openEditPackageModal = (pkg) => {
+  editingPackageForm.value = {
+    id: pkg.id,
+    title: pkg.title || '',
+    category: pkg.category || 'streaming',
+    description: pkg.description || '',
+    badge: pkg.badge || '',
+    durationDays: String(pkg.durationDays || '30'),
+    devices: String(pkg.devices || '1'),
+    promoPrice: Number(pkg.promoPrice || 0),
+    originalPrice: Number(pkg.originalPrice || 0),
+    image: pkg.image || '',
+    active: pkg.active !== false
+  }
+  showEditPackageModal.value = true
+}
+
+const submitUpdatePackage = () => {
+  const res = adminStore.updatePackage(editingPackageForm.value.id, {
+    title: editingPackageForm.value.title.trim(),
+    category: editingPackageForm.value.category,
+    description: editingPackageForm.value.description.trim(),
+    badge: editingPackageForm.value.badge.trim(),
+    durationDays: editingPackageForm.value.durationDays,
+    devices: editingPackageForm.value.devices,
+    promoPrice: Number(editingPackageForm.value.promoPrice || 0),
+    originalPrice: Number(editingPackageForm.value.originalPrice || 0),
+    image: editingPackageForm.value.image.trim(),
+    active: editingPackageForm.value.active
+  })
+  if (res.success) {
+    toast.add(`Combo "${editingPackageForm.value.title}" actualizado con éxito`, 'success')
+    showEditPackageModal.value = false
+  } else {
+    toast.add(res.error || 'Error al actualizar combo', 'error')
+  }
+}
+
+const handleFlyerImageUpload = (e, targetForm = 'new') => {
+  const file = e.target?.files?.[0]
+  if (!file) return
+  if (file.size > 8 * 1024 * 1024) {
+    toast.add('La imagen supera los 8MB. Selecciona una más liviana.', 'warning')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    const dataUrl = evt.target?.result
+    if (targetForm === 'edit') {
+      editingPackageForm.value.image = dataUrl
+    } else {
+      newPackageForm.value.image = dataUrl
+    }
+    toast.add('🖼️ Imagen de flyer cargada correctamente', 'success')
+  }
+  reader.readAsDataURL(file)
+}
+
+const duplicatePackageItem = (pkgId) => {
+  const res = adminStore.duplicatePackage(pkgId)
+  if (res.success) {
+    toast.add(`Copia de combo creada: "${res.package.title}"`, 'success')
+  }
+}
+
+const syncOfficialCombosCatalog = () => {
+  if (confirm('¿Deseas sincronizar el catálogo oficial de 32 combos (Streaming, Internet y Paneles) según combos_y_promociones.txt?')) {
+    const res = adminStore.syncOfficialPackages(false)
+    toast.add(`Catálogo oficial sincronizado: ${res.total} combos listos en panel`, 'success')
+  }
+}
+
+const openFlyerForPackage = (pkg) => {
+  flyerInitialProduct.value = {
+    type: 'combo',
+    itemType: 'combo',
+    id: pkg.id,
+    sku: pkg.sku || pkg.id,
+    title: pkg.title,
+    description: pkg.description,
+    promoPrice: pkg.promoPrice,
+    originalPrice: pkg.originalPrice,
+    image: pkg.image || '',
+    badge: pkg.badge,
+    services: pkg.services || [],
+    durationDays: pkg.durationDays,
+    devices: pkg.devices
+  }
+  showFlyerModal.value = true
+}
+
+const openReelForPackage = (pkg) => {
+  adminReelsPayload.value = {
+    type: 'combo',
+    itemType: 'combo',
+    id: pkg.id,
+    sku: pkg.sku || pkg.id,
+    title: pkg.title,
+    description: pkg.description,
+    promoPrice: pkg.promoPrice,
+    originalPrice: pkg.originalPrice,
+    image: pkg.image || '',
+    badge: pkg.badge,
+    services: pkg.services || [],
+    durationDays: pkg.durationDays,
+    devices: pkg.devices
+  }
+  showAdminReelsModal.value = true
+}
 
 const addServiceToPackage = () => {
   newPackageForm.value.selectedServices.push({
@@ -4093,8 +4248,12 @@ const submitCreatePackage = () => {
 
   const res = adminStore.createPackage({
     title: newPackageForm.value.title.trim(),
+    category: newPackageForm.value.category || 'streaming',
     description: newPackageForm.value.description.trim() || 'Combo exclusivo de entretenimiento con múltiples plataformas combinadas.',
     badge: newPackageForm.value.badge.trim() || `🔥 ${packageCalculation.value.discount}% OFF`,
+    durationDays: newPackageForm.value.durationDays || '30',
+    devices: newPackageForm.value.devices || '1',
+    image: newPackageForm.value.image.trim(),
     services: servicesFormatted,
     promoPrice: Number(newPackageForm.value.promoPrice) || packageCalculation.value.totalRegular,
     createdBy: 'provider',
@@ -4105,8 +4264,12 @@ const submitCreatePackage = () => {
     toast.add(`¡Paquete oficial "${res.package.title}" publicado con éxito!`, 'success')
     newPackageForm.value = {
       title: '',
+      category: 'streaming',
       description: '',
       badge: '🔥 25% OFF',
+      durationDays: '30',
+      devices: '1',
+      image: '',
       selectedServices: [
         { platform: 'Netflix', planKey: '1_perfil', units: 1 },
         { platform: 'Spotify', planKey: '1_perfil', units: 1 }
@@ -7184,63 +7347,180 @@ const deletePackageItem = (pkgId) => {
     </div>
 
     <!-- GESTIÓN Y ARMADOR DE PAQUETES & OFERTAS (PROVEEDOR) -->
-    <div v-if="adminTab === 'packages'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md space-y-8">
+    <div v-if="adminTab === 'packages'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-8">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-800">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-500/20">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-purple-500/20 shrink-0">
             🎁
           </div>
           <div>
-            <h2 class="text-2xl font-black text-white">Armador de Paquetes & Ofertas Promocionales</h2>
-            <p class="text-xs text-slate-400">Crea combos oficiales combinando plataformas, define precios promocionales y publica ofertas en la tienda y para distribuidores.</p>
+            <h2 class="text-2xl font-black text-white">Catálogo de Combos, Promociones &amp; Flyers</h2>
+            <p class="text-xs text-slate-400">Armador de combos para Streaming, Internet Ilimitado y Paneles con imágenes de flyers opcionales y exportación a Canva/Reels.</p>
           </div>
         </div>
-        <div class="bg-purple-500/10 border border-purple-500/30 px-4 py-2 rounded-2xl text-xs font-mono text-purple-300">
-          Total Combos Activos: <strong class="text-white">{{ adminStore.packages.filter(p => p.active).length }}</strong> / {{ adminStore.packages.length }}
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            @click="syncOfficialCombosCatalog"
+            class="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white font-bold text-xs border border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer shadow"
+            title="Restaura o sincroniza los 32 combos de producción desde combos_y_promociones.txt"
+          >
+            <span>🔄</span>
+            <span>Sincronizar Catálogo Oficial (32)</span>
+          </button>
+          <div class="bg-purple-500/10 border border-purple-500/30 px-3.5 py-2 rounded-xl text-xs font-mono text-purple-300 shrink-0">
+            Activos: <strong class="text-white">{{ adminStore.packages.filter(p => p.active).length }}</strong> / {{ adminStore.packages.length }}
+          </div>
         </div>
       </div>
 
-      <!-- FORMULARIO CREAR PAQUETE -->
-      <form @submit.prevent="submitCreatePackage" class="bg-[#020617] p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+      <!-- FORMULARIO CREAR PAQUETE CON SOPORTE DE IMAGEN DE FLYER -->
+      <form @submit.prevent="submitCreatePackage" class="bg-[#020617] p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6 shadow-xl">
         <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
           <h3 class="text-base font-black text-white flex items-center gap-2">
             <span>✨</span>
             <span>Nuevo Combo Mayorista Oficial</span>
           </h3>
-          <span class="text-xs text-slate-400">Configura servicios y precios</span>
+          <span class="text-xs text-slate-400">Configura servicios, imágenes y precios</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="lg:col-span-2">
             <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Título del Combo</label>
             <input 
               v-model="newPackageForm.title" 
               type="text" 
-              placeholder="ej. Pack Familiar Total 4K (Netflix + Disney+ + Spotify)" 
+              placeholder="ej. Promo Imperdible 1 (Netflix + Disney+ + Prime)" 
               required
               class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm font-semibold"
             >
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Badge / Etiqueta Promocional</label>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Categoría de Combo</label>
+            <select
+              v-model="newPackageForm.category"
+              class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm font-semibold cursor-pointer"
+            >
+              <option value="streaming">🎬 Streaming &amp; Cine</option>
+              <option value="internet">🌐 Internet Ilimitado</option>
+              <option value="panel">📺 Panel Revendedor</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Badge / Etiqueta</label>
             <input 
               v-model="newPackageForm.badge" 
               type="text" 
-              placeholder="ej. 🔥 25% OFF, ⚡ COMBO POPULAR, 👑 VIP" 
+              placeholder="ej. 🔥 25% OFF, ⚡ COMBO POPULAR" 
               required
               class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm font-semibold"
             >
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Descripción para Clientes</label>
-          <input 
-            v-model="newPackageForm.description" 
-            type="text" 
-            placeholder="ej. Disfruta de las mejores plataformas con calidad Ultra HD y PINs independientes con soporte 24/7." 
-            class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm"
-          >
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Descripción para Clientes</label>
+            <input 
+              v-model="newPackageForm.description" 
+              type="text" 
+              placeholder="ej. 3 Plataformas líderes con calidad Ultra HD y PIN individual con soporte 24/7." 
+              class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm"
+            >
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Duración</label>
+              <select
+                v-model="newPackageForm.durationDays"
+                class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-xs font-semibold cursor-pointer"
+              >
+                <option value="30">30 Días</option>
+                <option value="55">55 Días</option>
+                <option value="60">60 Días</option>
+                <option value="90">90 Días</option>
+                <option value="Ilimitado">Ilimitado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Dispositivos</label>
+              <select
+                v-model="newPackageForm.devices"
+                class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-xs font-semibold cursor-pointer"
+              >
+                <option value="1">1 Disp</option>
+                <option value="2">2 Disp</option>
+                <option value="3">3 Disp</option>
+                <option value="5">5 Disp</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: IMAGEN DE FLYER OPCIONAL -->
+        <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <span>🖼️</span>
+              <span>Imagen de Flyer Opcional para este Combo:</span>
+            </label>
+            <span class="text-[10px] text-slate-400">Se usará en Flyer Generator, Reels y Tienda</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center gap-3">
+            <div 
+              v-if="newPackageForm.image" 
+              class="w-20 h-24 rounded-xl bg-black border border-white/20 overflow-hidden relative group shrink-0"
+            >
+              <img :src="newPackageForm.image" class="w-full h-full object-cover">
+              <button
+                type="button"
+                @click="newPackageForm.image = ''"
+                class="absolute inset-0 bg-black/70 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                title="Quitar imagen"
+              >
+                ✕ Quitar
+              </button>
+            </div>
+            <div class="flex-1 w-full space-y-2">
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="newPackageForm.image"
+                  type="text"
+                  placeholder="URL de imagen o ruta (ej: /flyers/combos/promo-pantallas-total.png)"
+                  class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                >
+                <label class="px-3 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer shadow shrink-0 flex items-center gap-1.5">
+                  <span>📁 Subir Archivo</span>
+                  <input type="file" accept="image/*" class="hidden" @change="handleFlyerImageUpload($event, 'new')">
+                </label>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+                <span class="text-slate-400">Presets rápidos:</span>
+                <button
+                  type="button"
+                  @click="newPackageForm.image = '/flyers/combos/promo-pantallas-total.png'"
+                  class="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300"
+                >
+                  Pantallas Total
+                </button>
+                <button
+                  type="button"
+                  @click="newPackageForm.image = '/flyers/combos/combo-duo-series.png'"
+                  class="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300"
+                >
+                  Dúo Series
+                </button>
+                <button
+                  type="button"
+                  @click="newPackageForm.image = '/flyers/combos/streamepro-square.jpg'"
+                  class="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300"
+                >
+                  StreamePro Cuadrado
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- SELECTOR DE SERVICIOS INCLUIDOS EN EL PAQUETE -->
@@ -7250,7 +7530,7 @@ const deletePackageItem = (pkgId) => {
             <button 
               type="button" 
               @click="addServiceToPackage" 
-              class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow"
+              class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow cursor-pointer"
             >
               <span>+ Agregar Otra Cuenta</span>
             </button>
@@ -7272,7 +7552,7 @@ const deletePackageItem = (pkgId) => {
                 <select 
                   v-model="srv.platform" 
                   @change="srv.planKey = Object.keys(adminStore.pricingCatalog[srv.platform]?.plans || {})[0] || '1_perfil'"
-                  class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none font-semibold"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none font-semibold cursor-pointer"
                 >
                   <option v-for="(cat, pKey) in adminStore.pricingCatalog" :key="pKey" :value="pKey">
                     {{ pKey }} ({{ cat.name }})
@@ -7285,7 +7565,7 @@ const deletePackageItem = (pkgId) => {
                 <label class="text-[10px] text-slate-400 uppercase block mb-0.5">Plan / Modalidad</label>
                 <select 
                   v-model="srv.planKey" 
-                  class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none font-semibold"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none font-semibold cursor-pointer"
                 >
                   <option 
                     v-for="(pl, planKey) in adminStore.pricingCatalog[srv.platform]?.plans" 
@@ -7310,7 +7590,7 @@ const deletePackageItem = (pkgId) => {
                 v-if="newPackageForm.selectedServices.length > 1"
                 type="button" 
                 @click="removeServiceFromPackage(sIdx)"
-                class="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg text-xs"
+                class="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg text-xs cursor-pointer"
                 title="Quitar de combo"
               >
                 ✕
@@ -7352,88 +7632,212 @@ const deletePackageItem = (pkgId) => {
         <div class="flex justify-end pt-2">
           <button 
             type="submit" 
-            class="bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-400 hover:to-rose-400 text-white px-8 py-3.5 font-black rounded-xl transition-all shadow-lg shadow-purple-500/25 text-sm flex items-center gap-2"
+            class="bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-400 hover:to-rose-400 text-white px-8 py-3.5 font-black rounded-xl transition-all shadow-lg shadow-purple-500/25 text-sm flex items-center gap-2 cursor-pointer"
           >
             <span>🚀 Publicar Paquete Oficial de Ofertas</span>
           </button>
         </div>
       </form>
 
-      <!-- LISTA DE PAQUETES ACTIVOS Y GESTIÓN -->
+      <!-- BARRA DE FILTROS, BÚSQUEDA Y GESTIÓN -->
       <div class="space-y-4">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 class="text-lg font-black text-white">Catálogo de Paquetes y Promociones Creadas</h3>
-          <span class="text-xs text-slate-400 font-mono">{{ adminStore.packages.length }} paquete(s) registrados</span>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-800 pb-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              @click="packageCategoryFilter = 'all'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', packageCategoryFilter === 'all' ? 'bg-pink-600 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+            >
+              Todos ({{ adminStore.packages.length }})
+            </button>
+            <button
+              type="button"
+              @click="packageCategoryFilter = 'streaming'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', packageCategoryFilter === 'streaming' ? 'bg-purple-600 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+            >
+              🎬 Streaming ({{ adminStore.packages.filter(p => !p.category || p.category === 'streaming').length }})
+            </button>
+            <button
+              type="button"
+              @click="packageCategoryFilter = 'internet'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', packageCategoryFilter === 'internet' ? 'bg-cyan-600 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+            >
+              🌐 Internet Ilimitado ({{ adminStore.packages.filter(p => p.category === 'internet').length }})
+            </button>
+            <button
+              type="button"
+              @click="packageCategoryFilter = 'panel'"
+              :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', packageCategoryFilter === 'panel' ? 'bg-amber-600 text-white shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+            >
+              📺 Paneles ({{ adminStore.packages.filter(p => p.category === 'panel').length }})
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 w-full md:w-auto">
+            <input
+              v-model="packageSearchQuery"
+              type="text"
+              placeholder="🔍 Buscar combo o servicio..."
+              class="w-full md:w-56 bg-slate-950 border border-slate-800 focus:border-purple-400 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
+            >
+            <select
+              v-model="packageSortOrder"
+              class="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-bold outline-none cursor-pointer shrink-0"
+            >
+              <option value="default">Por Defecto</option>
+              <option value="price_asc">Menor Precio</option>
+              <option value="price_desc">Mayor Precio</option>
+            </select>
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-if="filteredAdminPackages.length === 0" class="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800 text-slate-400">
+          <p class="text-sm font-bold text-white">No hay combos que coincidan con el filtro.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div 
-            v-for="pkg in adminStore.packages" 
+            v-for="pkg in filteredAdminPackages" 
             :key="pkg.id"
             :class="[
-              'rounded-2xl border p-5 flex flex-col justify-between space-y-4 transition-all',
+              'rounded-2xl border flex flex-col justify-between space-y-3 transition-all overflow-hidden',
               pkg.active ? 'bg-[#020617] border-purple-500/30 shadow-lg' : 'bg-slate-950/60 border-slate-800 opacity-60'
             ]"
           >
-            <div class="space-y-3">
-              <div class="flex justify-between items-start gap-2">
-                <span class="text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full">
+            <!-- Cabecera de Flyer si tiene imagen asignada -->
+            <div v-if="pkg.image" class="w-full h-36 bg-black relative border-b border-white/10 group">
+              <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"></div>
+              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-purple-600/90 backdrop-blur-md text-white border border-purple-400/40 px-2.5 py-0.5 rounded-full shadow">
                   {{ pkg.badge }}
                 </span>
-                <span :class="[
-                  'text-[10px] font-bold px-2 py-0.5 rounded border font-mono',
-                  pkg.createdBy === 'provider' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                ]">
-                  {{ pkg.createdBy === 'provider' ? 'Oficial Proveedor' : `Revendedor: ${pkg.resellerId}` }}
+                <span class="text-[9px] font-mono font-bold bg-black/70 backdrop-blur-md text-slate-300 px-2 py-0.5 rounded border border-white/15">
+                  SKU: {{ pkg.sku || pkg.id }}
                 </span>
               </div>
-
-              <div>
-                <h4 class="font-bold text-white text-base">{{ pkg.title }}</h4>
-                <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ pkg.description }}</p>
-              </div>
-
-              <!-- Servicios incluidos -->
-              <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Cuentas Incluidas:</span>
-                <div v-for="(s, sIdx) in pkg.services" :key="sIdx" class="flex justify-between items-center text-xs">
-                  <span class="text-slate-200 font-semibold">{{ s.platform }} ({{ s.planLabel }})</span>
-                  <span class="text-[10px] text-slate-400 font-mono">${{ s.regularPrice.toLocaleString() }}</span>
-                </div>
-              </div>
-
-              <!-- Precio -->
-              <div class="flex justify-between items-end border-t border-slate-800 pt-3">
-                <div>
-                  <span class="text-[10px] text-slate-400 line-through block font-mono">${{ pkg.originalPrice.toLocaleString() }} ARS</span>
-                  <span class="text-xl font-black text-pink-400 font-mono">${{ pkg.promoPrice.toLocaleString() }} ARS</span>
-                </div>
-                <div class="text-right">
-                  <span class="text-[10px] text-slate-400 block">Costo Mayorista:</span>
-                  <span class="text-xs font-mono text-slate-300">${{ pkg.providerCost.toLocaleString() }} ARS</span>
-                </div>
+              <div class="absolute bottom-2 left-2.5 flex items-center gap-1.5 text-[9px] font-mono">
+                <span class="bg-black/80 backdrop-blur-md text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                  ⏱️ {{ pkg.durationDays || 30 }} Días
+                </span>
+                <span class="bg-black/80 backdrop-blur-md text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/30">
+                  📱 {{ pkg.devices || 1 }} Disp
+                </span>
               </div>
             </div>
 
-            <!-- Acciones -->
-            <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
-              <button 
-                @click="togglePackageState(pkg.id)" 
-                :class="[
-                  'flex-1 text-xs font-bold py-2 px-3 rounded-xl transition-all border',
-                  pkg.active ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
-                ]"
-              >
-                {{ pkg.active ? '⏸ Pausar' : '▶ Activar' }}
-              </button>
+            <div class="p-5 space-y-3 flex-1 flex flex-col justify-between">
+              <div class="space-y-3">
+                <div v-if="!pkg.image" class="flex justify-between items-start gap-2">
+                  <span class="text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full">
+                    {{ pkg.badge }}
+                  </span>
+                  <div class="flex items-center gap-1 text-[9px] font-mono">
+                    <span class="bg-slate-900 text-amber-300 px-2 py-0.5 rounded border border-slate-800">
+                      ⏱️ {{ pkg.durationDays || 30 }}d
+                    </span>
+                    <span class="bg-slate-900 text-cyan-300 px-2 py-0.5 rounded border border-slate-800">
+                      📱 {{ pkg.devices || 1 }} disp
+                    </span>
+                  </div>
+                </div>
 
-              <button 
-                @click="deletePackageItem(pkg.id)" 
-                class="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-xl border border-red-500/20 text-xs font-bold transition-all"
-                title="Eliminar Paquete"
-              >
-                🗑️
-              </button>
+                <div>
+                  <h4 class="font-bold text-white text-base leading-snug">{{ pkg.title }}</h4>
+                  <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ pkg.description }}</p>
+                </div>
+
+                <!-- Servicios incluidos -->
+                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Cuentas Incluidas:</span>
+                  <div v-for="(s, sIdx) in (pkg.services || []).slice(0, 4)" :key="sIdx" class="flex justify-between items-center text-xs">
+                    <span class="text-slate-200 font-semibold truncate">{{ s.platform }} ({{ s.planLabel }})</span>
+                    <span class="text-[10px] text-slate-400 font-mono shrink-0">${{ Number(s.regularPrice || 0).toLocaleString() }}</span>
+                  </div>
+                </div>
+
+                <!-- Precios -->
+                <div class="flex justify-between items-end border-t border-slate-800 pt-3">
+                  <div>
+                    <span v-if="Number(pkg.originalPrice) > Number(pkg.promoPrice)" class="text-[10px] text-slate-400 line-through block font-mono">
+                      ${{ Number(pkg.originalPrice).toLocaleString() }} ARS
+                    </span>
+                    <span class="text-xl font-black text-pink-400 font-mono">
+                      {{ Number(pkg.promoPrice) > 0 ? `${Number(pkg.promoPrice).toLocaleString()} ARS` : 'Consultar' }}
+                    </span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] text-slate-400 block">Costo Mayorista:</span>
+                    <span class="text-xs font-mono text-slate-300">${{ Number(pkg.providerCost || 0).toLocaleString() }} ARS</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BOTONERA DE ACCIÓN COMPLETA: FLYER, REEL, EDITAR, DUPLICAR, PAUSAR, ELIMINAR -->
+              <div class="space-y-2 pt-3 border-t border-slate-800">
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    @click="openFlyerForPackage(pkg)"
+                    class="py-2 px-2.5 rounded-xl bg-pink-600/20 hover:bg-pink-600/40 text-pink-300 hover:text-white border border-pink-500/40 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                    title="Diseñar flyer para este combo"
+                  >
+                    <span>🎨</span>
+                    <span>Flyer</span>
+                  </button>
+                  <button
+                    type="button"
+                    @click="openReelForPackage(pkg)"
+                    class="py-2 px-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border border-indigo-500/40 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                    title="Crear Reel 9:16 para redes sociales"
+                  >
+                    <span>🎬</span>
+                    <span>Reel 9:16</span>
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                  <button 
+                    type="button"
+                    @click="openEditPackageModal(pkg)"
+                    class="flex-1 py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                    title="Editar detalles y cambiar imagen de flyer"
+                  >
+                    <span>✏️</span>
+                    <span>Editar</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    @click="duplicatePackageItem(pkg.id)"
+                    class="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold transition cursor-pointer"
+                    title="Duplicar combo"
+                  >
+                    📋
+                  </button>
+
+                  <button 
+                    type="button"
+                    @click="togglePackageState(pkg.id)" 
+                    :class="[
+                      'p-1.5 px-2.5 rounded-xl transition border text-xs font-bold cursor-pointer',
+                      pkg.active ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    ]"
+                    :title="pkg.active ? 'Pausar combo en tienda' : 'Activar combo en tienda'"
+                  >
+                    {{ pkg.active ? '⏸️' : '▶️' }}
+                  </button>
+
+                  <button 
+                    type="button"
+                    @click="deletePackageItem(pkg.id)" 
+                    class="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded-xl border border-red-500/20 text-xs font-bold transition cursor-pointer"
+                    title="Eliminar Paquete"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -12837,6 +13241,203 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             <button type="submit" class="w-2/3 bg-brand-accent hover:bg-sky-400 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all cursor-pointer">
               {{ editingAccountId ? 'Guardar Cambios' : 'Registrar Cuenta Bancaria' }}
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITAR PAQUETE / COMBO OFICIAL (ADMIN) -->
+    <div v-if="showEditPackageModal" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in">
+      <div class="bg-slate-900 border border-purple-500/40 w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-lg font-black text-white flex items-center gap-2">
+            <span>✏️</span>
+            <span>Editar Combo: {{ editingPackageForm.title }}</span>
+          </h3>
+          <button 
+            type="button" 
+            @click="showEditPackageModal = false" 
+            class="text-slate-400 hover:text-white p-1 rounded-xl text-lg cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitUpdatePackage" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Título del Combo</label>
+              <input 
+                v-model="editingPackageForm.title" 
+                type="text" 
+                required
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none focus:border-purple-400"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Categoría</label>
+              <select
+                v-model="editingPackageForm.category"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none focus:border-purple-400 cursor-pointer"
+              >
+                <option value="streaming">🎬 Streaming &amp; Cine</option>
+                <option value="internet">🌐 Internet Ilimitado</option>
+                <option value="panel">📺 Panel Revendedor</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Badge de Promoción</label>
+              <input 
+                v-model="editingPackageForm.badge" 
+                type="text" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-amber-300 font-bold outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Duración (Días)</label>
+              <select
+                v-model="editingPackageForm.durationDays"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none cursor-pointer"
+              >
+                <option value="30">30 Días</option>
+                <option value="55">55 Días</option>
+                <option value="60">60 Días</option>
+                <option value="90">90 Días</option>
+                <option value="Ilimitado">Ilimitado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Dispositivos</label>
+              <select
+                v-model="editingPackageForm.devices"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none cursor-pointer"
+              >
+                <option value="1">1 Disp</option>
+                <option value="2">2 Disp</option>
+                <option value="3">3 Disp</option>
+                <option value="5">5 Disp</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción</label>
+            <textarea 
+              v-model="editingPackageForm.description" 
+              rows="2"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-pink-300 uppercase mb-1">Precio Promocional ($ ARS)</label>
+              <input 
+                v-model.number="editingPackageForm.promoPrice" 
+                type="number" 
+                step="50"
+                required
+                class="w-full bg-slate-950 border border-pink-500/50 rounded-xl p-2.5 text-sm font-black text-pink-400 font-mono outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Precio Regular / Antes ($ ARS)</label>
+              <input 
+                v-model.number="editingPackageForm.originalPrice" 
+                type="number" 
+                step="50"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-300 font-mono outline-none"
+              >
+            </div>
+          </div>
+
+          <!-- Imagen de Flyer Opcional en Edición -->
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-slate-300 uppercase flex items-center gap-1.5">
+                <span>🖼️</span> Imagen de Flyer del Combo
+              </label>
+              <button
+                v-if="editingPackageForm.image"
+                type="button"
+                @click="editingPackageForm.image = ''"
+                class="text-[10px] text-red-400 hover:text-red-300 font-bold"
+              >
+                ✕ Quitar Imagen
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div 
+                v-if="editingPackageForm.image" 
+                class="w-16 h-20 rounded-xl bg-black border border-white/20 overflow-hidden shrink-0"
+              >
+                <img :src="editingPackageForm.image" class="w-full h-full object-cover">
+              </div>
+              <div class="flex-1 space-y-2">
+                <div class="flex items-center gap-2">
+                  <input
+                    v-model="editingPackageForm.image"
+                    type="text"
+                    placeholder="URL de imagen o ruta (/flyers/combos/...)"
+                    class="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-white outline-none"
+                  >
+                  <label class="px-2.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer shadow shrink-0">
+                    <span>📁 Subir</span>
+                    <input type="file" accept="image/*" class="hidden" @change="handleFlyerImageUpload($event, 'edit')">
+                  </label>
+                </div>
+                <div class="flex flex-wrap gap-1 text-[9px]">
+                  <button
+                    type="button"
+                    @click="editingPackageForm.image = '/flyers/combos/promo-pantallas-total.png'"
+                    class="px-2 py-0.5 rounded bg-slate-900 text-purple-300 border border-slate-800"
+                  >
+                    Pantallas Total
+                  </button>
+                  <button
+                    type="button"
+                    @click="editingPackageForm.image = '/flyers/combos/combo-duo-series.png'"
+                    class="px-2 py-0.5 rounded bg-slate-900 text-purple-300 border border-slate-800"
+                  >
+                    Dúo Series
+                  </button>
+                  <button
+                    type="button"
+                    @click="editingPackageForm.image = '/flyers/combos/streamepro-square.jpg'"
+                    class="px-2 py-0.5 rounded bg-slate-900 text-purple-300 border border-slate-800"
+                  >
+                    StreamePro Cuadrado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-300">
+              <input type="checkbox" v-model="editingPackageForm.active" class="accent-purple-500">
+              <span>Combo Activo en Tienda</span>
+            </label>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                @click="showEditPackageModal = false"
+                class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                class="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white text-xs font-black shadow transition cursor-pointer"
+              >
+                Guardar Cambios
+              </button>
+            </div>
           </div>
         </form>
       </div>

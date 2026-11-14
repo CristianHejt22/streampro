@@ -19,6 +19,7 @@ import {
 import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
+import { getFreshOfficialCombos } from '../services/officialCombosData'
 import { 
   initFirebase, 
   saveStreamingOrderToFirebase, 
@@ -800,46 +801,14 @@ export const useAdminStore = defineStore('admin', {
     // SOLICITUDES DE POSTULACIÓN DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
     resellerApplications: loadDb(DB_KEYS.RESELLER_APPLICATIONS, []),
 
-    // PAQUETES Y COMBOS VIRTUALES OFICIALES
-    packages: loadDb(DB_KEYS.PACKAGES, [
-      {
-        id: 'PKG-101',
-        title: 'Combo Cine Total 4K (Netflix + Disney+ + Max)',
-        description: 'Las 3 plataformas líderes de series, cine y estrenos en calidad Ultra HD.',
-        badge: '🔥 25% OFF - RECOMENDADO',
-        services: [
-          { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 7700, cost: 5500 },
-          { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 4200 },
-          { platform: 'Disney+', planKey: '1_perfil', planLabel: '1 Pantalla VIP', units: 1, regularPrice: 6500, cost: 4500 }
-        ],
-        originalPrice: 20200,
-        promoPrice: 15900,
-        providerCost: 14200,
-        resellerProfit: 1700,
-        createdBy: 'provider',
-        resellerId: 'ALL',
-        active: true,
-        createdAt: '2026-10-14'
-      },
-      {
-        id: 'PKG-102',
-        title: 'Dúo Series & Música (Netflix + Spotify)',
-        description: 'Tus series favoritas en Ultra HD y toda la música del mundo sin publicidad.',
-        badge: '⚡ COMBO POPULAR',
-        services: [
-          { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 7700, cost: 5500 },
-          { platform: 'Spotify', planKey: '1_perfil', planLabel: '1 Slot Familiar', units: 1, regularPrice: 3800, cost: 2500 }
-        ],
-        originalPrice: 11500,
-        promoPrice: 9400,
-        providerCost: 8000,
-        resellerProfit: 1400,
-        createdBy: 'provider',
-        resellerId: 'ALL',
-        active: true,
-        createdAt: '2026-10-14'
+    // PAQUETES Y COMBOS VIRTUALES OFICIALES (32 COMBOS DE STREAMING, INTERNET Y PANELES)
+    packages: (() => {
+      const stored = loadDb(DB_KEYS.PACKAGES, null)
+      if (stored && Array.isArray(stored) && stored.length >= 5) {
+        return stored
       }
-    ]),
+      return getFreshOfficialCombos()
+    })(),
 
     // Visibilidad de la tienda pública y del catálogo físico (Mostrar u Ocultar tienda desde el Panel Admin)
     isStoreVisible: (() => {
@@ -2921,7 +2890,7 @@ export const useAdminStore = defineStore('admin', {
       this.resellerApplications = []
       this.orders = []
       this.physicalOrders = []
-      this.packages = loadDb(DB_KEYS.PACKAGES, [])
+      this.packages = loadDb(DB_KEYS.PACKAGES, getFreshOfficialCombos())
       this.providerBankAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [])
       this.providerBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
       this.bankTransfers = []
@@ -3636,18 +3605,23 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    createPackage({ title, description, badge = 'OFERTA ESPECIAL', services = [], promoPrice, createdBy = 'provider', resellerId = 'ALL' }) {
-      const origPrice = services.reduce((sum, s) => sum + (Number(s.regularPrice) || 0), 0)
+    createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, createdBy = 'provider', resellerId = 'ALL' }) {
+      const origPrice = Number(originalPrice) || services.reduce((sum, s) => sum + (Number(s.regularPrice) || 0), 0)
       const costTotal = services.reduce((sum, s) => sum + (Number(s.cost) || 0), 0)
       const finalPromo = Number(promoPrice || origPrice)
       const profit = finalPromo - costTotal
       const discountPct = origPrice > 0 ? Math.max(0, Math.round(((origPrice - finalPromo) / origPrice) * 100)) : 0
+      const sku = `PKG-${Date.now().toString().slice(-4)}`
 
       const newPkg = {
-        id: `PKG-${Date.now().toString().slice(-4)}`,
+        id: sku,
+        sku,
         title: title || 'Combo Especial de Streaming',
+        category: category || 'streaming',
         description: description || 'Paquete exclusivo con múltiples plataformas combinadas.',
         badge: badge || (discountPct > 0 ? `🔥 ${discountPct}% OFF` : '⭐ COMBO VIP'),
+        durationDays: String(durationDays || '30'),
+        devices: String(devices || '1'),
         services: services.map(s => ({
           platform: s.platform,
           planKey: s.planKey || '1_perfil',
@@ -3656,6 +3630,8 @@ export const useAdminStore = defineStore('admin', {
           regularPrice: Number(s.regularPrice || 0),
           cost: Number(s.cost || 0)
         })),
+        logos: Array.isArray(logos) ? logos : [],
+        image: image || '',
         originalPrice: origPrice,
         promoPrice: finalPromo,
         providerCost: costTotal,
@@ -3683,6 +3659,73 @@ export const useAdminStore = defineStore('admin', {
       }
 
       return { success: true, package: newPkg }
+    },
+
+    updatePackage(pkgId, patch) {
+      const idx = this.packages.findIndex(p => p.id === pkgId)
+      if (idx === -1) return { error: 'Paquete no encontrado' }
+      const p = this.packages[idx]
+      const updated = { ...p, ...patch }
+      if (patch.promoPrice !== undefined || patch.originalPrice !== undefined) {
+        const orig = Number(updated.originalPrice || 0)
+        const promo = Number(updated.promoPrice || 0)
+        if (orig > promo && orig > 0) {
+          updated.discountPercent = Math.round(((orig - promo) / orig) * 100)
+        }
+        if (updated.providerCost) {
+          updated.resellerProfit = promo - updated.providerCost
+        }
+      }
+      this.packages[idx] = updated
+      this.persist(DB_KEYS.PACKAGES)
+      return { success: true, package: updated }
+    },
+
+    duplicatePackage(pkgId) {
+      const orig = this.packages.find(p => p.id === pkgId)
+      if (!orig) return { error: 'Paquete no encontrado' }
+      const newSku = `PKG-${Date.now().toString().slice(-4)}`
+      const clone = {
+        ...JSON.parse(JSON.stringify(orig)),
+        id: newSku,
+        sku: newSku,
+        title: `${orig.title} (Copia)`,
+        createdAt: new Date().toISOString().split('T')[0]
+      }
+      this.packages.unshift(clone)
+      this.persist(DB_KEYS.PACKAGES)
+      return { success: true, package: clone }
+    },
+
+    syncOfficialPackages(force = false) {
+      const fresh = getFreshOfficialCombos()
+      if (force) {
+        this.packages = fresh
+      } else {
+        const existingMap = new Map(this.packages.map(p => [p.sku || p.id, p]))
+        const merged = fresh.map(f => {
+          const key = f.sku || f.id
+          if (existingMap.has(key)) {
+            const existing = existingMap.get(key)
+            return {
+              ...f,
+              ...existing,
+              image: existing.image || f.image,
+              active: existing.active !== undefined ? existing.active : f.active
+            }
+          }
+          return f
+        })
+        this.packages.forEach(p => {
+          const key = p.sku || p.id
+          if (!fresh.some(f => (f.sku || f.id) === key)) {
+            merged.push(p)
+          }
+        })
+        this.packages = merged
+      }
+      this.persist(DB_KEYS.PACKAGES)
+      return { success: true, total: this.packages.length }
     },
 
     togglePackage(pkgId) {

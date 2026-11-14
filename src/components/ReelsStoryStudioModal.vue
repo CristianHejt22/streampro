@@ -3096,7 +3096,7 @@ function onComboChange() {
   currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
   reelBullet1.value = '⚡ Activación Simultánea de Pantallas'
   reelBullet2.value = '🛡️ Ahorro Máximo con Soporte 24/7'
-  const cover = '/flyer-template-cyber-story.png'
+  const cover = c.image || '/flyer-template-cyber-story.png'
   reelArtworkUrl.value = cover
   defaultProductCoverUrl.value = cover
   loadArtwork(cover)

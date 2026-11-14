@@ -664,6 +664,10 @@ watch(selectedPackageId, (newId) => {
       headlineBadge.value = pkg.badge || '🔥 25% OFF - RECOMENDADO'
       customPrice.value = pkg.promoPrice || null
       customOriginalPrice.value = pkg.originalPrice || null
+      if (pkg.image) {
+        customUploadImageUrl.value = pkg.image
+        resetImageAdjustments()
+      }
       
       if (pkg.services && pkg.services.length >= 2) {
         bullet1.value = `✓ ${pkg.services[0].platform} (${pkg.services[0].planLabel})`
@@ -936,6 +940,10 @@ watch(() => props.initialProduct, (prod) => {
     headlineBadge.value = prod.badge || '🔥 25% OFF - RECOMENDADO'
     customPrice.value = prod.promoPrice || null
     customOriginalPrice.value = prod.originalPrice || null
+    if (prod.image) {
+      customUploadImageUrl.value = prod.image
+      resetImageAdjustments()
+    }
   } else if (prod.itemType === 'physical' || prod.platform === 'Producto Físico' || prod.categoryIds || prod.price?.includes('$')) {
     if (isPhysicalFlyerAvailable.value) {
       flyerProductType.value = 'physical'
@@ -1365,7 +1373,7 @@ function renderCanvasFlyerBlob() {
           ctx.shadowBlur = 10
           roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, th.border, 1.5)
           ctx.restore()
-        } else if (flyerProductType.value === 'combo') {
+        } else if (flyerProductType.value === 'combo' && !effectiveCoverImage.value) {
           // Combos streaming: Tarjetas translúcidas futuristas encajadas en el rectángulo
           const services = (selectedPackage.value?.services || []).slice(0, 3)
           if (services.length > 0) {
@@ -1431,19 +1439,23 @@ function renderCanvasFlyerBlob() {
             roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, th.border, 1.5)
             ctx.restore()
 
-            // Insignia de plataforma en esquina inferior derecha
+            // Insignia en esquina inferior derecha
             const platStyle = getPlatformCyberStyle(selectedPlatform.value)
-            const pillW = Math.min(180, innerW * 0.40)
+            const badgeLabel = flyerProductType.value === 'combo'
+              ? (selectedPackage.value?.badge || '🎁 COMBO OFICIAL')
+              : `${platStyle.symbol} ${platStyle.label}`.slice(0, 18)
+            const badgeColor = flyerProductType.value === 'combo' ? '#ec4899' : platStyle.color
+            const pillW = Math.min(200, innerW * 0.44)
             const pillH = 34
             const pillX = innerX + innerW - pillW - 12
             const pillY = innerY + innerH - pillH - 12
             ctx.save()
             ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
-            roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2, true, true, platStyle.color, 1.5)
+            roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2, true, true, badgeColor, 1.5)
             ctx.fillStyle = '#ffffff'
             ctx.font = 'bold 13px sans-serif'
             ctx.textAlign = 'center'
-            ctx.fillText(`${platStyle.symbol} ${platStyle.label}`.slice(0, 18), pillX + pillW / 2, pillY + 22)
+            ctx.fillText(badgeLabel, pillX + pillW / 2, pillY + 22)
             ctx.restore()
           } else {
             // Fallback Emblema Holográfico si la imagen remota no está disponible
@@ -2731,6 +2743,127 @@ const shareToWhatsAppStatus = () => {
                 </span>
               </div>
             </div>
+
+            <!-- Arte / Flyer Opcional para el Combo -->
+            <div class="bg-slate-950/90 p-3 rounded-xl border border-pink-500/30 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase text-pink-300 flex items-center gap-1.5">
+                  <span>🖼️</span> Arte de Flyer del Combo (Opcional)
+                </span>
+                <button
+                  v-if="effectiveCoverImage"
+                  type="button"
+                  @click="customUploadImageUrl = ''; if(selectedPackage) selectedPackage.image = ''"
+                  class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30 hover:bg-rose-500/30 cursor-pointer"
+                >
+                  ✕ Quitar Arte (Ver Iconos)
+                </button>
+              </div>
+
+              <!-- Estado actual -->
+              <div v-if="effectiveCoverImage" class="flex items-center gap-3 bg-slate-900/80 p-2 rounded-xl border border-pink-500/30">
+                <img :src="effectiveCoverImage" class="w-12 h-12 object-cover rounded-lg border border-pink-500/40 shadow shrink-0" />
+                <div class="flex-1 min-w-0 text-left">
+                  <div class="text-[11px] font-black text-white truncate">Arte Publicitario Activo</div>
+                  <div class="text-[10px] text-pink-300 truncate">El visor y descargas mostrarán esta carátula</div>
+                </div>
+              </div>
+              <div v-else class="text-[10px] text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+                ℹ️ Sin arte cargado: Se mostrarán automáticamente las tarjetas holográficas de las plataformas del combo. Puedes subir una imagen o elegir un preset.
+              </div>
+
+              <!-- Presets oficiales de imagen -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase text-slate-400 block">Galería Oficial de Flyers:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    @click="customUploadImageUrl = '/flyers/combos/promo-pantallas-total.png'; resetImageAdjustments()"
+                    :class="['px-2 py-1.5 rounded-lg text-[10px] font-bold border transition text-left truncate cursor-pointer', customUploadImageUrl === '/flyers/combos/promo-pantallas-total.png' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-pink-500/40']"
+                  >
+                    🎬 1 Pantalla de c/u
+                  </button>
+                  <button
+                    type="button"
+                    @click="customUploadImageUrl = '/flyers/combos/combo-duo-series.png'; resetImageAdjustments()"
+                    :class="['px-2 py-1.5 rounded-lg text-[10px] font-bold border transition text-left truncate cursor-pointer', customUploadImageUrl === '/flyers/combos/combo-duo-series.png' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-pink-500/40']"
+                  >
+                    🍿 Dúo Series &amp; Música
+                  </button>
+                  <button
+                    type="button"
+                    @click="customUploadImageUrl = '/flyers/combos/streamepro-square.jpg'; resetImageAdjustments()"
+                    :class="['px-2 py-1.5 rounded-lg text-[10px] font-bold border transition text-left truncate cursor-pointer', customUploadImageUrl === '/flyers/combos/streamepro-square.jpg' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-pink-500/40']"
+                  >
+                    ⚡ StreamePro Cuadrado
+                  </button>
+                  <button
+                    type="button"
+                    @click="customUploadImageUrl = '/flyers/combos/streamepro-feed.jpg'; resetImageAdjustments()"
+                    :class="['px-2 py-1.5 rounded-lg text-[10px] font-bold border transition text-left truncate cursor-pointer', customUploadImageUrl === '/flyers/combos/streamepro-feed.jpg' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-pink-500/40']"
+                  >
+                    📱 StreamePro Feed 4:5
+                  </button>
+                  <button
+                    type="button"
+                    @click="customUploadImageUrl = '/flyers/combos/streamepro-banner.jpg'; resetImageAdjustments()"
+                    :class="['px-2 py-1.5 rounded-lg text-[10px] font-bold border transition text-left truncate cursor-pointer', customUploadImageUrl === '/flyers/combos/streamepro-banner.jpg' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-pink-500/40']"
+                  >
+                    🖥️ StreamePro Banner 16:9
+                  </button>
+                  <button
+                    type="button"
+                    @click="triggerCustomCoverUpload"
+                    class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-pink-950/40 border border-pink-500/40 text-pink-200 hover:bg-pink-900/60 transition text-left truncate flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>📁</span> Subir Propio...
+                  </button>
+                </div>
+              </div>
+
+              <!-- Ajustes de encuadre cuando hay imagen -->
+              <div v-if="effectiveCoverImage" class="pt-2 border-t border-slate-800/80 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    @click="flyerImageFit = 'cover'"
+                    :class="['py-1 px-2 rounded-lg text-[10px] font-bold border transition cursor-pointer', flyerImageFit === 'cover' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-400']"
+                  >
+                    📐 Llenar (Cover)
+                  </button>
+                  <button
+                    type="button"
+                    @click="flyerImageFit = 'contain'"
+                    :class="['py-1 px-2 rounded-lg text-[10px] font-bold border transition cursor-pointer', flyerImageFit === 'contain' ? 'bg-pink-600 border-pink-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-400']"
+                  >
+                    🔲 Completa (Contain)
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                  <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                    <div class="flex justify-between font-bold text-slate-300 mb-1">
+                      <span>🔍 Zoom</span>
+                      <span class="font-mono text-pink-300">{{ Math.round(imageZoom * 100) }}%</span>
+                    </div>
+                    <input v-model.number="imageZoom" type="range" min="0.6" max="2.4" step="0.05" class="w-full accent-pink-500 cursor-pointer">
+                  </div>
+                  <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                    <div class="flex justify-between font-bold text-slate-300 mb-1">
+                      <span>↔️ Pan X</span>
+                      <span class="font-mono text-pink-300">{{ imageOffsetX > 0 ? '+' + Math.round(imageOffsetX) : Math.round(imageOffsetX) }}%</span>
+                    </div>
+                    <input v-model.number="imageOffsetX" type="range" min="-60" max="60" step="1" class="w-full accent-pink-500 cursor-pointer">
+                  </div>
+                  <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                    <div class="flex justify-between font-bold text-slate-300 mb-1">
+                      <span>↕️ Pan Y</span>
+                      <span class="font-mono text-pink-300">{{ imageOffsetY > 0 ? '+' + Math.round(imageOffsetY) : Math.round(imageOffsetY) }}%</span>
+                    </div>
+                    <input v-model.number="imageOffsetY" type="range" min="-60" max="60" step="1" class="w-full accent-pink-500 cursor-pointer">
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- MODO 4: VIDEOJUEGOS DIGITALES -->
@@ -3684,7 +3817,7 @@ const shareToWhatsAppStatus = () => {
               <div v-if="flyerFormat === 'story'" class="relative w-full h-full">
                 <!-- Visor Window -->
                 <div class="absolute top-[13.6%] left-[18.3%] w-[63.3%] h-[28.3%] flex items-center justify-center p-1.5 z-10">
-                  <div v-if="flyerProductType === 'physical'" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
+                  <div v-if="flyerProductType === 'physical' || effectiveCoverImage" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
                     <img 
                       :src="effectiveCoverImage" 
                       :alt="displayTitle" 
@@ -3700,7 +3833,7 @@ const shareToWhatsAppStatus = () => {
                       ]"
                     >
                   </div>
-                  <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
+                  <div v-else-if="flyerProductType === 'combo' && !effectiveCoverImage" class="w-full h-full flex items-center justify-center gap-1.5 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-xl bg-slate-950/90 border flex flex-col items-center justify-center p-1 shadow-md', currentTheme.cssBorder]">
                       <span class="text-xl sm:text-2xl">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[7px] font-black text-white truncate max-w-full mt-0.5">{{ srv.platform }}</span>
@@ -3789,7 +3922,7 @@ const shareToWhatsAppStatus = () => {
                       ]"
                     >
                   </div>
-                  <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
+                  <div v-else-if="flyerProductType === 'combo' && !effectiveCoverImage" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-base">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
@@ -3878,7 +4011,7 @@ const shareToWhatsAppStatus = () => {
                       ]"
                     >
                   </div>
-                  <div v-else-if="flyerProductType === 'combo'" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
+                  <div v-else-if="flyerProductType === 'combo' && !effectiveCoverImage" class="w-full h-full flex items-center justify-center gap-1 p-0.5">
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>

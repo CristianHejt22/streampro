@@ -1558,9 +1558,10 @@ const digitalPlatformFilter = ref('All')
 const digitalCurrentPage = ref(1)
 const digitalItemsPerPage = ref(8) // 4, 6, 8, 'all'
 
-// Paginación de Paquetes y Combos
+// Paginación y Categorías de Paquetes y Combos
 const packagesCurrentPage = ref(1)
-const packagesItemsPerPage = ref(6) // 4, 6, 8, 'all'
+const packagesItemsPerPage = ref(12) // 6, 12, 24, 'all'
+const packageCategoryFilter = ref('all') // 'all' | 'streaming' | 'internet' | 'reseller'
 
 // Filtros, Ordenamiento y Paginación de Productos Físicos
 const physicalSearchQuery = ref('')
@@ -1790,11 +1791,27 @@ watch([searchQuery, selectedCategory, digitalPlatformFilter, digitalItemsPerPage
 })
 
 // ----------------- SECCIÓN 2: PAQUETES & COMBOS -----------------
+const packageCategoryCounts = computed(() => {
+  const active = adminStore.packages.filter(p => p.active)
+  return {
+    all: active.length,
+    streaming: active.filter(p => !p.category || p.category === 'streaming').length,
+    internet: active.filter(p => p.category === 'internet').length,
+    reseller: active.filter(p => p.category === 'iptv_reseller' || p.category === 'reseller').length
+  }
+})
+
 const filteredPackages = computed(() => {
   return adminStore.packages.filter(p => {
     if (!p.active) return false
+    if (packageCategoryFilter.value !== 'all') {
+      const cat = p.category || 'streaming'
+      if (packageCategoryFilter.value === 'streaming' && cat !== 'streaming') return false
+      if (packageCategoryFilter.value === 'internet' && cat !== 'internet') return false
+      if (packageCategoryFilter.value === 'reseller' && (cat !== 'iptv_reseller' && cat !== 'reseller')) return false
+    }
     const q = searchQuery.value.toLowerCase().trim()
-    const matchSearch = !q || p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.services.some(s => s.platform.toLowerCase().includes(q))
+    const matchSearch = !q || p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || (p.services && p.services.some(s => s.platform.toLowerCase().includes(q)))
     const matchDiscount = !onlyDiscountsFilter.value || (p.originalPrice > p.promoPrice)
     return matchSearch && matchDiscount
   })
@@ -1822,7 +1839,7 @@ const changePackagesPage = (page) => {
   scrollToSection('paquetes-combos')
 }
 
-watch([searchQuery, onlyDiscountsFilter, packagesItemsPerPage], () => {
+watch([searchQuery, onlyDiscountsFilter, packagesItemsPerPage, packageCategoryFilter], () => {
   packagesCurrentPage.value = 1
 })
 
@@ -3112,7 +3129,23 @@ const submitOrder = async () => {
             class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
           >
             <div class="space-y-4">
-              <div class="flex justify-between items-start gap-2">
+              <!-- Arte promocional superior si existe -->
+              <div v-if="pkg.image" class="relative -mx-6 -mt-6 mb-3 h-44 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
+                <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+                <div class="absolute top-3 left-3">
+                  <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
+                    {{ pkg.badge || '🔥 OFERTA' }}
+                  </span>
+                </div>
+                <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                  <span v-if="pkg.durationDays" class="text-[10px] font-bold text-emerald-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-500/40 shadow">
+                    ⏱️ {{ pkg.durationDays }} Días
+                  </span>
+                </div>
+              </div>
+
+              <div v-else class="flex justify-between items-start gap-2">
                 <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-sm">
                   {{ pkg.badge || '🔥 OFERTA' }}
                 </span>
@@ -3720,11 +3753,56 @@ const submitOrder = async () => {
         </div>
       </div>
 
+      <!-- Filtros por Categoría de Combos -->
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button
+          type="button"
+          @click="packageCategoryFilter = 'all'"
+          :class="['px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', packageCategoryFilter === 'all' ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-500/20' : 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-800']"
+        >
+          <span>🎁 Todos</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">
+            {{ packageCategoryCounts.all }}
+          </span>
+        </button>
+        <button
+          type="button"
+          @click="packageCategoryFilter = 'streaming'"
+          :class="['px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', packageCategoryFilter === 'streaming' ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-500/20' : 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-800']"
+        >
+          <span>🎬 Streaming &amp; Cine</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">
+            {{ packageCategoryCounts.streaming }}
+          </span>
+        </button>
+        <button
+          type="button"
+          @click="packageCategoryFilter = 'internet'"
+          :class="['px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', packageCategoryFilter === 'internet' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-md shadow-cyan-500/20' : 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-800']"
+        >
+          <span>🌐 Internet Ilimitado</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">
+            {{ packageCategoryCounts.internet }}
+          </span>
+        </button>
+        <button
+          v-if="packageCategoryCounts.reseller > 0"
+          type="button"
+          @click="packageCategoryFilter = 'reseller'"
+          :class="['px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', packageCategoryFilter === 'reseller' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20' : 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-800']"
+        >
+          <span>📺 Paneles</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">
+            {{ packageCategoryCounts.reseller }}
+          </span>
+        </button>
+      </div>
+
       <!-- Grid de Paquetes -->
       <div v-if="filteredPackages.length === 0" class="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 text-slate-400">
         <span class="text-3xl block mb-2">🔍</span>
         <p class="text-sm font-bold text-white">No se encontraron combos para tu búsqueda.</p>
-        <p class="text-xs text-slate-500 mt-1">Prueba borrando los filtros o explorando las suscripciones individuales.</p>
+        <p class="text-xs text-slate-500 mt-1">Prueba borrando los filtros o explorando las otras categorías.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -3734,14 +3812,38 @@ const submitOrder = async () => {
           class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
         >
           <div class="space-y-4">
-            <!-- Header de Tarjeta -->
-            <div class="flex justify-between items-start gap-2">
+            <!-- Header con Flyer Artwork si existe -->
+            <div v-if="pkg.image" class="relative -mx-6 -mt-6 mb-3 h-48 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
+              <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+              <div class="absolute top-3 left-3">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
+                  {{ pkg.badge || '🔥 OFERTA' }}
+                </span>
+              </div>
+              <div class="absolute top-3 right-3 flex items-center gap-1.5">
+                <span v-if="pkg.durationDays" class="text-[10px] font-bold text-emerald-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-500/40 shadow">
+                  ⏱️ {{ pkg.durationDays }} Días
+                </span>
+                <span v-if="pkg.devices" class="text-[10px] font-bold text-sky-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-sky-500/40 shadow">
+                  📱 {{ pkg.devices }} Disp
+                </span>
+              </div>
+            </div>
+
+            <!-- Header de Tarjeta (cuando no tiene imagen) -->
+            <div v-else class="flex justify-between items-start gap-2">
               <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-sm">
                 {{ pkg.badge || '🔥 OFERTA' }}
               </span>
-              <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                {{ pkg.services.length }} Plataformas
-              </span>
+              <div class="flex items-center gap-1.5">
+                <span v-if="pkg.durationDays" class="text-[10px] font-mono text-emerald-300 bg-slate-900 px-2 py-0.5 rounded border border-emerald-500/30">
+                  ⏱️ {{ pkg.durationDays }} Días
+                </span>
+                <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                  {{ pkg.services.length }} {{ pkg.category === 'internet' ? 'Vías' : 'Plataformas' }}
+                </span>
+              </div>
             </div>
 
             <!-- Título y Descripción -->
@@ -3836,10 +3938,10 @@ const submitOrder = async () => {
           <div class="flex items-center gap-1.5 text-slate-400">
             <span class="text-[11px]">Por pág:</span>
             <select v-model="packagesItemsPerPage" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs font-mono focus:outline-none cursor-pointer">
-              <option :value="4">4</option>
-              <option :value="6">6</option>
-              <option :value="8">8</option>
-              <option value="all">Todos</option>
+              <option :value="6">6 por pág</option>
+              <option :value="12">12 por pág</option>
+              <option :value="24">24 por pág</option>
+              <option :value="'all'">Todos (32)</option>
             </select>
           </div>
 
