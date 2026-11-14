@@ -1016,26 +1016,8 @@
                 <span class="text-[10px] text-slate-400">Personalización exclusiva</span>
               </div>
 
-              <!-- HERRAMIENTAS: FLYER OFICIAL ANIMADO -->
-              <div v-if="currentLayoutId === 'flyer_official'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                <div class="p-2.5 bg-slate-900/80 rounded-xl border border-indigo-500/30 flex items-center justify-between gap-1">
-                  <span class="text-indigo-300 font-bold text-[11px]">Plantilla Oficial:</span>
-                  <span class="text-[10px] bg-indigo-500/20 text-indigo-200 px-2 py-0.5 rounded-full font-mono font-bold">
-                    {{ selectedMode === 'gaming' ? 'Gaming Story 9:16' : 'Cyber Story 9:16' }}
-                  </span>
-                </div>
-                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
-                  <span class="text-slate-300">Malla Holográfica</span>
-                  <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
-                </label>
-                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
-                  <span class="text-slate-300">Animación a 30 FPS</span>
-                  <input type="checkbox" v-model="isAnimated" @change="requestCanvasRedraw" class="accent-indigo-500">
-                </label>
-              </div>
-
-              <!-- HERRAMIENTAS: CYBER PRO -->
-              <div v-else-if="currentLayoutId === 'cyber_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+              <!-- HERRAMIENTAS: CYBER PRO (DISEÑO 1 OFICIAL) -->
+              <div v-if="currentLayoutId === 'cyber_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
                   <span class="text-slate-300">Malla Holográfica</span>
                   <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
@@ -1139,6 +1121,24 @@
                     <input type="checkbox" v-model="electricPulse" @change="requestCanvasRedraw" class="accent-rose-500">
                   </label>
                 </div>
+              </div>
+
+              <!-- HERRAMIENTAS: FLYER OFICIAL ANIMADO (DEJADA AL FINAL) -->
+              <div v-else-if="currentLayoutId === 'flyer_official'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div class="p-2.5 bg-slate-900/80 rounded-xl border border-indigo-500/30 flex items-center justify-between gap-1">
+                  <span class="text-indigo-300 font-bold text-[11px]">Plantilla Oficial:</span>
+                  <span class="text-[10px] bg-indigo-500/20 text-indigo-200 px-2 py-0.5 rounded-full font-mono font-bold">
+                    {{ selectedMode === 'gaming' ? 'Gaming Story 9:16' : 'Cyber Story 9:16' }}
+                  </span>
+                </div>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Malla Holográfica</span>
+                  <input type="checkbox" v-model="showCyberGrid" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Animación a 30 FPS</span>
+                  <input type="checkbox" v-model="isAnimated" @change="requestCanvasRedraw" class="accent-indigo-500">
+                </label>
               </div>
             </div>
 
@@ -1707,7 +1707,7 @@ const studioTab = ref('product') // 'product' | 'image' | 'design' | 'custom' | 
 const mobileViewMode = ref('preview') // 'preview' | 'editor'
 const selectedMode = ref('streaming') // 'streaming' | 'gaming' | 'combo' | 'giveaway'
 const currentThemeId = ref('cyber_glow')
-const currentLayoutId = ref('flyer_official') // 'flyer_official' | 'cyber_pro' | 'cinematic' | 'glass_vip' | 'split_flash'
+const currentLayoutId = ref('cyber_pro') // 'cyber_pro' | 'cinematic' | 'glass_vip' | 'split_flash' | 'flyer_official'
 
 // Estado de grabación y animación
 const isAnimated = ref(true)
@@ -2170,11 +2170,11 @@ const contentModes = [
 ]
 
 const layoutTemplates = [
-  { id: 'flyer_official', icon: '🎨', name: 'Flyer Oficial (Story 9:16)', desc: 'Mismo diseño exacto y plantilla de FlyerGenerator, pero animado a 30 FPS' },
   { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico StreamePro con visores metálicos' },
   { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada a pantalla completa con viñeta cinemática' },
   { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón de lujo' },
-  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 con cuenta regresiva en vivo' }
+  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 con cuenta regresiva en vivo' },
+  { id: 'flyer_official', icon: '🎨', name: 'Flyer Oficial (Story 9:16)', desc: 'Mismo diseño exacto y plantilla de FlyerGenerator, pero animado a 30 FPS' }
 ]
 
 // ==========================================
@@ -2432,7 +2432,7 @@ const artworkPresets = [
 ]
 
 const currentLayoutName = computed(() => {
-  return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Flyer Oficial'
+  return layoutTemplates.find(l => l.id === currentLayoutId.value)?.name || 'Cyber Pro Oficial'
 })
 
 const currentStreamingPlans = computed(() => {
@@ -2769,7 +2769,7 @@ function autoOptimizeReel() {
   }
 
   if (mode === 'gaming') {
-    currentLayoutId.value = 'flyer_official'
+    currentLayoutId.value = 'cyber_pro'
     if (!customCoverTheme.value) currentThemeId.value = 'cyber_glow'
     imageFitMode.value = 'contain'
     showBrandPill.value = true
@@ -2785,7 +2785,7 @@ function autoOptimizeReel() {
     currentSealText.value = pickedGamingLicense.value === 'primary' ? '🎮 JUGÁ CON TU USUARIO (PSN)' : '⚡ ENTREGA INMEDIATA 15 MIN'
     reelCtaText.value = '🎮 PEDILO AL WHATSAPP'
   } else if (mode === 'streaming') {
-    currentLayoutId.value = 'flyer_official'
+    currentLayoutId.value = 'cyber_pro'
     if (!customCoverTheme.value) {
       currentThemeId.value = pickedStreamingKey.value?.toLowerCase().includes('netflix') ? 'fire_sale' : 'cyber_glow'
     }
@@ -2803,7 +2803,7 @@ function autoOptimizeReel() {
     currentSealText.value = '🔒 100% CUENTA PRIVADA CON PIN'
     reelCtaText.value = '🍿 PEDÍ TU CUENTA HOY'
   } else if (mode === 'combo') {
-    currentLayoutId.value = 'flyer_official'
+    currentLayoutId.value = 'glass_vip'
     if (!customCoverTheme.value) currentThemeId.value = 'gold_vip'
     imageFitMode.value = 'cover'
     showBrandPill.value = true
@@ -2819,7 +2819,7 @@ function autoOptimizeReel() {
     currentSealText.value = '🛡️ GARANTÍA OFICIAL 30 DÍAS'
     reelCtaText.value = '📲 APROVECHAR COMBO VIP'
   } else if (mode === 'giveaway') {
-    currentLayoutId.value = 'flyer_official'
+    currentLayoutId.value = 'split_flash'
     currentThemeId.value = 'fire_sale'
     imageFitMode.value = 'cover'
     showBrandPill.value = true
@@ -3905,10 +3905,323 @@ function renderFrame(timeMs = 0) {
   // ==========================================
 
   // ----------------------------------------------------
-  // PLANTILLA 0: FLYER OFICIAL ANIMADO (STORY 9:16)
+  // PLANTILLA 1: CYBER PRO OFICIAL (DISEÑO 1 ORIGINAL)
+  // ----------------------------------------------------
+  if (layout === 'cyber_pro') {
+    const cardX = 85
+    const cardY = 350
+    const cardW = W - 170
+    const cardH = 780
+
+    // Fondo y borde del visor
+    ctx.save()
+    ctx.shadowColor = th.glow
+    ctx.shadowBlur = 45
+    ctx.fillStyle = '#050a18'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
+    ctx.fill()
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = th.border || th.accent
+      ctx.lineWidth = 4
+      roundRect(ctx, cardX, cardY, cardW, cardH, 44)
+      ctx.stroke()
+    }
+    ctx.restore()
+
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    }
+
+    if (reelBadgeText.value) {
+      let bw = 360
+      let bh = 68
+      let bx = cardX + 30
+      let by = cardY + 30
+      if (selectedMode.value === 'gaming') {
+        if (gamingBadgePosition.value === 'center_top') {
+          bw = 480
+          bx = (W - bw) / 2
+          by = cardY - 45
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = cardW - 40
+          bx = cardX + 20
+          by = cardY - 48
+        }
+      }
+      drawBadgePill(ctx, bx, by, bw, bh, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    // Zona de Precios con proporciones refinadas estilo Flyer
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1148
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    // Beneficios Oficiales Estilo Flyer
+    const bulletsY = priceY + priceH + 16
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
+
+    // Barra / Botón de Acción Oficial de WhatsApp Animado (o CTA alternativo)
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
+    }
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 2: PÓSTER CINEMÁTICO 9:16 (FULL-BLEED)
+  // ----------------------------------------------------
+  else if (layout === 'cinematic') {
+    const cardX = 85
+    const cardW = W - 170
+
+    // Marquesina de cine personalizada
+    ctx.save()
+    ctx.fillStyle = th.accent
+    ctx.font = '900 22px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(cinematicStudioText.value || '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 345)
+    ctx.restore()
+
+    if (reelBadgeText.value) {
+      drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (!(loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0))) {
+      ctx.save()
+      roundRect(ctx, cardX, 370, cardW, 700, 44)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX, 370, cardW, 700, t)
+      ctx.restore()
+    }
+
+    // Placa de Precio Glassmorphism Translúcida Flotante
+    ctx.save()
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const glassY = 1105
+    const glassH = hasPromoCoupon ? 232 : 166
+    const op = (cinematicGlassOpacity.value || 88) / 100
+    ctx.fillStyle = `rgba(2, 6, 23, ${op})`
+    roundRect(ctx, cardX, glassY, cardW, glassH, 44)
+    ctx.fill()
+    ctx.strokeStyle = th.accent
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    drawPriceContent(ctx, glassY, cardW, th, t)
+    ctx.restore()
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, (W - 480) / 2, glassY - 56, 480, 48, currentSealText.value, th.accent)
+    }
+
+    const bulletsY = glassY + glassH + 16
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
+
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
+    }
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 3: GLASSMORPHISM VIP LUXURY
+  // ----------------------------------------------------
+  else if (layout === 'glass_vip') {
+    const cardX = 85
+    const cardY = 350
+    const cardW = W - 170
+    const cardH = 760
+
+    ctx.save()
+    ctx.shadowColor = th.glow
+    ctx.shadowBlur = 40 + (glassBlurFactor.value || 25)
+    ctx.fillStyle = `rgba(15, 23, 42, ${0.76 + ((glassBlurFactor.value || 25) / 180)})`
+    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
+    ctx.lineWidth = 4
+    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    ctx.stroke()
+    ctx.restore()
+
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
+      ctx.save()
+      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      ctx.restore()
+    }
+
+    // Cinta VIP Superior Personalizada
+    ctx.save()
+    const vipW = 400
+    const vipH = 60
+    const vx = (W - vipW) / 2
+    const vy = cardY - 26
+    const vipGrad = ctx.createLinearGradient(vx, vy, vx + vipW, vy)
+    vipGrad.addColorStop(0, '#f59e0b')
+    vipGrad.addColorStop(1, '#d97706')
+    ctx.fillStyle = vipGrad
+    roundRect(ctx, vx, vy, vipW, vipH, 30)
+    ctx.fill()
+    ctx.fillStyle = '#020617'
+    ctx.font = '900 22px -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(vipRibbonText.value || '👑 EDICIÓN VIP OFICIAL', W / 2, vy + 38)
+    ctx.restore()
+
+    if (reelBadgeText.value) {
+      drawBadgePill(ctx, cardX + 30, cardY + 50, 360, 68, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1140
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    const bulletsY = priceY + priceH + 16
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
+
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
+    }
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 4: SPLIT FLASH / URGENCIA RELÁMPAGO (50/50)
+  // ----------------------------------------------------
+  else if (layout === 'split_flash') {
+    const cardX = 85
+    const cardY = 340
+    const cardW = W - 170
+    const cardH = 620
+
+    ctx.save()
+    ctx.fillStyle = '#050a18'
+    if (electricPulse.value && isAnimated.value) {
+      ctx.shadowColor = '#ef4444'
+      ctx.shadowBlur = 18 + Math.sin(t * 8) * 8
+    }
+    roundRect(ctx, cardX, cardY, cardW, cardH, 40)
+    ctx.fill()
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = '#ef4444'
+      ctx.lineWidth = electricPulse.value && isAnimated.value ? (3 + Math.sin(t * 8) * 1.5) : 4
+      roundRect(ctx, cardX, cardY, cardW, cardH, 40)
+      ctx.stroke()
+    }
+    ctx.restore()
+
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    }
+
+    // Tira Neón Divisora Relámpago con Cuenta Regresiva
+    ctx.save()
+    const stripY = cardY + cardH + 14
+    const stripH = 58
+    const sGrad = ctx.createLinearGradient(cardX, stripY, cardX + cardW, stripY)
+    sGrad.addColorStop(0, '#ef4444')
+    sGrad.addColorStop(0.5, '#f97316')
+    sGrad.addColorStop(1, '#ef4444')
+    ctx.fillStyle = sGrad
+    if (electricPulse.value && isAnimated.value) {
+      ctx.shadowColor = '#f97316'
+      ctx.shadowBlur = 14 + Math.sin(t * 8) * 6
+    }
+    roundRect(ctx, cardX, stripY, cardW, stripH, 30)
+    ctx.fill()
+
+    const maxSec = (countdownHours.value || 6) * 3600
+    const baseSec = maxSec - Math.floor((t * 2) % maxSec)
+    const hrs = String(Math.floor(baseSec / 3600)).padStart(2, '0')
+    const mins = String(Math.floor((baseSec % 3600) / 60)).padStart(2, '0')
+    const secs = String(baseSec % 60).padStart(2, '0')
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '900 24px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 38)
+    ctx.restore()
+
+    // Panel Inferior de Conversión Urgente
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const lowerY = stripY + stripH + 16
+    const lowerH = hasPromoCoupon ? 232 : 166
+    ctx.save()
+    ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
+    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)'
+    ctx.lineWidth = 3
+    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
+    ctx.stroke()
+
+    drawPriceContent(ctx, lowerY, cardW, th, t)
+    ctx.restore()
+
+    const bulletsY = lowerY + lowerH + 16
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
+
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
+    }
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 5: FLYER OFICIAL ANIMADO (STORY 9:16) - DEPOSITADA AL FINAL
   // Mismo diseño exacto y plantilla de FlyerGenerator, pero con dinámicas a 30 FPS
   // ----------------------------------------------------
-  if (layout === 'flyer_official') {
+  else if (layout === 'flyer_official') {
     const tplImg = selectedMode.value === 'gaming' ? loadedFlyerTemplates.gaming : loadedFlyerTemplates.cyber
     if (tplImg && (tplImg.width > 0 || tplImg.naturalWidth > 0)) {
       ctx.save()
@@ -4310,304 +4623,6 @@ function renderFrame(timeMs = 0) {
       } else {
         drawCtaButton(ctx, 140, waY, W - 280, waH, t)
       }
-    }
-  }
-
-  // ----------------------------------------------------
-  // PLANTILLA 1: CYBER PRO OFICIAL (HUD Y MARCO PRO)
-  // ----------------------------------------------------
-  else if (layout === 'cyber_pro') {
-    const cardX = 85
-    const cardY = 350
-    const cardW = W - 170
-    const cardH = 780
-
-    // Fondo y borde del visor
-    ctx.save()
-    ctx.shadowColor = th.glow
-    ctx.shadowBlur = 45
-    ctx.fillStyle = '#050a18'
-    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
-    ctx.fill()
-    if (showVisorBorderGlow.value) {
-      ctx.strokeStyle = th.border || th.accent
-      ctx.lineWidth = 4
-      roundRect(ctx, cardX, cardY, cardW, cardH, 44)
-      ctx.stroke()
-    }
-    ctx.restore()
-
-    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
-      ctx.save()
-      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
-      ctx.clip()
-      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
-      ctx.restore()
-    } else {
-      ctx.save()
-      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
-      ctx.clip()
-      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
-      ctx.restore()
-    }
-
-    if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 30, cardY + 30, 360, 68, reelBadgeText.value, th.pillGrad)
-    }
-
-    if (currentSealText.value) {
-      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
-    }
-
-    // Zona de Precios con proporciones refinadas estilo Flyer
-    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const priceY = 1148
-    const priceH = hasPromoCoupon ? 232 : 166
-    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
-
-    // Beneficios Oficiales Estilo Flyer
-    const bulletsY = priceY + priceH + 16
-    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
-
-    // Barra / Botón de Acción Oficial de WhatsApp Animado (o CTA alternativo)
-    const waY = bulletsY + bulletsUsedH + 20
-    const waH = 96
-    if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
-    } else {
-      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
-    }
-  }
-
-  // ----------------------------------------------------
-  // PLANTILLA 2: PÓSTER CINEMÁTICO 9:16 (FULL-BLEED)
-  // ----------------------------------------------------
-  else if (layout === 'cinematic') {
-    const cardX = 85
-    const cardW = W - 170
-
-    // Marquesina de cine personalizada
-    ctx.save()
-    ctx.fillStyle = th.accent
-    ctx.font = '900 22px monospace'
-    ctx.textAlign = 'center'
-    ctx.fillText(cinematicStudioText.value || '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 345)
-    ctx.restore()
-
-    if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
-    }
-
-    if (!(loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0))) {
-      ctx.save()
-      roundRect(ctx, cardX, 370, cardW, 700, 44)
-      ctx.clip()
-      drawDirectProceduralCover(ctx, cardX, 370, cardW, 700, t)
-      ctx.restore()
-    }
-
-    // Placa de Precio Glassmorphism Translúcida Flotante
-    ctx.save()
-    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const glassY = 1105
-    const glassH = hasPromoCoupon ? 232 : 166
-    const op = (cinematicGlassOpacity.value || 88) / 100
-    ctx.fillStyle = `rgba(2, 6, 23, ${op})`
-    roundRect(ctx, cardX, glassY, cardW, glassH, 44)
-    ctx.fill()
-    ctx.strokeStyle = th.accent
-    ctx.lineWidth = 3
-    ctx.stroke()
-
-    drawPriceContent(ctx, glassY, cardW, th, t)
-    ctx.restore()
-
-    if (currentSealText.value) {
-      drawTrustSealPill(ctx, (W - 480) / 2, glassY - 56, 480, 48, currentSealText.value, th.accent)
-    }
-
-    const bulletsY = glassY + glassH + 16
-    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
-
-    const waY = bulletsY + bulletsUsedH + 20
-    const waH = 96
-    if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
-    } else {
-      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
-    }
-  }
-
-  // ----------------------------------------------------
-  // PLANTILLA 3: GLASSMORPHISM VIP LUXURY
-  // ----------------------------------------------------
-  else if (layout === 'glass_vip') {
-    const cardX = 85
-    const cardY = 350
-    const cardW = W - 170
-    const cardH = 760
-
-    ctx.save()
-    ctx.shadowColor = th.glow
-    ctx.shadowBlur = 40 + (glassBlurFactor.value || 25)
-    ctx.fillStyle = `rgba(15, 23, 42, ${0.76 + ((glassBlurFactor.value || 25) / 180)})`
-    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
-    ctx.lineWidth = 4
-    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
-    ctx.stroke()
-    ctx.restore()
-
-    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
-      ctx.save()
-      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
-      ctx.clip()
-      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
-      ctx.restore()
-    } else {
-      ctx.save()
-      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
-      ctx.clip()
-      drawDirectProceduralCover(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
-      ctx.restore()
-    }
-
-    // Cinta VIP Superior Personalizada
-    ctx.save()
-    const vipW = 400
-    const vipH = 60
-    const vx = (W - vipW) / 2
-    const vy = cardY - 26
-    const vipGrad = ctx.createLinearGradient(vx, vy, vx + vipW, vy)
-    vipGrad.addColorStop(0, '#f59e0b')
-    vipGrad.addColorStop(1, '#d97706')
-    ctx.fillStyle = vipGrad
-    roundRect(ctx, vx, vy, vipW, vipH, 30)
-    ctx.fill()
-    ctx.fillStyle = '#020617'
-    ctx.font = '900 22px -apple-system, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(vipRibbonText.value || '👑 EDICIÓN VIP OFICIAL', W / 2, vy + 38)
-    ctx.restore()
-
-    if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 30, cardY + 50, 360, 68, reelBadgeText.value, th.pillGrad)
-    }
-
-    if (currentSealText.value) {
-      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
-    }
-
-    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const priceY = 1140
-    const priceH = hasPromoCoupon ? 232 : 166
-    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
-
-    const bulletsY = priceY + priceH + 16
-    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
-
-    const waY = bulletsY + bulletsUsedH + 20
-    const waH = 96
-    if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
-    } else {
-      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
-    }
-  }
-
-  // ----------------------------------------------------
-  // PLANTILLA 4: SPLIT FLASH / URGENCIA RELÁMPAGO (50/50)
-  // ----------------------------------------------------
-  else if (layout === 'split_flash') {
-    const cardX = 85
-    const cardY = 340
-    const cardW = W - 170
-    const cardH = 620
-
-    ctx.save()
-    ctx.fillStyle = '#050a18'
-    if (electricPulse.value && isAnimated.value) {
-      ctx.shadowColor = '#ef4444'
-      ctx.shadowBlur = 18 + Math.sin(t * 8) * 8
-    }
-    roundRect(ctx, cardX, cardY, cardW, cardH, 40)
-    ctx.fill()
-    if (showVisorBorderGlow.value) {
-      ctx.strokeStyle = '#ef4444'
-      ctx.lineWidth = electricPulse.value && isAnimated.value ? (3 + Math.sin(t * 8) * 1.5) : 4
-      roundRect(ctx, cardX, cardY, cardW, cardH, 40)
-      ctx.stroke()
-    }
-    ctx.restore()
-
-    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
-      ctx.save()
-      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
-      ctx.clip()
-      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
-      ctx.restore()
-    } else {
-      ctx.save()
-      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 34)
-      ctx.clip()
-      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
-      ctx.restore()
-    }
-
-    // Tira Neón Divisora Relámpago con Cuenta Regresiva
-    ctx.save()
-    const stripY = cardY + cardH + 14
-    const stripH = 58
-    const sGrad = ctx.createLinearGradient(cardX, stripY, cardX + cardW, stripY)
-    sGrad.addColorStop(0, '#ef4444')
-    sGrad.addColorStop(0.5, '#f97316')
-    sGrad.addColorStop(1, '#ef4444')
-    ctx.fillStyle = sGrad
-    if (electricPulse.value && isAnimated.value) {
-      ctx.shadowColor = '#f97316'
-      ctx.shadowBlur = 14 + Math.sin(t * 8) * 6
-    }
-    roundRect(ctx, cardX, stripY, cardW, stripH, 30)
-    ctx.fill()
-
-    const maxSec = (countdownHours.value || 6) * 3600
-    const baseSec = maxSec - Math.floor((t * 2) % maxSec)
-    const hrs = String(Math.floor(baseSec / 3600)).padStart(2, '0')
-    const mins = String(Math.floor((baseSec % 3600) / 60)).padStart(2, '0')
-    const secs = String(baseSec % 60).padStart(2, '0')
-
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 24px monospace'
-    ctx.textAlign = 'center'
-    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 38)
-    ctx.restore()
-
-    // Panel Inferior de Conversión Urgente
-    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const lowerY = stripY + stripH + 16
-    const lowerH = hasPromoCoupon ? 232 : 166
-    ctx.save()
-    ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
-    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)'
-    ctx.lineWidth = 3
-    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
-    ctx.stroke()
-
-    drawPriceContent(ctx, lowerY, cardW, th, t)
-    ctx.restore()
-
-    const bulletsY = lowerY + lowerH + 16
-    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
-
-    const waY = bulletsY + bulletsUsedH + 20
-    const waH = 96
-    if (showContactPhone.value && effectiveContactPhone.value) {
-      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
-    } else {
-      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
     }
   }
 
@@ -5693,7 +5708,7 @@ function initFromProps() {
   }
 
   preloadFlyerTemplates()
-  currentLayoutId.value = 'flyer_official'
+  currentLayoutId.value = p?.layoutId || 'cyber_pro'
 
   const p = props.initialPayload
   if (p) {
