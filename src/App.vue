@@ -145,26 +145,26 @@ const handleOpenCart = () => {
           </RouterLink>
 
           <!-- 2. Badge de Garantía (Visible en Pantallas Grandes) -->
-          <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+          <div class="hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shrink-0">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Garantía Oficial • Entrega: 60/90 min</span>
+            <span>Garantía Oficial • Entrega 10-60 min</span>
           </div>
 
           <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
-          <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/70 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
+          <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/60 backdrop-blur-xl p-1 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
             <RouterLink 
               to="/" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="$route.path === '/' ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="$route.path === '/' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🌟</span>
-              <span>Inicio / Ofertas</span>
+              <span>Inicio</span>
             </RouterLink>
             
             <RouterLink 
               to="/suscripciones" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎬</span>
               <span>Suscripciones</span>
@@ -172,8 +172,8 @@ const handleOpenCart = () => {
 
             <RouterLink 
               to="/combos" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎁</span>
               <span>Combos</span>
@@ -184,11 +184,11 @@ const handleOpenCart = () => {
 
             <RouterLink 
               to="/juegos" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎮</span>
-              <span>Juegos PS5/PS4/PS3</span>
+              <span>Juegos</span>
               <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
                 {{ adminStore.processedGamingProducts?.length || 12 }}
               </span>
@@ -197,11 +197,11 @@ const handleOpenCart = () => {
             <RouterLink 
               v-if="isPhysicalNavVisible"
               to="/tienda" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>📦</span>
-              <span>Tienda Física</span>
+              <span>Físicos</span>
               <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
                 {{ publicPhysicalCount }}
               </span>
@@ -209,8 +209,8 @@ const handleOpenCart = () => {
 
             <RouterLink 
               to="/sorteos" 
-              class="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-gradient-to-r from-amber-500/25 to-rose-500/25 text-amber-300 border border-amber-500/40 shadow-sm font-black' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎉</span>
               <span>Sorteos</span>
@@ -221,8 +221,8 @@ const handleOpenCart = () => {
 
             <RouterLink 
               to="/portal" 
-              class="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5 whitespace-nowrap" 
-              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 shadow-sm"
+              class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5 whitespace-nowrap" 
+              active-class="!bg-sky-500/15 !text-sky-300 !border !border-sky-500/30 font-bold shadow-sm"
             >
               <span>🔐</span>
               <span>Mi Bóveda</span>
@@ -230,7 +230,7 @@ const handleOpenCart = () => {
 
             <RouterLink 
               to="/revendedores" 
-              class="px-3 py-2 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold whitespace-nowrap" 
+              class="px-3 py-1.5 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 font-bold whitespace-nowrap" 
               active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
             >
               <span>🚀</span>
@@ -315,16 +315,16 @@ const handleOpenCart = () => {
           <RouterLink 
             to="/" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="$route.path === '/' ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="$route.path === '/' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🌟</span>
-            <span>Inicio / Ofertas</span>
+            <span>Inicio</span>
           </RouterLink>
           
           <RouterLink 
             to="/suscripciones" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎬</span>
             <span>Suscripciones</span>
@@ -333,7 +333,7 @@ const handleOpenCart = () => {
           <RouterLink 
             to="/combos" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎁</span>
             <span>Combos</span>
@@ -345,10 +345,10 @@ const handleOpenCart = () => {
           <RouterLink 
             to="/juegos" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎮</span>
-            <span>Juegos PS5/PS4/PS3</span>
+            <span>Juegos</span>
             <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
               {{ adminStore.processedGamingProducts?.length || 12 }}
             </span>
@@ -358,7 +358,7 @@ const handleOpenCart = () => {
             v-if="isPhysicalNavVisible"
             to="/tienda" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>📦</span>
             <span>Físicos</span>
@@ -370,7 +370,7 @@ const handleOpenCart = () => {
           <RouterLink 
             to="/sorteos" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-gradient-to-r from-amber-500/25 to-rose-500/25 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎉</span>
             <span>Sorteos</span>

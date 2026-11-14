@@ -2513,123 +2513,97 @@ const submitOrder = async () => {
 
     <!-- Hero Banner Promocional Enterprise (Exclusivo en Portada Principal) -->
     <div v-if="currentPageSection === 'home'" id="hero-banner" class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
-      <div class="absolute right-[-10%] top-[-20%] w-96 h-96 bg-gradient-to-br from-sky-500/25 via-blue-600/15 to-transparent rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute left-[-10%] bottom-[-20%] w-80 h-80 bg-gradient-to-tr from-amber-500/15 via-orange-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute right-[-10%] top-[-20%] w-96 h-96 bg-gradient-to-br from-sky-500/20 via-blue-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute left-[-10%] bottom-[-20%] w-80 h-80 bg-gradient-to-tr from-amber-500/15 via-indigo-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       
       <div class="max-w-4xl relative z-10">
+        <!-- Badge Superior de Confianza -->
         <div class="inline-flex flex-wrap items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>Entrega Oficial en 10 min a 1 hora</span>
-          <template v-if="isPhysicalNavVisible">
-            <span class="text-slate-500">•</span>
-            <span class="text-amber-300">{{ adminStore.physicalProducts.length }}+ Productos Físicos</span>
-          </template>
           <span class="text-slate-500">•</span>
           <span class="text-emerald-300">Garantía SLA 30 Días</span>
+          <template v-if="isPhysicalNavVisible">
+            <span class="text-slate-500">•</span>
+            <span class="text-amber-300">{{ adminStore.physicalProducts.length }}+ Físicos</span>
+          </template>
         </div>
 
         <h2 class="text-3xl sm:text-5xl lg:text-6xl font-black mb-3 text-white tracking-tight leading-tight">
           Streaming Premium 4K <br class="hidden sm:inline">
           <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-300">
-            {{ isPhysicalNavVisible ? '& Catálogo Oficial de Tecnología' : '& Servicios Premium Digitales' }}
+            {{ isPhysicalNavVisible ? '& Catálogo Oficial de Tecnología' : '& Entretenimiento Digital Oficial' }}
           </span>
         </h2>
         
         <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-normal">
           {{ isPhysicalNavVisible 
-            ? 'Acceso garantizado a tus plataformas favoritas con PIN exclusivo y entrega 60/90min + Más de ' + adminStore.physicalProducts.length + ' productos de tecnología, electrónica, bazar y herramientas con envíos a todo el país y confirmación por WhatsApp antes de transferir.'
-            : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega garantizada en 60/90min.' }}
+            ? 'Acceso garantizado a tus plataformas de streaming y videojuegos favoritos con perfiles privados y activación rápida + Envíos a todo el país en productos de tecnología y bazar con garantía completa.'
+            : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega garantizada en 10m a 1h.' }}
         </p>
 
-        <!-- Trust Metrics Grid -->
-        <div class="mt-6 flex flex-wrap items-center gap-2.5 text-xs font-semibold">
-          <div class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
-            <span class="text-emerald-400 text-sm">⏱️</span>
-            <span class="text-slate-200">Entrega Digital: 60/90 min</span>
+        <!-- Barra de Confianza Compacta -->
+        <div class="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <div class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/[0.08] text-slate-200">
+            <span class="text-emerald-400">⚡</span>
+            <span>Entrega 10m-1h</span>
           </div>
-          <div v-if="isPhysicalNavVisible" class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
-            <span class="text-amber-400 text-sm">🚚</span>
-            <span class="text-slate-200">Envíos a Todo el País</span>
+          <div class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/[0.08] text-slate-200">
+            <span class="text-sky-400">🔒</span>
+            <span>PIN Privado Exclusivo</span>
           </div>
-          <div class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
-            <span class="text-sky-400 text-sm">🔒</span>
-            <span class="text-slate-200">Garantía SLA 30 Días</span>
+          <div class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/[0.08] text-slate-200">
+            <span class="text-pink-400">🛡️</span>
+            <span>Garantía Reposición 100%</span>
           </div>
-          <div class="flex items-center gap-2 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-white/[0.08] shadow-sm">
-            <span class="text-pink-400 text-sm">🎁</span>
-            <span class="text-slate-200">Combos con hasta 35% OFF</span>
+          <div v-if="isPhysicalNavVisible" class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/[0.08] text-slate-200">
+            <span class="text-amber-400">🚚</span>
+            <span>Envíos a Todo el País</span>
           </div>
         </div>
 
-        <!-- Botones de Acción Rápida Dinámicos con Enlaces a Secciones -->
-        <div class="mt-6 flex flex-wrap items-center gap-2 sm:gap-2.5">
-          <RouterLink 
-            to="/suscripciones"
-            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-sky-500/25 hover:scale-[1.02]"
+        <!-- Botones de Acción Focalizados (Sin Sobrecargar la Visual) -->
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <a 
+            href="#secciones-catalogo"
+            class="px-5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-lg bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 shadow-sky-500/20 active:scale-95"
           >
-            <span>🎬</span>
-            <span>Ver Suscripciones (8)</span>
-          </RouterLink>
+            <span>🌟</span>
+            <span>Explorar Colecciones de Oferta ↓</span>
+          </a>
 
-          <RouterLink 
-            to="/combos"
-            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-pink-500/25 hover:scale-[1.02]"
-          >
-            <span>🎁</span>
-            <span>Combos & Promos</span>
-          </RouterLink>
-
-          <RouterLink 
-            to="/juegos"
-            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-indigo-500 via-purple-600 to-blue-600 text-white shadow-indigo-500/25 hover:scale-[1.02]"
-          >
-            <span>🎮</span>
-            <span>Juegos Digitales ({{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }})</span>
-          </RouterLink>
-
-          <RouterLink 
-            v-if="isPhysicalNavVisible"
-            to="/tienda"
-            class="px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-amber-500/25 hover:scale-[1.02]"
-          >
-            <span>📦</span>
-            <span>Catálogo Físico ({{ adminStore.physicalProducts.length }})</span>
-          </RouterLink>
-
-          <!-- Botón Dinámico: Filtrar Solo Ofertas con Descuento -->
           <button 
             type="button"
             @click="toggleOnlyDiscounts"
             :class="[
-              'px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md',
+              'px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm',
               onlyDiscountsFilter
-                ? 'bg-gradient-to-r from-red-500 to-amber-500 text-white shadow-red-500/30 ring-2 ring-amber-400' 
-                : 'bg-red-950/60 text-red-300 hover:text-white border border-red-500/40 hover:bg-red-900/50'
+                ? 'bg-gradient-to-r from-red-500 to-amber-500 text-white shadow-red-500/30 ring-2 ring-amber-400 font-black' 
+                : 'bg-red-950/40 text-red-300 hover:text-white border border-red-500/30 hover:bg-red-900/40'
             ]"
           >
             <span>🔥</span>
-            <span>{{ onlyDiscountsFilter ? 'Mostrando Ofertas' : 'Solo Ofertas % OFF' }}</span>
+            <span>{{ onlyDiscountsFilter ? 'Mostrando Solo Ofertas' : 'Ver Ofertas % OFF' }}</span>
             <span v-if="physicalDiscountsCount > 0" class="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/40 text-amber-300 border border-amber-400/40">
               {{ physicalDiscountsCount }}
             </span>
           </button>
 
-          <!-- Botón Asesoría Directa por WhatsApp -->
           <a 
             :href="getWhatsAppContactUrl()"
             target="_blank"
             rel="noopener noreferrer"
-            class="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm"
+            class="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 hover:text-white border border-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <span>💬</span>
-            <span>Asesoría WhatsApp</span>
+            <span>Asesoría Oficial WhatsApp</span>
           </a>
         </div>
       </div>
     </div>
 
     <!-- BANNER DE CANAL ACTIVO: DISTRIBUIDOR OFICIAL vs TIENDA DIRECTA -->
-    <div v-if="!isDirectSale && currentReseller" class="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
+    <div v-if="!isDirectSale && currentReseller" class="bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0">
           🏪
@@ -2651,15 +2625,15 @@ const submitOrder = async () => {
       </div>
     </div>
 
-    <!-- Selector Principal de Sección: Streaming Digital vs Paquetes vs Productos Físicos -->
-    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
-      <div class="flex flex-wrap p-1.5 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg gap-1">
+    <!-- Selector Principal de Sección: Barra Flotante de Categorías (Pill Dock) -->
+    <div id="secciones-catalogo" class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3 pt-1">
+      <div class="flex items-center gap-1 p-1 bg-slate-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg overflow-x-auto no-scrollbar max-w-full">
         <RouterLink 
           to="/"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'home' 
-              ? 'bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400 text-slate-950 shadow-lg font-black' 
+              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
@@ -2670,29 +2644,28 @@ const submitOrder = async () => {
         <RouterLink 
           to="/suscripciones"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'digital' 
-              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-sky-500/20 font-black' 
+              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎬</span>
-          <span>Suscripciones Digitales</span>
-          <span class="bg-slate-950/80 text-sky-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-sky-400/30">8</span>
+          <span>Suscripciones (8)</span>
         </RouterLink>
 
         <RouterLink 
           to="/combos"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'packages' 
-              ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-lg shadow-purple-500/20 font-black' 
+              ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎁</span>
-          <span>Paquetes & Combos</span>
-          <span class="bg-slate-950/80 text-pink-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-pink-400/30">
+          <span>Combos</span>
+          <span v-if="adminStore.packages.filter(p => p.active).length > 0" class="bg-pink-500/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-pink-400/30">
             {{ adminStore.packages.filter(p => p.active).length }}
           </span>
         </RouterLink>
@@ -2700,15 +2673,15 @@ const submitOrder = async () => {
         <RouterLink 
           to="/juegos"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'gaming' 
-              ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white shadow-lg shadow-indigo-500/20 font-black' 
+              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>🎮</span>
           <span>Juegos PS4/PS5</span>
-          <span class="bg-slate-950/80 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-indigo-400/30">
+          <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-indigo-400/30">
             {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }}
           </span>
         </RouterLink>
@@ -2717,15 +2690,15 @@ const submitOrder = async () => {
           v-if="isPhysicalNavVisible"
           to="/tienda"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'physical' 
-              ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20 font-black' 
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' 
               : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           ]"
         >
           <span>📦</span>
           <span>Catálogo Físico</span>
-          <span class="bg-slate-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-400/30">
+          <span class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-amber-400/30">
             {{ adminStore.physicalProducts.length }}
           </span>
         </RouterLink>
@@ -2733,35 +2706,35 @@ const submitOrder = async () => {
         <RouterLink 
           to="/sorteos"
           :class="[
-            'px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer',
+            'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'sorteos' 
-              ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 shadow-lg shadow-amber-500/20 font-black' 
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' 
               : 'text-amber-300 hover:text-white hover:bg-amber-500/10'
           ]"
         >
           <span>🎉</span>
-          <span>Sorteos & Descuentos</span>
-          <span v-if="adminStore.activeGiveaways?.length > 0" class="bg-slate-950/80 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono border border-amber-400/30">
+          <span>Sorteos</span>
+          <span v-if="adminStore.activeGiveaways?.length > 0" class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-amber-400/30">
             {{ adminStore.activeGiveaways.length }}
           </span>
         </RouterLink>
       </div>
 
-      <!-- Banner de Afiliación / Reseller Asignado -->
-      <div class="flex items-center gap-2 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-white/[0.08] text-xs">
-        <span class="text-slate-400">Distribuidor Asignado:</span>
-        <strong class="text-white font-bold bg-slate-800 px-2.5 py-0.5 rounded">{{ resellerStoreName }}</strong>
-        <span v-if="clientForm.isSharedUrl" class="bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-500/30">
-          🤝 Recomendación Compartida
+      <!-- Badge de Tienda Oficial Verificada -->
+      <div class="hidden sm:flex items-center gap-2 bg-slate-900/60 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/[0.08] text-xs shrink-0">
+        <span class="text-slate-400">Canal:</span>
+        <strong class="text-white font-bold">{{ resellerStoreName }}</strong>
+        <span v-if="clientForm.isSharedUrl" class="bg-emerald-500/15 text-emerald-300 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-500/30">
+          Recomendación
         </span>
-        <span v-else class="bg-sky-500/15 text-sky-300 font-bold px-2.5 py-0.5 rounded text-[11px] border border-sky-500/30 flex items-center gap-1 shadow-sm">
-          🛍️ Tienda Oficial (VERIFICADO)
+        <span v-else class="bg-sky-500/15 text-sky-300 font-bold px-2 py-0.5 rounded text-[11px] border border-sky-500/30 flex items-center gap-1">
+          🛍️ Oficial
         </span>
       </div>
     </div>
 
     <!-- ==================== VISTA 1: PÁGINA PRINCIPAL / SELECCIONES DE OFERTAS MÚLTIPLES ==================== -->
-    <div v-if="currentPageSection === 'home'" id="pagina-principal-ofertas" class="space-y-10">
+    <div v-if="currentPageSection === 'home'" id="pagina-principal-ofertas" class="space-y-12 sm:space-y-16">
       <!-- 1. Teaser de 6 Rubros Curados (en lugar de todas las 20+ categorías) -->
       <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-xl space-y-5">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -3022,6 +2995,56 @@ const submitOrder = async () => {
         </div>
       </div>
 
+      <!-- 3.5 Selección de Ofertas: 🎮 Videojuegos Digitales Oficiales PS5, PS4 & PS3 -->
+      <div v-if="(adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 shadow-lg">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">🎮</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">
+                  Cuentas & Licencias PSN
+                </span>
+                <h3 class="text-lg sm:text-xl font-black text-white">Videojuegos Digitales PS5, PS4 & PS3</h3>
+              </div>
+              <p class="text-xs text-slate-300 mt-0.5">Cuentas Primarias y Secundarias originales con activación directa en tu consola.</p>
+            </div>
+          </div>
+          <RouterLink
+            to="/juegos"
+            class="px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white font-black text-xs border border-indigo-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
+          >
+            <span>Explorar {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }} Juegos</span>
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div
+            v-for="game in (adminStore.processedGamingProducts || []).slice(0, 4)"
+            :key="game.id"
+            @click="openGamingDetail(game)"
+            class="glass-panel glass-panel-hover rounded-2xl overflow-hidden transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
+          >
+            <div>
+              <div class="relative h-36 sm:h-44 bg-slate-950 overflow-hidden flex items-center justify-center">
+                <img :src="game.image" aria-hidden="true" loading="lazy" class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-40 brightness-75 pointer-events-none select-none" @error="(e) => e.target.style.display = 'none'">
+                <img :src="game.image" :alt="game.title" loading="lazy" class="relative z-[1] w-full h-full object-contain p-2 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
+                <span class="absolute top-2 left-2 z-10 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono shadow">{{ game.platform }}</span>
+              </div>
+              <div class="p-3.5 space-y-1">
+                <h4 class="font-black text-white text-xs sm:text-sm line-clamp-1 group-hover:text-indigo-300 transition">{{ game.title }}</h4>
+                <span class="text-[10px] text-slate-400 block">{{ game.category }}</span>
+              </div>
+            </div>
+            <div class="px-3.5 pb-3.5 pt-2 flex items-center justify-between border-t border-slate-800/80">
+              <span class="text-[10px] text-slate-400">Desde:</span>
+              <strong class="text-xs sm:text-sm font-black text-indigo-300 font-mono">${{ (game.effectiveSecondaryPrice || game.effectivePrimaryPrice || 0).toLocaleString() }} ARS</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 4. Selección de Ofertas 3: ⚡ Ofertas Seleccionadas en Tecnología & Bazar -->
       <div v-if="isPhysicalNavVisible" class="space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-amber-500/30 shadow-lg">
@@ -3140,50 +3163,7 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- 4.5 Teaser Catálogo Gaming PS5 / PS4 / PS3 en Inicio -->
-      <div v-if="(adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
-              <span>🎮</span>
-              <span>Videojuegos Digitales Oficiales PS5, PS4 & PS3</span>
-            </h3>
-            <p class="text-xs text-slate-400">Cuentas Primarias y Secundarias originales con activación oficial en tu consola.</p>
-          </div>
-          <RouterLink
-            to="/juegos"
-            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow flex items-center gap-1.5 transition"
-          >
-            <span>Explorar {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }} Juegos</span>
-            <span>→</span>
-          </RouterLink>
-        </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div
-            v-for="game in (adminStore.processedGamingProducts || []).slice(0, 4)"
-            :key="game.id"
-            @click="openGamingDetail(game)"
-            class="bg-slate-900/70 border border-white/[0.08] hover:border-indigo-500/50 rounded-2xl overflow-hidden transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
-          >
-            <div>
-              <div class="relative h-36 sm:h-40 bg-slate-950 overflow-hidden flex items-center justify-center">
-                <img :src="game.image" aria-hidden="true" loading="lazy" class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-45 brightness-75 pointer-events-none select-none" @error="(e) => e.target.style.display = 'none'">
-                <img :src="game.image" :alt="game.title" loading="lazy" class="relative z-[1] w-full h-full object-contain p-1.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
-                <span class="absolute top-2 left-2 z-10 bg-indigo-600/90 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono shadow">{{ game.platform }}</span>
-              </div>
-              <div class="p-3 space-y-1">
-                <h4 class="font-black text-white text-xs line-clamp-1 group-hover:text-indigo-300 transition">{{ game.title }}</h4>
-                <span class="text-[10px] text-slate-400 block">{{ game.category }}</span>
-              </div>
-            </div>
-            <div class="px-3 pb-3 pt-1 flex items-center justify-between border-t border-slate-800/80">
-              <span class="text-[10px] text-slate-400">Desde:</span>
-              <strong class="text-xs sm:text-sm font-black text-indigo-300 font-mono">${{ (game.effectiveSecondaryPrice || game.effectivePrimaryPrice || 0).toLocaleString() }} ARS</strong>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- 4.5 Sorteos Oficiales & Programa de Usuarios Descuento -->
       <GiveawaysSection :reseller-ref="clientForm.selectedResellerId || 'DIRECT'" />
@@ -3271,38 +3251,16 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- Banner Destacado para Descubrir Catálogo Físico (Visible si se filtra sólo digital y la tienda física está activa) -->
-      <div v-if="storeSection === 'digital' && isPhysicalNavVisible" class="bg-gradient-to-r from-amber-950/50 via-slate-900 to-orange-950/40 p-4 sm:p-5 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-        <div class="flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-2xl shrink-0 border border-amber-500/30">
-            📦
-          </div>
-          <div>
-            <strong class="text-white text-sm sm:text-base block font-black">¿Sabías que también tenemos Catálogo de Productos Físicos?</strong>
-            <p class="text-xs text-slate-300 mt-0.5">Tecnología, electrónica, herramientas, bazar y hogar con envíos a todo el país y stock garantizado.</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-          <button 
-            type="button"
-            @click="selectStoreSection('physical', 'catalogo-fisico')"
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>Ver Productos Físicos ({{ adminStore.physicalProducts.length }}) →</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Barra de Búsqueda y Botón de Carrito -->
-      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
+      <!-- Barra de Búsqueda y Filtros Compactos para Suscripciones -->
+      <div class="flex flex-col sm:flex-row items-center gap-3">
+        <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-md">
           <div class="relative flex-1">
-            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input v-model="searchQuery" type="text" placeholder="Buscar por Netflix, Max, Spotify, Disney, IPTV, YouTube, Canva..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
-            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-2 py-0.5 rounded cursor-pointer">✕ Limpiar</button>
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input v-model="searchQuery" type="text" placeholder="Buscar por Netflix, Max, Spotify, Disney, IPTV, YouTube, Canva..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
+            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">✕</button>
           </div>
-          <div class="w-px bg-white/10 my-2"></div>
-          <select v-model="selectedCategory" class="bg-transparent border-none p-3 text-white focus:outline-none cursor-pointer text-sm font-semibold pr-4">
+          <div class="w-px h-6 bg-white/10"></div>
+          <select v-model="selectedCategory" class="bg-transparent border-none py-2 px-2 text-white focus:outline-none cursor-pointer text-xs font-semibold pr-3">
             <option value="All" class="bg-slate-900">Todas las categorías</option>
             <option value="Streaming" class="bg-slate-900">Series & Películas</option>
             <option value="Musica" class="bg-slate-900">Música & Audio</option>
@@ -3310,42 +3268,13 @@ const submitOrder = async () => {
           </select>
         </div>
 
-        <!-- Botón Ver Carrito Pro -->
-        <button 
-          @click="showCartDrawer = true" 
-          class="relative bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 hover:from-sky-300 hover:to-indigo-500 text-slate-950 font-black px-7 py-3.5 rounded-2xl transition-all shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_25px_rgba(56,189,248,0.5)] flex items-center gap-3 w-full sm:w-auto justify-center transform active:scale-95 cursor-pointer"
+        <RouterLink 
+          to="/combos" 
+          class="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/25 text-xs font-bold transition shrink-0"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-          <span>Mi Carrito</span>
-          <span v-if="cartStore.items.length > 0" class="bg-slate-950 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-inner border border-white/20">
-            {{ cartStore.items.length }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Banner Promocional Combos & Ofertas Especiales -->
-      <div 
-        @click="selectStoreSection('packages', 'paquetes-combos')" 
-        class="cursor-pointer bg-gradient-to-r from-purple-950/60 via-pink-950/40 to-slate-900 p-4 sm:p-5 rounded-2xl border border-pink-500/30 hover:border-pink-500/60 transition-all shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
-      >
-        <div class="flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-pink-500/20 text-pink-300 flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
-            🎁
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-black uppercase tracking-wider bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded border border-pink-500/30">
-                ¡Super Ahorro!
-              </span>
-              <span class="text-xs text-slate-300 font-semibold">¿Quieres combinar plataformas en oferta?</span>
-            </div>
-            <p class="text-xs text-slate-400 mt-0.5">Descubre nuestros combos de streaming con hasta 35% de descuento directo en un solo pago.</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 text-pink-300 font-black text-xs group-hover:translate-x-1 transition-transform shrink-0">
-          <span>Ver Paquetes en Oferta ({{ adminStore.packages.filter(p => p.active).length }})</span>
-          <span>→</span>
-        </div>
+          <span>🎁</span>
+          <span>Ver Combos con Descuento →</span>
+        </RouterLink>
       </div>
 
       <!-- Catálogo de Suscripciones -->
@@ -3518,25 +3447,13 @@ const submitOrder = async () => {
 
     <!-- ==================== SECCIÓN 2: PAQUETES & COMBOS EN OFERTA (PÁGINA DEDICADA) ==================== -->
     <div v-else-if="currentPageSection === 'packages'" id="paquetes-combos" class="space-y-6">
-      <!-- Barra de Filtros y Ver Carrito para Combos -->
-      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div class="flex gap-4 p-2 bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-lg">
-          <div class="relative flex-1">
-            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input v-model="searchQuery" type="text" placeholder="Buscar combos (Netflix + Spotify, Trío VIP, MagisTV, Disney)..." class="w-full bg-transparent border-none p-3 pl-10 text-white focus:outline-none focus:ring-0 text-sm placeholder:text-slate-500">
-          </div>
+      <!-- Barra de Filtros Compacta para Combos -->
+      <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl w-full shadow-md">
+        <div class="relative flex-1">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <input v-model="searchQuery" type="text" placeholder="Buscar combos (Netflix + Spotify, Trío VIP, MagisTV, Disney)..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
+          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">✕</button>
         </div>
-
-        <button 
-          @click="showCartDrawer = true" 
-          class="relative bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-400 hover:to-rose-400 text-white font-black px-7 py-3.5 rounded-2xl transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] flex items-center gap-3 w-full sm:w-auto justify-center transform active:scale-95 shrink-0"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-          <span>Ver Mi Pedido</span>
-          <span v-if="cartStore.items.length > 0" class="bg-slate-950 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-inner border border-white/20">
-            {{ cartStore.items.length }}
-          </span>
-        </button>
       </div>
 
       <!-- Banner de Garantía y Beneficios de los Combos -->
