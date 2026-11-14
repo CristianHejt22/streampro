@@ -2984,17 +2984,17 @@ const submitOrder = async () => {
 
             <div>
               <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA -->
-              <div class="flex items-start justify-between gap-2.5 mb-3">
-                <div class="flex items-center gap-3">
+              <div class="flex items-start justify-between gap-2.5 mb-2.5">
+                <div class="flex items-center gap-3 min-w-0">
                   <div 
                     class="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0"
                     v-html="getStreamingMeta(product.platform).iconSvg"
                   ></div>
-                  <div>
-                    <span :class="['text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border inline-block mb-1', getStreamingMeta(product.platform).badgeClass]">
+                  <div class="min-w-0">
+                    <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block mb-0.5', getStreamingMeta(product.platform).badgeClass]">
                       {{ getStreamingMeta(product.platform).badge }}
                     </span>
-                    <h4 class="text-base font-black text-white group-hover:text-sky-300 transition-colors leading-tight">
+                    <h4 class="text-base font-black text-white group-hover:text-sky-300 transition-colors leading-tight truncate">
                       {{ product.name }}
                     </h4>
                   </div>
@@ -3004,17 +3004,8 @@ const submitOrder = async () => {
                 </span>
               </div>
 
-              <p class="text-xs text-slate-400 mb-3.5 leading-relaxed line-clamp-2">
-                {{ product.description }}
-              </p>
-
-              <!-- Selector Rápido de Modalidad Interactivo con Precios Claros -->
-              <div class="space-y-1.5 mb-3.5">
-                <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <span>Modalidad a seleccionar:</span>
-                  <span class="text-sky-400 font-mono">{{ getStreamingPlansKeys(product).length }} opciones</span>
-                </div>
-
+              <!-- Selector de Plan Compacto: pastillas interactivas con etiqueta y precio -->
+              <div class="mb-3">
                 <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/[0.06]">
                   <button
                     v-for="(plan, pKey) in getStreamingPlansDisplay(product)"
@@ -3022,13 +3013,13 @@ const submitOrder = async () => {
                     type="button"
                     @click="setActiveCardPlan(product, pKey)"
                     :class="[
-                      'p-2 rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between',
+                      'py-2 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center',
                       getActiveCardPlanKey(product) === pKey
-                        ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm'
-                        : 'hover:bg-slate-900 border border-transparent'
+                        ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm text-white'
+                        : 'hover:bg-slate-900 border border-transparent text-slate-400 hover:text-slate-200'
                     ]"
                   >
-                    <span :class="['text-[11px] font-bold leading-tight block truncate', getActiveCardPlanKey(product) === pKey ? 'text-white' : 'text-slate-300']">
+                    <span class="text-[11px] font-bold leading-tight block truncate w-full">
                       {{ plan.label.replace(/\(.*?\)/g, '').trim() }}
                     </span>
                     <span class="text-[10px] font-mono font-black text-emerald-400 mt-0.5">
@@ -3038,34 +3029,25 @@ const submitOrder = async () => {
                 </div>
               </div>
 
-              <!-- Bloque Precio Visible & Desglose de Beneficios del Servicio -->
-              <div class="bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3 space-y-2">
-                <div class="flex items-baseline justify-between">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[170px]">
-                      {{ getActiveCardPlan(product).label }}
+              <!-- Bloque Precio & Valor Unificado (Limpio y sin duplicación) -->
+              <div class="flex items-center justify-between bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3">
+                <div>
+                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[160px]">
+                    {{ getActiveCardPlan(product).label }}
+                  </span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-black font-mono text-emerald-400">
+                      ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
                     </span>
-                    <div class="flex items-baseline gap-1">
-                      <span class="text-2xl font-black font-mono text-emerald-400">
-                        ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
-                      </span>
-                      <span class="text-[10px] font-bold text-slate-400">ARS / mes</span>
-                    </div>
+                    <span class="text-[10px] font-bold text-slate-400 font-mono">ARS/mes</span>
                   </div>
-                  <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+                </div>
+                <div class="text-right space-y-0.5">
+                  <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 inline-block font-mono">
                     🛡️ SLA 30d
                   </span>
-                </div>
-
-                <!-- Detalle de Servicio Seleccionado -->
-                <div class="space-y-1 pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-300">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-emerald-400 font-bold text-xs">✓</span>
-                    <span class="truncate">{{ getPlanFeatureHint(getActiveCardPlan(product)) }}</span>
-                  </div>
-                  <div v-for="(ben, bi) in getStreamingMeta(product.platform).highlights.slice(0, 1)" :key="bi" class="flex items-center gap-1.5 text-slate-400">
-                    <span class="text-sky-400 font-bold text-xs">✓</span>
-                    <span class="truncate">{{ ben }}</span>
+                  <div class="text-[10px] text-sky-300 truncate max-w-[140px]">
+                    ✓ {{ getPlanFeatureHint(getActiveCardPlan(product)) }}
                   </div>
                 </div>
               </div>
@@ -3094,7 +3076,6 @@ const submitOrder = async () => {
                 class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
               >
                 <span>Elegir Plan</span>
-                <span class="font-mono text-[11px] bg-slate-950/20 px-1.5 py-0.5 rounded font-black">${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}</span>
                 <span>→</span>
               </button>
             </div>
@@ -3151,67 +3132,57 @@ const submitOrder = async () => {
                 </p>
               </div>
 
-              <!-- Servicios incluidos -->
-              <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 space-y-1.5">
-                <div 
+              <!-- Servicios incluidos en pastillas compactas -->
+              <div class="flex flex-wrap items-center gap-1.5 py-1">
+                <span 
                   v-for="(srv, sIdx) in pkg.services" 
                   :key="sIdx"
-                  class="flex items-center justify-between text-xs bg-slate-900/60 p-2 rounded-xl border border-slate-800/60"
+                  class="bg-slate-950/90 border border-pink-500/25 px-2.5 py-1 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm"
                 >
-                  <div class="flex items-center gap-2">
-                    <span class="text-base">
-                      {{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}
-                    </span>
-                    <strong class="text-white">{{ srv.platform }}</strong>
-                    <span class="text-[11px] text-slate-400">({{ srv.planLabel }})</span>
-                  </div>
-                  <span class="text-[10px] text-slate-400 font-mono">1 mes</span>
-                </div>
+                  <span>{{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}</span>
+                  <span>{{ srv.platform }}</span>
+                  <span class="text-[10px] text-pink-300 font-mono">({{ srv.planLabel }})</span>
+                </span>
               </div>
 
               <!-- Precio y Descuento -->
-              <div class="bg-gradient-to-r from-slate-950 to-pink-950/20 p-3.5 rounded-2xl border border-pink-500/20 flex justify-between items-center">
+              <div class="bg-gradient-to-r from-slate-950 to-pink-950/30 p-3 rounded-2xl border border-pink-500/25 flex justify-between items-center">
                 <div>
-                  <span class="text-[11px] text-slate-400 line-through block">Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS</span>
-                  <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
-                    ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-normal text-slate-400">ARS</span>
+                  <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block">
+                    Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS
                   </span>
+                  <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
+                    ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-bold text-slate-400">ARS</span>
+                  </div>
                 </div>
-                <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-xl text-center">
-                  <span>Ahorras</span>
-                  <div class="font-black text-sm">${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</div>
+                <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1 rounded-xl text-center">
+                  <span class="text-[8px] uppercase font-bold block text-emerald-400">Ahorro</span>
+                  <span>${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</span>
                 </div>
               </div>
             </div>
 
-            <div class="space-y-2 pt-4">
+            <div class="space-y-2 pt-3">
               <button 
                 @click="addPackageToCart(pkg)" 
-                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-black py-3 px-4 rounded-xl transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-black py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs sm:text-sm"
               >
                 <span>+ Agregar Combo al Pedido</span>
               </button>
-              <div class="flex gap-1.5">
+              <div class="grid grid-cols-2 gap-1.5">
                 <button 
                   @click="openSharePlaqueForPackage(pkg)"
-                  class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
+                  class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
                   title="Generar placa con logo para compartir"
                 >
-                  <span>📤 Placa</span>
+                  <span>📲 Placa</span>
                 </button>
                 <button 
                   @click="sharePackageWhatsApp(pkg)"
-                  class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-emerald-500/30 transition-colors shrink-0 cursor-pointer"
+                  class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl border border-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
                   title="WhatsApp"
                 >
-                  💬
-                </button>
-                <button 
-                  @click="sharePackageLink(pkg)"
-                  class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 transition-colors shrink-0 cursor-pointer"
-                  title="Copiar enlace"
-                >
-                  🔗
+                  <span>💬 WhatsApp</span>
                 </button>
               </div>
             </div>
@@ -3544,17 +3515,8 @@ const submitOrder = async () => {
               </span>
             </div>
 
-            <p class="text-xs text-slate-400 mb-3.5 leading-relaxed line-clamp-2">
-              {{ product.description }}
-            </p>
-
-            <!-- Selector Rápido de Modalidad Interactivo con Precios Claros -->
-            <div class="space-y-1.5 mb-3.5">
-              <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                <span>Modalidad a seleccionar:</span>
-                <span class="text-sky-400 font-mono">{{ getStreamingPlansKeys(product).length }} opciones</span>
-              </div>
-
+            <!-- Selector de Plan Compacto: pastillas interactivas con etiqueta y precio -->
+            <div class="mb-3">
               <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/[0.06]">
                 <button
                   v-for="(plan, pKey) in getStreamingPlansDisplay(product)"
@@ -3562,13 +3524,13 @@ const submitOrder = async () => {
                   type="button"
                   @click="setActiveCardPlan(product, pKey)"
                   :class="[
-                    'p-2 rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between',
+                    'py-2 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center',
                     getActiveCardPlanKey(product) === pKey
-                      ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm'
-                      : 'hover:bg-slate-900 border border-transparent'
+                      ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm text-white'
+                      : 'hover:bg-slate-900 border border-transparent text-slate-400 hover:text-slate-200'
                   ]"
                 >
-                  <span :class="['text-[11px] font-bold leading-tight block truncate', getActiveCardPlanKey(product) === pKey ? 'text-white' : 'text-slate-300']">
+                  <span class="text-[11px] font-bold leading-tight block truncate w-full">
                     {{ plan.label.replace(/\(.*?\)/g, '').trim() }}
                   </span>
                   <span class="text-[10px] font-mono font-black text-emerald-400 mt-0.5">
@@ -3578,34 +3540,25 @@ const submitOrder = async () => {
               </div>
             </div>
 
-            <!-- Bloque Precio Visible & Desglose de Beneficios del Servicio -->
-            <div class="bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3 space-y-2">
-              <div class="flex items-baseline justify-between">
-                <div>
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[170px]">
-                    {{ getActiveCardPlan(product).label }}
+            <!-- Bloque Precio & Valor Unificado (Limpio y sin duplicación) -->
+            <div class="flex items-center justify-between bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3">
+              <div>
+                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[160px]">
+                  {{ getActiveCardPlan(product).label }}
+                </span>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-2xl font-black font-mono text-emerald-400">
+                    ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
                   </span>
-                  <div class="flex items-baseline gap-1">
-                    <span class="text-2xl font-black font-mono text-emerald-400">
-                      ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
-                    </span>
-                    <span class="text-[10px] font-bold text-slate-400">ARS / mes</span>
-                  </div>
+                  <span class="text-[10px] font-bold text-slate-400 font-mono">ARS/mes</span>
                 </div>
-                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+              </div>
+              <div class="text-right space-y-0.5">
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 inline-block font-mono">
                   🛡️ SLA 30d
                 </span>
-              </div>
-
-              <!-- Detalle de Servicio Seleccionado -->
-              <div class="space-y-1 pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-300">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-emerald-400 font-bold text-xs">✓</span>
-                  <span class="truncate">{{ getPlanFeatureHint(getActiveCardPlan(product)) }}</span>
-                </div>
-                <div v-for="(ben, bi) in getStreamingMeta(product.platform).highlights.slice(0, 1)" :key="bi" class="flex items-center gap-1.5 text-slate-400">
-                  <span class="text-sky-400 font-bold text-xs">✓</span>
-                  <span class="truncate">{{ ben }}</span>
+                <div class="text-[10px] text-sky-300 truncate max-w-[140px]">
+                  ✓ {{ getPlanFeatureHint(getActiveCardPlan(product)) }}
                 </div>
               </div>
             </div>
@@ -3634,7 +3587,6 @@ const submitOrder = async () => {
               class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
             >
               <span>Elegir Plan</span>
-              <span class="font-mono text-[11px] bg-slate-950/20 px-1.5 py-0.5 rounded font-black">${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}</span>
               <span>→</span>
             </button>
           </div>
@@ -3837,53 +3789,46 @@ const submitOrder = async () => {
             </div>
 
             <!-- Precio y Descuento -->
-            <div class="bg-gradient-to-r from-slate-950 to-pink-950/20 p-4 rounded-2xl border border-pink-500/20 flex justify-between items-center">
+            <div class="bg-gradient-to-r from-slate-950 to-pink-950/30 p-3 rounded-2xl border border-pink-500/25 flex justify-between items-center">
               <div>
-                <span class="text-[11px] text-slate-400 line-through block">Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS</span>
-                <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
-                  ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-normal text-slate-400">ARS</span>
+                <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block">
+                  Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS
                 </span>
+                <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
+                  ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-bold text-slate-400">ARS</span>
+                </div>
               </div>
-              <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-xl text-center">
-                <span>Ahorras</span>
-                <div class="font-black text-sm">${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</div>
+              <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1 rounded-xl text-center">
+                <span class="text-[8px] uppercase font-bold block text-emerald-400">Ahorro</span>
+                <span>${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</span>
               </div>
             </div>
           </div>
 
           <!-- Botones de Acción -->
-          <div class="space-y-2 pt-4">
+          <div class="space-y-2 pt-3">
             <button 
               @click="addPackageToCart(pkg)" 
-              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-black py-3 px-4 rounded-xl transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-black py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-xs sm:text-sm"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
               <span>+ Agregar Combo al Pedido</span>
             </button>
 
-            <!-- Acciones Secundarias: Placa, WhatsApp y Link -->
-            <div class="flex gap-1.5">
+            <!-- Acciones Secundarias: Placa & WhatsApp -->
+            <div class="grid grid-cols-2 gap-1.5">
               <button 
                 @click="openSharePlaqueForPackage(pkg)"
-                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
+                class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
                 title="Generar placa con logo para compartir"
               >
-                <span>📤</span>
-                <span class="truncate">Placa</span>
+                <span>📲 Placa</span>
               </button>
               <button 
                 @click="sharePackageWhatsApp(pkg)"
-                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-emerald-500/30 transition-colors shrink-0 cursor-pointer"
+                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl border border-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
                 title="Compartir combo por WhatsApp"
               >
-                💬
-              </button>
-              <button 
-                @click="sharePackageLink(pkg)"
-                class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-800 transition-colors shrink-0 cursor-pointer"
-                title="Copiar enlace directo del combo"
-              >
-                🔗
+                <span>💬 WhatsApp</span>
               </button>
             </div>
           </div>
@@ -4257,39 +4202,34 @@ const submitOrder = async () => {
                 {{ game.description }}
               </p>
 
-              <!-- SELECTOR DE LICENCIA: PRIMARIA vs SECUNDARIA -->
-              <div class="bg-slate-950/90 p-1.5 rounded-2xl border border-slate-800 space-y-1.5">
-                <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 px-1">
-                  <span>Modalidad de Cuenta:</span>
-                  <span class="text-indigo-400 font-mono">100% Original</span>
-                </div>
-
+              <!-- Selector Compacto de Modalidad (Primaria vs Secundaria) -->
+              <div class="space-y-1.5">
                 <!-- Caso PC Steam: Clave Digital -->
                 <div v-if="game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))" class="py-2 px-3 rounded-xl bg-purple-950/40 border border-purple-500/30 text-center">
                   <span class="text-xs font-bold text-purple-300 block">🔑 Clave Digital Oficial Steam</span>
-                  <span class="text-[10px] text-slate-400 block mt-0.5">Canje permanente y directo en tu cuenta personal</span>
+                  <span class="text-[10px] text-slate-400 block mt-0.5">Canje permanente en tu cuenta personal</span>
                 </div>
 
                 <!-- Caso PS3: Licencia Digital Completa -->
                 <div v-else-if="game.platform && game.platform.includes('PS3')" class="py-2 px-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-center">
                   <span class="text-xs font-bold text-cyan-300 block">🕹️ Licencia Digital Oficial PS3</span>
-                  <span class="text-[10px] text-slate-400 block mt-0.5">Juego completo · Instalación directa en tu consola</span>
+                  <span class="text-[10px] text-slate-400 block mt-0.5">Juego completo · Instalación directa</span>
                 </div>
 
                 <!-- Caso Consolas: Cuenta Primaria vs Cuenta Secundaria -->
-                <div v-else class="grid grid-cols-2 gap-1.5">
+                <div v-else class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/[0.06]">
                   <button 
                     type="button" 
                     @click="setGameLicense(game.id, 'primary')"
                     :class="[
                       'py-1.5 px-2 rounded-xl text-center transition-all flex flex-col items-center justify-center border cursor-pointer active:scale-95',
                       getGameSelectedLicense(game.id) === 'primary' 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-400 shadow-md font-black' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                        ? 'bg-indigo-600 text-white border-indigo-400 shadow font-black' 
+                        : 'bg-slate-900 text-slate-400 border-transparent hover:text-white'
                     ]"
                   >
                     <span class="text-[11px] font-bold">⭐️ Primaria</span>
-                    <span class="text-[10px] font-mono">${{ game.effectivePrimaryPrice?.toLocaleString() }}</span>
+                    <span class="text-[10px] font-mono font-bold text-emerald-300">${{ game.effectivePrimaryPrice?.toLocaleString() }}</span>
                   </button>
 
                   <button 
@@ -4298,53 +4238,45 @@ const submitOrder = async () => {
                     :class="[
                       'py-1.5 px-2 rounded-xl text-center transition-all flex flex-col items-center justify-center border cursor-pointer active:scale-95',
                       getGameSelectedLicense(game.id) === 'secondary' 
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-400 shadow-md font-black' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow font-black' 
+                        : 'bg-slate-900 text-slate-400 border-transparent hover:text-white'
                     ]"
                   >
                     <span class="text-[11px] font-bold">⚡️ Secundaria</span>
-                    <span class="text-[10px] font-mono">${{ game.effectiveSecondaryPrice?.toLocaleString() }}</span>
+                    <span class="text-[10px] font-mono font-bold text-emerald-300">${{ game.effectiveSecondaryPrice?.toLocaleString() }}</span>
                   </button>
                 </div>
-                <!-- Explicación de la modalidad seleccionada -->
-                <p v-if="!game.platform || (!game.platform.includes('PC') && !game.platform.includes('Steam') && !game.platform.includes('PS3'))" class="text-[10px] text-slate-400 text-center px-1 pt-0.5">
-                  {{ getGameSelectedLicense(game.id) === 'primary' ? '✓ Juegas con tu propio usuario personal (online y offline)' : '✓ Juegas con el usuario provisto (requiere internet)' }}
-                </p>
               </div>
 
-              <!-- PRECIO FINAL EN PLATAFORMA -->
-              <div class="space-y-1.5 pt-1">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Precio Oficial StreamePro</span>
-                    <div class="flex items-baseline gap-1.5">
-                      <span class="text-xl font-black text-white font-mono">
-                        ${{ (getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString() }}
-                      </span>
-                      <span class="text-[10px] text-slate-400 font-bold">ARS</span>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 block mb-0.5">
-                      ✓ Entrega 60/90min
+              <!-- Bloque Precio & Entrega Unificado -->
+              <div class="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800/80">
+                <div>
+                  <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                    {{ getGameSelectedLicense(game.id) === 'primary' ? 'Cuenta Primaria (Tu Perfil)' : 'Cuenta Secundaria Oficial' }}
+                  </span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-black text-white font-mono">
+                      ${{ (getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString() }}
                     </span>
-                    <span class="text-[9px] text-slate-400 font-mono">{{ getGameStoreLabel(game) }}</span>
+                    <span class="text-[10px] text-slate-400 font-bold font-mono">ARS</span>
                   </div>
                 </div>
-
-
+                <div class="text-right">
+                  <span class="text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
+                    🟢 60-90m
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- BOTONES DE ACCIÓN DE LA TARJETA (GRID 2x2 PERFECTAMENTE ALINEADO) -->
-          <div class="p-4 pt-0 space-y-2">
-            <!-- Fila 1: Compra Directa por WhatsApp y Agregar al Carrito -->
-            <div class="grid grid-cols-2 gap-2">
+          <!-- BOTONES DE ACCIÓN (2x2 LIMPIO) -->
+          <div class="p-3.5 pt-0 space-y-1.5">
+            <div class="grid grid-cols-2 gap-1.5">
               <button 
-                type="button"
+                type="button" 
                 @click="buyGamingViaWhatsApp(game)"
-                class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/40 flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+                class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2 px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
                 title="Comprar directo por WhatsApp"
               >
                 <span>⚡ Comprar</span>
@@ -4352,39 +4284,29 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click="addGameToCartFromCard(game)"
-                class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-2.5 px-2 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+                class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-2 px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
                 title="Agregar al carrito de compras"
               >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span>+ Carrito</span>
               </button>
             </div>
 
-            <!-- Fila 2: Detalle Completo, Placa Compartir y Link -->
-            <div class="flex gap-2">
+            <div class="grid grid-cols-2 gap-1.5">
               <button 
-                type="button"
+                type="button" 
                 @click="openGamingDetail(game)"
-                class="flex-1 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs py-2 px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs py-2 px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Ver sinopsis y características completas"
               >
                 <span>👁️ Detalle</span>
               </button>
               <button 
-                type="button"
+                type="button" 
                 @click="openSharePlaqueForGaming(game)"
-                class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Generar placa para compartir con logo"
               >
-                <span>📤 Placa</span>
-              </button>
-              <button
-                type="button"
-                @click="copyGamingShareUrl(game)"
-                class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-sky-300 border border-slate-700 text-xs font-bold transition cursor-pointer active:scale-95"
-                title="Copiar enlace directo del juego con portada oficial"
-              >
-                🔗
+                <span>📤 Compartir</span>
               </button>
             </div>
           </div>

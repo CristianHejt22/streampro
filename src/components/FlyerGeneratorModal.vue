@@ -3639,10 +3639,11 @@ const shareToWhatsAppStatus = () => {
                       {{ flyerProductType === 'physical' ? '🚚 Envío a Todo el País · Garantía Oficial 100%' : '⚡ Entrega 60/90min · Garantía Oficial 100%' }}
                     </div>
                   </div>
-                  <div class="w-full text-left space-y-0.5 text-[8px] font-medium text-slate-200 px-1">
-                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet1 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet2 }}</span></div>
-                    <div class="flex items-center gap-1 truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span><span class="truncate">{{ bullet3 }}</span></div>
+                  <div class="w-full text-center py-0.5 text-[8px] font-medium text-slate-200 px-1">
+                    <div class="flex items-center justify-center gap-2.5 truncate">
+                      <span class="truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span> {{ bullet1 }}</span>
+                      <span class="truncate"><span :class="['font-bold', currentTheme.cssCheckText]">✓</span> {{ bullet2 }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
