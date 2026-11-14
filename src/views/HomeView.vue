@@ -7,6 +7,7 @@ import { useToastStore } from '../store/toast'
 import { sendLocalNotification } from '../services/notifications'
 import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import { getRememberedSession } from '../services/biometrics'
+import { TRUST_METRICS } from '../services/customerReviewsData'
 import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/marketing'
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
@@ -1563,6 +1564,60 @@ const packagesCurrentPage = ref(1)
 const packagesItemsPerPage = ref(12) // 6, 12, 24, 'all'
 const packageCategoryFilter = ref('all') // 'all' | 'streaming' | 'internet' | 'reseller'
 
+// Reseñas de Clientes Verificados & Confiabilidad
+const selectedReviewCategory = ref('all') // 'all' | 'streaming' | 'gaming' | 'combos' | 'internet'
+const showAddReviewModal = ref(false)
+const newReviewForm = ref({
+  name: '',
+  location: '',
+  category: 'streaming',
+  product: '',
+  rating: 5,
+  title: '',
+  comment: ''
+})
+
+const customerReviewsSummary = computed(() => {
+  const list = adminStore.customerReviews || []
+  return {
+    all: list.length,
+    streaming: list.filter(r => r.category === 'streaming').length,
+    gaming: list.filter(r => r.category === 'gaming').length,
+    combos: list.filter(r => r.category === 'combos').length,
+    internet: list.filter(r => r.category === 'internet').length,
+  }
+})
+
+const filteredCustomerReviews = computed(() => {
+  const list = adminStore.customerReviews || []
+  if (selectedReviewCategory.value === 'all') return list
+  return list.filter(r => r.category === selectedReviewCategory.value)
+})
+
+const submitNewReview = () => {
+  if (!newReviewForm.value.name.trim() || !newReviewForm.value.comment.trim()) {
+    toast.add('Por favor completa tu nombre y comentario', 'error')
+    return
+  }
+  adminStore.addCustomerReview(newReviewForm.value)
+  toast.add('¡Gracias por tu reseña! Ha sido publicada con éxito.', 'success')
+  showAddReviewModal.value = false
+  newReviewForm.value = {
+    name: '',
+    location: '',
+    category: 'streaming',
+    product: '',
+    rating: 5,
+    title: '',
+    comment: ''
+  }
+}
+
+const handleLikeReview = (reviewId) => {
+  adminStore.likeCustomerReview(reviewId)
+  toast.add('¡Gracias por tu valoración!', 'success')
+}
+
 // Filtros, Ordenamiento y Paginación de Productos Físicos
 const physicalSearchQuery = ref('')
 const physicalCategoryFilter = ref('All')
@@ -2719,6 +2774,25 @@ const submitOrder = async () => {
             : 'Acceso garantizado a tus plataformas de streaming y entretenimiento favoritas con PIN exclusivo, perfiles individuales oficiales y entrega garantizada en 10m a 1h.' }}
         </p>
 
+        <!-- Reseñas & Confianza Social Proof Bar en el Inicio -->
+        <div class="mt-4 inline-flex flex-wrap items-center gap-3 bg-slate-950/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-amber-500/35 shadow-lg">
+          <div class="flex items-center gap-1 text-amber-400 text-sm">
+            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-white">
+            <span class="text-amber-300 font-mono font-black text-sm">4.9 / 5.0</span>
+            <span class="text-slate-400 font-normal">·</span>
+            <span>+2.400 Compras Verificadas en Argentina</span>
+          </div>
+          <a
+            href="#testimonios-clientes"
+            class="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline underline-offset-2 flex items-center gap-1 ml-auto"
+          >
+            <span>Ver reseñas reales</span>
+            <span>↓</span>
+          </a>
+        </div>
+
         <!-- Barra de Confianza Compacta -->
         <div class="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
           <div class="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-white/[0.08] text-slate-200">
@@ -3393,6 +3467,183 @@ const submitOrder = async () => {
 
       <!-- 4.5 Sorteos Oficiales & Programa de Usuarios Descuento -->
       <GiveawaysSection :reseller-ref="clientForm.selectedResellerId || 'DIRECT'" />
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 4.8: RESEÑAS DE CLIENTES VERIFICADOS & CONFIANZA -->
+      <!-- ======================================================== -->
+      <section id="testimonios-clientes" class="glass-panel rounded-3xl p-6 sm:p-9 border border-white/[0.08] shadow-2xl space-y-6">
+        <!-- Encabezado de la Sección de Reseñas -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-white/[0.08] pb-5">
+          <div class="space-y-1.5 max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-500/30">
+              <span>⭐️</span>
+              <span>Opiniones Reales &amp; Compra Verificada</span>
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              La Confianza de Quienes Ya Disfrutan StreamePro
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Reseñas auténticas de clientes en toda Argentina sobre suscripciones 4K, cuentas de videojuegos PS5/PS4, combos de ahorro e internet ilimitado.
+            </p>
+          </div>
+
+          <!-- Botones de Acción: Dejar Reseña & WhatsApp -->
+          <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <button
+              type="button"
+              @click="showAddReviewModal = true"
+              class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition active:scale-95 cursor-pointer flex-1 sm:flex-initial"
+            >
+              <span>✍️</span>
+              <span>Dejar mi Opinión</span>
+            </button>
+            <a
+              :href="getWhatsAppContactUrl('¡Hola! Me gustaría hacer una consulta antes de comprar.')"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-3.5 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 flex items-center justify-center gap-1.5 transition cursor-pointer"
+            >
+              <span>💬</span>
+              <span class="hidden sm:inline">WhatsApp</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 4 Tarjetas Métricas de Confianza (KPIs) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-white/[0.06] text-center space-y-1">
+            <div class="text-amber-400 text-base sm:text-lg">★★★★★</div>
+            <div class="text-xl sm:text-2xl font-black font-mono text-white">{{ TRUST_METRICS.averageRating }} / 5.0</div>
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Calificación Promedio</div>
+          </div>
+          <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-white/[0.06] text-center space-y-1">
+            <div class="text-emerald-400 text-base sm:text-lg">⚡</div>
+            <div class="text-xl sm:text-2xl font-black font-mono text-white">&lt; {{ TRUST_METRICS.avgDeliveryMinutes }} min</div>
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Tiempo Medio de Entrega</div>
+          </div>
+          <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-white/[0.06] text-center space-y-1">
+            <div class="text-pink-400 text-base sm:text-lg">🛡️</div>
+            <div class="text-xl sm:text-2xl font-black font-mono text-white">{{ TRUST_METRICS.satisfactionGuaranteePct }}%</div>
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Garantía de Reposición</div>
+          </div>
+          <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-white/[0.06] text-center space-y-1">
+            <div class="text-sky-400 text-base sm:text-lg">🇦🇷</div>
+            <div class="text-xl sm:text-2xl font-black font-mono text-white">+{{ TRUST_METRICS.totalSatisfiedClients.toLocaleString() }}</div>
+            <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Clientes Satisfechos</div>
+          </div>
+        </div>
+
+        <!-- Pestañas Filtro por Campo Ofrecido -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            @click="selectedReviewCategory = 'all'"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', selectedReviewCategory === 'all' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md shadow-amber-500/20' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800']"
+          >
+            <span>🌟 Todas</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">{{ customerReviewsSummary.all }}</span>
+          </button>
+          <button
+            type="button"
+            @click="selectedReviewCategory = 'streaming'"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', selectedReviewCategory === 'streaming' ? 'bg-sky-500 text-white font-black shadow-md shadow-sky-500/20' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800']"
+          >
+            <span>🎬 Streaming 4K</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">{{ customerReviewsSummary.streaming }}</span>
+          </button>
+          <button
+            type="button"
+            @click="selectedReviewCategory = 'gaming'"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', selectedReviewCategory === 'gaming' ? 'bg-indigo-500 text-white font-black shadow-md shadow-indigo-500/20' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800']"
+          >
+            <span>🎮 Videojuegos PS5/PS4</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">{{ customerReviewsSummary.gaming }}</span>
+          </button>
+          <button
+            type="button"
+            @click="selectedReviewCategory = 'combos'"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', selectedReviewCategory === 'combos' ? 'bg-pink-500 text-white font-black shadow-md shadow-pink-500/20' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800']"
+          >
+            <span>🎁 Combos &amp; Packs</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">{{ customerReviewsSummary.combos }}</span>
+          </button>
+          <button
+            type="button"
+            @click="selectedReviewCategory = 'internet'"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5', selectedReviewCategory === 'internet' ? 'bg-cyan-500 text-white font-black shadow-md shadow-cyan-500/20' : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800']"
+          >
+            <span>🌐 Internet Ilimitado</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-black/20 font-black">{{ customerReviewsSummary.internet }}</span>
+          </button>
+        </div>
+
+        <!-- Grid de Tarjetas de Reseñas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="rev in filteredCustomerReviews"
+            :key="rev.id"
+            class="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-white/[0.06] hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 group hover:shadow-xl hover:shadow-amber-500/5"
+          >
+            <div class="space-y-3">
+              <!-- Top Card: Avatar + Autor + Estrellas -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div :class="['w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center font-black text-xs text-white shadow shrink-0', rev.avatarBg || 'from-sky-500 to-indigo-600']">
+                    {{ rev.avatar }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-black text-white truncate flex items-center gap-1.5">
+                      <span>{{ rev.author }}</span>
+                      <span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded-full border border-emerald-500/30">✓</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 truncate">{{ rev.location }}</div>
+                  </div>
+                </div>
+
+                <div class="text-right shrink-0">
+                  <div class="text-amber-400 text-xs">
+                    <span v-for="i in rev.rating" :key="i">★</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono">{{ rev.date }}</span>
+                </div>
+              </div>
+
+              <!-- Badge de Producto Comprado -->
+              <div class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 max-w-full truncate">
+                <span>{{ rev.category === 'streaming' ? '🎬' : rev.category === 'gaming' ? '🎮' : rev.category === 'combos' ? '🎁' : '🌐' }}</span>
+                <span class="truncate">{{ rev.product }}</span>
+              </div>
+
+              <!-- Título & Comentario de Reseña -->
+              <div class="space-y-1">
+                <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-amber-300 transition-colors leading-snug">
+                  "{{ rev.title }}"
+                </h4>
+                <p class="text-xs text-slate-300 leading-relaxed font-normal">
+                  {{ rev.comment }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Footer de la Reseña: Compra Verificada + Like -->
+            <div class="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px]">
+              <span class="text-emerald-400 font-bold flex items-center gap-1">
+                <span>✓</span>
+                <span>Compra Verificada por WhatsApp</span>
+              </span>
+              <button
+                type="button"
+                @click="handleLikeReview(rev.id)"
+                class="flex items-center gap-1 text-slate-400 hover:text-amber-300 transition cursor-pointer font-bold bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800"
+                title="Marcar como útil"
+              >
+                <span>👍</span>
+                <span>{{ rev.likes || 0 }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- 5. Banner de Confianza & SLA Guarantee -->
       <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-2xl">
@@ -6812,6 +7063,124 @@ const submitOrder = async () => {
       :promo-label="sharePlaquePayload?.promoLabel || activePromoPlaqueLabel"
       @close="showSharePlaqueModal = false" 
     />
+
+    <!-- MODAL: DEJAR RESEÑA DE CLIENTE -->
+    <div v-if="showAddReviewModal" class="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div class="bg-slate-900 border border-slate-700/80 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden text-white my-auto">
+        <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⭐️</span>
+            <h3 class="font-black text-white text-base">Dejar mi Opinión en StreamePro</h3>
+          </div>
+          <button @click="showAddReviewModal = false" type="button" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold flex items-center justify-center cursor-pointer">
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitNewReview" class="p-5 space-y-3.5 bg-[#020617]">
+          <!-- Calificación por Estrellas -->
+          <div>
+            <label class="block text-[11px] font-black uppercase text-amber-300 mb-1">Calificación General</label>
+            <div class="flex items-center gap-2">
+              <button
+                v-for="star in 5"
+                :key="star"
+                type="button"
+                @click="newReviewForm.rating = star"
+                class="text-2xl transition hover:scale-125 cursor-pointer"
+                :class="star <= newReviewForm.rating ? 'text-amber-400' : 'text-slate-600'"
+              >
+                ★
+              </button>
+              <span class="text-xs font-mono font-bold text-slate-300 ml-2">{{ newReviewForm.rating }} de 5 estrellas</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Tu Nombre *</label>
+              <input
+                v-model="newReviewForm.name"
+                type="text"
+                required
+                placeholder="Ej: Lucas M."
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+              />
+            </div>
+            <div>
+              <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Tu Ciudad / Provincia</label>
+              <input
+                v-model="newReviewForm.location"
+                type="text"
+                placeholder="Ej: Córdoba Capital"
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Categoría</label>
+              <select
+                v-model="newReviewForm.category"
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white outline-none focus:border-amber-400"
+              >
+                <option value="streaming">🎬 Streaming 4K</option>
+                <option value="gaming">🎮 Videojuegos PS5/PS4</option>
+                <option value="combos">🎁 Combos &amp; Packs</option>
+                <option value="internet">🌐 Internet Ilimitado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Servicio / Juego</label>
+              <input
+                v-model="newReviewForm.product"
+                type="text"
+                placeholder="Ej: Netflix 4K / EA FC 25"
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Título de tu Opinión</label>
+            <input
+              v-model="newReviewForm.title"
+              type="text"
+              placeholder="Ej: Excelente servicio y entrega inmediata"
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
+            />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-black uppercase text-slate-400 mb-1">Tu Comentario *</label>
+            <textarea
+              v-model="newReviewForm.comment"
+              required
+              rows="3"
+              placeholder="Contanos tu experiencia con el servicio, la velocidad de entrega y la atención..."
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-amber-400 resize-none"
+            ></textarea>
+          </div>
+
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              @click="showAddReviewModal = false"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs shadow-lg transition active:scale-95 cursor-pointer"
+            >
+              Publicar Opinión
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 

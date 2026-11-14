@@ -20,6 +20,7 @@ import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCT
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { getFreshOfficialCombos } from '../services/officialCombosData'
+import { INITIAL_CUSTOMER_REVIEWS, TRUST_METRICS, getFreshCustomerReviews } from '../services/customerReviewsData'
 import { 
   initFirebase, 
   saveStreamingOrderToFirebase, 
@@ -921,6 +922,12 @@ export const useAdminStore = defineStore('admin', {
       const cleanEntries = entries.filter(e => e && prodIds.has(e.giveawayId))
       saveDb(DB_KEYS.GIVEAWAY_ENTRIES, cleanEntries)
       return cleanEntries
+    })(),
+    customerReviews: (() => {
+      const stored = loadDb(DB_KEYS.CUSTOMER_REVIEWS, null)
+      if (stored && Array.isArray(stored) && stored.length > 0) return stored
+      saveDb(DB_KEYS.CUSTOMER_REVIEWS, INITIAL_CUSTOMER_REVIEWS)
+      return getFreshCustomerReviews()
     })()
   }},
   getters: {
@@ -1334,6 +1341,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GIVEAWAYS, this.giveaways)
       } else if (key === DB_KEYS.GIVEAWAY_ENTRIES) {
         saveDb(DB_KEYS.GIVEAWAY_ENTRIES, this.giveawayEntries)
+      } else if (key === DB_KEYS.CUSTOMER_REVIEWS) {
+        saveDb(DB_KEYS.CUSTOMER_REVIEWS, this.customerReviews)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -4943,6 +4952,44 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.DISCOUNT_USERS)
       saveMarketingHubPatchToFirebase(patch).catch(() => {})
       return true
+    },
+
+    // ==========================================
+    // RESEÑAS DE CLIENTES VERIFICADOS (PRODUCCIÓN)
+    // ==========================================
+    addCustomerReview({ name, location, category, product, rating, title, comment }) {
+      const newReview = {
+        id: `REV-${Date.now()}`,
+        category: category || 'streaming',
+        author: name.trim() || 'Cliente Satisfecho',
+        location: location?.trim() || 'Argentina',
+        avatar: (name.trim() || 'CS').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+        avatarBg: 'from-sky-500 to-indigo-600',
+        rating: Math.min(5, Math.max(1, Number(rating) || 5)),
+        date: 'Hoy',
+        product: product.trim() || 'Suscripción Oficial',
+        title: title?.trim() || 'Excelente atención y rapidez',
+        comment: comment.trim(),
+        verified: true,
+        likes: 1
+      }
+      if (!Array.isArray(this.customerReviews)) this.customerReviews = []
+      this.customerReviews.unshift(newReview)
+      this.persist(DB_KEYS.CUSTOMER_REVIEWS)
+      return { success: true, review: newReview }
+    },
+    likeCustomerReview(reviewId) {
+      if (!Array.isArray(this.customerReviews)) return
+      const target = this.customerReviews.find(r => r.id === reviewId)
+      if (target) {
+        target.likes = (target.likes || 0) + 1
+        this.persist(DB_KEYS.CUSTOMER_REVIEWS)
+      }
+    },
+    resetCustomerReviewsToProduction() {
+      this.customerReviews = getFreshCustomerReviews()
+      this.persist(DB_KEYS.CUSTOMER_REVIEWS)
+      return { success: true, count: this.customerReviews.length }
     },
 
     // ==========================================

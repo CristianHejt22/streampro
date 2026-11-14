@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToastStore } from '../store/toast'
 import { generateAttractiveShareCopy } from '../utils/marketing'
 
@@ -17,6 +17,15 @@ const emit = defineEmits(['close', 'openInStudio'])
 const toast = useToastStore()
 const isExporting = ref(false)
 const showFullCopy = ref(false)
+
+const localContactPhone = ref(props.contactPhone || '')
+watch(() => props.contactPhone, (newVal) => {
+  if (newVal) localContactPhone.value = newVal
+}, { immediate: true })
+
+const effectiveDistributorPhone = computed(() => {
+  return (localContactPhone.value || props.contactPhone || '').trim()
+})
 
 const activePromoCode = computed(() => String(props.payload?.promoCode || props.promoCode || '').trim().toUpperCase())
 const activePromoLabel = computed(() => String(props.payload?.promoLabel || props.promoLabel || 'Descuento Oficial').trim())
@@ -536,11 +545,16 @@ async function renderPlaqueBlob() {
     }
 
     ctx.shadowColor = th.glowRgba
-    ctx.shadowBlur = 22
+    ctx.shadowBlur = 26
     ctx.fillStyle = '#ffffff'
-    ctx.font = '900 68px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.fillText(priceText, W / 2, pY + (hasOrig ? 96 : 74))
+    ctx.font = '900 64px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.fillText(priceText, W / 2, pY + (hasOrig ? 92 : 72))
     ctx.shadowBlur = 0
+
+    // Sello de Confianza / Garantía Oficial
+    ctx.fillStyle = '#34d399'
+    ctx.font = '900 16px monospace'
+    ctx.fillText('🛡️ GARANTÍA OFICIAL · ENTREGA INMEDIATA · PIN EXCLUSIVO', W / 2, pY + (hasOrig ? 126 : 106))
     ctx.restore()
   }
 
@@ -564,28 +578,66 @@ async function renderPlaqueBlob() {
     ctx.restore()
   }
 
-  // Footer elegante con enlace directo y teléfono
+  // FOOTER: EXCLUSIVAMENTE WHATSAPP DEL DISTRIBUIDOR (SUPER ATRACTIVO Y LUMINOSO)
   ctx.save()
-  const fY = 980
-  const footGrad = ctx.createLinearGradient(120, fY - 12, W - 120, fY - 12)
-  footGrad.addColorStop(0, 'rgba(56, 189, 248, 0)')
-  footGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.55)')
-  footGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
-  ctx.strokeStyle = footGrad
-  ctx.lineWidth = 2
+  const phoneToDisplay = (effectiveDistributorPhone.value || '').trim()
+  const fY = activePromoCode.value ? 970 : 962
+  const fH = 72
+  const fW = Math.min(W - 100, 880)
+  const fX = (W - fW) / 2
+
+  // Fondo cápsula verde esmeralda cyberpunk con resplandor
+  ctx.shadowColor = 'rgba(16, 185, 129, 0.45)'
+  ctx.shadowBlur = 24
+  const pillGrad = ctx.createLinearGradient(fX, fY, fX + fW, fY + fH)
+  pillGrad.addColorStop(0, 'rgba(6, 78, 59, 0.95)')
+  pillGrad.addColorStop(0.5, 'rgba(5, 150, 105, 0.90)')
+  pillGrad.addColorStop(1, 'rgba(4, 120, 87, 0.95)')
+  ctx.fillStyle = pillGrad
+  roundRectPath(ctx, fX, fY, fW, fH, fH / 2)
+  ctx.fill()
+
+  // Borde neón esmeralda
+  ctx.lineWidth = 2.5
+  ctx.strokeStyle = '#34d399'
+  ctx.stroke()
+  ctx.shadowBlur = 0
+
+  // Monograma / Icono WhatsApp circular
+  const iconR = 25
+  const iconX = fX + 44
+  const iconY = fY + fH / 2
   ctx.beginPath()
-  ctx.moveTo(120, fY - 12)
-  ctx.lineTo(W - 120, fY - 12)
+  ctx.arc(iconX, iconY, iconR, 0, Math.PI * 2)
+  ctx.fillStyle = '#22c55e'
+  ctx.fill()
+  ctx.strokeStyle = '#86efac'
+  ctx.lineWidth = 2
   ctx.stroke()
 
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '26px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillStyle = '#e2e8f0'
-  ctx.font = 'bold 22px monospace'
-  const cleanUrl = directShareUrl.value.replace(/^https?:\/\//i, '')
-  const footText = props.contactPhone
-    ? `🌐 ${cleanUrl.slice(0, 42)}   •   📲 ${props.contactPhone}`
-    : `🌐 Compra Oficial: ${cleanUrl.slice(0, 56)}`
-  ctx.fillText(footText, W / 2, fY + 26)
+  ctx.textBaseline = 'middle'
+  ctx.fillText('💬', iconX, iconY + 1)
+
+  // Texto del distribuidor
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#a7f3d0'
+  ctx.font = '900 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.fillText('PEDIDOS & ATENCIÓN DIRECTA POR WHATSAPP', iconX + iconR + 18, fY + 29)
+
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 28px monospace'
+  const displayPhoneText = phoneToDisplay ? `📲 ${phoneToDisplay}` : '📲 WHATSAPP OFICIAL DISPONIBLE'
+  ctx.fillText(displayPhoneText, iconX + iconR + 18, fY + 58)
+
+  // Badge derecho "24/7 EN LÍNEA"
+  ctx.textAlign = 'right'
+  ctx.fillStyle = '#ecfdf5'
+  ctx.font = 'bold 15px monospace'
+  ctx.fillText('⚡ 24/7 ACTIVO', fX + fW - 32, fY + fH / 2 + 5)
   ctx.restore()
 
   return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95))
@@ -603,7 +655,7 @@ const attractiveCopy = computed(() => {
     platform: p.platform || mainItem.value.tag || '',
     license: p.licenseType || '',
     storeName: props.storeName,
-    phone: props.contactPhone,
+    phone: effectiveDistributorPhone.value,
     url: directShareUrl.value,
     promoCode: activePromoCode.value,
     promoDiscountPct: Number(p.discountPct || 0)
@@ -777,8 +829,12 @@ const sharePlaqueDirect = async () => {
               <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow truncate">
                 🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
               </div>
-              <div class="pt-2 border-t border-white/10 text-center text-[9px] font-mono text-slate-300 truncate">
-                🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}
+              <div class="mt-2 py-1.5 px-3 rounded-full bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-teal-950/90 border border-emerald-500/50 flex items-center justify-between text-[10px] font-mono shadow-md text-emerald-200">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="text-xs">💬</span>
+                  <span class="font-bold truncate">WhatsApp: {{ effectiveDistributorPhone || 'Oficial' }}</span>
+                </div>
+                <span class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-black border border-emerald-400/30">24/7</span>
               </div>
             </template>
 
@@ -841,10 +897,33 @@ const sharePlaqueDirect = async () => {
               <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow mb-1 truncate">
                 🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
               </div>
-              <div class="pt-1.5 border-t border-cyan-500/20 text-center text-[9px] font-mono text-slate-300 truncate">
-                🌐 {{ directShareUrl.replace(/^https?:\/\//i, '') }}{{ contactPhone ? ` · 📲 ${contactPhone}` : '' }}
+              <div class="mt-2 py-1.5 px-3 rounded-full bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-teal-950/90 border border-emerald-500/50 flex items-center justify-between text-[10px] font-mono shadow-md text-emerald-200">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="text-xs">💬</span>
+                  <span class="font-bold truncate">WhatsApp: {{ effectiveDistributorPhone || 'Oficial' }}</span>
+                </div>
+                <span class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-black border border-emerald-400/30">24/7</span>
               </div>
             </template>
+          </div>
+        </div>
+
+        <!-- NÚMERO DE WHATSAPP DEL DISTRIBUIDOR (EXCLUSIVO EN LA PLACA) -->
+        <div class="bg-slate-950/80 rounded-2xl border border-emerald-500/30 p-3 space-y-1.5 shadow-lg">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] font-black uppercase text-emerald-300 flex items-center gap-1.5">
+              <span>📲</span> WhatsApp de Distribuidor (Único Contacto en Placa)
+            </label>
+            <span class="text-[9px] text-slate-400 font-mono">Solo este número saldrá en la imagen</span>
+          </div>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs">💬</span>
+            <input
+              v-model="localContactPhone"
+              type="text"
+              placeholder="Ej: +54 9 11 1234-5678"
+              class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl py-2 pl-9 pr-3 text-white text-xs font-mono font-bold outline-none focus:border-emerald-300 transition"
+            />
           </div>
         </div>
 
