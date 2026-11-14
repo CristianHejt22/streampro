@@ -172,6 +172,152 @@
           </div>
 
           <!-- ======================================================== -->
+          <!-- BARRA DE EDICIÓN RÁPIDA EXPRESS (1-TAP MÓVIL & PC)       -->
+          <!-- Edición inmediata sin cambiar de pestaña ni perder el canvas -->
+          <!-- ======================================================== -->
+          <div class="w-full max-w-[325px] bg-slate-900/95 border border-indigo-500/35 rounded-2xl p-2.5 space-y-2.5 shadow-xl backdrop-blur-md">
+            
+            <!-- Fila 1: Presets Creativos de 1 Clic -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-indigo-300">
+                <span class="flex items-center gap-1">⚡ Presets de 1 Toque:</span>
+                <span class="text-[9px] text-slate-400 font-mono">1 Clic = Todo el Estilo</span>
+              </div>
+              <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-700">
+                <button
+                  v-for="preset in quickPresetsList"
+                  :key="preset.id"
+                  type="button"
+                  @click="applyQuickPreset(preset.id)"
+                  class="shrink-0 px-2.5 py-1 rounded-xl bg-slate-950/80 hover:bg-indigo-600/30 text-white font-bold text-[10px] border border-slate-800 hover:border-indigo-400/60 shadow transition flex items-center gap-1 cursor-pointer active:scale-95"
+                  :title="preset.desc"
+                >
+                  <span>{{ preset.icon }}</span>
+                  <span>{{ preset.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fila 2: Selector Rápido de Plantilla Estructural (6 Iconos) -->
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] font-bold text-slate-300">
+                <span>📐 Plantilla 9:16:</span>
+                <span class="text-[10px] text-pink-400 font-mono truncate max-w-[160px]">{{ currentLayoutName }}</span>
+              </div>
+              <div class="grid grid-cols-6 gap-1">
+                <button
+                  v-for="tpl in layoutTemplates"
+                  :key="tpl.id"
+                  type="button"
+                  @click="currentLayoutId = tpl.id; requestCanvasRedraw()"
+                  :title="tpl.name"
+                  :class="[
+                    'py-1.5 rounded-lg text-sm font-bold flex items-center justify-center transition cursor-pointer border',
+                    currentLayoutId === tpl.id
+                      ? 'bg-pink-600 border-pink-400 text-white shadow-md shadow-pink-900/50 scale-105'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                  ]"
+                >
+                  <span>{{ tpl.icon }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Fila 3: Edición Expresa de Título y Precio (Inputs directos con preview en vivo) -->
+            <div class="grid grid-cols-12 gap-1.5">
+              <div class="col-span-7">
+                <label class="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Título / Producto</label>
+                <input
+                  v-model="reelHeadline"
+                  @input="requestCanvasRedraw"
+                  type="text"
+                  placeholder="Título del Reel"
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-pink-500 rounded-lg px-2 py-1 text-xs text-white font-bold outline-none"
+                />
+              </div>
+              <div class="col-span-5">
+                <label class="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Precio ($ ARS)</label>
+                <input
+                  v-model.number="reelPromoPrice"
+                  @input="requestCanvasRedraw"
+                  type="number"
+                  placeholder="Precio"
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-pink-500 rounded-lg px-2 py-1 text-xs text-emerald-400 font-mono font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <!-- Fila 4: Sticker 3D Express y Controles Táctiles de Portada -->
+            <div class="flex items-center justify-between gap-1 pt-0.5 border-t border-slate-800/60">
+              <!-- Selector rápido de Sticker 3D -->
+              <select
+                v-model="activePromoSticker"
+                @change="showPromoSticker = activePromoSticker !== 'none'; requestCanvasRedraw()"
+                class="bg-slate-950 border border-slate-800 text-amber-300 text-[10px] rounded-lg px-2 py-1 font-bold outline-none max-w-[130px] truncate cursor-pointer"
+              >
+                <option value="auto">🏷️ Sticker: Auto</option>
+                <option value="top_ventas">🔥 Top Ventas</option>
+                <option value="oferta_flash">⚡ Oferta Flash</option>
+                <option value="entrega_inmediata">⚡ 100% Garantía</option>
+                <option value="edicion_deluxe">💎 Pack VIP</option>
+                <option value="calidad_4k">🍿 Ultra 4K</option>
+                <option value="mas_vendido">🏆 N°1 Ventas</option>
+                <option value="sla_30d">🛡️ SLA 30 Días</option>
+                <option value="juega_hoy">🎮 Juega Hoy</option>
+                <option value="descuento_25">🔥 25% OFF</option>
+                <option value="cuenta_privada">🔒 Con PIN</option>
+                <option value="sin_caidas">⚡ Sin Caídas</option>
+                <option value="none">🚫 Sin Sticker</option>
+              </select>
+
+              <!-- Botones táctiles rápidos de encuadre -->
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  @click="quickZoomIn"
+                  class="p-1 px-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-cyan-300 text-[11px] font-bold cursor-pointer transition active:scale-90"
+                  title="Acercar portada (Zoom +)"
+                >
+                  🔍+
+                </button>
+                <button
+                  type="button"
+                  @click="quickZoomOut"
+                  class="p-1 px-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-cyan-300 text-[11px] font-bold cursor-pointer transition active:scale-90"
+                  title="Alejar portada (Zoom -)"
+                >
+                  🔍-
+                </button>
+                <button
+                  type="button"
+                  @click="quickCenterCover"
+                  class="p-1 px-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-[11px] font-bold cursor-pointer transition active:scale-90"
+                  title="Centrar portada"
+                >
+                  ⌖
+                </button>
+                <button
+                  type="button"
+                  @click="toggleFitMode"
+                  :class="['p-1 px-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition active:scale-90', imageFitMode === 'cover' ? 'bg-cyan-600/30 border-cyan-500 text-cyan-300' : 'bg-slate-950 border-slate-800 text-slate-400']"
+                  :title="imageFitMode === 'cover' ? 'Modo Rellenar (Cover)' : 'Modo Completo (Contain)'"
+                >
+                  {{ imageFitMode === 'cover' ? '🎯' : '📐' }}
+                </button>
+                <button
+                  type="button"
+                  @click="syncColorWithCover"
+                  class="p-1 px-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-bold cursor-pointer transition active:scale-90"
+                  title="Calibrar colores con la portada"
+                >
+                  🎨
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ======================================================== -->
           <!-- BOTONERA DE ACCIÓN Y DESCARGAS ADAPTADAS (MÓVIL & PC)    -->
           <!-- ======================================================== -->
           <div class="w-full max-w-[325px] space-y-2">
@@ -977,9 +1123,16 @@
                 >
                   <option value="auto">🤖 Auto (según producto)</option>
                   <option value="top_ventas">🔥 Top Ventas</option>
+                  <option value="oferta_flash">⚡ Oferta Limitada</option>
                   <option value="entrega_inmediata">⚡ 100% Garantizado</option>
                   <option value="edicion_deluxe">💎 Pack VIP Exclusivo</option>
                   <option value="calidad_4k">🍿 Ultra HD 4K Oficial</option>
+                  <option value="mas_vendido">🏆 N°1 Más Vendido</option>
+                  <option value="sla_30d">🛡️ SLA 30 Días Garantía</option>
+                  <option value="juega_hoy">🎮 Juega Hoy Mismo</option>
+                  <option value="descuento_25">🔥 25% OFF Exclusivo</option>
+                  <option value="cuenta_privada">🔒 Cuenta Privada con PIN</option>
+                  <option value="sin_caidas">⚡ 0 Caídas Garantizado</option>
                   <option value="none">🚫 Ocultar</option>
                 </select>
               </div>
@@ -1170,20 +1323,58 @@
               </div>
             </div>
 
-            <!-- 3. EFECTOS MULTIMEDIA ADAPTABLES (ONDAS DE AUDIO & PARTÍCULAS) -->
-            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-              <label class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">
-                3. Efectos Dinámicos en Tendencia (Sin Romper el Diseño)
-              </label>
+            <!-- 3. EFECTOS MULTIMEDIA, GLITCH & SUITE DE AUDIO WEB -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-indigo-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] uppercase font-bold text-indigo-300 block tracking-wider flex items-center gap-1.5">
+                  <span>✨ Suite Creativa FX, Glitch &amp; Audio Sintetizado</span>
+                </label>
+                <span class="text-[10px] text-slate-400 font-mono">30 FPS + Web Audio</span>
+              </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Grilla de Toggles FX -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300 text-[11px]">Destello Lens Flare</span>
+                  <input type="checkbox" v-model="showLensFlare" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300 text-[11px]">Glitch RGB Split</span>
+                  <input type="checkbox" v-model="showRgbGlitch" @change="requestCanvasRedraw" class="accent-pink-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300 text-[11px]">Audio Web Rítmico</span>
+                  <input type="checkbox" v-model="audioTrackEnabled" class="accent-indigo-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300 text-[11px]">Láser 360°</span>
+                  <input type="checkbox" v-model="showEnergyRing" @change="requestCanvasRedraw" class="accent-amber-400">
+                </label>
+              </div>
+
+              <!-- Selectores de Ritmo BPM, Onda y Partículas -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <!-- Ritmo BPM -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                  <label class="text-[10px] font-bold text-slate-300 block mb-1">⚡ Ritmo BPM (Velocidad):</label>
+                  <select 
+                    v-model.number="animationBpm" 
+                    @change="requestCanvasRedraw"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-indigo-300 font-bold outline-none cursor-pointer"
+                  >
+                    <option :value="60">🐌 60 BPM (Lento / Chill)</option>
+                    <option :value="100">⚖️ 100 BPM (Estándar Viral)</option>
+                    <option :value="130">🚀 130 BPM (Rápido / Hype)</option>
+                  </select>
+                </div>
+
                 <!-- Estilo de Ondas de Audio -->
                 <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <label class="text-[10px] font-bold text-slate-300 block mb-1">🎵 Efecto de Audio (Trending Sound):</label>
+                  <label class="text-[10px] font-bold text-slate-300 block mb-1">🎵 Onda de Audio:</label>
                   <select 
                     v-model="audioWaveStyle" 
                     @change="requestCanvasRedraw"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none cursor-pointer"
                   >
                     <option value="bars">📊 Ecualizador Neón (9 Barras)</option>
                     <option value="wave">〰️ Onda Sonora Analógica</option>
@@ -1194,15 +1385,15 @@
 
                 <!-- Estilo de Partículas Neón -->
                 <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
-                  <label class="text-[10px] font-bold text-slate-300 block mb-1">✨ Partículas de Ambiente:</label>
+                  <label class="text-[10px] font-bold text-slate-300 block mb-1">✨ Partículas de Fondo:</label>
                   <select 
                     v-model="particleStyle" 
                     @change="requestCanvasRedraw"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-semibold outline-none cursor-pointer"
                   >
                     <option value="neon_dots">💠 Partículas Cyber Neón</option>
                     <option value="gold_dust">⭐ Polvo de Estrellas Dorado</option>
-                    <option value="fire_sparks">🔥 Chispas de Fuego Relámpago</option>
+                    <option value="fire_sparks">🔥 Chispas de Fuego</option>
                     <option value="none">🚫 Sin Partículas (Limpio)</option>
                   </select>
                 </div>
@@ -1613,6 +1804,34 @@
 
           </div>
 
+          <!-- Barra Flotante Inferior en Modo Editor Móvil para volver a la previa en 1 toque -->
+          <div class="lg:hidden sticky bottom-3 z-40 bg-slate-950/95 border border-indigo-500/50 p-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-2">
+            <button
+              type="button"
+              @click="mobileViewMode = 'preview'"
+              class="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-600 text-white font-black text-xs shadow flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <span>👁️</span>
+              <span>Ver Resultado en Lienzo 9:16</span>
+            </button>
+            <button
+              type="button"
+              @click="downloadImagePng"
+              class="p-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-bold shrink-0 cursor-pointer"
+              title="Descargar PNG"
+            >
+              📸
+            </button>
+            <button
+              type="button"
+              @click="recordVideoReel"
+              class="p-2 rounded-xl bg-rose-600 border border-rose-500 text-white text-xs font-bold shrink-0 cursor-pointer"
+              title="Grabar Reel MP4"
+            >
+              🎬
+            </button>
+          </div>
+
         </div>
 
       </div>
@@ -1778,6 +1997,105 @@ const isMobileDevice = computed(() => {
   if (typeof window === 'undefined') return false
   return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
 })
+
+// ==========================================
+// PRESETS CREATIVOS DE 1-CLIC & CONTROLES EXPRÉS (MÓVIL & PC)
+// ==========================================
+const quickPresetsList = [
+  { id: 'flash', label: '⚡ Flash Oferta', desc: 'Split urgencia, tema fuego, 130 BPM', icon: '⚡' },
+  { id: 'vip', label: '💎 VIP Gold', desc: 'Glassmorphism, cinta de oro, estrellas', icon: '💎' },
+  { id: 'gamer', label: '🎮 Gamer Pro', desc: 'Arcade neón, doble licencia, rayo láser', icon: '🎮' },
+  { id: 'cine', label: '🍿 Estreno 4K', desc: 'Póster cinemático con marquesina y viñeta', icon: '🍿' },
+  { id: 'cyber', label: '🚀 Cyber Pro', desc: 'Diseño oficial StreamePro con HUD y escáner', icon: '🚀' },
+  { id: 'flyer', label: '🎨 Flyer Story', desc: 'Plantilla oficial exacta con animación 30 FPS', icon: '🎨' }
+]
+
+function applyQuickPreset(presetKey) {
+  if (presetKey === 'flash') {
+    currentLayoutId.value = 'split_flash'
+    currentThemeId.value = 'fire_sale'
+    animationBpm.value = 130
+    activePromoSticker.value = 'oferta_flash'
+    showPromoSticker.value = true
+    electricPulse.value = true
+    showRgbGlitch.value = true
+    showLensFlare.value = false
+    if (selectedMode.value === 'gaming') showDualGamingPrices.value = true
+    toast.add('⚡ Preset "Flash Oferta" activado', 'success')
+  } else if (presetKey === 'vip') {
+    currentLayoutId.value = 'glass_vip'
+    currentThemeId.value = 'gold_vip'
+    animationBpm.value = 100
+    activePromoSticker.value = 'edicion_deluxe'
+    showPromoSticker.value = true
+    vipRibbonText.value = '👑 EDICIÓN VIP OFICIAL'
+    vipStarsDensity.value = 'alta'
+    showLensFlare.value = true
+    showRgbGlitch.value = false
+    toast.add('💎 Preset "VIP Gold" activado', 'success')
+  } else if (presetKey === 'gamer') {
+    currentLayoutId.value = 'arcade_pro'
+    currentThemeId.value = 'cyber_glow'
+    animationBpm.value = 130
+    activePromoSticker.value = 'juega_hoy'
+    showPromoSticker.value = true
+    showEnergyRing.value = true
+    showHudBrackets.value = true
+    showVisorBorderGlow.value = true
+    if (selectedMode.value === 'gaming') showDualGamingPrices.value = true
+    toast.add('🎮 Preset "Gamer Pro" activado', 'success')
+  } else if (presetKey === 'cine') {
+    currentLayoutId.value = 'cinematic'
+    currentThemeId.value = 'tokyo_pink'
+    animationBpm.value = 100
+    activePromoSticker.value = 'calidad_4k'
+    showPromoSticker.value = true
+    cinematicStudioText.value = '★ ESTRENO EXCLUSIVO · STREAMEPRO ★'
+    cinematicVignetteDepth.value = 88
+    showLensFlare.value = true
+    toast.add('🍿 Preset "Estreno 4K" activado', 'success')
+  } else if (presetKey === 'cyber') {
+    currentLayoutId.value = 'cyber_pro'
+    currentThemeId.value = 'cyber_glow'
+    animationBpm.value = 100
+    activePromoSticker.value = 'top_ventas'
+    showPromoSticker.value = true
+    showCyberGrid.value = true
+    showHudBrackets.value = true
+    cyberScanlineSpeed.value = 'normal'
+    toast.add('🚀 Preset "Cyber Pro" activado', 'success')
+  } else if (presetKey === 'flyer') {
+    currentLayoutId.value = 'flyer_official'
+    animationBpm.value = 100
+    activePromoSticker.value = 'mas_vendido'
+    showPromoSticker.value = true
+    toast.add('🎨 Preset "Flyer Story Oficial" activado', 'success')
+  }
+  requestCanvasRedraw()
+}
+
+function quickZoomIn() {
+  imageZoomFactor.value = Math.min(2.5, Math.round((imageZoomFactor.value + 0.1) * 10) / 10)
+  requestCanvasRedraw()
+}
+
+function quickZoomOut() {
+  imageZoomFactor.value = Math.max(0.6, Math.round((imageZoomFactor.value - 0.1) * 10) / 10)
+  requestCanvasRedraw()
+}
+
+function quickCenterCover() {
+  imageOffsetX.value = 0
+  imageOffsetY.value = 0
+  imageRotation.value = 0
+  requestCanvasRedraw()
+  toast.add('⌖ Portada centrada', 'info')
+}
+
+function toggleFitMode() {
+  imageFitMode.value = imageFitMode.value === 'contain' ? 'cover' : 'contain'
+  requestCanvasRedraw()
+}
 
 // ==========================================
 // CALIBRACIÓN Y AJUSTES FINOS DE IMAGEN
@@ -3550,6 +3868,14 @@ function drawPromoSticker(ctx, x, y, stickerType = 'auto', th, t = 0) {
     label = '🔥 25% OFF EXCLUSIVO'
     gradColors = ['#ef4444', '#f97316']
     glowColor = 'rgba(239, 68, 68, 0.70)'
+  } else if (effective === 'cuenta_privada') {
+    label = '🔒 100% CUENTA PRIVADA'
+    gradColors = ['#0284c7', '#0369a1']
+    glowColor = 'rgba(2, 132, 199, 0.70)'
+  } else if (effective === 'sin_caidas') {
+    label = '⚡ 0 CAÍDAS GARANTIZADO'
+    gradColors = ['#059669', '#0d9488']
+    glowColor = 'rgba(16, 185, 129, 0.70)'
   } else if (effective === 'top_ventas') {
     label = '🔥 TOP VENTAS'
     gradColors = ['#ef4444', '#f97316']
@@ -3887,10 +4213,7 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
     drawCornerBrackets(ctx, innerX, innerY, innerW, innerH, 28, th.accent || 'rgba(56, 189, 248, 0.85)')
   }
 
-  // E) Sticker 3D Promocional Flotante
-  if (showPromoSticker.value) {
-    drawPromoSticker(ctx, innerX + innerW - 14, innerY + 22, activePromoSticker.value, th, t)
-  }
+  // E) Sticker 3D Promocional Flotante (Se dibuja a nivel de plantilla sobre el visor sin recorte)
 
   // 4. Retícula táctil de arrastre (solo si el usuario arrastra y no está exportando)
   if (showReticle && !isDrawingForExport.value) {
@@ -4147,6 +4470,11 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
+    // Sticker 3D Promocional Flotante
+    if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+      drawPromoSticker(ctx, cardX + cardW - 32, cardY + 54, activePromoSticker.value, th, t)
+    }
+
     // Zona de Precios con proporciones refinadas estilo Flyer
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
     const priceY = 1148
@@ -4233,6 +4561,11 @@ function renderFrame(timeMs = 0) {
 
     if (currentSealText.value) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    // Sticker 3D Promocional Flotante
+    if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+      drawPromoSticker(ctx, cardX + cardW - 32, cardY + 54, activePromoSticker.value, th, t)
     }
 
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
@@ -4329,6 +4662,11 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
+    // Sticker 3D Promocional Flotante
+    if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+      drawPromoSticker(ctx, cardX + cardW - 32, cardY + 68, activePromoSticker.value, th, t)
+    }
+
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
     const priceY = 1148
     const priceH = hasPromoCoupon ? 232 : 166
@@ -4407,6 +4745,11 @@ function renderFrame(timeMs = 0) {
 
     if (currentSealText.value) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    // Sticker 3D Promocional Flotante
+    if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+      drawPromoSticker(ctx, cardX + cardW - 32, cardY + 54, activePromoSticker.value, th, t)
     }
 
     // Tira Neón Divisora Relámpago con Cuenta Regresiva
@@ -4525,6 +4868,11 @@ function renderFrame(timeMs = 0) {
       drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
     }
 
+    // Sticker 3D Promocional Flotante
+    if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+      drawPromoSticker(ctx, cardX + cardW - 32, cardY + 54, activePromoSticker.value, th, t)
+    }
+
     // Placa de Precio Glassmorphism Translúcida
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
     const priceY = 1148
@@ -4603,6 +4951,11 @@ function renderFrame(timeMs = 0) {
         roundRect(ctx, fx, fy, fw, fh, cornerR)
         ctx.stroke()
         ctx.restore()
+      }
+
+      // Sticker 3D Promocional Flotante
+      if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+        drawPromoSticker(ctx, fx + fw - 24, fy + 52, activePromoSticker.value, th, t)
       }
 
       // 2. Etiqueta Oficial de Licencia Superior (Insignia Oficial 3D o Píldora Neón)
@@ -4914,6 +5267,11 @@ function renderFrame(timeMs = 0) {
         ctx.restore()
       }
 
+      // Sticker 3D Promocional Flotante
+      if (showPromoSticker.value && activePromoSticker.value !== 'none') {
+        drawPromoSticker(ctx, vx + vw - 24, vy + 52, activePromoSticker.value, th, t)
+      }
+
       const badgeText = reelBadgeText.value || '🍿 PANTALLA ULTRA HD 4K · PERFIL PRIVADO'
       if (badgeText) {
         drawBadgePill(ctx, (W - 520) / 2, 835, 520, 56, badgeText, th.pillGrad)
@@ -4956,6 +5314,10 @@ function renderFrame(timeMs = 0) {
   // 3. PIE DE PÁGINA OFICIAL STREAMEPRO.ME
   // ==========================================
   drawStreameProFooter(ctx, W / 2, 1755, displayDomain.value, t)
+
+  // 4. Efectos Cinemáticos y Glitch Neón de Post-Procesado
+  drawCinematicLensFlare(ctx, W, H, t, th)
+  drawRgbGlitchEffect(ctx, W, H, t)
 
   // Guías de Zonas Seguras de TikTok / Reels / WhatsApp (Solo en Vista Previa)
   drawSafeZonesGuide(ctx, W, H)
@@ -5643,6 +6005,8 @@ async function recordVideoReel() {
   startAnimationLoop()
 
   try {
+    const durationSec = Number(selectedDurationSec.value || 8)
+    const durationMs = durationSec * 1000
     const stream = captureStreamFn.call(canvas, 30)
 
     // Inyección de Audio Sintetizado Web Audio API si está activado
@@ -5681,9 +6045,6 @@ async function recordVideoReel() {
         chunks.push(e.data)
       }
     }
-
-    const durationSec = Number(selectedDurationSec.value || 8)
-    const durationMs = durationSec * 1000
     const startTime = performance.now()
 
     if (recordingInterval) clearInterval(recordingInterval)
