@@ -1036,6 +1036,22 @@
                 </div>
               </div>
 
+              <!-- HERRAMIENTAS: NEÓN ARCADE / ESPORTS -->
+              <div v-else-if="currentLayoutId === 'arcade_pro'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Borde Neón Doble</span>
+                  <input type="checkbox" v-model="showVisorBorderGlow" @change="requestCanvasRedraw" class="accent-purple-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Rayo Láser Neón</span>
+                  <input type="checkbox" v-model="showEnergyRing" @change="requestCanvasRedraw" class="accent-purple-500">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">Sticker 3D Flotante</span>
+                  <input type="checkbox" v-model="showPromoSticker" @change="requestCanvasRedraw" class="accent-purple-500">
+                </label>
+              </div>
+
               <!-- HERRAMIENTAS: PÓSTER CINEMÁTICO -->
               <div v-else-if="currentLayoutId === 'cinematic'" class="space-y-2.5 text-xs">
                 <div>
@@ -2170,10 +2186,11 @@ const contentModes = [
 ]
 
 const layoutTemplates = [
-  { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico StreamePro con visores metálicos' },
-  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Portada a pantalla completa con viñeta cinemática' },
-  { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado oscuro con resplandor neón de lujo' },
-  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Diseño 50/50 con cuenta regresiva en vivo' },
+  { id: 'cyber_pro', icon: '⚡', name: 'Cyber Pro Oficial', desc: 'Marco tecnológico StreamePro con visores metálicos y HUD neón' },
+  { id: 'arcade_pro', icon: '🕹️', name: 'Neón Arcade / eSports', desc: 'Marco gamer de competición con bordes angulares ciberpunk y visor neón' },
+  { id: 'glass_vip', icon: '💎', name: 'Glassmorphism VIP', desc: 'Cristal esmerilado translúcido con cinta dorada VIP y destellos' },
+  { id: 'split_flash', icon: '🥊', name: 'Split Flash / Urgente', desc: 'Marco relámpago con franja de cuenta regresiva activa a 30 FPS' },
+  { id: 'cinematic', icon: '🎬', name: 'Póster Cinemático 9:16', desc: 'Cartelera de estreno con marquesina luminosa y viñeta cinematográfica' },
   { id: 'flyer_official', icon: '🎨', name: 'Flyer Oficial (Story 9:16)', desc: 'Mismo diseño exacto y plantilla de FlyerGenerator, pero animado a 30 FPS' }
 ]
 
@@ -3986,53 +4003,79 @@ function renderFrame(timeMs = 0) {
   }
 
   // ----------------------------------------------------
-  // PLANTILLA 2: PÓSTER CINEMÁTICO 9:16 (FULL-BLEED)
+  // PLANTILLA 2: NEÓN ARCADE / ESPORTS PRO (DISEÑO SIMILAR)
+  // Marco gamer de competición con bordes angulares ciberpunk y visor neón
   // ----------------------------------------------------
-  else if (layout === 'cinematic') {
+  else if (layout === 'arcade_pro') {
     const cardX = 85
+    const cardY = 350
     const cardW = W - 170
+    const cardH = 780
 
-    // Marquesina de cine personalizada
+    // Fondo y borde del visor arcade
     ctx.save()
-    ctx.fillStyle = th.accent
-    ctx.font = '900 22px monospace'
-    ctx.textAlign = 'center'
-    ctx.fillText(cinematicStudioText.value || '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 345)
+    ctx.shadowColor = th.glow || '#a855f7'
+    ctx.shadowBlur = 40
+    ctx.fillStyle = '#060612'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 36)
+    ctx.fill()
+
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = th.accent || '#a855f7'
+      ctx.lineWidth = 3.5
+      roundRect(ctx, cardX, cardY, cardW, cardH, 36)
+      ctx.stroke()
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)'
+      ctx.lineWidth = 1.5
+      roundRect(ctx, cardX + 5, cardY + 5, cardW - 10, cardH - 10, 32)
+      ctx.stroke()
+    }
     ctx.restore()
 
-    if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 20, 380, 360, 68, reelBadgeText.value, th.pillGrad)
-    }
-
-    if (!(loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0))) {
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
       ctx.save()
-      roundRect(ctx, cardX, 370, cardW, 700, 44)
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 30)
       ctx.clip()
-      drawDirectProceduralCover(ctx, cardX, 370, cardW, 700, t)
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 30)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
       ctx.restore()
     }
 
-    // Placa de Precio Glassmorphism Translúcida Flotante
-    ctx.save()
-    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const glassY = 1105
-    const glassH = hasPromoCoupon ? 232 : 166
-    const op = (cinematicGlassOpacity.value || 88) / 100
-    ctx.fillStyle = `rgba(2, 6, 23, ${op})`
-    roundRect(ctx, cardX, glassY, cardW, glassH, 44)
-    ctx.fill()
-    ctx.strokeStyle = th.accent
-    ctx.lineWidth = 3
-    ctx.stroke()
-
-    drawPriceContent(ctx, glassY, cardW, th, t)
-    ctx.restore()
-
-    if (currentSealText.value) {
-      drawTrustSealPill(ctx, (W - 480) / 2, glassY - 56, 480, 48, currentSealText.value, th.accent)
+    if (reelBadgeText.value) {
+      let bw = 360
+      let bh = 68
+      let bx = cardX + 30
+      let by = cardY + 30
+      if (selectedMode.value === 'gaming') {
+        if (gamingBadgePosition.value === 'center_top') {
+          bw = 480
+          bx = (W - bw) / 2
+          by = cardY - 45
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = cardW - 40
+          bx = cardX + 20
+          by = cardY - 48
+        }
+      }
+      drawBadgePill(ctx, bx, by, bw, bh, reelBadgeText.value, th.pillGrad)
     }
 
-    const bulletsY = glassY + glassH + 16
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1148
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    const bulletsY = priceY + priceH + 16
     const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
     const waY = bulletsY + bulletsUsedH + 20
@@ -4045,37 +4088,38 @@ function renderFrame(timeMs = 0) {
   }
 
   // ----------------------------------------------------
-  // PLANTILLA 3: GLASSMORPHISM VIP LUXURY
+  // PLANTILLA 3: GLASSMORPHISM VIP LUXURY (DISEÑO SIMILAR)
+  // Cristal esmerilado translúcido con cinta dorada VIP y destellos de lujo
   // ----------------------------------------------------
   else if (layout === 'glass_vip') {
     const cardX = 85
     const cardY = 350
     const cardW = W - 170
-    const cardH = 760
+    const cardH = 780
 
     ctx.save()
-    ctx.shadowColor = th.glow
+    ctx.shadowColor = th.glow || '#f59e0b'
     ctx.shadowBlur = 40 + (glassBlurFactor.value || 25)
     ctx.fillStyle = `rgba(15, 23, 42, ${0.76 + ((glassBlurFactor.value || 25) / 180)})`
-    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
     ctx.fill()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
     ctx.lineWidth = 4
-    roundRect(ctx, cardX, cardY, cardW, cardH, 48)
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
     ctx.stroke()
     ctx.restore()
 
     if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
       ctx.save()
-      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
       ctx.clip()
-      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
       ctx.restore()
     } else {
       ctx.save()
-      roundRect(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, 40)
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
       ctx.clip()
-      drawDirectProceduralCover(ctx, cardX + 8, cardY + 8, cardW - 16, cardH - 16, t)
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
       ctx.restore()
     }
 
@@ -4098,7 +4142,22 @@ function renderFrame(timeMs = 0) {
     ctx.restore()
 
     if (reelBadgeText.value) {
-      drawBadgePill(ctx, cardX + 30, cardY + 50, 360, 68, reelBadgeText.value, th.pillGrad)
+      let bw = 360
+      let bh = 68
+      let bx = cardX + 30
+      let by = cardY + 45
+      if (selectedMode.value === 'gaming') {
+        if (gamingBadgePosition.value === 'center_top') {
+          bw = 480
+          bx = (W - bw) / 2
+          by = cardY - 45
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = cardW - 40
+          bx = cardX + 20
+          by = cardY - 48
+        }
+      }
+      drawBadgePill(ctx, bx, by, bw, bh, reelBadgeText.value, th.pillGrad)
     }
 
     if (currentSealText.value) {
@@ -4106,7 +4165,7 @@ function renderFrame(timeMs = 0) {
     }
 
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const priceY = 1140
+    const priceY = 1148
     const priceH = hasPromoCoupon ? 232 : 166
     drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
 
@@ -4123,13 +4182,14 @@ function renderFrame(timeMs = 0) {
   }
 
   // ----------------------------------------------------
-  // PLANTILLA 4: SPLIT FLASH / URGENCIA RELÁMPAGO (50/50)
+  // PLANTILLA 4: SPLIT FLASH / URGENCIA RELÁMPAGO (DISEÑO SIMILAR)
+  // Marco relámpago con franja de cuenta regresiva activa a 30 FPS y pulso neón
   // ----------------------------------------------------
   else if (layout === 'split_flash') {
     const cardX = 85
-    const cardY = 340
+    const cardY = 350
     const cardW = W - 170
-    const cardH = 620
+    const cardH = 730
 
     ctx.save()
     ctx.fillStyle = '#050a18'
@@ -4161,10 +4221,33 @@ function renderFrame(timeMs = 0) {
       ctx.restore()
     }
 
+    if (reelBadgeText.value) {
+      let bw = 360
+      let bh = 68
+      let bx = cardX + 30
+      let by = cardY + 30
+      if (selectedMode.value === 'gaming') {
+        if (gamingBadgePosition.value === 'center_top') {
+          bw = 480
+          bx = (W - bw) / 2
+          by = cardY - 45
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = cardW - 40
+          bx = cardX + 20
+          by = cardY - 48
+        }
+      }
+      drawBadgePill(ctx, bx, by, bw, bh, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
     // Tira Neón Divisora Relámpago con Cuenta Regresiva
     ctx.save()
     const stripY = cardY + cardH + 14
-    const stripH = 58
+    const stripH = 54
     const sGrad = ctx.createLinearGradient(cardX, stripY, cardX + cardW, stripY)
     sGrad.addColorStop(0, '#ef4444')
     sGrad.addColorStop(0.5, '#f97316')
@@ -4174,7 +4257,7 @@ function renderFrame(timeMs = 0) {
       ctx.shadowColor = '#f97316'
       ctx.shadowBlur = 14 + Math.sin(t * 8) * 6
     }
-    roundRect(ctx, cardX, stripY, cardW, stripH, 30)
+    roundRect(ctx, cardX, stripY, cardW, stripH, 27)
     ctx.fill()
 
     const maxSec = (countdownHours.value || 6) * 3600
@@ -4186,26 +4269,104 @@ function renderFrame(timeMs = 0) {
     ctx.fillStyle = '#ffffff'
     ctx.font = '900 24px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 38)
+    ctx.fillText(`${flashBannerText.value} · ${hrs}:${mins}:${secs}`, W / 2, stripY + 35)
     ctx.restore()
 
-    // Panel Inferior de Conversión Urgente
+    // Panel Inferior con drawPriceBox (soporte simple y dual)
     const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
-    const lowerY = stripY + stripH + 16
-    const lowerH = hasPromoCoupon ? 232 : 166
-    ctx.save()
-    ctx.fillStyle = 'rgba(10, 16, 32, 0.96)'
-    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)'
-    ctx.lineWidth = 3
-    roundRect(ctx, cardX, lowerY, cardW, lowerH, 40)
-    ctx.stroke()
+    const priceY = stripY + stripH + 16
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
 
-    drawPriceContent(ctx, lowerY, cardW, th, t)
+    const bulletsY = priceY + priceH + 16
+    const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
+
+    const waY = bulletsY + bulletsUsedH + 20
+    const waH = 96
+    if (showContactPhone.value && effectiveContactPhone.value) {
+      drawAnimatedWhatsAppPill(ctx, cardX, waY, cardW, waH, t)
+    } else {
+      drawCtaButton(ctx, cardX, waY, cardW, waH, t)
+    }
+  }
+
+  // ----------------------------------------------------
+  // PLANTILLA 5: PÓSTER CINEMÁTICO 9:16 (DISEÑO SIMILAR)
+  // Cartelera de estreno con marquesina luminosa, viñeta cinematográfica y marco de portada
+  // ----------------------------------------------------
+  else if (layout === 'cinematic') {
+    const cardX = 85
+    const cardY = 350
+    const cardW = W - 170
+    const cardH = 780
+
+    // Marquesina de cine personalizada
+    ctx.save()
+    ctx.fillStyle = th.accent || '#38bdf8'
+    ctx.font = '900 22px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(cinematicStudioText.value || '★ ESTRENO EXCLUSIVO · STREAMEPRO STUDIOS ★', W / 2, 335)
     ctx.restore()
 
-    const bulletsY = lowerY + lowerH + 16
+    // Fondo y borde del marco cinematográfico
+    ctx.save()
+    ctx.shadowColor = th.glow || 'rgba(0, 0, 0, 0.8)'
+    ctx.shadowBlur = 35
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+    roundRect(ctx, cardX, cardY, cardW, cardH, 44)
+    ctx.fill()
+    if (showVisorBorderGlow.value) {
+      ctx.strokeStyle = th.border || th.accent
+      ctx.lineWidth = 3.5
+      roundRect(ctx, cardX, cardY, cardW, cardH, 44)
+      ctx.stroke()
+    }
+    ctx.restore()
+
+    if (loadedArtworkImage.value && (loadedArtworkImage.value.width > 0 || loadedArtworkImage.value.naturalWidth > 0)) {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawAdjustedArtwork(ctx, loadedArtworkImage.value, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    } else {
+      ctx.save()
+      roundRect(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, 38)
+      ctx.clip()
+      drawDirectProceduralCover(ctx, cardX + 6, cardY + 6, cardW - 12, cardH - 12, t)
+      ctx.restore()
+    }
+
+    if (reelBadgeText.value) {
+      let bw = 360
+      let bh = 68
+      let bx = cardX + 30
+      let by = cardY + 30
+      if (selectedMode.value === 'gaming') {
+        if (gamingBadgePosition.value === 'center_top') {
+          bw = 480
+          bx = (W - bw) / 2
+          by = cardY - 45
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = cardW - 40
+          bx = cardX + 20
+          by = cardY - 48
+        }
+      }
+      drawBadgePill(ctx, bx, by, bw, bh, reelBadgeText.value, th.pillGrad)
+    }
+
+    if (currentSealText.value) {
+      drawTrustSealPill(ctx, cardX + cardW - 440 - 24, cardY + cardH - 58 - 24, 440, 58, currentSealText.value, th.accent)
+    }
+
+    // Placa de Precio Glassmorphism Translúcida
+    const hasPromoCoupon = Boolean(showPromoPill.value && reelPromoCode.value)
+    const priceY = 1148
+    const priceH = hasPromoCoupon ? 232 : 166
+    drawPriceBox(ctx, cardX, priceY, cardW, priceH, th, t)
+
+    const bulletsY = priceY + priceH + 16
     const bulletsUsedH = showReelBullets.value ? drawAnimatedFlyerBullets(ctx, cardX, bulletsY, cardW, th, t) : 0
 
     const waY = bulletsY + bulletsUsedH + 20
@@ -5697,6 +5858,7 @@ function closeModal() {
 
 // Inicialización instantánea según props
 function initFromProps() {
+  const p = props.initialPayload
   if (props.promoCode) {
     reelPromoCode.value = normalizePromoCode(props.promoCode)
   }
@@ -5710,12 +5872,16 @@ function initFromProps() {
   preloadFlyerTemplates()
   currentLayoutId.value = p?.layoutId || 'cyber_pro'
 
-  const p = props.initialPayload
   if (p) {
     if (p.itemType === 'gaming' || p.platform?.includes('PS') || p.effectivePrimaryPrice || p.category === 'Juegos Digitales' || p.gameId) {
       selectedMode.value = 'gaming'
-      pickedGameId.value = p.id || p.gameId || ''
-      const rawTitle = p.title || p.name || 'Videojuego'
+      let targetGame = null
+      if (adminStore.processedGamingProducts?.length) {
+        if (p.id || p.gameId) targetGame = adminStore.processedGamingProducts.find(x => x.id === (p.id || p.gameId))
+        if (!targetGame) targetGame = adminStore.processedGamingProducts[0]
+      }
+      pickedGameId.value = targetGame?.id || p.id || p.gameId || ''
+      const rawTitle = p.title || p.name || targetGame?.title || targetGame?.name || 'Videojuego'
       reelHeadline.value = cleanGameTitle(rawTitle).toUpperCase()
       if (p.license) pickedGamingLicense.value = p.license
       const isPri = pickedGamingLicense.value === 'primary'
@@ -5730,8 +5896,8 @@ function initFromProps() {
 
       if (p.badgeKey) gamingBadgeOverride.value = p.badgeKey
 
-      const pri = Number(p.effectivePrimaryPrice || p.primaryPrice || (isPri ? p.price : 0) || 15000)
-      const sec = Number(p.effectiveSecondaryPrice || p.secondaryPrice || (!isPri ? p.price : 0) || Math.round(pri * 0.65))
+      const pri = Number(p.effectivePrimaryPrice || p.primaryPrice || targetGame?.effectivePrimaryPrice || targetGame?.primaryPrice || (isPri ? p.price : 0) || 15000)
+      const sec = Number(p.effectiveSecondaryPrice || p.secondaryPrice || targetGame?.effectiveSecondaryPrice || targetGame?.secondaryPrice || (!isPri ? p.price : 0) || Math.round(pri * 0.65))
       gamePrimaryPrice.value = pri
       gameSecondaryPrice.value = sec
 
@@ -5763,12 +5929,12 @@ function initFromProps() {
       if (p.badgePosition) gamingBadgePosition.value = p.badgePosition
       if (p.promoSticker) activePromoSticker.value = p.promoSticker
 
-      const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
+      const coverUrl = p.image || p.cover || targetGame?.image || targetGame?.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
       defaultProductCoverUrl.value = coverUrl
       loadArtwork(coverUrl)
       if (adminStore.processedGamingProducts?.length) {
-        applyGamingProduct(p)
+        applyGamingProduct(targetGame || p)
       }
     } else if (p.services || (p.promoPrice && p.packages)) {
       selectedMode.value = 'combo'
