@@ -541,7 +541,23 @@ export const DEFAULT_INITIAL_RESELLERS = [
     holderName: 'Distribuidor StreamePro',
     cuit: '20-00000000-0',
     balance: 50000,
-    walletHistory: []
+    walletHistory: [],
+    shopSlug: 'shopdc',
+    shopConfig: {
+      enabled: true,
+      slug: 'shopdc',
+      storeName: 'ShopDC Store',
+      tagline: 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
+      whatsapp: OFFICIAL_PROVIDER_WHATSAPP,
+      bannerText: '¡Activación rápida en 10-60 minutos con garantía oficial StreamePro!',
+      catalogMode: 'curated',
+      showStreaming: true,
+      showCombos: true,
+      showGaming: true,
+      showPhysical: false,
+      enabledStreamingPlatforms: ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
+      enabledGamingPlatforms: ['PS5', 'PS4']
+    }
   }
 ]
 
@@ -2979,6 +2995,46 @@ export const useAdminStore = defineStore('admin', {
         return { success: true }
       }
       return { error: 'Revendedor no encontrado' }
+    },
+
+    resolveResellerBySlug(slug) {
+      if (!slug) return null
+      const q = String(slug).trim().toLowerCase()
+      if (!q || q === 'direct' || q === 'oficial' || q === 'null' || q === 'undefined') return null
+
+      // 1. Coincidencia por shopSlug directo o shopConfig.slug (ej: shopdc, tecnodigi)
+      let found = (this.resellers || []).find(r => 
+        r.shopSlug?.toLowerCase() === q || 
+        r.shopConfig?.slug?.toLowerCase() === q
+      )
+      if (found) return found
+
+      // 2. Coincidencia por ID (RES-01, res-01)
+      found = (this.resellers || []).find(r => r.id?.toLowerCase() === q)
+      if (found) return found
+
+      // 3. Coincidencia por username
+      found = (this.resellers || []).find(r => r.username?.toLowerCase() === q)
+      if (found) return found
+
+      // 4. Coincidencia por storeName
+      found = (this.resellers || []).find(r => 
+        r.storeName?.toLowerCase().replace(/[^a-z0-9]/g, '') === q.replace(/[^a-z0-9]/g, '') ||
+        r.name?.toLowerCase().replace(/[^a-z0-9]/g, '') === q.replace(/[^a-z0-9]/g, '')
+      )
+      if (found) return found
+
+      // 5. Coincidencia por número correlativo (ej: 1 -> RES-01)
+      const digits = q.replace(/\D/g, '')
+      if (digits.length > 0) {
+        found = (this.resellers || []).find(r => {
+          const rDigits = r.id?.replace(/\D/g, '')
+          return rDigits && parseInt(rDigits, 10) === parseInt(digits, 10)
+        })
+        if (found) return found
+      }
+
+      return null
     },
 
     updateResellerAuth(resellerId, { username, password, isActive }) {
@@ -5649,6 +5705,29 @@ export const useResellerStore = defineStore('reseller', {
       const adminStore = useAdminStore()
       return adminStore.clearResellerAlerts(this.activeResellerId)
     },
+updateShopConfig(config) {
+      const adminStore = useAdminStore()
+      const res = adminStore.resellers.find(r => r.id === this.activeResellerId)
+      if (!res) return { error: 'Distribuidor no encontrado' }
+
+      if (!res.shopConfig) res.shopConfig = {}
+      Object.assign(res.shopConfig, config)
+      if (config.storeName) res.storeName = config.storeName
+      if (config.slug) {
+        res.shopSlug = String(config.slug).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+        res.shopConfig.slug = res.shopSlug
+      }
+      if (config.whatsapp) {
+        res.contactNumber = config.whatsapp
+        res.shopConfig.whatsapp = config.whatsapp
+      }
+      adminStore.persist(DB_KEYS.RESELLERS)
+      saveResellerToFirebase(res).catch(() => {})
+      this.sessionUser = { ...res }
+      this.persist()
+      return { success: true, shopConfig: res.shopConfig, reseller: res }
+    },
+
 
     async login(username, password) {
       const adminStore = useAdminStore()

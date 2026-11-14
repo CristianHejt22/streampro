@@ -21,6 +21,114 @@ import {
   clearRememberedSession 
 } from '../services/biometrics'
 
+
+// ========================================================
+// GESTOR DE TIENDA PERSONALIZADA CON URL CORTA (streamepro.me/:slug)
+// ========================================================
+const shopForm = ref({
+  enabled: true,
+  slug: 'shopdc',
+  storeName: '',
+  tagline: '',
+  whatsapp: '',
+  bannerText: '',
+  showStreaming: true,
+  showCombos: true,
+  showGaming: true,
+  showPhysical: false,
+  enabledStreamingPlatforms: ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
+  enabledGamingPlatforms: ['PS5', 'PS4']
+})
+
+const availableStreamingOptions = ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
+
+const toggleStreamingPlatformOption = (plat) => {
+  const list = shopForm.value.enabledStreamingPlatforms
+  const idx = list.indexOf(plat)
+  if (idx !== -1) {
+    if (list.length > 1) list.splice(idx, 1)
+    else toast.add('Debes dejar al menos una plataforma habilitada', 'warning')
+  } else {
+    list.push(plat)
+  }
+}
+
+const toggleGamingPlatformOption = (plat) => {
+  const list = shopForm.value.enabledGamingPlatforms
+  const idx = list.indexOf(plat)
+  if (idx !== -1) {
+    if (list.length > 1) list.splice(idx, 1)
+    else toast.add('Debes dejar al menos una consola habilitada', 'warning')
+  } else {
+    list.push(plat)
+  }
+}
+
+const initShopForm = () => {
+  const cur = resellerStore.sessionUser || {}
+  const cfg = cur.shopConfig || {}
+  shopForm.value = {
+    enabled: cfg.enabled !== false,
+    slug: cur.shopSlug || cfg.slug || cur.id?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'shopdc',
+    storeName: cur.storeName || cfg.storeName || cur.name || 'Mi Tienda Oficial',
+    tagline: cfg.tagline || 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
+    whatsapp: cur.contactNumber || cfg.whatsapp || '',
+    bannerText: cfg.bannerText || '¡Activación rápida en 10-60 minutos con garantía oficial StreamePro!',
+    showStreaming: cfg.showStreaming !== false,
+    showCombos: cfg.showCombos !== false,
+    showGaming: cfg.showGaming !== false,
+    showPhysical: cfg.showPhysical === true,
+    enabledStreamingPlatforms: cfg.enabledStreamingPlatforms || ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
+    enabledGamingPlatforms: cfg.enabledGamingPlatforms || ['PS5', 'PS4']
+  }
+}
+
+watch(() => resellerStore.sessionUser, () => {
+  initShopForm()
+}, { immediate: true })
+
+const saveMyShopConfig = async () => {
+  if (!shopForm.value.slug) {
+    toast.add('Ingresa una URL corta válida para tu tienda (ej: shopdc)', 'error')
+    return
+  }
+  const cleanSlug = shopForm.value.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+  shopForm.value.slug = cleanSlug
+
+  const res = resellerStore.updateShopConfig({
+    ...shopForm.value,
+    slug: cleanSlug
+  })
+  if (res.success) {
+    toast.add(`✓ ¡Tienda guardada con éxito! Link activo: streamepro.me/${cleanSlug}`, 'success')
+  } else {
+    toast.add(res.error || 'Error al guardar la tienda', 'error')
+  }
+}
+
+const copyShopShortUrl = () => {
+  const url = `https://streamepro.me/${shopForm.value.slug}`
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url)
+    toast.add(`✓ Enlace copiado: ${url}`, 'success')
+  }
+}
+
+const shareShopWhatsApp = () => {
+  const url = `https://streamepro.me/${shopForm.value.slug}`
+  const title = shopForm.value.storeName || 'Mi Tienda'
+  const text = `👋 *¡Hola! Te invito a visitar mi tienda oficial:* *${title}*\n\n` +
+    `🎬 Cuentas oficiales de Streaming con PIN Privado\n` +
+    `🎮 Videojuegos Digitales PS5 & PS4 con entrega inmediata\n` +
+    `🛡️ Garantía de reposición 100% y atención personalizada\n\n` +
+    `👉 *Mirá todos los productos acá:*\n${url}`
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+}
+
+const openLiveShop = () => {
+  window.open(`/${shopForm.value.slug}`, '_blank')
+}
+
 const tab = ref('crm') 
 const showFlyerModal = ref(false)
 const flyerInitialProduct = ref(null)
@@ -1464,6 +1572,14 @@ const submitResellerGameInquiry = () => {
       >
         <span>🎮</span>
         <span>Catálogo Videojuegos ({{ adminStore.processedGamingProducts?.length || 1160 }})</span>
+      </button>
+      <button 
+        type="button"
+        @click="tab = 'my_shop'" 
+        :class="['font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap', tab === 'my_shop' ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+      >
+        <span>🏪</span>
+        <span>Mi Tienda Online (streamepro.me/:slug)</span>
       </button>
     </div>
 
@@ -3478,6 +3594,296 @@ const submitResellerGameInquiry = () => {
       </div>
 
     </div>
+
+    <!-- Pestaña Mi Tienda Online Personalizada (streamepro.me/:slug) -->
+    <div v-else-if="tab === 'my_shop'" class="space-y-8 animate-in fade-in duration-300">
+      
+      <!-- HERO & LINK CORTO DESTACADO -->
+      <div class="bg-gradient-to-r from-amber-950/60 via-slate-900 to-orange-950/50 p-6 sm:p-8 rounded-3xl border border-amber-500/35 shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none bg-amber-400"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div class="space-y-2 max-w-2xl">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-mono">
+                🚀 URL Corta Oficial
+              </span>
+              <span class="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                ✓ Tienda Activa & Sincronizada
+              </span>
+            </div>
+            <h3 class="text-2xl sm:text-3xl font-black text-white">
+              Tu Tienda Online Personalizada
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Comparte tu enlace corto oficial en redes sociales o WhatsApp. Tus clientes navegan tus productos seleccionados y te piden directo a tu WhatsApp con tus datos de pago.
+            </p>
+          </div>
+
+          <!-- Cuadro de Enlace Directo -->
+          <div class="bg-slate-950/90 border border-amber-400/30 p-4 rounded-2xl shadow-xl space-y-3 w-full lg:w-auto shrink-0">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Tu Enlace Corto Oficial:</span>
+            <div class="flex items-center gap-2 bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 text-xs sm:text-sm font-mono font-bold text-amber-300 select-all">
+              <span>https://streamepro.me/{{ shopForm.slug }}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 pt-1">
+              <button 
+                type="button" 
+                @click="copyShopShortUrl" 
+                class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2 px-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer shadow"
+              >
+                <span>📋</span>
+                <span>Copiar</span>
+              </button>
+              <button 
+                type="button" 
+                @click="openLiveShop" 
+                class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 px-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+              >
+                <span>👁️</span>
+                <span>Ver Tienda</span>
+              </button>
+              <button 
+                type="button" 
+                @click="shareShopWhatsApp" 
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer shadow"
+              >
+                <span>💬</span>
+                <span>Difundir</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORMULARIO DE PERSONALIZACIÓN Y SELECCIÓN DE PRODUCTOS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- COLUMNA IZQUIERDA: DATOS DE LA TIENDA (7 COLS) -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Bloque 1: Identidad & URL Corta -->
+          <div class="bg-slate-900/80 border border-white/[0.08] p-6 rounded-3xl shadow-xl space-y-4">
+            <h4 class="text-base font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <span>🏷️</span>
+              <span>Identidad & Enlace de la Tienda</span>
+            </h4>
+
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block font-bold text-slate-300 uppercase mb-1">
+                  Enlace Corto Personalizado (Slug) <span class="text-amber-400">*</span>
+                </label>
+                <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono">
+                  <span class="text-slate-500 font-bold">streamepro.me/</span>
+                  <input 
+                    v-model="shopForm.slug" 
+                    type="text" 
+                    placeholder="shopdc" 
+                    class="bg-transparent border-none text-amber-300 font-black focus:outline-none flex-1 lowercase pl-1"
+                  >
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1">Solo letras, números y guiones. Ejemplo: <em>shopdc, tecnodigi, gamingstore</em>.</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-bold text-slate-300 uppercase mb-1">Nombre de tu Tienda</label>
+                  <input 
+                    v-model="shopForm.storeName" 
+                    type="text" 
+                    placeholder="Ej: ShopDC Store" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-amber-400"
+                  >
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-300 uppercase mb-1">WhatsApp para Pedidos</label>
+                  <input 
+                    v-model="shopForm.whatsapp" 
+                    type="tel" 
+                    placeholder="+54 9 11 ..." 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-amber-400"
+                  >
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase mb-1">Slogan o Subtítulo</label>
+                <input 
+                  v-model="shopForm.tagline" 
+                  type="text" 
+                  placeholder="Ej: Videojuegos Digitales, Tecnología & Streaming Garantizado" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400"
+                >
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase mb-1">Mensaje de Bienvenida / Banner</label>
+                <input 
+                  v-model="shopForm.bannerText" 
+                  type="text" 
+                  placeholder="Ej: ¡Activación rápida en 10-60 minutos con garantía oficial!" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-400"
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloque 2: Datos de Cobro Directo al Cliente -->
+          <div class="bg-slate-900/80 border border-white/[0.08] p-6 rounded-3xl shadow-xl space-y-4">
+            <h4 class="text-base font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <span>💳</span>
+              <span>Datos Bancarios para que tus Clientes te Paguen</span>
+            </h4>
+            <p class="text-xs text-slate-400">
+              Cuando tus clientes finalicen su pedido en tu tienda, se les mostrarán estos datos para transferirte directamente a ti:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-bold text-slate-400 uppercase mb-1">Tu Alias o CBU</label>
+                <input 
+                  :value="resellerStore.sessionUser?.cbuAlias" 
+                  disabled 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-amber-300 font-mono font-bold"
+                >
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 uppercase mb-1">Banco / Billetera</label>
+                <input 
+                  :value="resellerStore.sessionUser?.bankName || 'Mercado Pago / Banco'" 
+                  disabled 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-300"
+                >
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500">
+              Puedes actualizar tus datos de cobro en cualquier momento desde la sección de ajustes de perfil.
+            </p>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: SELECCIÓN DE PRODUCTOS QUE QUIERES OFRECER (5 COLS) -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bg-slate-900/80 border border-amber-500/25 p-6 rounded-3xl shadow-xl space-y-5">
+            <h4 class="text-base font-black text-amber-300 flex items-center gap-2 border-b border-slate-800 pb-3">
+              <span>🎯</span>
+              <span>Productos que Quieres Ofrecer</span>
+            </h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Elige qué rubros y plataformas aparecerán en tu tienda corta. Solo se mostrarán los ítems que actives aquí:
+            </p>
+
+            <div class="space-y-4 text-xs">
+              
+              <!-- Toggle 1: Streaming -->
+              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 font-bold text-white text-xs">
+                    <span>🎬</span>
+                    <span>Suscripciones Streaming & Pantallas 4K</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="shopForm.showStreaming" class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                  </label>
+                </div>
+
+                <!-- Selector de Plataformas Específicas -->
+                <div v-if="shopForm.showStreaming" class="pt-2 border-t border-slate-800/80 space-y-2">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Plataformas Activas en tu Tienda:</span>
+                  <div class="flex flex-wrap gap-1.5">
+                    <button 
+                      v-for="plat in availableStreamingOptions" 
+                      :key="plat" 
+                      type="button" 
+                      @click="toggleStreamingPlatformOption(plat)" 
+                      :class="[
+                        'px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer',
+                        shopForm.enabledStreamingPlatforms.includes(plat) 
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40 font-black' 
+                          : 'bg-slate-900 text-slate-500 border border-slate-800 hover:text-slate-300'
+                      ]"
+                    >
+                      <span>{{ shopForm.enabledStreamingPlatforms.includes(plat) ? '✓' : '+' }}</span> {{ plat }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Toggle 2: Super Combos -->
+              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] flex items-center justify-between">
+                <div class="flex items-center gap-2 font-bold text-white text-xs">
+                  <span>🎁</span>
+                  <span>Super Combos Promocionales</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" v-model="shopForm.showCombos" class="sr-only peer">
+                  <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                </label>
+              </div>
+
+              <!-- Toggle 3: Videojuegos Digitales -->
+              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 font-bold text-white text-xs">
+                    <span>🎮</span>
+                    <span>Videojuegos Digitales PlayStation</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="shopForm.showGaming" class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                <div v-if="shopForm.showGaming" class="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                  <button 
+                    v-for="cons in ['PS5', 'PS4']" 
+                    :key="cons" 
+                    type="button" 
+                    @click="toggleGamingPlatformOption(cons)" 
+                    :class="[
+                      'px-3 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer',
+                      shopForm.enabledGamingPlatforms.includes(cons) 
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 font-black' 
+                        : 'bg-slate-900 text-slate-500 border border-slate-800 hover:text-slate-300'
+                    ]"
+                  >
+                    <span>{{ shopForm.enabledGamingPlatforms.includes(cons) ? '✓' : '+' }}</span> {{ cons }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Toggle 4: Catálogo Físico -->
+              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] flex items-center justify-between">
+                <div class="flex items-center gap-2 font-bold text-white text-xs">
+                  <span>📦</span>
+                  <span>Catálogo Físico & Tecnología</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" v-model="shopForm.showPhysical" class="sr-only peer">
+                  <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
+
+            </div>
+
+            <div class="pt-3">
+              <button 
+                type="button" 
+                @click="saveMyShopConfig" 
+                class="w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer"
+              >
+                <span>💾</span>
+                <span>Guardar Configuración de Mi Tienda</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
 
     <!-- MODAL GESTIÓN Y AUDITORÍA DE BILLETERA (Historial de Movimientos y Cargas) -->
     <div v-if="showWalletModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">

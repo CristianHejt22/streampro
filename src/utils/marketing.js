@@ -1,5 +1,9 @@
 // Utilidades formales de Marketing, Sorteos y Usuarios Descuento (StreamePro Oficial)
 
+export function sanitizePhone(val) {
+  return String(val || '').replace(/[^0-9]/g, '')
+}
+
 export function normalizePhoneDigits(val) {
   return String(val || '')
     .replace(/[^0-9]/g, '')

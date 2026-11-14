@@ -6,6 +6,7 @@ const CustomerPortal = () => import('../views/CustomerPortal.vue')
 const ResellerDashboard = () => import('../views/ResellerDashboard.vue')
 const AdminDashboard = () => import('../views/AdminDashboard.vue')
 const ResellerRecruitmentView = () => import('../views/ResellerRecruitmentView.vue')
+const ResellerShopView = () => import('../views/ResellerShopView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -156,6 +157,31 @@ const router = createRouter({
       alias: ['/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'],
       name: 'recruitment',
       component: ResellerRecruitmentView
+    },
+    {
+      path: '/tienda/:shopSlug',
+      alias: ['/shop/:shopSlug', '/t/:shopSlug'],
+      name: 'reseller-shop-alias',
+      component: ResellerShopView
+    },
+    {
+      path: '/:shopSlug',
+      name: 'reseller-shop',
+      component: ResellerShopView,
+      beforeEnter: (to, from, next) => {
+        const reserved = [
+          'suscripciones', 'combos', 'juegos', 'tienda', 'sorteos', 'seleccion',
+          'portal', 'crm', 'myprove', 'revendedores', 'catalogo', 'productos',
+          'gaming', 'videojuegos', 'streaming', 'digital', 'paquetes', 'ofertas',
+          'ref', 'promo', 'p', 'j', 'api', 'admin', 'sw.js', 'favicon.svg'
+        ]
+        const s = String(to.params.shopSlug || '').toLowerCase()
+        if (reserved.includes(s)) {
+          next('/')
+        } else {
+          next()
+        }
+      }
     },
     {
       path: '/:pathMatch(.*)*',
