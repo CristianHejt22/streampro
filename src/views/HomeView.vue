@@ -3500,16 +3500,40 @@ const submitOrder = async () => {
         </RouterLink>
       </div>
 
-      <!-- Catálogo de Suscripciones -->
+      <!-- Catálogo de Suscripciones Oficiales 4K -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="product in paginatedDigitalProducts" :key="product.id" class="glass-panel glass-panel-hover rounded-3xl p-6 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group">
-          <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div 
+          v-for="product in paginatedDigitalProducts" 
+          :key="product.id" 
+          :class="[
+            'rounded-3xl p-5 sm:p-6 border flex flex-col justify-between relative overflow-hidden transition-all duration-300 group shadow-lg bg-[#060d1f]',
+            getStreamingMeta(product.platform).borderClass,
+            getStreamingMeta(product.platform).accentGlow
+          ]"
+        >
+          <!-- Ambient Glow -->
+          <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none bg-sky-400"></div>
+
           <div>
-            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-              <span class="text-[10px] font-black text-sky-300 tracking-widest uppercase bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/20">{{ product.category }}</span>
+            <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA -->
+            <div class="flex items-start justify-between gap-2.5 mb-3">
+              <div class="flex items-center gap-3">
+                <div 
+                  class="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0"
+                  v-html="getStreamingMeta(product.platform).iconSvg"
+                ></div>
+                <div>
+                  <span :class="['text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border inline-block mb-1', getStreamingMeta(product.platform).badgeClass]">
+                    {{ getStreamingMeta(product.platform).badge }}
+                  </span>
+                  <h3 class="text-base sm:text-lg font-black text-white group-hover:text-sky-300 transition-colors leading-tight">
+                    {{ product.name }}
+                  </h3>
+                </div>
+              </div>
               <span 
                 :class="[
-                  'text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono',
+                  'text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono shrink-0',
                   adminStore.getPlatformStock(product.platform).status === 'in_stock' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
                   adminStore.getPlatformStock(product.platform).status === 'low_stock' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
                   'bg-sky-500/15 text-sky-300 border-sky-500/30'
@@ -3518,62 +3542,99 @@ const submitOrder = async () => {
                 <span>{{ adminStore.getPlatformStock(product.platform).status === 'in_stock' ? '🟢 Stock 10-15m' : (adminStore.getPlatformStock(product.platform).status === 'low_stock' ? '🟡 Últimos cupos' : '⏱️ 10m a 1h') }}</span>
               </span>
             </div>
-            <h3 class="text-xl font-bold text-white mb-2">{{ product.name }}</h3>
-            <div class="flex items-center justify-between gap-2 mb-3">
-              <span class="text-xs text-slate-400 font-medium">Plan oficial garantizado</span>
-              <button 
-                type="button"
-                @click="openStreamingInfo(product)"
-                class="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer hover:underline"
-              >
-                <span>ℹ️</span>
-                <span>Ver +info</span>
-              </button>
+
+            <p class="text-xs text-slate-400 mb-3.5 leading-relaxed line-clamp-2">
+              {{ product.description }}
+            </p>
+
+            <!-- Selector Rápido de Modalidad Interactivo con Precios Claros -->
+            <div class="space-y-1.5 mb-3.5">
+              <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span>Modalidad a seleccionar:</span>
+                <span class="text-sky-400 font-mono">{{ getStreamingPlansKeys(product).length }} opciones</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/[0.06]">
+                <button
+                  v-for="(plan, pKey) in getStreamingPlansDisplay(product)"
+                  :key="pKey"
+                  type="button"
+                  @click="setActiveCardPlan(product, pKey)"
+                  :class="[
+                    'p-2 rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between',
+                    getActiveCardPlanKey(product) === pKey
+                      ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm'
+                      : 'hover:bg-slate-900 border border-transparent'
+                  ]"
+                >
+                  <span :class="['text-[11px] font-bold leading-tight block truncate', getActiveCardPlanKey(product) === pKey ? 'text-white' : 'text-slate-300']">
+                    {{ plan.label.replace(/\(.*?\)/g, '').trim() }}
+                  </span>
+                  <span class="text-[10px] font-mono font-black text-emerald-400 mt-0.5">
+                    ${{ Number(plan.clientPrice || 0).toLocaleString() }}
+                  </span>
+                </button>
+              </div>
             </div>
-            
-            <!-- Modalidades y Precio Inicial -->
-            <div class="space-y-2 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 mb-4 text-xs">
-              <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
-                <span class="flex items-center gap-1.5">
-                  <span>✨</span> Modalidades Oficiales
-                </span>
-                <span v-if="getMinStreamingPrice(product) > 0" class="text-[11px] font-black text-emerald-400 font-mono">
-                  Desde ${{ getMinStreamingPrice(product).toLocaleString() }}
+
+            <!-- Bloque Precio Visible & Desglose de Beneficios del Servicio -->
+            <div class="bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3 space-y-2">
+              <div class="flex items-baseline justify-between">
+                <div>
+                  <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[170px]">
+                    {{ getActiveCardPlan(product).label }}
+                  </span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-black font-mono text-emerald-400">
+                      ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
+                    </span>
+                    <span class="text-[10px] font-bold text-slate-400">ARS / mes</span>
+                  </div>
+                </div>
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+                  🛡️ SLA 30d
                 </span>
               </div>
-              <div class="space-y-1 pt-0.5">
-                <div v-for="(plan, pKey) in getStreamingPlansDisplay(product)" :key="pKey" class="flex items-center justify-between text-slate-300 py-0.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-emerald-400 font-bold text-xs">✓</span>
-                    <span class="font-medium text-slate-200">{{ plan.label }}</span>
-                  </div>
-                  <span class="text-[10px] text-sky-300 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800/80">${{ Number(plan.clientPrice || 0).toLocaleString() }}</span>
+
+              <!-- Detalle de Servicio Seleccionado -->
+              <div class="space-y-1 pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-300">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-emerald-400 font-bold text-xs">✓</span>
+                  <span class="truncate">{{ getPlanFeatureHint(getActiveCardPlan(product)) }}</span>
+                </div>
+                <div v-for="(ben, bi) in getStreamingMeta(product.platform).highlights.slice(0, 1)" :key="bi" class="flex items-center gap-1.5 text-slate-400">
+                  <span class="text-sky-400 font-bold text-xs">✓</span>
+                  <span class="truncate">{{ ben }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="flex gap-2">
+          <!-- Botonera de Compra & Acciones -->
+          <div class="flex gap-1.5 pt-2 border-t border-white/[0.06]">
             <button 
               type="button" 
               @click="openStreamingInfo(product)"
-              class="px-3 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              class="px-2.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
               title="Ver detalles y especificaciones del servicio"
             >
-              <span>ℹ️</span>
-              <span>+info</span>
+              ℹ️
             </button>
             <button 
               type="button" 
               @click="openSharePlaqueForStreaming(product)"
-              class="px-3 py-3 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+              class="px-2.5 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors shrink-0 cursor-pointer"
               title="Compartir en placa con logo"
             >
               📤
             </button>
-            <button @click="openConfig(product)" class="flex-1 bg-slate-800 text-brand-accent hover:bg-brand-accent hover:text-slate-950 font-black py-3 px-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 group-hover:bg-brand-accent group-hover:text-slate-950 shadow-sm text-xs sm:text-sm cursor-pointer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            <button 
+              @click="openConfigWithActivePlan(product)" 
+              class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
+            >
               <span>Elegir Plan</span>
+              <span class="font-mono text-[11px] bg-slate-950/20 px-1.5 py-0.5 rounded font-black">${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}</span>
+              <span>→</span>
             </button>
           </div>
         </div>

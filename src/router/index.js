@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAdminStore } from '../store/admin'
 
 const HomeView = () => import('../views/HomeView.vue')
 const CustomerPortal = () => import('../views/CustomerPortal.vue')
@@ -163,17 +164,15 @@ const router = createRouter({
   ]
 })
 
-// Precarga inteligente no bloqueante del catálogo masivo gaming al ingresar a rutas relevantes
+// Precarga inteligente del catálogo masivo gaming al ingresar a rutas relevantes
 router.beforeEach((to) => {
   const gamingRoutes = ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/myprove', '/crm']
   const isGamingRoute = gamingRoutes.some(p => to.path === p || to.path.startsWith(p)) || Boolean(to.query.game || to.query.g)
   if (isGamingRoute) {
-    import('../store/admin').then(({ useAdminStore }) => {
-      try {
-        const store = useAdminStore()
-        store.loadFullGamingCatalog?.()
-      } catch {}
-    }).catch(() => {})
+    try {
+      const store = useAdminStore()
+      store.loadFullGamingCatalog?.()
+    } catch {}
   }
 })
 
