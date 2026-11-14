@@ -1798,6 +1798,119 @@ const showVisorBorderGlow = ref(true)
 const showEnergyRing = ref(true)
 const showCornerBrackets = ref(true)
 const showAmbientBackdrop = ref(true)
+const showLensFlare = ref(true)
+const showRgbGlitch = ref(false)
+const animationBpm = ref(100) // 60 | 100 | 130
+const audioTrackEnabled = ref(true)
+let reelAudioCtx = null
+
+// Generador de audio sintetizado nativo Web Audio API (beat rítmico armónico para video)
+function generateReelAudioMediaStream(durationSec) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return null
+    if (reelAudioCtx) {
+      try { reelAudioCtx.close() } catch (_) {}
+    }
+    reelAudioCtx = new AudioCtx()
+    const dest = reelAudioCtx.createMediaStreamDestination()
+    const tempo = Number(animationBpm.value || 100)
+    const interval = 60 / tempo
+    const totalBeats = Math.ceil(durationSec / interval)
+    const now = reelAudioCtx.currentTime + 0.05
+
+    for (let i = 0; i < totalBeats; i++) {
+      const beatTime = now + i * interval
+      // 1. Kick / Sub pulse en cada tiempo
+      const osc = reelAudioCtx.createOscillator()
+      const gain = reelAudioCtx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(115, beatTime)
+      osc.frequency.exponentialRampToValueAtTime(32, beatTime + 0.12)
+      gain.gain.setValueAtTime(0.32, beatTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, beatTime + 0.14)
+      osc.connect(gain)
+      gain.connect(dest)
+      osc.start(beatTime)
+      osc.stop(beatTime + 0.15)
+
+      // 2. Acorde armónico ciberpunk (C5 - E5 - G5) en tiempos pares
+      if (i % 2 === 0) {
+        const chordOsc = reelAudioCtx.createOscillator()
+        const chordGain = reelAudioCtx.createGain()
+        chordOsc.type = 'triangle'
+        const freq = (i % 4 === 0) ? 523.25 : 659.25
+        chordOsc.frequency.setValueAtTime(freq, beatTime)
+        chordGain.gain.setValueAtTime(0.08, beatTime)
+        chordGain.gain.exponentialRampToValueAtTime(0.001, beatTime + 0.28)
+        chordOsc.connect(chordGain)
+        chordGain.connect(dest)
+        chordOsc.start(beatTime)
+        chordOsc.stop(beatTime + 0.3)
+      }
+    }
+    return dest.stream
+  } catch (e) {
+    console.warn('[ReelsStudio] Audio stream generation skipped:', e)
+    return null
+  }
+}
+
+// Destello Lens Flare Cinemático Anamórfico
+function drawCinematicLensFlare(ctx, W, H, t = 0, th) {
+  if (!showLensFlare.value || !isAnimated.value) return
+  ctx.save()
+  const period = 3.6
+  const cycleTime = t % period
+  if (cycleTime > 1.5) {
+    ctx.restore()
+    return
+  }
+  const progress = cycleTime / 1.5
+  const flareX = 80 + progress * (W - 160)
+  const flareY = 1175 + Math.sin(progress * Math.PI) * 45
+  const flareAlpha = Math.sin(progress * Math.PI) * 0.75
+
+  // Haz anamórfico horizontal
+  const rayGrad = ctx.createLinearGradient(flareX - 340, flareY, flareX + 340, flareY)
+  rayGrad.addColorStop(0, 'rgba(0,0,0,0)')
+  rayGrad.addColorStop(0.35, th.glow || 'rgba(56, 189, 248, 0.45)')
+  rayGrad.addColorStop(0.5, `rgba(255, 255, 255, ${flareAlpha})`)
+  rayGrad.addColorStop(0.65, th.glow || 'rgba(56, 189, 248, 0.45)')
+  rayGrad.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = rayGrad
+  ctx.fillRect(flareX - 340, flareY - 5, 680, 10)
+
+  // Medallón central estelar
+  const starGrad = ctx.createRadialGradient(flareX, flareY, 2, flareX, flareY, 42)
+  starGrad.addColorStop(0, '#ffffff')
+  starGrad.addColorStop(0.3, th.accent || '#38bdf8')
+  starGrad.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = starGrad
+  ctx.beginPath()
+  ctx.arc(flareX, flareY, 42, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+// Efecto Glitch / Aberración Cromática RGB Split
+function drawRgbGlitchEffect(ctx, W, H, t = 0) {
+  if (!showRgbGlitch.value || !isAnimated.value) return
+  const cycle = t % 2.6
+  if (cycle > 0.24) return
+
+  ctx.save()
+  const offset = 4 + Math.sin(t * 60) * 3
+  const bandY = (H * ((t * 1.6) % 1))
+  const bandH = 90 + Math.random() * 50
+
+  ctx.globalCompositeOperation = 'screen'
+  ctx.fillStyle = 'rgba(6, 182, 212, 0.22)'
+  ctx.fillRect(offset, bandY, W - offset, bandH)
+  ctx.fillStyle = 'rgba(236, 72, 153, 0.22)'
+  ctx.fillRect(-offset, bandY + 4, W, bandH - 8)
+  ctx.restore()
+}
 const showPromoSticker = ref(true)
 const activePromoSticker = ref('auto') // 'auto' | 'top_ventas' | 'entrega_inmediata' | 'edicion_deluxe' | 'calidad_4k' | 'none'
 const showDualGamingPrices = ref(false)
@@ -3417,7 +3530,27 @@ function drawPromoSticker(ctx, x, y, stickerType = 'auto', th, t = 0) {
     }
   }
 
-  if (effective === 'top_ventas') {
+  if (effective === 'mas_vendido') {
+    label = '🏆 N°1 MÁS VENDIDO'
+    gradColors = ['#f59e0b', '#d97706']
+    glowColor = 'rgba(245, 158, 11, 0.70)'
+  } else if (effective === 'oferta_flash') {
+    label = '⚡ OFERTA LIMITADA'
+    gradColors = ['#f43f5e', '#fb923c']
+    glowColor = 'rgba(244, 63, 94, 0.70)'
+  } else if (effective === 'sla_30d') {
+    label = '🛡️ SLA 30 DÍAS GARANTÍA'
+    gradColors = ['#10b981', '#0d9488']
+    glowColor = 'rgba(16, 185, 129, 0.70)'
+  } else if (effective === 'juega_hoy') {
+    label = '🎮 JUEGA HOY MISMO'
+    gradColors = ['#6366f1', '#8b5cf6']
+    glowColor = 'rgba(99, 102, 241, 0.70)'
+  } else if (effective === 'descuento_25') {
+    label = '🔥 25% OFF EXCLUSIVO'
+    gradColors = ['#ef4444', '#f97316']
+    glowColor = 'rgba(239, 68, 68, 0.70)'
+  } else if (effective === 'top_ventas') {
     label = '🔥 TOP VENTAS'
     gradColors = ['#ef4444', '#f97316']
     glowColor = 'rgba(239, 68, 68, 0.70)'
@@ -3834,7 +3967,8 @@ function renderFrame(timeMs = 0) {
   const W = 1080
   const H = 1920
   const th = currentTheme.value
-  const t = timeMs * 0.001
+  const timeMult = (Number(animationBpm.value) || 100) / 100
+  const t = (timeMs * 0.001) * timeMult
   const layout = currentLayoutId.value
 
   // ==========================================
@@ -5510,6 +5644,14 @@ async function recordVideoReel() {
 
   try {
     const stream = captureStreamFn.call(canvas, 30)
+
+    // Inyección de Audio Sintetizado Web Audio API si está activado
+    if (audioTrackEnabled.value) {
+      const audioStream = generateReelAudioMediaStream(durationSec)
+      if (audioStream && audioStream.getAudioTracks().length > 0) {
+        stream.addTrack(audioStream.getAudioTracks()[0])
+      }
+    }
     
     // Priorizar MP4 nativo si está disponible en el navegador; si no, WebM
     const candidates = [
@@ -5554,6 +5696,10 @@ async function recordVideoReel() {
     recorder.onstop = async () => {
       try {
         if (recordingInterval) clearInterval(recordingInterval)
+        if (reelAudioCtx) {
+          try { reelAudioCtx.close() } catch (_) {}
+          reelAudioCtx = null
+        }
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
         const rawBlob = new Blob(chunks, { type: mimeType })
 

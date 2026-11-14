@@ -4526,7 +4526,6 @@ const submitResellerGameInquiry = () => {
       @confirmed-close="handleConfirmCloseFromResellerReceipt"
       @receipt-purged="handleReceiptPurgedReseller"
     />
-  </div>
     <!-- MODAL: ESTUDIO DE REELS, TIKTOK & ESTADOS 9:16 -->
     <ReelsStoryStudioModal
       :show="showReelsStudioModal"
@@ -4539,4 +4538,5 @@ const submitResellerGameInquiry = () => {
       @close="showReelsStudioModal = false; reelsStudioPayload = null"
       @open-flyer="(payload) => { showReelsStudioModal = false; flyerInitialProduct = payload; showFlyerModal = true }"
     />
+  </div>
 </template>

@@ -190,7 +190,7 @@ const handleOpenCart = () => {
               <span>🎮</span>
               <span>Juegos</span>
               <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
-                {{ adminStore.processedGamingProducts?.length || 12 }}
+                +15K
               </span>
             </RouterLink>
             
@@ -350,7 +350,7 @@ const handleOpenCart = () => {
             <span>🎮</span>
             <span>Juegos</span>
             <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
-              {{ adminStore.processedGamingProducts?.length || 12 }}
+              +15K
             </span>
           </RouterLink>
           

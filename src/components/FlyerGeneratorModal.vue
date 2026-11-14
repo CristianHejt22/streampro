@@ -647,7 +647,11 @@ const productImageCORS = computed(() => {
 
 const effectiveCoverImage = computed(() => {
   if (customUploadImageUrl.value) return customUploadImageUrl.value
-  return productImageCORS.value || (flyerProductType.value === 'gaming' ? selectedGamingProduct.value?.image : selectedPhysicalProduct.value?.image) || ''
+  if (flyerProductType.value === 'gaming') return selectedGamingProduct.value?.image || ''
+  if (flyerProductType.value === 'physical') return selectedPhysicalProduct.value?.image || ''
+  if (flyerProductType.value === 'combo') return selectedPackage.value?.image || ''
+  if (flyerProductType.value === 'individual') return currentPlatformData.value?.image || currentPlatformData.value?.cover || productImageCORS.value || ''
+  return productImageCORS.value || ''
 })
 
 // Sincronizar selección cuando cambie el combo
@@ -1409,6 +1413,68 @@ function renderCanvasFlyerBlob() {
             ctx.textAlign = 'center'
             ctx.fillText('🍿 🎬 ✨', centerX, centerY + 20)
           }
+        } else if (effectiveCoverImage.value) {
+          // Streaming Individual con Carátula o Póster de Estreno
+          const imgEl = await loadFlyerImageElement(effectiveCoverImage.value)
+          const pad = (visorW < 450) ? 6 : 4
+          const innerX = visorX + pad
+          const innerY = visorY + pad
+          const innerW = visorW - pad * 2
+          const innerH = visorH - pad * 2
+          const cornerR = Math.min(28, innerW * 0.065)
+
+          if (imgEl) {
+            drawCoverWithManualAdjust(ctx, imgEl, innerX, innerY, innerW, innerH, cornerR, false)
+            ctx.save()
+            ctx.shadowColor = th.glow
+            ctx.shadowBlur = 12
+            roundRect(ctx, innerX, innerY, innerW, innerH, cornerR, false, true, th.border, 1.5)
+            ctx.restore()
+
+            // Insignia de plataforma en esquina inferior derecha
+            const platStyle = getPlatformCyberStyle(selectedPlatform.value)
+            const pillW = Math.min(180, innerW * 0.40)
+            const pillH = 34
+            const pillX = innerX + innerW - pillW - 12
+            const pillY = innerY + innerH - pillH - 12
+            ctx.save()
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.88)'
+            roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2, true, true, platStyle.color, 1.5)
+            ctx.fillStyle = '#ffffff'
+            ctx.font = 'bold 13px sans-serif'
+            ctx.textAlign = 'center'
+            ctx.fillText(`${platStyle.symbol} ${platStyle.label}`.slice(0, 18), pillX + pillW / 2, pillY + 22)
+            ctx.restore()
+          } else {
+            // Fallback Emblema Holográfico si la imagen remota no está disponible
+            const platStyle = getPlatformCyberStyle(selectedPlatform.value)
+            const shieldSize = Math.min(visorH * 0.38, 120)
+            const shieldY = centerY - visorH * 0.12
+            ctx.shadowColor = th.glow
+            ctx.shadowBlur = 28
+            ctx.fillStyle = th.cardBg
+            roundRect(ctx, centerX - shieldSize / 2, shieldY - shieldSize / 2, shieldSize, shieldSize, 28, true, true, platStyle.color, 2.5)
+            ctx.shadowBlur = 0
+            ctx.font = `${shieldSize * 0.55}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.fillText(platStyle.symbol, centerX, shieldY + shieldSize * 0.2)
+            const titleSize = Math.min(48, Math.max(24, visorH * 0.16))
+            ctx.font = `900 ${titleSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+            ctx.fillStyle = '#ffffff'
+            ctx.shadowColor = th.glow
+            ctx.shadowBlur = 14
+            ctx.fillText(platStyle.label, centerX, centerY + visorH * 0.2)
+            ctx.shadowBlur = 0
+            const subtagText = (currentPlanData.value.label || '1 PERFIL PRIVADO').toUpperCase() + ' · 4K ULTRA HD'
+            const tagFontSize = Math.min(18, Math.max(12, visorH * 0.075))
+            ctx.font = `bold ${tagFontSize}px monospace`
+            const tagW = ctx.measureText(subtagText).width + 36
+            const tagH = tagFontSize + 16
+            ctx.fillStyle = 'rgba(10, 20, 45, 0.85)'
+            roundRect(ctx, centerX - tagW / 2, centerY + visorH * 0.28, tagW, tagH, tagH / 2, true, true, th.border, 1.5)
+            ctx.fillStyle = '#a5f3fc'
+            ctx.fillText(subtagText, centerX, centerY + visorH * 0.28 + tagH * 0.68)
+          }
         } else {
           // Streaming Individual: Emblema Holográfico de Marca perfectamente proporcionado
           const platStyle = getPlatformCyberStyle(selectedPlatform.value)
@@ -2056,13 +2122,17 @@ function renderCanvasFlyerBlob() {
         ctx.fillText(footerText, barX + barW / 2, barY + 29)
       }
 
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error('Fallo al exportar blob de canvas'))
-            return
-          }
-          resolve(blob)
-        }, 'image/png')
+        try {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Fallo al exportar blob de canvas'))
+              return
+            }
+            resolve(blob)
+          }, 'image/png')
+        } catch (toBlobErr) {
+          reject(toBlobErr)
+        }
       } catch (e) {
         reject(e)
       }
@@ -2134,7 +2204,8 @@ function getReelsPayload() {
     guaranteeText: isGamer ? gamingFlyerGuaranteeText.value : '🛡️ Garantía Oficial 30 Días',
     zoom: imageZoom.value,
     panX: imageOffsetX.value,
-    panY: imageOffsetY.value
+    panY: imageOffsetY.value,
+    layoutId: 'cyber_pro'
   }
 }
 
@@ -2165,10 +2236,29 @@ const downloadFlyerImage = async () => {
     try {
       const blob = await renderCanvasFlyerBlob()
       if (blob) {
-        const url = URL.createObjectURL(blob)
-        triggerFileDownload(url, filename)
-        toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
-        exported = true
+        // En móviles con soporte Web Share de archivos, permitir guardar directo en Fotos o compartir
+        if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))) {
+          try {
+            const file = new File([blob], filename, { type: 'image/png' })
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: displayTitle.value,
+                text: attractiveFlyerCopy.value,
+                files: [file]
+              })
+              toast.add('✅ ¡Flyer guardado/compartido con éxito!', 'success')
+              exported = true
+            }
+          } catch (shareErr) {
+            if (shareErr?.name === 'AbortError') exported = true
+          }
+        }
+        if (!exported) {
+          const url = URL.createObjectURL(blob)
+          triggerFileDownload(url, filename)
+          toast.add(`¡Flyer descargado con éxito en formato ${flyerFormatLabels[flyerFormat.value]}!`, 'success')
+          exported = true
+        }
       }
     } catch (canvasErr) {
       console.warn('Fallo renderizado Canvas 2D, probando motor DOM html-to-image:', canvasErr)
@@ -2511,22 +2601,102 @@ const shareToWhatsAppStatus = () => {
           </div>
 
           <!-- MODO 1: SERVICIO INDIVIDUAL -->
-          <div v-if="flyerProductType === 'individual'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#020617] p-3.5 rounded-2xl border border-slate-800">
-            <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">🎬 Plataforma de Streaming</label>
-              <select v-model="selectedPlatform" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-bold outline-none focus:border-amber-400">
-                <option v-for="(plat, key) in adminStore.pricingCatalog" :key="key" :value="key">
-                  {{ plat.name || key }}
-                </option>
-              </select>
+          <div v-if="flyerProductType === 'individual'" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#020617] p-3.5 rounded-2xl border border-slate-800">
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1 text-xs">🎬 Plataforma de Streaming</label>
+                <select v-model="selectedPlatform" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-bold outline-none focus:border-amber-400 text-xs">
+                  <option v-for="(plat, key) in adminStore.pricingCatalog" :key="key" :value="key">
+                    {{ plat.name || key }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1 text-xs">Plan / Pantallas</label>
+                <select v-model="selectedPlanKey" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-bold outline-none focus:border-amber-400 text-xs">
+                  <option v-for="(pl, pKey) in currentPlatformData.plans" :key="pKey" :value="pKey">
+                    {{ pl.label }} (${{ pl.clientPrice?.toLocaleString() }})
+                  </option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Plan / Pantallas</label>
-              <select v-model="selectedPlanKey" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-bold outline-none focus:border-amber-400">
-                <option v-for="(pl, pKey) in currentPlatformData.plans" :key="pKey" :value="pKey">
-                  {{ pl.label }} (${{ pl.clientPrice?.toLocaleString() }})
-                </option>
-              </select>
+
+            <!-- Ajuste de Imagen y Póster Opcional en Streaming -->
+            <div class="space-y-2.5 bg-slate-950/90 p-3 rounded-2xl border border-sky-500/30">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold">
+                <span class="text-sky-300 flex items-center gap-1.5">
+                  <span>🖼️</span> Portada o Póster Opcional de la Serie / Película
+                </span>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    @click="triggerCustomCoverUpload"
+                    class="px-2 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 text-[10px] font-bold cursor-pointer"
+                    title="Subir imagen o póster propio desde tu dispositivo"
+                  >
+                    📁 Subir Póster
+                  </button>
+                  <button
+                    v-if="customUploadImageUrl"
+                    type="button"
+                    @click="customUploadImageUrl = ''"
+                    class="px-2 py-1 rounded-lg bg-slate-800 text-amber-300 text-[10px] font-bold cursor-pointer"
+                    title="Volver al emblema oficial de la plataforma"
+                  >
+                    ↺ Emblema Oficial
+                  </button>
+                  <button
+                    type="button"
+                    @click="resetImageAdjustments"
+                    class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold cursor-pointer"
+                    title="Centrar y restaurar zoom al 100%"
+                  >
+                    ⌖ Centrar
+                  </button>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                {{ customUploadImageUrl ? 'Póster personalizado activo en el visor.' : 'Por defecto se muestra el emblema oficial 4K. Puedes subir el póster de un estreno para mayor impacto.' }}
+              </p>
+              <div v-if="customUploadImageUrl" class="grid grid-cols-2 gap-1.5">
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'contain'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'contain' ? 'bg-sky-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                >
+                  <span>📐</span> Centrada Completa
+                </button>
+                <button 
+                  type="button" 
+                  @click="flyerImageFit = 'cover'" 
+                  :class="['py-1.5 px-2 rounded-lg font-bold text-xs transition text-center flex items-center justify-center gap-1 cursor-pointer', flyerImageFit === 'cover' ? 'bg-sky-600 text-white font-black shadow' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white']"
+                >
+                  <span>🎯</span> Rellenar Marco
+                </button>
+              </div>
+              <div v-if="customUploadImageUrl" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[10px]">
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>🔍 Zoom</span>
+                    <span class="font-mono text-sky-300">{{ Math.round(imageZoom * 100) }}%</span>
+                  </div>
+                  <input v-model.number="imageZoom" type="range" min="0.6" max="2.4" step="0.05" class="w-full accent-sky-400 cursor-pointer">
+                </div>
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>↔️ Posición X</span>
+                    <span class="font-mono text-sky-300">{{ imageOffsetX > 0 ? '+' + Math.round(imageOffsetX) : Math.round(imageOffsetX) }}%</span>
+                  </div>
+                  <input v-model.number="imageOffsetX" type="range" min="-60" max="60" step="1" class="w-full accent-sky-400 cursor-pointer">
+                </div>
+                <div class="bg-slate-900/70 p-2 rounded-xl border border-slate-800">
+                  <div class="flex justify-between font-bold text-slate-300 mb-1">
+                    <span>↕️ Posición Y</span>
+                    <span class="font-mono text-sky-300">{{ imageOffsetY > 0 ? '+' + Math.round(imageOffsetY) : Math.round(imageOffsetY) }}%</span>
+                  </div>
+                  <input v-model.number="imageOffsetY" type="range" min="-60" max="60" step="1" class="w-full accent-sky-400 cursor-pointer">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3538,6 +3708,26 @@ const shareToWhatsAppStatus = () => {
                       <span class="text-[5px] bg-emerald-500/20 text-emerald-300 font-bold px-1 rounded mt-0.5">✓ INCLUIDO</span>
                     </div>
                   </div>
+                  <div v-else-if="effectiveCoverImage" :class="['w-full h-full rounded-2xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-2xl transition-transform duration-75',
+                        flyerImageFit === 'contain' ? 'object-contain p-2' : 'object-cover object-center'
+                      ]"
+                    >
+                    <div class="absolute bottom-1.5 right-1.5 bg-slate-950/80 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-white/20 text-[7px] font-black flex items-center gap-1 z-20">
+                      <span>{{ currentPlatformIcon }}</span>
+                      <span class="uppercase">{{ selectedPlatform }}</span>
+                    </div>
+                  </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
                     <div :class="['w-12 h-12 rounded-2xl bg-slate-950/90 border flex items-center justify-center shadow-lg', currentTheme.cssBorder]">
                       <span class="text-2xl drop-shadow">{{ currentPlatformIcon }}</span>
@@ -3606,6 +3796,26 @@ const shareToWhatsAppStatus = () => {
                       <span :class="['text-[5px] truncate font-mono', currentTheme.cssText]">{{ srv.planLabel }}</span>
                     </div>
                   </div>
+                  <div v-else-if="effectiveCoverImage" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-transform duration-75',
+                        flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
+                      ]"
+                    >
+                    <div class="absolute bottom-1 right-1 bg-slate-950/80 backdrop-blur-md px-1 py-0.5 rounded border border-white/20 text-[6px] font-black flex items-center gap-0.5 z-20">
+                      <span>{{ currentPlatformIcon }}</span>
+                      <span class="uppercase">{{ selectedPlatform }}</span>
+                    </div>
+                  </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">
                     <div :class="['w-10 h-10 rounded-xl bg-slate-950/90 border flex items-center justify-center shadow', currentTheme.cssBorder]">
                       <span class="text-xl drop-shadow">{{ currentPlatformIcon }}</span>
@@ -3672,6 +3882,26 @@ const shareToWhatsAppStatus = () => {
                     <div v-for="(srv, idx) in (selectedPackage?.services?.slice(0, 3) || [])" :key="idx" :class="['flex-1 h-full rounded-lg bg-slate-950/90 border flex flex-col items-center justify-center p-0.5', currentTheme.cssBorder]">
                       <span class="text-sm">{{ getPlatformIcon(srv.platform) }}</span>
                       <span class="text-[6px] font-black text-white truncate max-w-full">{{ srv.platform }}</span>
+                    </div>
+                  </div>
+                  <div v-else-if="effectiveCoverImage" :class="['w-full h-full rounded-xl flex items-center justify-center shadow-xl border overflow-hidden relative group bg-slate-900', currentTheme.cssBorder]">
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      class="absolute inset-0 w-full h-full object-cover filter blur-lg scale-125 opacity-40 pointer-events-none"
+                    >
+                    <img 
+                      :src="effectiveCoverImage" 
+                      :alt="displayTitle" 
+                      :style="coverPreviewTransformStyle"
+                      :class="[
+                        'relative z-10 w-full h-full filter drop-shadow-xl transition-transform duration-75',
+                        flyerImageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover object-center'
+                      ]"
+                    >
+                    <div class="absolute bottom-1 right-1 bg-slate-950/80 backdrop-blur-md px-1 py-0.5 rounded border border-white/20 text-[6px] font-black flex items-center gap-0.5 z-20">
+                      <span>{{ currentPlatformIcon }}</span>
+                      <span class="uppercase">{{ selectedPlatform }}</span>
                     </div>
                   </div>
                   <div v-else class="flex flex-col items-center justify-center text-center">

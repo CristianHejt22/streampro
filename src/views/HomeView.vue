@@ -1356,7 +1356,7 @@ onMounted(() => {
   applyRouteParams()
 })
 
-watch(() => route.query, () => {
+watch([() => route.path, () => route.query], () => {
   applyRouteParams()
 }, { deep: true })
 
