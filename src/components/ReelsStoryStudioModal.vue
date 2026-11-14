@@ -1556,7 +1556,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import fixWebmDuration from 'fix-webm-duration'
 import { useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateReelStoryPackage, normalizePromoCode } from '../utils/marketing'
@@ -1707,11 +1708,14 @@ function preloadBadgeImages() {
     if (!loadedBadgeImages[key]) {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      img.src = url
       img.onload = () => {
         loadedBadgeImages[key] = img
         requestCanvasRedraw()
       }
+      img.onerror = () => {
+        // Fallback silencioso si el badge no está disponible
+      }
+      img.src = url
     }
   }
 }
@@ -1913,116 +1917,14 @@ function getStreamingPlatformCover(srvKey) {
   return createProceduralCover((srvKey || 'STREAMING').toUpperCase(), 'Suscripción Oficial', '⚡', '#1e293b', '#020617', '#38bdf8')
 }
 
-function readEbmlVint(bytes, pos) {
-  if (pos >= bytes.length) return null
-  const b = bytes[pos]
-  let width = 0
-  let mask = 0x80
-  while (mask > 0) {
-    width++
-    if (b & mask) break
-    mask >>= 1
-  }
-  if (width > 8) return null
-  let val = b & (mask - 1)
-  for (let i = 1; i < width; i++) {
-    val = (val * 256) + bytes[pos + i]
-  }
-  return { width, value: val }
-}
-
-function writeEbmlVint(val, width) {
-  const res = new Uint8Array(width)
-  const mask = 0x80 >> (width - 1)
-  let cur = val
-  for (let i = width - 1; i > 0; i--) {
-    res[i] = cur & 0xFF
-    cur = Math.floor(cur / 256)
-  }
-  res[0] = (cur & (mask - 1)) | mask
-  return res
-}
-
-// Inyector de duración matemática exacta para WebM
-// Elimina de raíz el error de 00.000001ms y asegura compatibilidad 100% con reproductores móviles y PC
+// Inyector de duración estándar para WebM usando librería oficial fix-webm-duration
+// Elimina de raíz el error de 00.000001ms y asegura compatibilidad 100% con reproductores móviles, WhatsApp, Instagram y PC
 async function fixWebmDurationBlob(blob, durationMs = 8000) {
   try {
-    const buffer = await blob.arrayBuffer()
-    const bytes = new Uint8Array(buffer)
-
-    // Segment Info ID: 0x15, 0x49, 0xA9, 0x66
-    let infoPos = -1
-    for (let i = 0; i < Math.min(bytes.length - 4, 4096); i++) {
-      if (bytes[i] === 0x15 && bytes[i + 1] === 0x49 && bytes[i + 2] === 0xA9 && bytes[i + 3] === 0x66) {
-        infoPos = i
-        break
-      }
-    }
-
-    if (infoPos === -1) return blob
-
-    const infoVint = readEbmlVint(bytes, infoPos + 4)
-    if (!infoVint) return blob
-
-    const infoContentStart = infoPos + 4 + infoVint.width
-    const infoContentEnd = infoContentStart + infoVint.value
-
-    // Obtener TimecodeScale (0x2A, 0xD7, 0xB1) para calcular ticks exactos de duración
-    let timecodeScaleNs = 1000000
-    for (let i = infoContentStart; i < Math.min(bytes.length - 3, infoContentEnd); i++) {
-      if (bytes[i] === 0x2A && bytes[i + 1] === 0xD7 && bytes[i + 2] === 0xB1) {
-        const tcVint = readEbmlVint(bytes, i + 3)
-        if (tcVint) {
-          let tcVal = 0
-          for (let j = 0; j < tcVint.value; j++) {
-            tcVal = (tcVal * 256) + bytes[i + 3 + tcVint.width + j]
-          }
-          if (tcVal > 0) timecodeScaleNs = tcVal
-        }
-        break
-      }
-    }
-
-    const durationTicks = (durationMs * 1000000) / timecodeScaleNs
-
-    // Buscar si ya existe la etiqueta Duration (0x44, 0x89)
-    for (let i = infoContentStart; i < Math.min(bytes.length - 2, infoContentEnd); i++) {
-      if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
-        const durVint = readEbmlVint(bytes, i + 2)
-        if (durVint) {
-          const valPos = i + 2 + durVint.width
-          const view = new DataView(buffer)
-          if (durVint.value === 4) {
-            view.setFloat32(valPos, durationTicks, false)
-            return new Blob([buffer], { type: blob.type })
-          } else if (durVint.value === 8) {
-            view.setFloat64(valPos, durationTicks, false)
-            return new Blob([buffer], { type: blob.type })
-          }
-        }
-      }
-    }
-
-    // Si no existía, insertamos la etiqueta Duration (7 bytes) limpia al inicio del contenido de Info
-    const durElement = new Uint8Array(7)
-    durElement[0] = 0x44
-    durElement[1] = 0x89
-    durElement[2] = 0x84 // float32 de 4 bytes
-    const dView = new DataView(durElement.buffer)
-    dView.setFloat32(3, durationTicks, false)
-
-    const newInfoSize = infoVint.value + 7
-    const newInfoVint = writeEbmlVint(newInfoSize, infoVint.width)
-
-    const patched = new Uint8Array(bytes.length + 7)
-    patched.set(bytes.subarray(0, infoPos + 4), 0)
-    patched.set(newInfoVint, infoPos + 4)
-    patched.set(durElement, infoContentStart)
-    patched.set(bytes.subarray(infoContentStart), infoContentStart + 7)
-
-    return new Blob([patched.buffer], { type: blob.type })
+    const fixed = await fixWebmDuration(blob, durationMs)
+    return fixed || blob
   } catch (err) {
-    console.warn('Could not patch WebM duration:', err)
+    console.warn('[ReelsStudio] Fallback usando rawBlob:', err)
     return blob
   }
 }
@@ -2039,40 +1941,21 @@ function loadImage(src) {
     if (!isDataOrBlob) {
       img.crossOrigin = 'anonymous'
     }
+    let timer = setTimeout(() => {
+      resolve(null)
+    }, 6000)
+
     img.onload = () => {
+      clearTimeout(timer)
       imageCache.set(src, img)
       resolve(img)
     }
     img.onerror = () => {
-      if (isDataOrBlob) {
-        const localImg = new Image()
-        localImg.onload = () => {
-          imageCache.set(src, localImg)
-          resolve(localImg)
-        }
-        localImg.onerror = () => resolve(null)
-        localImg.src = src
-      } else {
-        // Fallback seguro inmediato que NUNCA falla ni deja la pantalla negra
-        const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
-        if (fallbackData) {
-          const fallback = new Image()
-          fallback.onload = () => {
-            imageCache.set(src, fallback)
-            resolve(fallback)
-          }
-          fallback.onerror = () => resolve(null)
-          fallback.src = fallbackData
-        } else {
-          resolve(null)
-        }
-      }
+      clearTimeout(timer)
+      // NUNCA cargar sin crossOrigin para no contaminar el Canvas
+      resolve(null)
     }
     img.src = src
-    if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
-      imageCache.set(src, img)
-      resolve(img)
-    }
   })
 }
 
@@ -2360,23 +2243,28 @@ function applyGamingProduct(passedGame = null) {
     : Math.round(reelPromoPrice.value * 1.35)
 
   const plat = selectedGamingPlatform.value || 'PS5'
-  reelSubline.value = isPri
+  reelSubline.value = g.subtitle || (isPri
     ? `⭐️ Cuenta Primaria · ${plat} Digital Oficial`
-    : `⚡️ Cuenta Secundaria · ${plat} Digital Oficial`
+    : `⚡️ Cuenta Secundaria · ${plat} Digital Oficial`)
 
-  reelBadgeText.value = isPri
+  reelBadgeText.value = g.badge || (isPri
     ? (plat.includes('PS4') ? 'PS4 PRIMARIA' : 'PS5 PRIMARIA')
-    : (plat.includes('PS4') ? 'PS4 SECUNDARIA' : 'PS5 SECUNDARIA')
+    : (plat.includes('PS4') ? 'PS4 SECUNDARIA' : 'PS5 SECUNDARIA'))
 
-  currentSealText.value = isPri
+  currentSealText.value = g.guaranteeText || (isPri
     ? '🎮 JUGÁ CON TU PERFIL PERSONAL (PSN)'
-    : '⚡ ENTREGA INMEDIATA · GARANTÍA 100%'
+    : '⚡ ENTREGA INMEDIATA · GARANTÍA 100%')
 
-  reelBullet1.value = isPri
+  if (g.bullet1) reelBullet1.value = g.bullet1
+  else reelBullet1.value = isPri
     ? 'Juega con tu Perfil Personal (Trofeos en tu cuenta)'
     : 'Juega desde el usuario asignado 100% oficial'
-  reelBullet2.value = 'Descarga directa desde PlayStation Store'
-  reelBullet3.value = 'Garantía oficial y entrega en 60 a 90 min 24/7'
+
+  if (g.bullet2) reelBullet2.value = g.bullet2
+  else reelBullet2.value = 'Descarga directa desde PlayStation Store'
+
+  if (g.bullet3) reelBullet3.value = g.bullet3
+  else reelBullet3.value = 'Garantía oficial y entrega en 60 a 90 min 24/7'
 
   const rawCover = g.image || g.cover || '/flyers/gaming-template-story.jpg'
   reelArtworkUrl.value = rawCover
@@ -2422,26 +2310,22 @@ function onGiveawayChange() {
 async function loadArtwork(src) {
   if (!src) return
   const safeSrc = getCORSImageUrl(src)
-  const img = await loadImage(safeSrc)
+  let img = await loadImage(safeSrc)
+  if (!img && src !== safeSrc) {
+    // Si el proxy falló, intentar directo con protección CORS estricta
+    img = await loadImage(src)
+  }
   if (img) {
     loadedArtworkImage.value = img
     requestCanvasRedraw()
-  } else {
-    if (src !== safeSrc) {
-      const directImg = await loadImage(src)
-      if (directImg) {
-        loadedArtworkImage.value = directImg
-        requestCanvasRedraw()
-        return
-      }
-    }
-    // Generar respaldo procedural garantizado
-    const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
-    const fallbackImg = await loadImage(fallbackData)
-    if (fallbackImg) {
-      loadedArtworkImage.value = fallbackImg
-      requestCanvasRedraw()
-    }
+    return
+  }
+  // Generar respaldo procedural garantizado (100% CORS-safe, nunca contamina el canvas)
+  const fallbackData = createProceduralCover(reelHeadline.value || 'StreamePro', reelSubline.value || 'Edición Oficial', '⚡')
+  const fallbackImg = await loadImage(fallbackData)
+  if (fallbackImg) {
+    loadedArtworkImage.value = fallbackImg
+    requestCanvasRedraw()
   }
 }
 
@@ -3475,18 +3359,28 @@ function renderFrame(timeMs = 0) {
       ctx.textAlign = 'center'
       const cleanTitle = cleanGameTitle(reelHeadline.value)
       const titleLines = wrapReelsText(cleanTitle, 28).slice(0, 2)
-      ctx.font = `900 ${titleLines.length > 1 ? 36 : 44}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      let fontSize = titleLines.length > 1 ? 36 : 44
+      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      let maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
+      while (maxLineWidth > 720 && fontSize > 22) {
+        fontSize -= 2
+        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
+      }
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'
       ctx.shadowBlur = 12
       titleLines.forEach((tl, i) => {
-        const ty = pTop + (titleLines.length > 1 ? 52 + i * 44 : pH * 0.48)
+        const ty = pTop + (titleLines.length > 1 ? 50 + i * (fontSize + 6) : pH * 0.48)
         ctx.fillText(tl, W / 2, ty)
       })
       ctx.shadowBlur = 0
       ctx.font = 'bold 22px monospace'
       ctx.fillStyle = th.accent
-      const subStr = reelSubline.value.length > 48 ? reelSubline.value.slice(0, 46) + '...' : reelSubline.value
+      let subStr = reelSubline.value
+      while (ctx.measureText(subStr).width > 720 && subStr.length > 10) {
+        subStr = subStr.slice(0, -4) + '...'
+      }
       ctx.fillText(subStr, W / 2, pTop + pH - 22)
       ctx.restore()
 
@@ -3644,18 +3538,28 @@ function renderFrame(timeMs = 0) {
 
       ctx.save()
       ctx.textAlign = 'center'
-      ctx.font = '900 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      const titleLines = wrapReelsText(reelHeadline.value, 28).slice(0, 2)
+      let fontSize = 46
+      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      let maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
+      while (maxLineWidth > 720 && fontSize > 24) {
+        fontSize -= 2
+        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+        maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
+      }
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
       ctx.shadowBlur = 12
-      const titleLines = wrapReelsText(reelHeadline.value, 28).slice(0, 2)
-      titleLines.forEach((tl, i) => ctx.fillText(tl, W / 2, 940 + i * 50))
+      titleLines.forEach((tl, i) => ctx.fillText(tl, W / 2, 940 + i * (fontSize + 6)))
       ctx.shadowBlur = 0
-      const subY = 940 + titleLines.length * 50 + 8
+      const subY = 940 + titleLines.length * (fontSize + 6) + 8
 
       ctx.font = 'bold 24px sans-serif'
       ctx.fillStyle = th.accent
-      const subStr = reelSubline.value.length > 48 ? reelSubline.value.slice(0, 46) + '...' : reelSubline.value
+      let subStr = reelSubline.value
+      while (ctx.measureText(subStr).width > 720 && subStr.length > 10) {
+        subStr = subStr.slice(0, -4) + '...'
+      }
       ctx.fillText(subStr, W / 2, subY)
       ctx.restore()
 
@@ -4201,13 +4105,19 @@ function drawAnimatedWhatsAppPill(ctx, pillX, pillY, pillW, pillH = 110, t = 0) 
   ctx.shadowBlur = 8
   ctx.fillText(actionLabel, textStartX, cy - 12)
 
-  // Número destacado
+  // Número destacado con ajuste de tamaño automático
+  let phoneFontSize = 38
+  ctx.font = `900 ${phoneFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`
+  const maxPhoneW = pillW - 200
+  while (ctx.measureText(phone).width > maxPhoneW && phoneFontSize > 22) {
+    phoneFontSize -= 2
+    ctx.font = `900 ${phoneFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`
+  }
   ctx.fillStyle = '#ffffff'
-  ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
   ctx.shadowBlur = 16
   ctx.shadowOffsetY = 3
-  ctx.fillText(phone, textStartX, cy + 30)
+  ctx.fillText(phone, textStartX, cy + 28)
 
   // Flecha o Símbolo CTA a la derecha con animación
   const rightArrowX = pillX + pillW - 46
@@ -4603,23 +4513,22 @@ async function recordVideoReel() {
         mobileSaveFileName.value = fileName
         mobileSaveVideoBlob.value = finalBlob
 
-        // Si está en móvil, abrir el modal táctil para previsualización inmediata y guardado/compartido seguro
-        if (isMobileDevice.value) {
-          showMobileSaveModal.value = true
-          toast.add(`🎬 ¡Video Reel listo (${durationSec}s)! Puedes verlo, guardarlo o compartirlo.`, 'success')
-          return
-        }
-
-        // Descarga directa habitual para PC
+        // Disparo universal de descarga directa (PC y móvil)
         const a = document.createElement('a')
         a.href = url
         a.download = fileName
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 15000)
 
-        toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · ${durationSec}s)! Listo para TikTok, Reels o Estados.`, 'success')
+        // Si está en móvil o táctil, además abrimos el visor táctil para previsualización inmediata y compartir nativo
+        if (isMobileDevice.value) {
+          showMobileSaveModal.value = true
+          toast.add(`🎬 ¡Video Reel listo (${durationSec}s)! Descargando y listo para compartir.`, 'success')
+        } else {
+          toast.add(`🎬 ¡Video Reel 9:16 generado (${ext.toUpperCase()} · ${durationSec}s)! Listo para TikTok, Reels o Estados.`, 'success')
+          setTimeout(() => URL.revokeObjectURL(url), 15000)
+        }
       } catch (err) {
         console.error('Error procesando archivo de video:', err)
         toast.add('Ocurrió un error al empaquetar el video. Descargando imagen HD...', 'info')
@@ -4687,13 +4596,17 @@ async function downloadImagePng() {
     const fileName = `estado_streamepro_${cleanTitle}_9x16.png`
 
     const url = URL.createObjectURL(blob)
+    mobileSaveMediaType.value = 'image'
+    mobileSaveImageUrl.value = url
+    mobileSaveFileName.value = fileName
+
     const a = document.createElement('a')
     a.href = url
     a.download = fileName
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    setTimeout(() => URL.revokeObjectURL(url), 15000)
 
     toast.add('📸 ¡Flyer HD 9:16 descargado con éxito!', 'success')
   } catch (err) {
@@ -5047,6 +4960,23 @@ function initFromProps() {
     startAnimationLoop()
   })
 }
+
+watch(() => adminStore.processedGamingProducts, (list) => {
+  if (selectedMode.value === 'gaming' && list && list.length > 0) {
+    if (pickedGameId.value) {
+      const g = list.find(x => x.id === pickedGameId.value)
+      if (g && (!loadedArtworkImage.value || defaultProductCoverUrl.value === '/flyers/gaming-template-story.jpg')) {
+        applyGamingProduct(g)
+      }
+    } else if (!props.initialPayload) {
+      const firstGame = list[0]
+      if (firstGame) {
+        pickedGameId.value = firstGame.id
+        applyGamingProduct(firstGame)
+      }
+    }
+  }
+}, { deep: false })
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
