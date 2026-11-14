@@ -243,7 +243,7 @@
               <span class="text-[11px] font-semibold text-slate-400">Dinámicas &amp; Animación:</span>
               <button
                 type="button"
-                @click="isAnimated = !isAnimated; requestCanvasRedraw()"
+                @click="isAnimated = !isAnimated"
                 :class="['px-2.5 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition', isAnimated ? 'bg-indigo-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white']"
               >
                 {{ isAnimated ? '⏸️ Pausar Dinámicas' : '▶️ Activar Dinámicas' }}
@@ -2002,12 +2002,19 @@ async function fixWebmDurationBlob(blob, durationMs = 8000) {
   }
 }
 
-// Cache en memoria para imágenes precargadas
+// Cache en memoria con límite LRU para imágenes precargadas (previene saturación de RAM)
+const MAX_IMAGE_CACHE_ENTRIES = 80
 const imageCache = new Map()
 
 function loadImage(src) {
   if (!src) return Promise.resolve(null)
-  if (imageCache.has(src)) return Promise.resolve(imageCache.get(src))
+  if (imageCache.has(src)) {
+    const cached = imageCache.get(src)
+    // Refrescar orden LRU
+    imageCache.delete(src)
+    imageCache.set(src, cached)
+    return Promise.resolve(cached)
+  }
   return new Promise((resolve) => {
     const isDataOrBlob = src.startsWith('data:') || src.startsWith('blob:')
     const img = new Image()
@@ -2020,6 +2027,10 @@ function loadImage(src) {
 
     img.onload = () => {
       clearTimeout(timer)
+      if (imageCache.size >= MAX_IMAGE_CACHE_ENTRIES) {
+        const oldest = imageCache.keys().next().value
+        if (oldest) imageCache.delete(oldest)
+      }
       imageCache.set(src, img)
       resolve(img)
     }
@@ -2116,15 +2127,28 @@ function rgbToHsl(r, g, b) {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
 }
 
-function extractCoverPalette(img) {
+let paletteCanvas = null
+let paletteCtx = null
+const coverPaletteCache = new Map()
+
+function extractCoverPalette(img, cacheKey = '') {
   try {
     if (!img || !(img.width > 0 || img.naturalWidth > 0)) return null
-    const mini = document.createElement('canvas')
-    mini.width = 48
-    mini.height = 48
-    const mctx = mini.getContext('2d')
-    mctx.drawImage(img, 0, 0, 48, 48)
-    const imgData = mctx.getImageData(0, 0, 48, 48).data
+    const key = cacheKey || img.currentSrc || img.src || ''
+    if (key && coverPaletteCache.has(key)) {
+      return coverPaletteCache.get(key)
+    }
+    if (!paletteCanvas) {
+      paletteCanvas = document.createElement('canvas')
+      paletteCanvas.width = 48
+      paletteCanvas.height = 48
+      paletteCtx = paletteCanvas.getContext('2d', { willReadFrequently: true })
+    }
+    if (!paletteCtx) return null
+
+    paletteCtx.clearRect(0, 0, 48, 48)
+    paletteCtx.drawImage(img, 0, 0, 48, 48)
+    const imgData = paletteCtx.getImageData(0, 0, 48, 48).data
     let maxSat = 0
     let bestR = 6, bestG = 182, bestB = 212
 
@@ -2146,7 +2170,12 @@ function extractCoverPalette(img) {
         bestB = b
       }
     }
-    return { r: bestR, g: bestG, b: bestB }
+    const result = { r: bestR, g: bestG, b: bestB }
+    if (key) {
+      if (coverPaletteCache.size > 80) coverPaletteCache.clear()
+      coverPaletteCache.set(key, result)
+    }
+    return result
   } catch (err) {
     console.warn('[ReelsStudio] No se pudo extraer la paleta de la portada:', err)
     return null
@@ -2766,7 +2795,9 @@ function onCanvasPointerMove(e) {
   const dyPct = ((e.clientY - dragStartPointerY) / dragContainerHeight) * 100
   imageOffsetX.value = Math.max(-45, Math.min(45, Math.round(dragInitialOffsetX + dxPct)))
   imageOffsetY.value = Math.max(-45, Math.min(45, Math.round(dragInitialOffsetY + dyPct)))
-  requestCanvasRedraw()
+  if (!isAnimated.value) {
+    requestCanvasRedraw()
+  }
 }
 
 function onCanvasPointerUp(e) {
@@ -2776,7 +2807,9 @@ function onCanvasPointerUp(e) {
       e.currentTarget.releasePointerCapture?.(e.pointerId)
     } catch {}
   }
-  requestCanvasRedraw()
+  if (!isAnimated.value) {
+    requestCanvasRedraw()
+  }
 }
 
 // ==========================================
@@ -2902,39 +2935,98 @@ function drawDirectProceduralCover(ctx, x, y, w, h, t = 0) {
   ctx.restore()
 }
 
-// Renderiza el titular y subtítulo con encaje tipográfico perfecto (1 o 2 líneas según extensión sin cortar palabras)
-function drawFittedHeadline(ctx, headlineText, sublineText, W, th, t = 0) {
-  if (!headlineText && !sublineText) return
-  ctx.save()
+// ==========================================
+// CACHE Y PRE-CÁLCULO TIPOGRÁFICO DE ALTO RENDIMIENTO
+// Elimina loops de 'ctx.measureText' a 30 FPS, garantizando 0 caídas de frames
+// ==========================================
+const typographyCache = new Map()
 
-  const maxW = 900
-  const centerX = W / 2
+function getMemoizedTextWidth(ctx, font, text) {
+  const key = `w_${font}_${text}`
+  const cached = typographyCache.get(key)
+  if (cached !== undefined) return cached
+  ctx.font = font
+  const w = ctx.measureText(text).width
+  if (typographyCache.size > 300) typographyCache.clear()
+  typographyCache.set(key, w)
+  return w
+}
+
+function getMemoizedFittedTitle(ctx, rawText, maxW = 720, maxLines = 2) {
+  const clean = cleanGameTitle(rawText || '')
+  const key = `title_${clean}_${maxW}_${maxLines}`
+  const cached = typographyCache.get(key)
+  if (cached) return cached
+
+  const lines = wrapReelsText(clean, 28).slice(0, maxLines)
+  let fontSize = lines.length > 1 ? 36 : 44
+  const fontBase = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  
+  ctx.font = `900 ${fontSize}px ${fontBase}`
+  let maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width), 0)
+  while (maxLineWidth > maxW && fontSize > 22) {
+    fontSize -= 2
+    ctx.font = `900 ${fontSize}px ${fontBase}`
+    maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width), 0)
+  }
+
+  const result = { clean, lines, fontSize, maxLineWidth }
+  if (typographyCache.size > 300) typographyCache.clear()
+  typographyCache.set(key, result)
+  return result
+}
+
+function getMemoizedTruncatedSubline(ctx, rawSubline, maxW = 720) {
+  const key = `sub_${rawSubline}_${maxW}`
+  const cached = typographyCache.get(key)
+  if (cached !== undefined) return cached
+
+  ctx.font = 'bold 22px monospace'
+  let subStr = rawSubline || ''
+  while (ctx.measureText(subStr).width > maxW && subStr.length > 10) {
+    subStr = subStr.slice(0, -4) + '...'
+  }
+  if (typographyCache.size > 300) typographyCache.clear()
+  typographyCache.set(key, subStr)
+  return subStr
+}
+
+function getMemoizedFittedPhone(ctx, rawPhone, maxPhoneW = 420) {
+  const key = `phone_${rawPhone}_${maxPhoneW}`
+  const cached = typographyCache.get(key)
+  if (cached) return cached
+
+  let phoneFontSize = 38
+  const fontBase = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace'
+  ctx.font = `900 ${phoneFontSize}px ${fontBase}`
+  while (ctx.measureText(rawPhone).width > maxPhoneW && phoneFontSize > 22) {
+    phoneFontSize -= 2
+    ctx.font = `900 ${phoneFontSize}px ${fontBase}`
+  }
+  const result = { phone: rawPhone, fontSize: phoneFontSize }
+  if (typographyCache.size > 300) typographyCache.clear()
+  typographyCache.set(key, result)
+  return result
+}
+
+function getMemoizedHeadlineLayout(ctx, headlineText, sublineText, maxW = 900) {
   const text = (headlineText || '').trim().toUpperCase()
+  const sub = (sublineText || '').trim()
+  const key = `hl_${text}_${sub}_${maxW}`
+  const cached = typographyCache.get(key)
+  if (cached) return cached
 
-  // 1. Probar en 1 línea con 54px
+  let result
   ctx.font = '900 54px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   const w54 = ctx.measureText(text).width
-
   if (w54 <= maxW) {
-    ctx.fillStyle = '#ffffff'
-    ctx.textAlign = 'center'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
-    ctx.shadowBlur = 22
-    ctx.shadowOffsetY = 4
-    ctx.fillText(text, centerX, 260)
+    result = { mode: 'single', fontSize: 54, text, y: 260 }
   } else {
-    // 2. Probar en 1 línea con 44px
     ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     const w44 = ctx.measureText(text).width
     if (w44 <= maxW) {
-      ctx.fillStyle = '#ffffff'
-      ctx.textAlign = 'center'
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
-      ctx.shadowBlur = 20
-      ctx.shadowOffsetY = 4
-      ctx.fillText(text, centerX, 262)
+      result = { mode: 'single', fontSize: 44, text, y: 262 }
     } else {
-      // 3. Dividir limpiamente en 2 líneas por palabras
       const words = text.split(' ')
       let line1 = ''
       let line2 = ''
@@ -2963,31 +3055,64 @@ function drawFittedHeadline(ctx, headlineText, sublineText, W, th, t = 0) {
         fontSize -= 2
         ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
       }
-
-      ctx.fillStyle = '#ffffff'
-      ctx.textAlign = 'center'
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
-      ctx.shadowBlur = 18
-      ctx.shadowOffsetY = 3
-      ctx.fillText(line1, centerX, 238)
-      ctx.fillText(line2, centerX, 278)
+      result = { mode: 'double', fontSize, line1, line2 }
     }
   }
 
-  // Subtítulo con acento y auto-ajuste de escala
-  if (sublineText) {
-    let subSize = 26
+  let subSize = 26
+  if (sub) {
     ctx.font = `bold ${subSize}px -apple-system, sans-serif`
-    while (ctx.measureText(sublineText).width > maxW && subSize > 20) {
+    while (ctx.measureText(sub).width > maxW && subSize > 20) {
       subSize -= 2
       ctx.font = `bold ${subSize}px -apple-system, sans-serif`
     }
+  }
+
+  result.sublineText = sub
+  result.subSize = subSize
+
+  if (typographyCache.size > 300) typographyCache.clear()
+  typographyCache.set(key, result)
+  return result
+}
+
+// Renderiza el titular y subtítulo con encaje tipográfico perfecto (1 o 2 líneas según extensión sin cortar palabras)
+function drawFittedHeadline(ctx, headlineText, sublineText, W, th, t = 0) {
+  if (!headlineText && !sublineText) return
+  ctx.save()
+
+  const maxW = 900
+  const centerX = W / 2
+  const layout = getMemoizedHeadlineLayout(ctx, headlineText, sublineText, maxW)
+
+  if (layout.mode === 'single') {
+    ctx.font = `900 ${layout.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+    ctx.shadowBlur = 20
+    ctx.shadowOffsetY = 4
+    ctx.fillText(layout.text, centerX, layout.y)
+  } else {
+    ctx.font = `900 ${layout.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
+    ctx.shadowBlur = 18
+    ctx.shadowOffsetY = 3
+    ctx.fillText(layout.line1, centerX, 238)
+    ctx.fillText(layout.line2, centerX, 278)
+  }
+
+  // Subtítulo con acento y auto-ajuste de escala
+  if (layout.sublineText) {
+    ctx.font = `bold ${layout.subSize}px -apple-system, sans-serif`
     ctx.fillStyle = th.accent
     ctx.textAlign = 'center'
     ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
     ctx.shadowBlur = 14
     ctx.shadowOffsetY = 2
-    ctx.fillText(sublineText, centerX, 316)
+    ctx.fillText(layout.sublineText, centerX, 316)
   }
 
   ctx.restore()
@@ -3566,8 +3691,8 @@ function renderFrame(timeMs = 0) {
       const impactText = currentSealText.value || '🔥 ENTREGA INMEDIATA · GARANTÍA OFICIAL'
       if (impactText) {
         ctx.save()
-        ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        const badgeW = Math.min(ctx.measureText(impactText).width + 60, 800)
+        const textW = getMemoizedTextWidth(ctx, '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', impactText)
+        const badgeW = Math.min(textW + 60, 800)
         const badgeH = 46
         const badgeX = (W - badgeW) / 2
         const badgeY = Math.round(H * 0.466)
@@ -3607,6 +3732,7 @@ function renderFrame(timeMs = 0) {
         ctx.shadowBlur = 0
         ctx.textAlign = 'center'
         ctx.fillStyle = '#ffffff'
+        ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         ctx.fillText(impactText, W / 2, badgeY + badgeH * 0.68)
         ctx.restore()
       }
@@ -3616,30 +3742,19 @@ function renderFrame(timeMs = 0) {
       const pH = Math.round(H * 0.088)
       ctx.save()
       ctx.textAlign = 'center'
-      const cleanTitle = cleanGameTitle(reelHeadline.value)
-      const titleLines = wrapReelsText(cleanTitle, 28).slice(0, 2)
-      let fontSize = titleLines.length > 1 ? 36 : 44
-      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      let maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
-      while (maxLineWidth > 720 && fontSize > 22) {
-        fontSize -= 2
-        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
-      }
+      const fittedTitle = getMemoizedFittedTitle(ctx, reelHeadline.value, 720, 2)
+      ctx.font = `900 ${fittedTitle.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'
       ctx.shadowBlur = 12
-      titleLines.forEach((tl, i) => {
-        const ty = pTop + (titleLines.length > 1 ? 50 + i * (fontSize + 6) : pH * 0.48)
+      fittedTitle.lines.forEach((tl, i) => {
+        const ty = pTop + (fittedTitle.lines.length > 1 ? 50 + i * (fittedTitle.fontSize + 6) : pH * 0.48)
         ctx.fillText(tl, W / 2, ty)
       })
       ctx.shadowBlur = 0
       ctx.font = 'bold 22px monospace'
       ctx.fillStyle = th.accent
-      let subStr = reelSubline.value
-      while (ctx.measureText(subStr).width > 720 && subStr.length > 10) {
-        subStr = subStr.slice(0, -4) + '...'
-      }
+      const subStr = getMemoizedTruncatedSubline(ctx, reelSubline.value, 720)
       ctx.fillText(subStr, W / 2, pTop + pH - 22)
       ctx.restore()
 
@@ -3659,7 +3774,7 @@ function renderFrame(timeMs = 0) {
         ctx.fillStyle = '#94a3b8'
         const discPct = calculatedDiscountPercent.value
         const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
-        const origW = ctx.measureText(origText).width
+        const origW = getMemoizedTextWidth(ctx, 'bold 21px sans-serif', origText)
         const discountShift = discPct ? 50 : 0
         const textX = (W / 2) - discountShift
         ctx.fillText(origText, textX, 1272)
@@ -3799,28 +3914,18 @@ function renderFrame(timeMs = 0) {
 
       ctx.save()
       ctx.textAlign = 'center'
-      const titleLines = wrapReelsText(reelHeadline.value, 28).slice(0, 2)
-      let fontSize = 46
-      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      let maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
-      while (maxLineWidth > 720 && fontSize > 24) {
-        fontSize -= 2
-        ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-        maxLineWidth = Math.max(...titleLines.map(line => ctx.measureText(line).width))
-      }
+      const fittedCyber = getMemoizedFittedTitle(ctx, reelHeadline.value, 720, 2)
+      ctx.font = `900 ${fittedCyber.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
       ctx.shadowBlur = 12
-      titleLines.forEach((tl, i) => ctx.fillText(tl, W / 2, 940 + i * (fontSize + 6)))
+      fittedCyber.lines.forEach((tl, i) => ctx.fillText(tl, W / 2, 940 + i * (fittedCyber.fontSize + 6)))
       ctx.shadowBlur = 0
-      const subY = 940 + titleLines.length * (fontSize + 6) + 8
+      const subY = 940 + fittedCyber.lines.length * (fittedCyber.fontSize + 6) + 8
 
       ctx.font = 'bold 24px sans-serif'
       ctx.fillStyle = th.accent
-      let subStr = reelSubline.value
-      while (ctx.measureText(subStr).width > 720 && subStr.length > 10) {
-        subStr = subStr.slice(0, -4) + '...'
-      }
+      const subStr = getMemoizedTruncatedSubline(ctx, reelSubline.value, 720)
       ctx.fillText(subStr, W / 2, subY)
       ctx.restore()
 
@@ -4453,14 +4558,10 @@ function drawAnimatedWhatsAppPill(ctx, pillX, pillY, pillW, pillH = 110, t = 0) 
   ctx.shadowBlur = 8
   ctx.fillText(actionLabel, textStartX, cy - 12)
 
-  // Número destacado con ajuste de tamaño automático
-  let phoneFontSize = 38
-  ctx.font = `900 ${phoneFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`
+  // Número destacado con ajuste de tamaño automático memoizado
   const maxPhoneW = pillW - 200
-  while (ctx.measureText(phone).width > maxPhoneW && phoneFontSize > 22) {
-    phoneFontSize -= 2
-    ctx.font = `900 ${phoneFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`
-  }
+  const fittedPhone = getMemoizedFittedPhone(ctx, phone, maxPhoneW)
+  ctx.font = `900 ${fittedPhone.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace`
   ctx.fillStyle = '#ffffff'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
   ctx.shadowBlur = 16
@@ -4631,7 +4732,7 @@ function drawPriceContent(ctx, boxY, boxW, th, t) {
     ctx.font = 'bold 26px sans-serif'
     const discPct = Math.round((1 - (Number(reelPromoPrice.value) / Number(reelRegularPrice.value))) * 100)
     const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
-    const origW = ctx.measureText(origText).width
+    const origW = getMemoizedTextWidth(ctx, 'bold 26px sans-serif', origText)
     const badgeW = discPct > 0 ? 116 : 0
     const gap = 12
     const totalGroupW = origW + (discPct > 0 ? (gap + badgeW) : 0)
@@ -4753,22 +4854,48 @@ function drawCtaButton(ctx, ctaX, ctaY, ctaW, ctaH = 100, t = 0) {
   ctx.restore()
 }
 
+// ==========================================
+// MOTOR DE ANIMACIÓN Y GOBERNADOR A 30 FPS ESTRICTO
+// Evita sobrecalentamiento y throttling en pantallas de 90Hz, 120Hz o 144Hz
+// ==========================================
+let lastRenderTime = 0
+const frameInterval = 1000 / 30 // ~33.33ms
+let redrawPending = false
+
 function startAnimationLoop() {
-  if (animFrameId) cancelAnimationFrame(animFrameId)
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId)
+    animFrameId = null
+  }
   animationStartTime = performance.now()
+  lastRenderTime = 0
 
   const loop = (now) => {
-    const elapsed = now - animationStartTime
-    renderFrame(elapsed)
-    if (isAnimated.value || isRecording.value) {
-      animFrameId = requestAnimationFrame(loop)
+    if (!isAnimated.value && !isRecording.value) {
+      animFrameId = null
+      return
     }
+
+    const delta = now - lastRenderTime
+    // Amortiguador de 1.5ms para compensar variaciones de temporización del reloj del navegador
+    if (delta >= frameInterval - 1.5) {
+      lastRenderTime = now - (delta % frameInterval)
+      const elapsed = now - animationStartTime
+      renderFrame(elapsed)
+    }
+
+    animFrameId = requestAnimationFrame(loop)
   }
   animFrameId = requestAnimationFrame(loop)
 }
 
 function requestCanvasRedraw() {
-  nextTick(() => {
+  // Si la animación o la grabación están activas, el bucle a 30 FPS ya redibuja en el siguiente frame
+  if (isAnimated.value || isRecording.value) return
+  if (redrawPending) return
+  redrawPending = true
+  requestAnimationFrame(() => {
+    redrawPending = false
     renderFrame(performance.now() - animationStartTime)
   })
 }
@@ -4791,6 +4918,7 @@ async function recordVideoReel() {
   }
 
   // Garantizar que el bucle de animación esté activo para alimentar frames frescos a 30 FPS
+  const wasAnimatedBeforeRecord = isAnimated.value
   isDrawingForExport.value = true
   isAnimated.value = true
   isRecording.value = true
@@ -4884,6 +5012,7 @@ async function recordVideoReel() {
       } finally {
         isDrawingForExport.value = false
         isRecording.value = false
+        isAnimated.value = wasAnimatedBeforeRecord
         recordingProgress.value = 0
         recordingSeconds.value = '0.0'
         requestCanvasRedraw()
@@ -4903,6 +5032,7 @@ async function recordVideoReel() {
     console.error('Error grabando reel en canvas:', err)
     isDrawingForExport.value = false
     isRecording.value = false
+    isAnimated.value = wasAnimatedBeforeRecord
     if (recordingInterval) clearInterval(recordingInterval)
     toast.add('No se pudo grabar video en este navegador. Usa "Descargar PNG".', 'error')
   }
@@ -5347,6 +5477,18 @@ watch(() => props.contactPhone, (newPhone) => {
 
 watch(() => props.promoCode, (newVal) => {
   if (newVal) reelPromoCode.value = normalizePromoCode(newVal)
+})
+
+watch(isAnimated, (animating) => {
+  if (animating) {
+    startAnimationLoop()
+  } else {
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId)
+      animFrameId = null
+    }
+    requestCanvasRedraw()
+  }
 })
 
 onMounted(() => {
