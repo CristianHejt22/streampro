@@ -1,8 +1,34 @@
 User-agent: *
+
+# Prohibir indexación de rutas de suscripciones y combos para protección de marcas y derechos de autor
+Disallow: /suscripciones
+Disallow: /suscripciones/
+Disallow: /streaming
+Disallow: /streaming/
+Disallow: /digital
+Disallow: /digital/
+Disallow: /combos
+Disallow: /combos/
+Disallow: /paquetes
+Disallow: /paquetes/
+Disallow: /servicio/
+Disallow: /combo/
+Disallow: /api/
+Disallow: /portal
+Disallow: /crm
+Disallow: /myprove
+
+# Permitir indexación de portada, catálogo gaming y tienda de productos físicos
 Allow: /
+Allow: /juegos
+Allow: /juegos/
+Allow: /tienda
+Allow: /tienda/
 Allow: /p/
 Allow: /producto/
-Allow: /api/product-preview
+Allow: /j/
+Allow: /juego/
+Allow: /sorteos
 
 # Sitemap oficial StreamePro
 Sitemap: https://streamepro.me/sitemap.xml

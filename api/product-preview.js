@@ -35,6 +35,12 @@ export default async function handler(req, res) {
   const payload = await resolvePreviewPayload(req.query)
   const ogImageUrl = buildOgImageUrl(req.query)
 
+  // Bloqueo estricto de SEO / motores de búsqueda para suscripciones y combos para protección de marcas
+  const isPrivateAccountOffer = payload.type === 'streaming' || payload.type === 'package' || Boolean(req.query.plat || req.query.pkg || req.query.sec === 'packages')
+  if (isPrivateAccountOffer) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+  }
+
   const pageTitle = payload.mode === 'multi' || payload.mode === 'catalog'
     ? `${payload.headline} | StreamePro Oficial`
     : `${payload.title} (${payload.priceStr}) | StreamePro Oficial`
@@ -56,6 +62,7 @@ export default async function handler(req, res) {
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(metaDescription)}">
   <link rel="canonical" href="${escapeHtml(payload.canonicalUrl)}">
+  ${isPrivateAccountOffer ? '<meta name="robots" content="noindex, nofollow, noarchive">' : '<meta name="robots" content="index, follow">'}
 
   <!-- Open Graph / Telegram / WhatsApp / Facebook / Discord (1200x630 Generado con Logo Oficial) -->
   <meta property="og:type" content="website">

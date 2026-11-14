@@ -177,6 +177,25 @@ router.beforeEach((to) => {
 })
 
 // Manejo inteligente de fallos de carga de chunks cuando se despliega una nueva versión
+
+// Proteccion de Privacidad y SEO: Bloquear indexacion de robots en rutas de suscripciones y combos
+router.afterEach((to) => {
+  if (typeof document === 'undefined') return
+  const privateRoutes = ['/suscripciones', '/combos', '/streaming', '/digital', '/paquetes', '/ofertas', '/portal', '/crm', '/myprove']
+  const isPrivate = privateRoutes.some(p => to.path === p || to.path.startsWith(p)) || Boolean(to.query.pkg || to.query.plat)
+  let robotsMeta = document.querySelector('meta[name="robots"]')
+  if (!robotsMeta) {
+    robotsMeta = document.createElement('meta')
+    robotsMeta.name = 'robots'
+    document.head.appendChild(robotsMeta)
+  }
+  if (isPrivate) {
+    robotsMeta.setAttribute('content', 'noindex, nofollow, noarchive')
+  } else {
+    robotsMeta.setAttribute('content', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
+  }
+})
+
 router.onError((error, to) => {
   const isChunkError = 
     error?.message?.includes('Failed to fetch dynamically imported module') ||
