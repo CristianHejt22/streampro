@@ -66,11 +66,149 @@ const getStreamingPlansDisplay = (prod) => {
   return adminStore.pricingCatalog?.[prod?.platform]?.plans || prod?.plans || {}
 }
 
+const getStreamingPlansKeys = (prod) => {
+  return Object.keys(getStreamingPlansDisplay(prod))
+}
+
 const getMinStreamingPrice = (prod) => {
   const prices = Object.values(getStreamingPlansDisplay(prod))
     .map(p => Number(p?.clientPrice || 0))
     .filter(n => Number.isFinite(n) && n > 0)
   return prices.length > 0 ? Math.min(...prices) : 0
+}
+
+const STREAMING_BRAND_METADATA = {
+  Netflix: {
+    badge: '4K ULTRA HD • HDR10',
+    badgeClass: 'bg-red-500/15 text-red-400 border-red-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(229,9,20,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-red-500/50',
+    gradientBg: 'from-red-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-red-400',
+    iconSvg: `<svg class="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h4.5l7.5 13.5V2H20v20h-4.5L8 8.5V22H4V2z"/></svg>`,
+    highlights: ['PIN Privado de 4 dígitos', 'Sin bloqueo de hogar en Argentina', 'Renovación mes a mes misma cuenta']
+  },
+  'Disney+': {
+    badge: '4K UHD • IMAX ENHANCED',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(0,168,255,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-sky-500/50',
+    gradientBg: 'from-blue-950/30 via-slate-900/90 to-slate-950',
+    accentColor: 'text-sky-300',
+    iconSvg: `<svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6.2 4.5 2.4 7.4-6.2-4.5-6.2 4.5 2.4-7.4-6.2-4.5h7.6z"/></svg>`,
+    highlights: ['Disney + Pixar + Marvel + ESPN', 'Perfil 100% privado con PIN', 'Soporte prioritario y garantía SLA']
+  },
+  Max: {
+    badge: 'PLATINO 4K • DOLBY ATMOS',
+    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(99,102,241,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-indigo-500/50',
+    gradientBg: 'from-indigo-950/30 via-slate-900/90 to-slate-950',
+    accentColor: 'text-indigo-300',
+    iconSvg: `<svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h4l4 7 4-7h4v16h-4v-9l-4 7-4-7v9H4V4z"/></svg>`,
+    highlights: ['Series HBO completas y estrenos Warner', 'Audio envolvente Dolby Atmos', 'PIN personal de 4 dígitos']
+  },
+  Spotify: {
+    badge: 'AUDIO HI-FI • 320 KBPS',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(16,185,129,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-emerald-500/50',
+    gradientBg: 'from-emerald-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-emerald-400',
+    iconSvg: `<svg class="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.625.625 0 01-.86.208c-2.355-1.44-5.32-1.766-8.814-.967a.625.625 0 11-.28-1.22c3.822-.876 7.1-.508 9.746 1.119a.625.625 0 01.208.86zm1.226-2.727a.782.782 0 01-1.077.257c-2.695-1.656-6.804-2.135-9.992-1.168a.782.782 0 11-.456-1.498c3.642-1.106 8.188-.574 11.268 1.332a.782.782 0 01.257 1.077zm.106-2.836C14.69 8.905 9.387 8.73 6.307 9.664a.937.937 0 11-.544-1.792c3.535-1.073 9.404-.87 12.87 1.188a.938.938 0 11-.97 1.604z"/></svg>`,
+    highlights: ['Música ilimitada sin publicidad', 'Descargas offline de playlists', 'Calidad máxima 320 kbps']
+  },
+  IPTV: {
+    badge: 'FHD 1080P • +1200 CANALES',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(245,158,11,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-amber-500/50',
+    gradientBg: 'from-amber-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-amber-400',
+    iconSvg: `<svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>`,
+    highlights: ['Fútbol argentino y eventos en vivo', '+1200 Canales en vivo FHD sin cortes', 'Compatible con Smart TV y celular']
+  },
+  'Prime Video': {
+    badge: '4K ULTRA HD • ORIGINALS',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(6,182,212,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-cyan-500/50',
+    gradientBg: 'from-cyan-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-cyan-400',
+    iconSvg: `<svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`,
+    highlights: ['Series Amazon Originals y cine', 'Audio 5.1 y resolución 4K HDR', 'Perfil individual con PIN exclusivo']
+  },
+  'YouTube Premium': {
+    badge: '4K 60FPS • SIN PUBLICIDAD',
+    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(244,63,94,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-rose-500/50',
+    gradientBg: 'from-rose-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-rose-400',
+    iconSvg: `<svg class="w-5 h-5 text-rose-400" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+    highlights: ['Sin anuncios en toda la app', 'YouTube Music en segundo plano', 'Activación a tu propio correo']
+  },
+  'Canva Pro': {
+    badge: 'MAGIC STUDIO • KIT DE MARCAS',
+    badgeClass: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(168,85,247,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-purple-500/50',
+    gradientBg: 'from-purple-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-purple-400',
+    iconSvg: `<svg class="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+    highlights: ['Plantillas y fotos premium ilimitadas', 'Eliminador de fondos con 1 clic', 'Activación a tu propio correo']
+  }
+}
+
+const getStreamingMeta = (platform) => {
+  return STREAMING_BRAND_METADATA[platform] || {
+    badge: 'CALIDAD PREMIUM',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(56,189,248,0.2)]',
+    borderClass: 'border-white/[0.08] hover:border-sky-500/50',
+    gradientBg: 'from-slate-900 via-slate-900/90 to-slate-950',
+    accentColor: 'text-sky-300',
+    iconSvg: `<svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>`,
+    highlights: ['Perfil individual garantizado', 'Soporte y reemplazo inmediato', 'Entrega en 10-60 min']
+  }
+}
+
+const activeCardPlans = ref({})
+
+const getActiveCardPlanKey = (prod) => {
+  if (!prod) return ''
+  const plans = getStreamingPlansDisplay(prod)
+  const keys = Object.keys(plans)
+  if (!keys.length) return ''
+  const current = activeCardPlans.value[prod.id]
+  if (current && plans[current]) return current
+  return keys[0]
+}
+
+const setActiveCardPlan = (prod, pKey) => {
+  if (!prod || !pKey) return
+  activeCardPlans.value = { ...activeCardPlans.value, [prod.id]: pKey }
+}
+
+const getActiveCardPlan = (prod) => {
+  const plans = getStreamingPlansDisplay(prod)
+  const key = getActiveCardPlanKey(prod)
+  return plans[key] || { label: 'Plan Estándar', clientPrice: getMinStreamingPrice(prod) }
+}
+
+const openConfigWithActivePlan = (product) => {
+  if (!product) return
+  const key = getActiveCardPlanKey(product)
+  openConfig(product, key)
+}
+
+const getPlanFeatureHint = (plan) => {
+  if (!plan) return 'Entrega rápida con PIN exclusivo'
+  const units = Number(plan.units || 1)
+  if (units === 1) return '1 Perfil individual con PIN privado • 1 Pantalla simultánea'
+  if (units === 2) return '2 Dispositivos simultáneos • Ideal para compartir con alguien más'
+  if (units === 3) return '3 Dispositivos simultáneos • Perfiles con PIN individual'
+  return 'Cuenta Completa exclusiva • Acceso total para todo tu hogar'
 }
 
 const openSharePlaqueForPackage = (pkg) => {
@@ -1221,26 +1359,36 @@ watch(() => route.query, () => {
   applyRouteParams()
 }, { deep: true })
 
-const openConfig = (product) => {
+const currentSelectedProductPlans = computed(() => {
+  return getStreamingPlansDisplay(selectedProduct.value)
+})
+
+const openConfig = (product, initialPlanKey = null) => {
   selectedProduct.value = product
-  const firstKey = Object.keys(product.plans)[0]
-  selectedPlanKey.value = firstKey
+  const plans = getStreamingPlansDisplay(product)
+  const keys = Object.keys(plans)
+  const keyToSelect = (initialPlanKey && plans[initialPlanKey]) ? initialPlanKey : keys[0]
+  selectedPlanKey.value = keyToSelect
   pinPreference.value = 'same'
   activationEmail.value = ''
-  updateProfilesList(product.plans[firstKey])
+  if (plans[keyToSelect]) {
+    updateProfilesList(plans[keyToSelect])
+  }
   isProfilesExpanded.value = true
   showConfigModal.value = true
 }
 
 const onPlanChange = () => {
-  const planData = selectedProduct.value.plans[selectedPlanKey.value]
-  updateProfilesList(planData)
+  const plans = getStreamingPlansDisplay(selectedProduct.value)
+  const planData = plans[selectedPlanKey.value]
+  if (planData) updateProfilesList(planData)
 }
 
 const updateProfilesList = (planData) => {
-  const units = planData.units
-  const type = planData.type
-  const platform = selectedProduct.value.platform.toUpperCase()
+  if (!planData) return
+  const units = Number(planData.units || 1)
+  const type = planData.type || 'perfil'
+  const platform = String(selectedProduct.value?.platform || 'STREAMING').toUpperCase()
 
   customProfiles.value = Array.from({ length: units }, (_, idx) => ({
     name: type === 'perfil' 
@@ -1250,9 +1398,10 @@ const updateProfilesList = (planData) => {
 }
 
 const confirmAddToCart = () => {
-  const planData = selectedProduct.value.plans[selectedPlanKey.value]
+  const plans = getStreamingPlansDisplay(selectedProduct.value)
+  const planData = plans[selectedPlanKey.value] || selectedProduct.value?.plans?.[selectedPlanKey.value]
   
-  if ((selectedProduct.value.requiresActivationEmail || selectedProduct.value.platform === 'Canva Pro' || selectedProduct.value.platform === 'YouTube Premium') && !activationEmail.value.trim()) {
+  if ((selectedProduct.value?.requiresActivationEmail || selectedProduct.value?.platform === 'Canva Pro' || selectedProduct.value?.platform === 'YouTube Premium') && !activationEmail.value.trim()) {
     toast.add('Por favor, ingresa el correo asociado a tu cuenta para recibir la activación', 'warning')
     return
   }
@@ -1452,7 +1601,8 @@ const homeFeaturedCategories = computed(() => {
 
 // 2. Selección de Ofertas 1: Top 4 Plataformas Digitales
 const homeFeaturedDigital = computed(() => {
-  return products.value.filter(p => ['Netflix', 'Spotify', 'Max', 'Disney+'].includes(p.platform)).slice(0, 4)
+  const topPlatforms = ['Netflix', 'Disney+', 'Max', 'Spotify', 'IPTV', 'Prime Video']
+  return products.value.filter(p => topPlatforms.includes(p.platform))
 })
 
 // 3. Selección de Ofertas 2: Top 3 Paquetes & Combos con Máximo Ahorro
@@ -2801,11 +2951,11 @@ const submitOrder = async () => {
             <div>
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
-                  Selección Oficial
+                  Selección Oficial 4K
                 </span>
                 <h3 class="text-lg sm:text-xl font-black text-white">Streaming Premium 4K Destacado</h3>
               </div>
-              <p class="text-xs text-slate-300 mt-0.5">Top plataformas con perfiles individuales, PIN exclusivo y activación en 10m a 1h.</p>
+              <p class="text-xs text-slate-300 mt-0.5">Cuentas con perfiles individuales, PIN exclusivo, sin bloqueos de hogar y activación en 10-60 min.</p>
             </div>
           </div>
           <RouterLink 
@@ -2817,45 +2967,116 @@ const submitOrder = async () => {
           </RouterLink>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <!-- Grid de 6 Tarjetas de Marca de Alto Impacto -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <div 
             v-for="product in homeFeaturedDigital" 
             :key="product.id" 
-            class="glass-panel glass-panel-hover rounded-3xl p-5 border border-white/[0.08] flex flex-col justify-between relative overflow-hidden group"
+            :class="[
+              'rounded-3xl p-5 border flex flex-col justify-between relative overflow-hidden transition-all duration-300 group shadow-lg bg-[#060d1f]',
+              getStreamingMeta(product.platform).borderClass,
+              getStreamingMeta(product.platform).accentGlow
+            ]"
           >
-            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <!-- Ambient Glow -->
+            <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none bg-sky-400"></div>
+
             <div>
-              <div class="flex flex-wrap justify-between items-center gap-1.5 mb-2.5">
-                <span class="text-[9px] font-black text-sky-300 tracking-widest uppercase bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{{ product.category }}</span>
-                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+              <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA -->
+              <div class="flex items-start justify-between gap-2.5 mb-3">
+                <div class="flex items-center gap-3">
+                  <div 
+                    class="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0"
+                    v-html="getStreamingMeta(product.platform).iconSvg"
+                  ></div>
+                  <div>
+                    <span :class="['text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border inline-block mb-1', getStreamingMeta(product.platform).badgeClass]">
+                      {{ getStreamingMeta(product.platform).badge }}
+                    </span>
+                    <h4 class="text-base font-black text-white group-hover:text-sky-300 transition-colors leading-tight">
+                      {{ product.name }}
+                    </h4>
+                  </div>
+                </div>
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shrink-0">
                   🟢 10-15m
                 </span>
               </div>
-              <h4 class="text-base font-black text-white mb-1 group-hover:text-sky-300 transition-colors">{{ product.name }}</h4>
-              <p class="text-xs text-slate-400 mb-3 line-clamp-2 leading-relaxed">{{ product.description }}</p>
 
-              <!-- Modalidades Oficiales Mini con Precio Visible -->
-              <div class="space-y-1 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 mb-3 text-xs">
-                <div v-if="getMinStreamingPrice(product) > 0" class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1">
-                  <span class="text-[9px] font-bold uppercase tracking-wider text-sky-400">Planes desde</span>
-                  <span class="text-[11px] font-black text-emerald-400 font-mono">${{ getMinStreamingPrice(product).toLocaleString() }}</span>
+              <p class="text-xs text-slate-400 mb-3.5 leading-relaxed line-clamp-2">
+                {{ product.description }}
+              </p>
+
+              <!-- Selector Rápido de Modalidad Interactivo con Precios Claros -->
+              <div class="space-y-1.5 mb-3.5">
+                <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span>Modalidad a seleccionar:</span>
+                  <span class="text-sky-400 font-mono">{{ getStreamingPlansKeys(product).length }} opciones</span>
                 </div>
-                <div v-for="(plan, pKey) in getStreamingPlansDisplay(product)" :key="pKey" class="flex items-center justify-between text-slate-300 text-[11px] py-0.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-emerald-400 font-bold">✓</span>
-                    <span>{{ plan.label }}</span>
+
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/[0.06]">
+                  <button
+                    v-for="(plan, pKey) in getStreamingPlansDisplay(product)"
+                    :key="pKey"
+                    type="button"
+                    @click="setActiveCardPlan(product, pKey)"
+                    :class="[
+                      'p-2 rounded-xl text-left transition-all cursor-pointer flex flex-col justify-between',
+                      getActiveCardPlanKey(product) === pKey
+                        ? 'bg-sky-500/20 border border-sky-400/60 shadow-sm'
+                        : 'hover:bg-slate-900 border border-transparent'
+                    ]"
+                  >
+                    <span :class="['text-[11px] font-bold leading-tight block truncate', getActiveCardPlanKey(product) === pKey ? 'text-white' : 'text-slate-300']">
+                      {{ plan.label.replace(/\(.*?\)/g, '').trim() }}
+                    </span>
+                    <span class="text-[10px] font-mono font-black text-emerald-400 mt-0.5">
+                      ${{ Number(plan.clientPrice || 0).toLocaleString() }}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Bloque Precio Visible & Desglose de Beneficios del Servicio -->
+              <div class="bg-slate-950/90 rounded-2xl p-3 border border-slate-800/80 mb-3 space-y-2">
+                <div class="flex items-baseline justify-between">
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider truncate max-w-[170px]">
+                      {{ getActiveCardPlan(product).label }}
+                    </span>
+                    <div class="flex items-baseline gap-1">
+                      <span class="text-2xl font-black font-mono text-emerald-400">
+                        ${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}
+                      </span>
+                      <span class="text-[10px] font-bold text-slate-400">ARS / mes</span>
+                    </div>
                   </div>
-                  <span class="text-[9px] text-sky-300 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800/80">${{ Number(plan.clientPrice || 0).toLocaleString() }}</span>
+                  <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+                    🛡️ SLA 30d
+                  </span>
+                </div>
+
+                <!-- Detalle de Servicio Seleccionado -->
+                <div class="space-y-1 pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-300">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-emerald-400 font-bold text-xs">✓</span>
+                    <span class="truncate">{{ getPlanFeatureHint(getActiveCardPlan(product)) }}</span>
+                  </div>
+                  <div v-for="(ben, bi) in getStreamingMeta(product.platform).highlights.slice(0, 1)" :key="bi" class="flex items-center gap-1.5 text-slate-400">
+                    <span class="text-sky-400 font-bold text-xs">✓</span>
+                    <span class="truncate">{{ ben }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- Botonera de Compra & Acciones -->
             <div class="flex gap-1.5 pt-2 border-t border-white/[0.06]">
               <button 
                 type="button" 
                 @click="openStreamingInfo(product)"
                 class="px-2.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-                title="Ver especificaciones"
+                title="Ver especificaciones técnicas y compatibilidad"
               >
                 ℹ️
               </button>
@@ -2863,15 +3084,17 @@ const submitOrder = async () => {
                 type="button" 
                 @click="openSharePlaqueForStreaming(product)"
                 class="px-2.5 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-                title="Compartir en placa con logo"
+                title="Compartir en placa para redes"
               >
                 📤
               </button>
               <button 
-                @click="openConfig(product)" 
-                class="flex-1 bg-sky-400 hover:bg-sky-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm text-xs cursor-pointer active:scale-95"
+                @click="openConfigWithActivePlan(product)" 
+                class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
               >
                 <span>Elegir Plan</span>
+                <span class="font-mono text-[11px] bg-slate-950/20 px-1.5 py-0.5 rounded font-black">${{ Number(getActiveCardPlan(product).clientPrice || 0).toLocaleString() }}</span>
+                <span>→</span>
               </button>
             </div>
           </div>
@@ -5080,22 +5303,37 @@ const submitOrder = async () => {
     <!-- MODAL DE ELECCIÓN DE PLAN -->
     <div v-if="showConfigModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar">
-        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
-          <div>
-            <h3 class="text-xl font-black text-white">Elegir Plan: {{ selectedProduct.name }}</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Selecciona la modalidad deseada para tu orden oficial.</p>
+        <!-- Cabecera con Marca Oficial -->
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3.5">
+          <div class="flex items-center gap-3">
+            <div 
+              v-if="selectedProduct" 
+              class="w-10 h-10 rounded-2xl flex items-center justify-center bg-slate-950 border border-white/10 shadow-inner shrink-0"
+              v-html="getStreamingMeta(selectedProduct.platform).iconSvg"
+            ></div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border', getStreamingMeta(selectedProduct.platform).badgeClass]">
+                  {{ getStreamingMeta(selectedProduct.platform).badge }}
+                </span>
+                <span class="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  Entrega 10-60m
+                </span>
+              </div>
+              <h3 class="text-lg sm:text-xl font-black text-white mt-1">{{ selectedProduct.name }}</h3>
+            </div>
           </div>
           <button @click="showConfigModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
-        <!-- Selector Visual de Planes con Precios Dentro de las Selecciones -->
+        <!-- Selector Visual de Planes con Precios Dinámicos de Catálogo -->
         <div class="space-y-2">
           <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">
             Modalidades y Precios Disponibles
           </label>
           <div class="grid grid-cols-1 gap-2.5">
             <div 
-              v-for="(plan, pKey) in selectedProduct.plans" 
+              v-for="(plan, pKey) in currentSelectedProductPlans" 
               :key="pKey"
               @click="selectedPlanKey = pKey; onPlanChange()"
               :class="[
@@ -5111,25 +5349,34 @@ const submitOrder = async () => {
                 </div>
                 <div>
                   <div class="font-black text-sm text-white">{{ plan.label }}</div>
-                  <div class="text-[11px] text-slate-400">Entrega rápida con PIN exclusivo</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">{{ getPlanFeatureHint(plan) }}</div>
                 </div>
               </div>
-              <div class="text-right">
-                <div class="font-black text-base text-brand-accent font-mono">${{ plan.clientPrice }} <span class="text-[10px] font-normal text-slate-400">ARS</span></div>
-                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Garantizado</div>
+              <div class="text-right shrink-0">
+                <div class="font-black text-base text-brand-accent font-mono">
+                  ${{ Number(plan.clientPrice || 0).toLocaleString() }} <span class="text-[10px] font-normal text-slate-400">ARS</span>
+                </div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Garantía 30d</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Nota Oficial: Nombre de Perfil y PIN se entregan en las cuentas -->
-        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-slate-300">
-          <span class="text-base shrink-0">🛡️</span>
-          <div>
-            <div class="font-bold text-white mb-0.5">Asignación Oficial de Perfil & PIN</div>
-            <p class="text-[11px] text-slate-400 leading-relaxed">
-              El nombre del perfil y su PIN exclusivo se te entregarán directamente en las credenciales finales de tu cuenta, listos para acceder sin necesidad de configuraciones previas.
-            </p>
+        <!-- Desglose de Servicio Oficial StreamePro -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs text-slate-300">
+          <div class="flex items-center gap-2 font-bold text-white text-xs">
+            <span>🛡️</span>
+            <span>Garantía Oficial de Servicio StreamePro</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
+            <div class="flex items-start gap-1.5">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>PIN Privado Exclusivo:</strong> Nadie altera tus perfiles ni tu historial.</span>
+            </div>
+            <div class="flex items-start gap-1.5">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span><strong>Renovación Cómoda:</strong> Conservá tu misma cuenta mes a mes.</span>
+            </div>
           </div>
         </div>
 
@@ -5161,11 +5408,12 @@ const submitOrder = async () => {
           <div>
             <p class="text-xs text-slate-400 font-medium">Total a pagar:</p>
             <p class="text-2xl font-black text-brand-accent font-mono">
-              ${{ selectedProduct.plans[selectedPlanKey]?.clientPrice }} <span class="text-xs text-slate-400 font-normal">ARS</span>
+              ${{ Number(currentSelectedProductPlans[selectedPlanKey]?.clientPrice || 0).toLocaleString() }} <span class="text-xs text-slate-400 font-normal">ARS</span>
             </p>
           </div>
-          <button @click="confirmAddToCart" class="bg-brand-accent text-slate-950 font-black px-6 py-3 rounded-xl hover:bg-sky-400 transition-all shadow-md text-sm cursor-pointer">
-            Añadir a la Orden
+          <button @click="confirmAddToCart" class="bg-brand-accent text-slate-950 font-black px-6 py-3 rounded-xl hover:bg-sky-400 transition-all shadow-md text-sm cursor-pointer flex items-center gap-2 active:scale-95">
+            <span>Añadir a la Orden</span>
+            <span>→</span>
           </button>
         </div>
       </div>

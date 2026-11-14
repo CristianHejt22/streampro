@@ -326,6 +326,15 @@ const pickGameAsPrize = (gameId) => {
   giveawayForm.value.prizeImage = g.image || ''
 }
 
+const restoreProductionGiveaways = () => {
+  if (!confirm('¿Restablecer a los Sorteos Oficiales de Producción de StreamePro?\nEsta acción purga sorteos de prueba y deja exclusivamente los 3 sorteos oficiales (Trío VIP Anual, Juego PS5 y Saldo $50.000).')) return
+  const res = adminStore.resetToProductionGiveaways()
+  if (res.success) {
+    giveawayForm.value = defaultGiveawayForm()
+    toast.add(`✅ Se restablecieron ${res.count} sorteos oficiales de producción`, 'success')
+  }
+}
+
 const saveGiveaway = () => {
   const res = adminStore.upsertGiveaway(giveawayForm.value)
   if (res.error) {
@@ -694,9 +703,20 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
     <div v-else-if="subTab === 'giveaways'" class="grid grid-cols-1 xl:grid-cols-12 gap-6">
       <!-- Crear / Editar Sorteo -->
       <div class="xl:col-span-5 bg-[#020617] border border-fuchsia-500/30 rounded-3xl p-5 space-y-3 text-xs">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <h3 class="text-base font-black text-white">{{ giveawayForm.id ? '✏️ Editando Sorteo' : '➕ Nuevo Sorteo Oficial' }}</h3>
-          <button v-if="giveawayForm.id" type="button" @click="giveawayForm = defaultGiveawayForm()" class="text-slate-400 hover:text-white cursor-pointer">Cancelar</button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="restoreProductionGiveaways"
+              class="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
+              title="Restablece los 3 sorteos oficiales de producción y purga pruebas"
+            >
+              <span>🔄</span>
+              <span>Reset Producción</span>
+            </button>
+            <button v-if="giveawayForm.id" type="button" @click="giveawayForm = defaultGiveawayForm()" class="text-slate-400 hover:text-white cursor-pointer text-xs">Cancelar</button>
+          </div>
         </div>
 
         <form @submit.prevent="saveGiveaway" class="space-y-3">

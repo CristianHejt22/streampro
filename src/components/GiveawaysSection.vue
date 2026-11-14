@@ -81,7 +81,13 @@ onMounted(() => {
   }
 })
 
-const visibleGiveaways = computed(() => adminStore.visibleGiveaways || [])
+const visibleGiveaways = computed(() => {
+  return (adminStore.visibleGiveaways || []).filter(g =>
+    (g.resellerRef === 'DIRECT' || !g.resellerRef || g.isOfficial === true) &&
+    g.status &&
+    g.status !== 'draft'
+  )
+})
 const discountProgramRules = computed(() => buildDiscountProgramFormalities(adminStore.marketingCampaign))
 
 const getDaysLeftLabel = (endDateStr) => {

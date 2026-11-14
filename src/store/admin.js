@@ -82,6 +82,144 @@ const DEFAULT_MARKETING_CAMPAIGN = {
   updatedAt: ''
 }
 
+export const DEFAULT_PRODUCTION_GIVEAWAYS = [
+  {
+    id: 'SPRO-GIVEAWAY-TRIO-VIP',
+    isOfficial: true,
+    resellerRef: 'DIRECT',
+    title: '🌟 Gran Sorteo Oficial: 1 Año Completo Trío VIP Streaming 4K',
+    subtitle: '1 Año completo de Netflix 4K UHD + Max Platinum + Disney+ Premium con perfil propio, PIN privado y garantía total StreamePro.',
+    prizeTitle: 'Suscripción Anual Completa Trío VIP 4K UHD (Netflix + Disney+ + Max)',
+    prizeValue: 120000,
+    prizeCategory: 'streaming',
+    prizeImage: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800&auto=format&fit=crop&q=80',
+    status: 'active',
+    startDate: '2026-11-01',
+    endDate: '2026-12-31',
+    drawDateLabel: '31 de Diciembre - 21:00 hs ARG (En Vivo)',
+    winnersCount: 1,
+    alternatesCount: 2,
+    rules: {
+      freeEntryEnabled: true,
+      freeEntryTickets: 1,
+      ticketsPerPurchase: 3,
+      bonusThresholdAmount: 25000,
+      bonusThresholdTickets: 2,
+      ticketsPerReferral: 2,
+      maxTicketsPerUser: 40,
+      requireInstagram: false
+    },
+    formalitiesText: buildDefaultGiveawayFormalities({
+      title: 'Gran Sorteo Oficial: 1 Año Trío VIP Streaming 4K',
+      prizeTitle: 'Suscripción Anual Completa Trío VIP 4K UHD (Netflix + Disney+ + Max)',
+      prizeValue: 120000,
+      endDate: '2026-12-31',
+      drawDateLabel: '31 de Diciembre - 21:00 hs ARG (En Vivo por Web y WhatsApp)',
+      rules: {
+        freeEntryEnabled: true,
+        freeEntryTickets: 1,
+        ticketsPerPurchase: 3,
+        ticketsPerReferral: 2,
+        maxTicketsPerUser: 40
+      }
+    }),
+    winners: [],
+    drawProof: null,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    updatedAt: '2026-11-14T12:00:00.000Z'
+  },
+  {
+    id: 'SPRO-GIVEAWAY-PS5-GAME',
+    isOfficial: true,
+    resellerRef: 'DIRECT',
+    title: '🎮 Sorteo Gamer Oficial: Juego Digital PS5 / PS4 a Elección',
+    subtitle: 'Elegí cualquier título estreno de nuestro catálogo de Videojuegos Digitales en Cuenta Primaria con activación guiada inmediata.',
+    prizeTitle: '1 Juego Digital PS5 / PS4 Estreno a Elección (Cuenta Primaria Oficial)',
+    prizeValue: 95000,
+    prizeCategory: 'gaming',
+    prizeImage: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80',
+    status: 'active',
+    startDate: '2026-11-01',
+    endDate: '2026-12-24',
+    drawDateLabel: '24 de Diciembre - 20:00 hs ARG (Especial Navidad)',
+    winnersCount: 1,
+    alternatesCount: 2,
+    rules: {
+      freeEntryEnabled: true,
+      freeEntryTickets: 1,
+      ticketsPerPurchase: 4,
+      bonusThresholdAmount: 30000,
+      bonusThresholdTickets: 3,
+      ticketsPerReferral: 2,
+      maxTicketsPerUser: 50,
+      requireInstagram: false
+    },
+    formalitiesText: buildDefaultGiveawayFormalities({
+      title: 'Sorteo Gamer Oficial: Juego Digital PS5 / PS4 a Elección',
+      prizeTitle: '1 Juego Digital PS5 / PS4 Estreno a Elección (Cuenta Primaria Oficial con Garantía Total)',
+      prizeValue: 95000,
+      endDate: '2026-12-24',
+      drawDateLabel: '24 de Diciembre - 20:00 hs ARG (Especial Navidad Gamer)',
+      rules: {
+        freeEntryEnabled: true,
+        freeEntryTickets: 1,
+        ticketsPerPurchase: 4,
+        ticketsPerReferral: 2,
+        maxTicketsPerUser: 50
+      }
+    }),
+    winners: [],
+    drawProof: null,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    updatedAt: '2026-11-14T12:00:00.000Z'
+  },
+  {
+    id: 'SPRO-GIVEAWAY-SALDO-50K',
+    isOfficial: true,
+    resellerRef: 'DIRECT',
+    title: '💳 Sorteo Comunidad: $50.000 ARS en Saldo Tienda StreamePro',
+    subtitle: 'Crédito directo en tu Billetera StreamePro para canjear por suscripciones de streaming, juegos o combos en toda la tienda sin vencimiento.',
+    prizeTitle: '$50.000 ARS en Saldo Tienda Oficial para Compras y Renovaciones',
+    prizeValue: 50000,
+    prizeCategory: 'all',
+    prizeImage: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop&q=80',
+    status: 'active',
+    startDate: '2026-11-01',
+    endDate: '2026-12-15',
+    drawDateLabel: '15 de Diciembre - 21:00 hs ARG',
+    winnersCount: 1,
+    alternatesCount: 1,
+    rules: {
+      freeEntryEnabled: true,
+      freeEntryTickets: 1,
+      ticketsPerPurchase: 2,
+      bonusThresholdAmount: 20000,
+      bonusThresholdTickets: 2,
+      ticketsPerReferral: 1,
+      maxTicketsPerUser: 30,
+      requireInstagram: false
+    },
+    formalitiesText: buildDefaultGiveawayFormalities({
+      title: 'Sorteo Comunidad: $50.000 ARS en Saldo Tienda StreamePro',
+      prizeTitle: '$50.000 ARS en Saldo Tienda Oficial para Compras y Renovaciones',
+      prizeValue: 50000,
+      endDate: '2026-12-15',
+      drawDateLabel: '15 de Diciembre - 21:00 hs ARG',
+      rules: {
+        freeEntryEnabled: true,
+        freeEntryTickets: 1,
+        ticketsPerPurchase: 2,
+        ticketsPerReferral: 1,
+        maxTicketsPerUser: 30
+      }
+    }),
+    winners: [],
+    drawProof: null,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    updatedAt: '2026-11-14T12:00:00.000Z'
+  }
+]
+
 function buildGamingDiffs(currentList = [], baseList = []) {
   const baseArr = Array.isArray(baseList) ? baseList : []
   const currArr = Array.isArray(currentList) ? currentList : []
@@ -783,12 +921,26 @@ export const useAdminStore = defineStore('admin', {
     discountUsers: loadDb(DB_KEYS.DISCOUNT_USERS, []),
     discountApplications: loadDb(DB_KEYS.DISCOUNT_APPLICATIONS, []),
     discountCreditsLog: loadDb(DB_KEYS.DISCOUNT_CREDITS_LOG, []),
-    giveaways: loadDb(DB_KEYS.GIVEAWAYS, []),
-    giveawayEntries: loadDb(DB_KEYS.GIVEAWAY_ENTRIES, [])
+    giveaways: (() => {
+      const loaded = loadDb(DB_KEYS.GIVEAWAYS, [])
+      const isAllProduction = Array.isArray(loaded) && loaded.length === DEFAULT_PRODUCTION_GIVEAWAYS.length && loaded.every(g => g.id && g.id.startsWith('SPRO-GIVEAWAY-'))
+      if (isAllProduction) return loaded
+      // Purgar pruebas anteriores y garantizar los 3 sorteos oficiales de producción
+      saveDb(DB_KEYS.GIVEAWAYS, DEFAULT_PRODUCTION_GIVEAWAYS)
+      return DEFAULT_PRODUCTION_GIVEAWAYS
+    })(),
+    giveawayEntries: (() => {
+      const entries = loadDb(DB_KEYS.GIVEAWAY_ENTRIES, [])
+      if (!Array.isArray(entries)) return []
+      const prodIds = new Set(DEFAULT_PRODUCTION_GIVEAWAYS.map(g => g.id))
+      const cleanEntries = entries.filter(e => e && prodIds.has(e.giveawayId))
+      saveDb(DB_KEYS.GIVEAWAY_ENTRIES, cleanEntries)
+      return cleanEntries
+    })()
   }},
   getters: {
     activeGiveaways: (state) => (state.giveaways || []).filter(g => g.status === 'active'),
-    visibleGiveaways: (state) => (state.giveaways || []).filter(g => g.status && g.status !== 'draft'),
+    visibleGiveaways: (state) => (state.giveaways || []).filter(g => g.status && g.status !== 'draft' && (g.resellerRef === 'DIRECT' || !g.resellerRef || g.isOfficial === true)),
     activeDiscountUsers: (state) => (state.discountUsers || []).filter(u => u.status === 'active'),
     pendingDiscountApplications: (state) => (state.discountApplications || []).filter(a => a.status === 'pending'),
     marketingMetrics: (state) => {
@@ -1651,7 +1803,20 @@ export const useAdminStore = defineStore('admin', {
         }
         if (hub.giveawaysById && typeof hub.giveawaysById === 'object') {
           const gList = Object.values(hub.giveawaysById).filter(Boolean)
-          this.giveaways = gList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          const prodOnly = gList.filter(g =>
+            g &&
+            g.id &&
+            g.id.startsWith('SPRO-GIVEAWAY-') &&
+            (g.resellerRef === 'DIRECT' || !g.resellerRef || g.isOfficial === true)
+          )
+          if (prodOnly.length > 0) {
+            this.giveaways = prodOnly.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          } else {
+            this.giveaways = [...DEFAULT_PRODUCTION_GIVEAWAYS]
+            const patch = {}
+            DEFAULT_PRODUCTION_GIVEAWAYS.forEach(g => { patch[g.id] = g })
+            saveMarketingHubPatchToFirebase({ giveawaysById: patch }).catch(() => {})
+          }
           this.persist(DB_KEYS.GIVEAWAYS)
         }
         if (hub.creditsLogById && typeof hub.creditsLogById === 'object') {
@@ -1663,7 +1828,8 @@ export const useAdminStore = defineStore('admin', {
 
       const applyEntriesData = (docData) => {
         if (!docData || !docData.entriesById || typeof docData.entriesById !== 'object') return
-        const eList = Object.values(docData.entriesById).filter(Boolean)
+        const validGiveawayIds = new Set((this.giveaways || []).map(g => g.id))
+        const eList = Object.values(docData.entriesById).filter(e => e && validGiveawayIds.has(e.giveawayId))
         this.giveawayEntries = eList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
         this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
       }
@@ -4683,6 +4849,19 @@ export const useAdminStore = defineStore('admin', {
     // ==========================================
     // SORTEOS OFICIALES, TICKETS & ACTAS TRANSPARENTES
     // ==========================================
+    resetToProductionGiveaways() {
+      this.giveaways = DEFAULT_PRODUCTION_GIVEAWAYS.map(g => ({
+        ...g,
+        formalitiesText: g.formalitiesText || buildDefaultGiveawayFormalities(g)
+      }))
+      this.giveawayEntries = []
+      this.persist(DB_KEYS.GIVEAWAYS)
+      this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      const patch = {}
+      this.giveaways.forEach(g => { patch[g.id] = g })
+      saveMarketingHubPatchToFirebase({ giveawaysById: patch }).catch(() => {})
+      return { success: true, count: this.giveaways.length }
+    },
     upsertGiveaway(payload = {}) {
       if (!String(payload.title || '').trim() || !String(payload.prizeTitle || '').trim()) {
         return { error: 'Completa el título del sorteo y el premio principal.' }

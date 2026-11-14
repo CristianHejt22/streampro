@@ -5,6 +5,7 @@ import { DB_KEYS, saveDb, loadDb } from './db'
 import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import { clearAllReceipts } from './receiptCloudStorage'
+import { DEFAULT_PRODUCTION_GIVEAWAYS } from '../store/admin'
 
 export const CLEAN_PRICING_CATALOG = {
   Netflix: {
@@ -384,7 +385,9 @@ export function getCleanDatabaseSeed() {
     [DB_KEYS.BANK_TRANSFERS]: [],
     [DB_KEYS.WALLET_TRANSACTIONS]: [],
     [DB_KEYS.RESELLER_ALERTS]: [],
-    [DB_KEYS.RENEWAL_REQUESTS]: []
+    [DB_KEYS.RENEWAL_REQUESTS]: [],
+    [DB_KEYS.GIVEAWAYS]: DEFAULT_PRODUCTION_GIVEAWAYS,
+    [DB_KEYS.GIVEAWAY_ENTRIES]: []
   }
 }
 
