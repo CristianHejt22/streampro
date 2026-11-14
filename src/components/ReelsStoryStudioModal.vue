@@ -484,6 +484,22 @@
                     <span v-if="gameSecondaryPrice" class="text-[10px] font-mono opacity-80">${{ gameSecondaryPrice.toLocaleString('es-AR') }} ARS</span>
                   </button>
                 </div>
+
+                <!-- Botón Toggle de Precios Duales (Primaria & Secundaria simultáneos) -->
+                <button
+                  type="button"
+                  @click="showDualGamingPrices = !showDualGamingPrices; requestCanvasRedraw()"
+                  :class="[
+                    'w-full mt-2.5 py-2 px-3 rounded-xl text-xs font-bold transition border cursor-pointer flex items-center justify-center gap-2 shadow-sm',
+                    showDualGamingPrices 
+                      ? 'bg-gradient-to-r from-amber-500/25 via-pink-500/25 to-indigo-500/25 border-amber-400/60 text-amber-300 shadow-amber-950/40 font-black' 
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                  ]"
+                  title="Muestra ambas licencias con tarjetas de precios duales en el diseño"
+                >
+                  <span>{{ showDualGamingPrices ? '👑+⚡' : '🏷️' }}</span>
+                  <span>{{ showDualGamingPrices ? '✓ Mostrando Ambos Precios (Primaria & Secundaria a la vez)' : '+ Mostrar Ambos Precios (Primaria & Secundaria)' }}</span>
+                </button>
               </div>
 
               <!-- Selector de Plataforma / Consola -->
@@ -539,6 +555,28 @@
                   >
                     🚫 Ocultar
                   </button>
+                </div>
+
+                <!-- Selector de Posición de la Insignia Oficial -->
+                <div class="flex items-center justify-between pt-1 text-[10px]">
+                  <span class="text-slate-400 font-bold uppercase text-[9px] flex items-center gap-1">
+                    <span>📍</span> Posición Insignia:
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      v-for="pos in [
+                        { key: 'center_top', label: '⏺️ Centrado' },
+                        { key: 'main_top_left', label: '⬅️ Izquierda' },
+                        { key: 'frame_top', label: '⬆️ Sobre Marco' }
+                      ]"
+                      :key="pos.key"
+                      type="button"
+                      @click="gamingBadgePosition = pos.key; requestCanvasRedraw()"
+                      :class="['px-2 py-0.5 rounded-lg font-bold text-[9px] border cursor-pointer transition', gamingBadgePosition === pos.key ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 font-black' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white']"
+                    >
+                      {{ pos.label }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -898,6 +936,10 @@
                   <input type="checkbox" v-model="showVisorBorderGlow" @change="requestCanvasRedraw" class="accent-cyan-400">
                 </label>
                 <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
+                  <span class="text-slate-300">💫 Rayo Láser Circulante</span>
+                  <input type="checkbox" v-model="showEnergyRing" @change="requestCanvasRedraw" class="accent-cyan-400">
+                </label>
+                <label class="flex items-center justify-between p-2.5 bg-slate-900/70 rounded-xl border border-slate-800 cursor-pointer">
                   <span class="text-slate-300">📐 Esquinas HUD Cyber</span>
                   <input type="checkbox" v-model="showCornerBrackets" @change="requestCanvasRedraw" class="accent-cyan-400">
                 </label>
@@ -905,6 +947,29 @@
                   <span class="text-slate-300">🌌 Fondo Bokeh Difuso</span>
                   <input type="checkbox" v-model="showAmbientBackdrop" @change="requestCanvasRedraw" class="accent-cyan-400">
                 </label>
+              </div>
+
+              <!-- Selector de Sticker Promocional 3D -->
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" id="stickerToggle" v-model="showPromoSticker" @change="requestCanvasRedraw" class="accent-cyan-400">
+                  <label for="stickerToggle" class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5 cursor-pointer">
+                    <span>🏷️</span> Sticker Promocional 3D
+                  </label>
+                </div>
+                <select
+                  v-model="activePromoSticker"
+                  @change="requestCanvasRedraw"
+                  :disabled="!showPromoSticker"
+                  class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:border-cyan-400 focus:outline-none cursor-pointer disabled:opacity-40"
+                >
+                  <option value="auto">🤖 Auto (según producto)</option>
+                  <option value="top_ventas">🔥 Top Ventas</option>
+                  <option value="entrega_inmediata">⚡ 100% Garantizado</option>
+                  <option value="edicion_deluxe">💎 Pack VIP Exclusivo</option>
+                  <option value="calidad_4k">🍿 Ultra HD 4K Oficial</option>
+                  <option value="none">🚫 Ocultar</option>
+                </select>
               </div>
             </div>
 
@@ -1683,8 +1748,13 @@ const imageSaturation = ref(100)
 const showHoloSweep = ref(true)
 const showLaserScan = ref(false)
 const showVisorBorderGlow = ref(true)
+const showEnergyRing = ref(true)
 const showCornerBrackets = ref(true)
 const showAmbientBackdrop = ref(true)
+const showPromoSticker = ref(true)
+const activePromoSticker = ref('auto') // 'auto' | 'top_ventas' | 'entrega_inmediata' | 'edicion_deluxe' | 'calidad_4k' | 'none'
+const showDualGamingPrices = ref(false)
+const gamingBadgePosition = ref('center_top') // 'center_top' | 'main_top_left' | 'frame_top'
 
 // Tema dinámico auto-calibrado desde la portada
 const customCoverTheme = ref(null)
@@ -2660,8 +2730,13 @@ function resetImageTransformations() {
   showHoloSweep.value = true
   showLaserScan.value = false
   showVisorBorderGlow.value = true
+  showEnergyRing.value = true
   showCornerBrackets.value = true
   showAmbientBackdrop.value = true
+  showPromoSticker.value = true
+  activePromoSticker.value = 'auto'
+  gamingBadgePosition.value = 'center_top'
+  showDualGamingPrices.value = false
   requestCanvasRedraw()
 }
 
@@ -2678,8 +2753,12 @@ function autoOptimizeReel() {
   showHoloSweep.value = true
   showLaserScan.value = false
   showVisorBorderGlow.value = true
+  showEnergyRing.value = true
   showCornerBrackets.value = true
   showAmbientBackdrop.value = true
+  showPromoSticker.value = true
+  activePromoSticker.value = 'auto'
+  gamingBadgePosition.value = 'center_top'
 
   if (loadedArtworkImage.value) {
     const pal = extractCoverPalette(loadedArtworkImage.value)
@@ -3265,11 +3344,263 @@ function drawLaserScanline(ctx, x, y, w, h, t = 0, color = 'rgba(56, 189, 248, 0
   }
 }
 
+// ==========================================
+// COMPONENTES PRO: STICKERS 3D & TARJETAS DE PRECIOS DUALES
+// ==========================================
+
+// Sticker Promocional 3D Flotante con acabado metálico e inclinación dinámica
+function drawPromoSticker(ctx, x, y, stickerType = 'auto', th, t = 0) {
+  if (!showPromoSticker.value || stickerType === 'none') return
+
+  let label = '🔥 TOP VENTAS'
+  let gradColors = ['#ef4444', '#f97316']
+  let glowColor = 'rgba(239, 68, 68, 0.70)'
+
+  let effective = stickerType
+  if (effective === 'auto') {
+    if (selectedMode.value === 'gaming') {
+      effective = pickedGamingLicense.value === 'primary' ? 'top_ventas' : 'entrega_inmediata'
+    } else if (selectedMode.value === 'streaming') {
+      effective = 'calidad_4k'
+    } else if (selectedMode.value === 'combo') {
+      effective = 'edicion_deluxe'
+    } else {
+      effective = 'top_ventas'
+    }
+  }
+
+  if (effective === 'top_ventas') {
+    label = '🔥 TOP VENTAS'
+    gradColors = ['#ef4444', '#f97316']
+    glowColor = 'rgba(239, 68, 68, 0.70)'
+  } else if (effective === 'entrega_inmediata') {
+    label = '⚡ 100% GARANTIZADO'
+    gradColors = ['#059669', '#0d9488']
+    glowColor = 'rgba(16, 185, 129, 0.70)'
+  } else if (effective === 'edicion_deluxe') {
+    label = '💎 PACK VIP EXCLUSIVO'
+    gradColors = ['#f59e0b', '#d97706']
+    glowColor = 'rgba(245, 158, 11, 0.70)'
+  } else if (effective === 'calidad_4k') {
+    label = '🍿 ULTRA HD 4K OFICIAL'
+    gradColors = ['#6366f1', '#a855f7']
+    glowColor = 'rgba(99, 102, 241, 0.70)'
+  }
+
+  ctx.save()
+  const bob = isAnimated.value ? Math.sin(t * 3.0) * 3 : 0
+  const tilt = -0.16 + (isAnimated.value ? Math.sin(t * 2.2) * 0.02 : 0)
+
+  ctx.translate(x, y + bob)
+  ctx.rotate(tilt)
+
+  ctx.font = '900 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  const textW = getMemoizedTextWidth(ctx, '900 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', label)
+  const stkW = textW + 34
+  const stkH = 38
+  const stkX = -stkW
+  const stkY = -stkH / 2
+
+  // Sombra proyectada
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
+  ctx.shadowBlur = 14
+  ctx.shadowOffsetY = 4
+
+  // Fondo gradiente
+  const sGrad = ctx.createLinearGradient(stkX, stkY, stkX + stkW, stkY + stkH)
+  sGrad.addColorStop(0, gradColors[0])
+  sGrad.addColorStop(1, gradColors[1])
+  ctx.fillStyle = sGrad
+  roundRect(ctx, stkX, stkY, stkW, stkH, 10)
+  ctx.fill()
+
+  // Borde blanco translúcido
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.50)'
+  ctx.lineWidth = 1.8
+  roundRect(ctx, stkX, stkY, stkW, stkH, 10)
+  ctx.stroke()
+
+  // Shimmer reflejo diagonal animado
+  if (isAnimated.value) {
+    ctx.save()
+    roundRect(ctx, stkX, stkY, stkW, stkH, 10)
+    ctx.clip()
+    const shX = stkX - 40 + ((t * 120) % (stkW + 100))
+    const shGrad = ctx.createLinearGradient(shX, stkY, shX + 35, stkY + stkH)
+    shGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    shGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.55)')
+    shGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = shGrad
+    ctx.fillRect(stkX, stkY, stkW, stkH)
+    ctx.restore()
+  }
+
+  // Texto
+  ctx.shadowColor = glowColor
+  ctx.shadowBlur = isAnimated.value ? 10 : 4
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, stkX + stkW / 2, stkY + stkH / 2 + 1)
+
+  ctx.restore()
+}
+
+// Tarjetas de Precios Duales (Primaria & Secundaria a la vez)
+function drawDualGamingPriceCards(ctx, W, startY, priPrice, secPrice, th, t = 0) {
+  ctx.save()
+  const colW = 416
+  const colH = 146
+  const gap = 24
+  const totalW = colW * 2 + gap
+  const startX = (W - totalW) / 2
+
+  // 1. TARJETA PRIMARIA
+  const priX = startX
+  const priY = startY
+  const isPriSelected = pickedGamingLicense.value === 'primary'
+
+  ctx.save()
+  if (isPriSelected) {
+    ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.65)'
+    ctx.shadowBlur = isAnimated.value ? (18 + Math.sin(t * 3.5) * 8) : 18
+  }
+  ctx.fillStyle = isPriSelected ? 'rgba(8, 20, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'
+  roundRect(ctx, priX, priY, colW, colH, 20)
+  ctx.fill()
+
+  ctx.strokeStyle = isPriSelected ? (th.accent || '#00f0ff') : 'rgba(255, 255, 255, 0.16)'
+  ctx.lineWidth = isPriSelected ? 2.5 : 1.5
+  roundRect(ctx, priX, priY, colW, colH, 20)
+  ctx.stroke()
+  ctx.restore()
+
+  if (isAnimated.value && isPriSelected) {
+    ctx.save()
+    roundRect(ctx, priX, priY, colW, colH, 20)
+    ctx.clip()
+    const sProgress = ((t * 0.40) % 1)
+    const sX = priX - 80 + sProgress * (colW + 160)
+    const sGrad = ctx.createLinearGradient(sX, priY, sX + 45, priY + colH)
+    sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)')
+    sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = sGrad
+    ctx.fillRect(priX, priY, colW, colH)
+    ctx.restore()
+  }
+
+  // Badge Header Primaria
+  ctx.save()
+  const bH1 = 28
+  const bW1 = 180
+  const bX1 = priX + (colW - bW1) / 2
+  const bY1 = priY + 12
+  const priPillGrad = ctx.createLinearGradient(bX1, bY1, bX1 + bW1, bY1)
+  priPillGrad.addColorStop(0, '#0284c7')
+  priPillGrad.addColorStop(1, '#0369a1')
+  ctx.fillStyle = priPillGrad
+  roundRect(ctx, bX1, bY1, bW1, bH1, 14)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('👑 CUENTA PRIMARIA', bX1 + bW1 / 2, bY1 + bH1 / 2 + 1)
+  ctx.restore()
+
+  // Precio Primaria
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
+  ctx.shadowBlur = 10
+  ctx.fillText(`$${Number(priPrice).toLocaleString('es-AR')}`, priX + colW / 2, priY + 84)
+
+  ctx.font = 'bold 14px -apple-system, sans-serif'
+  ctx.fillStyle = isPriSelected ? (th.accent || '#38bdf8') : '#94a3b8'
+  ctx.shadowBlur = 0
+  ctx.fillText('🎮 Jugá desde tu usuario PSN', priX + colW / 2, priY + 118)
+  ctx.restore()
+
+  // 2. TARJETA SECUNDARIA
+  const secX = startX + colW + gap
+  const secY = startY
+  const isSecSelected = pickedGamingLicense.value === 'secondary'
+
+  ctx.save()
+  if (isSecSelected) {
+    ctx.shadowColor = th.glow || 'rgba(168, 85, 247, 0.65)'
+    ctx.shadowBlur = isAnimated.value ? (18 + Math.sin(t * 3.5) * 8) : 18
+  }
+  ctx.fillStyle = isSecSelected ? 'rgba(20, 12, 38, 0.95)' : 'rgba(15, 23, 42, 0.88)'
+  roundRect(ctx, secX, secY, colW, colH, 20)
+  ctx.fill()
+
+  ctx.strokeStyle = isSecSelected ? '#a855f7' : 'rgba(255, 255, 255, 0.16)'
+  ctx.lineWidth = isSecSelected ? 2.5 : 1.5
+  roundRect(ctx, secX, secY, colW, colH, 20)
+  ctx.stroke()
+  ctx.restore()
+
+  if (isAnimated.value && isSecSelected) {
+    ctx.save()
+    roundRect(ctx, secX, secY, colW, colH, 20)
+    ctx.clip()
+    const sProgress = ((t * 0.40) % 1)
+    const sX = secX - 80 + sProgress * (colW + 160)
+    const sGrad = ctx.createLinearGradient(sX, secY, sX + 45, secY + colH)
+    sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)')
+    sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = sGrad
+    ctx.fillRect(secX, secY, colW, colH)
+    ctx.restore()
+  }
+
+  // Badge Header Secundaria
+  ctx.save()
+  const bH2 = 28
+  const bW2 = 192
+  const bX2 = secX + (colW - bW2) / 2
+  const bY2 = secY + 12
+  const secPillGrad = ctx.createLinearGradient(bX2, bY2, bX2 + bW2, bY2)
+  secPillGrad.addColorStop(0, '#7c3aed')
+  secPillGrad.addColorStop(1, '#9333ea')
+  ctx.fillStyle = secPillGrad
+  roundRect(ctx, bX2, bY2, bW2, bH2, 14)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('⚡ CUENTA SECUNDARIA', bX2 + bW2 / 2, bY2 + bH2 / 2 + 1)
+  ctx.restore()
+
+  // Precio Secundaria
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'
+  ctx.shadowBlur = 10
+  ctx.fillText(`$${Number(secPrice).toLocaleString('es-AR')}`, secX + colW / 2, secY + 84)
+
+  ctx.font = 'bold 14px -apple-system, sans-serif'
+  ctx.fillStyle = isSecSelected ? '#c084fc' : '#94a3b8'
+  ctx.shadowBlur = 0
+  ctx.fillText('⚡ Oficial Anti-Candado', secX + colW / 2, secY + 118)
+  ctx.restore()
+
+  ctx.restore()
+}
+
 // Renderiza la imagen centrada con todos los ajustes finos y animación
 function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, options = {}) {
   if (!img || !(img.width > 0 || img.naturalWidth > 0)) return
 
-  const { blurBg = true, showReticle = isPointerDragging, addVignette = true } = options
+  const { blurBg = true, showReticle = isPointerDragging, addVignette = true, cornerR = 36 } = options
   const innerX = targetX
   const innerY = targetY
   const innerW = targetW
@@ -3336,12 +3667,27 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   ctx.restore()
 
   // 3. Efectos Especiales en el Recuadro Central
-  // A) Escáner Láser Cyber
+  // A) Rayo Neón Circulante por el Perímetro del Visor
+  if (showEnergyRing.value && isAnimated.value) {
+    ctx.save()
+    const cycle = (t * 240) % 1000
+    ctx.setLineDash([140, 260])
+    ctx.lineDashOffset = -cycle
+    ctx.strokeStyle = th.accent || '#38bdf8'
+    ctx.lineWidth = 3.5
+    ctx.shadowColor = th.glow || '#38bdf8'
+    ctx.shadowBlur = 18
+    roundRect(ctx, innerX, innerY, innerW, innerH, cornerR)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // B) Escáner Láser Cyber
   if (showLaserScan.value && isAnimated.value) {
     drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, th.glow || 'rgba(0, 220, 255, 0.75)')
   }
 
-  // B) Barrido Holográfico / Luz Shimmer
+  // C) Barrido Holográfico / Luz Shimmer
   if (showHoloSweep.value && isAnimated.value) {
     ctx.save()
     const sweepProgress = ((t * 0.30) % 1)
@@ -3355,9 +3701,14 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
     ctx.restore()
   }
 
-  // C) Esquinas HUD Cyber si están activas
+  // D) Esquinas HUD Cyber si están activas
   if (showCornerBrackets.value) {
     drawCornerBrackets(ctx, innerX, innerY, innerW, innerH, 28, th.accent || 'rgba(56, 189, 248, 0.85)')
+  }
+
+  // E) Sticker 3D Promocional Flotante
+  if (showPromoSticker.value) {
+    drawPromoSticker(ctx, innerX + innerW - 14, innerY + 22, activePromoSticker.value, th, t)
   }
 
   // 4. Retícula táctil de arrastre (solo si el usuario arrastra y no está exportando)
@@ -3620,10 +3971,22 @@ function renderFrame(timeMs = 0) {
       const badgeImg = (activeBadgeKey && activeBadgeKey !== 'none') ? loadedBadgeImages[activeBadgeKey] : null
 
       if (badgeImg && (badgeImg.width > 0 || badgeImg.naturalWidth > 0)) {
-        const bw = Math.min(522, W - 120)
-        const bh = Math.round(bw * (badgeImg.height / badgeImg.width))
-        const bx = (W - bw) / 2
-        const by = 204
+        let bw = Math.min(522, W - 120)
+        let bh = Math.round(bw * (badgeImg.height / badgeImg.width))
+        let bx = (W - bw) / 2
+        let by = 204
+
+        if (gamingBadgePosition.value === 'main_top_left') {
+          bw = 480
+          bh = Math.round(bw * (badgeImg.height / badgeImg.width))
+          bx = 48
+          by = 204
+        } else if (gamingBadgePosition.value === 'frame_top') {
+          bw = fw
+          bh = Math.round(bw * (badgeImg.height / badgeImg.width))
+          bx = fx
+          by = fy - bh + 14
+        }
 
         ctx.save()
         const badgeGlow = isAnimated.value ? (16 + Math.sin(t * 3.2) * 6) : 16
@@ -3767,83 +4130,88 @@ function renderFrame(timeMs = 0) {
       ctx.fillStyle = haloGrad
       ctx.fillRect(100, 1210, W - 200, 250)
 
-      ctx.textAlign = 'center'
-      const hasOrig = showRegularPrice.value && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)
-      if (hasOrig) {
-        ctx.font = 'bold 21px sans-serif'
-        ctx.fillStyle = '#94a3b8'
-        const discPct = calculatedDiscountPercent.value
-        const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
-        const origW = getMemoizedTextWidth(ctx, 'bold 21px sans-serif', origText)
-        const discountShift = discPct ? 50 : 0
-        const textX = (W / 2) - discountShift
-        ctx.fillText(origText, textX, 1272)
+      // Si el modo es videojuegos y está activada la doble licencia, dibuja tarjetas duales
+      if (selectedMode.value === 'gaming' && showDualGamingPrices.value && gamePrimaryPrice.value && gameSecondaryPrice.value) {
+        drawDualGamingPriceCards(ctx, W, 1246, gamePrimaryPrice.value, gameSecondaryPrice.value, th, t)
+      } else {
+        ctx.textAlign = 'center'
+        const hasOrig = showRegularPrice.value && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)
+        if (hasOrig) {
+          ctx.font = 'bold 21px sans-serif'
+          ctx.fillStyle = '#94a3b8'
+          const discPct = calculatedDiscountPercent.value
+          const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
+          const origW = getMemoizedTextWidth(ctx, 'bold 21px sans-serif', origText)
+          const discountShift = discPct ? 50 : 0
+          const textX = (W / 2) - discountShift
+          ctx.fillText(origText, textX, 1272)
 
-        // Línea roja tachada oficial exacta del Flyer
-        ctx.strokeStyle = '#ef4444'
-        ctx.lineWidth = 2.5
-        ctx.beginPath()
-        ctx.moveTo(textX - origW / 2, 1265)
-        ctx.lineTo(textX + origW / 2, 1265)
-        ctx.stroke()
-
-        // Píldora esmeralda con porcentaje de descuento
-        if (discPct) {
-          const badgeX = textX + origW / 2 + 10
-          const badgeW = 90
-          const badgeH = 30
-          ctx.save()
-          ctx.shadowColor = 'rgba(16, 185, 129, 0.55)'
-          ctx.shadowBlur = isAnimated.value ? 10 : 4
-          ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-          roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
-          ctx.fill()
-          ctx.strokeStyle = '#10b981'
-          ctx.lineWidth = 1.5
-          roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
+          // Línea roja tachada oficial exacta del Flyer
+          ctx.strokeStyle = '#ef4444'
+          ctx.lineWidth = 2.5
+          ctx.beginPath()
+          ctx.moveTo(textX - origW / 2, 1265)
+          ctx.lineTo(textX + origW / 2, 1265)
           ctx.stroke()
 
-          // Shimmer sutil en la píldora de descuento
-          if (isAnimated.value) {
+          // Píldora esmeralda con porcentaje de descuento
+          if (discPct) {
+            const badgeX = textX + origW / 2 + 10
+            const badgeW = 90
+            const badgeH = 30
+            ctx.save()
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.55)'
+            ctx.shadowBlur = isAnimated.value ? 10 : 4
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
             roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
-            ctx.clip()
-            const sX = badgeX - 30 + ((t * 90) % (badgeW + 60))
-            const sGrad = ctx.createLinearGradient(sX, 1248, sX + 25, 1248)
-            sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
-            sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)')
-            sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
-            ctx.fillStyle = sGrad
-            ctx.fillRect(badgeX, 1248, badgeW, badgeH)
+            ctx.fill()
+            ctx.strokeStyle = '#10b981'
+            ctx.lineWidth = 1.5
+            roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
+            ctx.stroke()
+
+            // Shimmer sutil en la píldora de descuento
+            if (isAnimated.value) {
+              roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
+              ctx.clip()
+              const sX = badgeX - 30 + ((t * 90) % (badgeW + 60))
+              const sGrad = ctx.createLinearGradient(sX, 1248, sX + 25, 1248)
+              sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+              sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)')
+              sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+              ctx.fillStyle = sGrad
+              ctx.fillRect(badgeX, 1248, badgeW, badgeH)
+            }
+
+            ctx.fillStyle = '#34d399'
+            ctx.font = '900 17px monospace'
+            ctx.textAlign = 'center'
+            ctx.fillText(`-${discPct}%`, badgeX + badgeW / 2, 1269)
+            ctx.restore()
           }
-
-          ctx.fillStyle = '#34d399'
-          ctx.font = '900 17px monospace'
-          ctx.textAlign = 'center'
-          ctx.fillText(`-${discPct}%`, badgeX + badgeW / 2, 1269)
-          ctx.restore()
+        } else {
+          ctx.font = 'bold 20px sans-serif'
+          ctx.fillStyle = '#94a3b8'
+          ctx.fillText('PRECIO EXCLUSIVO', W / 2, 1272)
         }
-      } else {
-        ctx.font = 'bold 20px sans-serif'
-        ctx.fillStyle = '#94a3b8'
-        ctx.fillText('PRECIO EXCLUSIVO', W / 2, 1272)
+
+        // Precio Promocional con micro-respiración orgánica y halo neón
+        ctx.save()
+        const priceScale = isAnimated.value ? (1.0 + Math.sin(t * 3.5) * 0.015) : 1.0
+        ctx.translate(W / 2, 1344)
+        ctx.scale(priceScale, priceScale)
+        ctx.font = '900 78px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = th.glow
+        ctx.shadowBlur = isAnimated.value ? (24 + Math.sin(t * 4.0) * 10) : 20
+        ctx.textAlign = 'center'
+        ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, 0, 0)
+        ctx.restore()
+
+        ctx.font = 'bold 18px sans-serif'
+        ctx.fillStyle = th.accent
+        ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, 1378)
       }
-
-      // Precio Promocional con micro-respiración orgánica y halo neón
-      ctx.save()
-      const priceScale = isAnimated.value ? (1.0 + Math.sin(t * 3.5) * 0.015) : 1.0
-      ctx.translate(W / 2, 1344)
-      ctx.scale(priceScale, priceScale)
-      ctx.font = '900 78px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillStyle = '#ffffff'
-      ctx.shadowColor = th.glow
-      ctx.shadowBlur = isAnimated.value ? (24 + Math.sin(t * 4.0) * 10) : 20
-      ctx.textAlign = 'center'
-      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, 0, 0)
-      ctx.restore()
-
-      ctx.font = 'bold 18px sans-serif'
-      ctx.fillStyle = th.accent
-      ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, 1378)
 
       // Línea divisoria luminosa con halo animado
       const divGrad = ctx.createLinearGradient(180, 0, W - 180, 0)
@@ -4701,13 +5069,20 @@ function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
 
 function drawPriceBox(ctx, boxX, boxY, boxW, boxH, th, t) {
   ctx.save()
+  const isDual = selectedMode.value === 'gaming' && showDualGamingPrices.value && gamePrimaryPrice.value && gameSecondaryPrice.value
   ctx.fillStyle = 'rgba(10, 16, 32, 0.94)'
-  roundRect(ctx, boxX, boxY, boxW, boxH, 38)
+  roundRect(ctx, boxX, boxY, boxW, isDual ? Math.max(boxH, 178) : boxH, 38)
   ctx.fill()
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)'
   ctx.lineWidth = 2
+  roundRect(ctx, boxX, boxY, boxW, isDual ? Math.max(boxH, 178) : boxH, 38)
   ctx.stroke()
-  drawPriceContent(ctx, boxY, boxW, th, t)
+
+  if (isDual) {
+    drawDualGamingPriceCards(ctx, 1080, boxY + 16, gamePrimaryPrice.value, gameSecondaryPrice.value, th, t)
+  } else {
+    drawPriceContent(ctx, boxY, boxW, th, t)
+  }
   ctx.restore()
 }
 
@@ -5369,6 +5744,9 @@ function initFromProps() {
       if (p.rotation !== undefined) imageRotation.value = Number(p.rotation)
       if (p.panX !== undefined) imageOffsetX.value = Number(p.panX)
       if (p.panY !== undefined) imageOffsetY.value = Number(p.panY)
+      if (p.showDualPrices !== undefined) showDualGamingPrices.value = Boolean(p.showDualPrices)
+      if (p.badgePosition) gamingBadgePosition.value = p.badgePosition
+      if (p.promoSticker) activePromoSticker.value = p.promoSticker
 
       const coverUrl = p.image || p.cover || '/flyers/gaming-template-story.jpg'
       reelArtworkUrl.value = coverUrl
