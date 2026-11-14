@@ -2088,12 +2088,12 @@ const loadedFlyerTemplates = {
 async function preloadFlyerTemplates() {
   try {
     preloadBadgeImages()
-    const [gImg, cImg] = await Promise.all([
+    const [gRes, cRes] = await Promise.allSettled([
       loadImage('/flyers/gaming-template-story.jpg'),
       loadImage('/flyer-template-cyber-story.png')
     ])
-    if (gImg) loadedFlyerTemplates.gaming = gImg
-    if (cImg) loadedFlyerTemplates.cyber = cImg
+    if (gRes.status === 'fulfilled' && gRes.value) loadedFlyerTemplates.gaming = gRes.value
+    if (cRes.status === 'fulfilled' && cRes.value) loadedFlyerTemplates.cyber = cRes.value
     requestCanvasRedraw()
   } catch (err) {
     console.warn('[ReelsStudio] Error preloading flyer templates:', err)
@@ -2864,20 +2864,26 @@ function drawAudioVisualizer(ctx, x, y, color = '#38bdf8', t = 0) {
   ctx.save()
 
   if (audioWaveStyle.value === 'bars') {
-    const barCount = 9
+    const barCount = 11
     const barW = 6
     const gap = 4
     const totalW = barCount * barW + (barCount - 1) * gap
     const startX = x - totalW / 2
     ctx.fillStyle = color
+    ctx.shadowColor = color
+    ctx.shadowBlur = isAnimated.value ? 10 : 4
     for (let i = 0; i < barCount; i++) {
-      const h = 8 + Math.abs(Math.sin(t * 7 + i * 0.9)) * 24
+      const harm1 = Math.sin(t * 6.5 + i * 0.85)
+      const harm2 = Math.cos(t * 4.2 + i * 1.3)
+      const h = 10 + Math.abs(harm1 * 0.7 + harm2 * 0.3) * 26
       const bx = startX + i * (barW + gap)
       const by = y - h / 2
       roundRect(ctx, bx, by, barW, h, 3)
       ctx.fill()
     }
   } else if (audioWaveStyle.value === 'wave') {
+    ctx.shadowColor = color
+    ctx.shadowBlur = isAnimated.value ? 10 : 4
     ctx.beginPath()
     for (let px = -70; px <= 70; px += 4) {
       const py = Math.sin(t * 6 + px * 0.08) * 12
@@ -2890,6 +2896,8 @@ function drawAudioVisualizer(ctx, x, y, color = '#38bdf8', t = 0) {
     ctx.stroke()
   } else if (audioWaveStyle.value === 'pulse') {
     const radius = 13 + Math.abs(Math.sin(t * 5)) * 7
+    ctx.shadowColor = color
+    ctx.shadowBlur = isAnimated.value ? 12 : 4
     ctx.strokeStyle = color
     ctx.lineWidth = 3
     ctx.beginPath()
@@ -2911,9 +2919,9 @@ function drawAdaptiveParticles(ctx, W, H, t = 0) {
   if (!isAnimated.value || particleStyle.value === 'none') return
   ctx.save()
 
-  let count = 22
+  let count = 24
   if (particleStyle.value === 'gold_dust') {
-    count = vipStarsDensity.value === 'baja' ? 14 : (vipStarsDensity.value === 'alta' ? 42 : 26)
+    count = vipStarsDensity.value === 'baja' ? 16 : (vipStarsDensity.value === 'alta' ? 44 : 28)
   }
   for (let i = 0; i < count; i++) {
     const px = (W * ((i * 0.047 + t * 0.025) % 1))
@@ -2921,19 +2929,48 @@ function drawAdaptiveParticles(ctx, W, H, t = 0) {
     const pAlpha = 0.2 + Math.sin(t * 3 + i) * 0.15
 
     if (particleStyle.value === 'gold_dust') {
-      ctx.fillStyle = `rgba(245, 158, 11, ${Math.max(0.05, pAlpha)})`
-      ctx.beginPath()
-      ctx.arc(px, py, (i % 3) + 2, 0, Math.PI * 2)
-      ctx.fill()
+      const alpha = Math.max(0.06, pAlpha)
+      ctx.fillStyle = `rgba(245, 158, 11, ${alpha})`
+      ctx.shadowColor = '#f59e0b'
+      ctx.shadowBlur = 8
+      if (i % 4 === 0) {
+        // Estrellita brillante de 4 puntas
+        const sSize = 4 + (i % 3) * 2
+        ctx.beginPath()
+        ctx.moveTo(px, py - sSize)
+        ctx.lineTo(px + 1.5, py - 1.5)
+        ctx.lineTo(px + sSize, py)
+        ctx.lineTo(px + 1.5, py + 1.5)
+        ctx.lineTo(px, py + sSize)
+        ctx.lineTo(px - 1.5, py + 1.5)
+        ctx.lineTo(px - sSize, py)
+        ctx.lineTo(px - 1.5, py - 1.5)
+        ctx.closePath()
+        ctx.fill()
+      } else {
+        ctx.beginPath()
+        ctx.arc(px, py, (i % 3) + 1.8, 0, Math.PI * 2)
+        ctx.fill()
+      }
     } else if (particleStyle.value === 'fire_sparks') {
-      ctx.fillStyle = `rgba(239, 68, 68, ${Math.max(0.05, pAlpha * 1.2)})`
+      // Chispas de fuego ascendentes con deriva oscilatoria
+      const riseY = (H - ((i * 85 + t * 90) % H))
+      const driftX = (px + Math.sin(t * 2.5 + i) * 22) % W
+      const alpha = Math.max(0.08, pAlpha * 1.3)
+      ctx.fillStyle = (i % 2 === 0) ? `rgba(239, 68, 68, ${alpha})` : `rgba(249, 115, 22, ${alpha})`
+      ctx.shadowColor = '#f97316'
+      ctx.shadowBlur = 10
       ctx.beginPath()
-      ctx.arc(px, py, (i % 2) + 2.5, 0, Math.PI * 2)
+      ctx.arc(driftX, riseY, (i % 3) + 2, 0, Math.PI * 2)
       ctx.fill()
     } else {
-      ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.04, pAlpha)})`
+      // Cyber neón / polvo cósmico flotante con glow suave
+      const alpha = Math.max(0.05, pAlpha)
+      ctx.fillStyle = (i % 3 === 0) ? `rgba(56, 189, 248, ${alpha * 1.2})` : `rgba(255, 255, 255, ${alpha})`
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.7)'
+      ctx.shadowBlur = 6
       ctx.beginPath()
-      ctx.arc(px, py, (i % 3) + 2.5, 0, Math.PI * 2)
+      ctx.arc(px, py, (i % 3) + 2, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -3025,9 +3062,23 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
   ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
   ctx.restore()
 
-  // 3. Efecto Escáner Neón en Movimiento
-  if (isAnimated.value && currentLayoutId.value === 'cyber_pro') {
-    drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
+  // 3. Efecto Escáner Neón / Barrido Holográfico en Movimiento
+  if (isAnimated.value) {
+    if (currentLayoutId.value === 'cyber_pro') {
+      drawLaserScanline(ctx, innerX, innerY, innerW, innerH, t, currentTheme.value.glow)
+    } else if (currentLayoutId.value === 'flyer_official') {
+      // Haz holográfico diagonal que recorre el visor de la portada cada 3.2 segundos
+      ctx.save()
+      const sweepProgress = ((t * 0.30) % 1)
+      const sweepX = innerX - innerW * 0.4 + sweepProgress * (innerW * 1.8)
+      const sweepGrad = ctx.createLinearGradient(sweepX, innerY, sweepX + 110, innerY + innerH)
+      sweepGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+      sweepGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.16)')
+      sweepGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      ctx.fillStyle = sweepGrad
+      ctx.fillRect(innerX, innerY, innerW, innerH)
+      ctx.restore()
+    }
   }
 
   // 4. Retícula táctil de arrastre (solo si el usuario arrastra y no está exportando)
@@ -3043,13 +3094,24 @@ function drawAdjustedArtwork(ctx, img, targetX, targetY, targetW, targetH, t, op
     ctx.restore()
   }
 
-  // 5. Viñeta oscura inferior para legibilidad
+  // 5. Viñeta ambiental: sutil en flyer_official para fundir con el marco original, o profunda en cyberpunk
   if (addVignette) {
-    const vigGrad = ctx.createLinearGradient(0, innerY + innerH - 240, 0, innerY + innerH)
-    vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
-    vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
-    ctx.fillStyle = vigGrad
-    ctx.fillRect(innerX, innerY + innerH - 240, innerW, 240)
+    const isFlyer = currentLayoutId.value === 'flyer_official'
+    if (isFlyer) {
+      const vigGrad = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH)
+      vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0.20)')
+      vigGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0)')
+      vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)')
+      ctx.fillStyle = vigGrad
+      ctx.fillRect(innerX, innerY, innerW, innerH)
+    } else {
+      const vH = Math.min(240, innerH * 0.45)
+      const vigGrad = ctx.createLinearGradient(0, innerY + innerH - vH, 0, innerY + innerH)
+      vigGrad.addColorStop(0, 'rgba(0,0,0,0)')
+      vigGrad.addColorStop(1, 'rgba(2, 6, 23, 0.95)')
+      ctx.fillStyle = vigGrad
+      ctx.fillRect(innerX, innerY + innerH - vH, innerW, vH)
+    }
   }
 }
 
@@ -3274,10 +3336,13 @@ function renderFrame(timeMs = 0) {
       }
       ctx.restore()
 
-      // Borde sutil del marco metálico
+      // Borde metálico pulsante con resplandor neón adaptativo
       ctx.save()
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
-      ctx.lineWidth = 2
+      const borderAlpha = isAnimated.value ? (0.35 + Math.sin(t * 3.0) * 0.15) : 0.4
+      ctx.strokeStyle = `rgba(56, 189, 248, ${borderAlpha})`
+      ctx.lineWidth = 2.5
+      ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
+      ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
       roundRect(ctx, fx, fy, fw, fh, cornerR)
       ctx.stroke()
       ctx.restore()
@@ -3293,20 +3358,22 @@ function renderFrame(timeMs = 0) {
         const by = 204
 
         ctx.save()
-        ctx.shadowColor = 'rgba(0, 220, 255, 0.75)'
-        ctx.shadowBlur = 18
+        const badgeGlow = isAnimated.value ? (16 + Math.sin(t * 3.2) * 6) : 16
+        ctx.shadowColor = 'rgba(0, 220, 255, 0.85)'
+        ctx.shadowBlur = badgeGlow
         ctx.drawImage(badgeImg, bx, by, bw, bh)
 
-        // Shimmer animado sutil atravesando la insignia oficial
+        // Shimmer animado fluido atravesando la insignia oficial
         if (isAnimated.value) {
           ctx.beginPath()
           roundRect(ctx, bx, by, bw, bh, 8)
           ctx.clip()
 
-          const shimmerPos = ((t * 0.4) % 1) * (bw + 200) - 100
-          const sGrad = ctx.createLinearGradient(bx + shimmerPos, by, bx + shimmerPos + 70, by)
+          const shimmerProgress = ((t * 0.35) % 1)
+          const shimmerPos = bx - 100 + shimmerProgress * (bw + 200)
+          const sGrad = ctx.createLinearGradient(shimmerPos, by, shimmerPos + 80, by + bh)
           sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
-          sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)')
+          sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.55)')
           sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
           ctx.fillStyle = sGrad
           ctx.fillRect(bx, by, bw, bh)
@@ -3357,19 +3424,42 @@ function renderFrame(timeMs = 0) {
       if (impactText) {
         ctx.save()
         ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        const badgeW = Math.min(ctx.measureText(impactText).width + 56, 780)
-        const badgeH = 44
+        const badgeW = Math.min(ctx.measureText(impactText).width + 60, 800)
+        const badgeH = 46
         const badgeX = (W - badgeW) / 2
         const badgeY = Math.round(H * 0.466)
 
         ctx.shadowColor = th.glow
-        ctx.shadowBlur = 18
+        ctx.shadowBlur = isAnimated.value ? (18 + Math.sin(t * 3.5) * 8) : 18
         const bGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY)
         bGrad.addColorStop(0, th.pillGrad[0])
         bGrad.addColorStop(1, th.pillGrad[1])
         ctx.fillStyle = bGrad
         roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2)
         ctx.fill()
+
+        // Borde fino brillante
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+        ctx.lineWidth = 1.5
+        roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2)
+        ctx.stroke()
+
+        // Shimmer diagonal animado atravesando el sello de impacto
+        if (isAnimated.value) {
+          ctx.save()
+          roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2)
+          ctx.clip()
+
+          const sProgress = ((t * 0.45) % 1)
+          const sX = badgeX - 100 + sProgress * (badgeW + 200)
+          const sGrad = ctx.createLinearGradient(sX, badgeY, sX + 70, badgeY)
+          sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+          sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)')
+          sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+          ctx.fillStyle = sGrad
+          ctx.fillRect(badgeX, badgeY, badgeW, badgeH)
+          ctx.restore()
+        }
 
         ctx.shadowBlur = 0
         ctx.textAlign = 'center'
@@ -3402,12 +3492,12 @@ function renderFrame(timeMs = 0) {
 
       // 5. Zona Inferior de Precios con Halo Pulsante a 30 FPS y Descuento Oficial
       ctx.save()
-      const haloRadius = isAnimated.value ? (320 + Math.sin(t * 3.2) * 25) : 320
+      const haloRadius = isAnimated.value ? (330 + Math.sin(t * 3.2) * 30) : 330
       const haloGrad = ctx.createRadialGradient(W / 2, 1340, 20, W / 2, 1340, haloRadius)
-      haloGrad.addColorStop(0, th.glow || 'rgba(0, 220, 255, 0.16)')
+      haloGrad.addColorStop(0, th.glow || 'rgba(0, 220, 255, 0.20)')
       haloGrad.addColorStop(1, 'rgba(0, 220, 255, 0)')
       ctx.fillStyle = haloGrad
-      ctx.fillRect(100, 1220, W - 200, 240)
+      ctx.fillRect(100, 1210, W - 200, 250)
 
       ctx.textAlign = 'center'
       const hasOrig = showRegularPrice.value && Number(reelRegularPrice.value) > Number(reelPromoPrice.value)
@@ -3417,7 +3507,7 @@ function renderFrame(timeMs = 0) {
         const discPct = calculatedDiscountPercent.value
         const origText = `Antes: $${Number(reelRegularPrice.value).toLocaleString('es-AR')}`
         const origW = ctx.measureText(origText).width
-        const discountShift = discPct ? 48 : 0
+        const discountShift = discPct ? 50 : 0
         const textX = (W / 2) - discountShift
         ctx.fillText(origText, textX, 1272)
 
@@ -3432,20 +3522,37 @@ function renderFrame(timeMs = 0) {
         // Píldora esmeralda con porcentaje de descuento
         if (discPct) {
           const badgeX = textX + origW / 2 + 10
-          const badgeW = 86
-          const badgeH = 28
+          const badgeW = 90
+          const badgeH = 30
+          ctx.save()
+          ctx.shadowColor = 'rgba(16, 185, 129, 0.55)'
+          ctx.shadowBlur = isAnimated.value ? 10 : 4
           ctx.fillStyle = 'rgba(16, 185, 129, 0.25)'
-          roundRect(ctx, badgeX, 1250, badgeW, badgeH, 8)
+          roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
           ctx.fill()
           ctx.strokeStyle = '#10b981'
           ctx.lineWidth = 1.5
-          roundRect(ctx, badgeX, 1250, badgeW, badgeH, 8)
+          roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
           ctx.stroke()
 
+          // Shimmer sutil en la píldora de descuento
+          if (isAnimated.value) {
+            roundRect(ctx, badgeX, 1248, badgeW, badgeH, 8)
+            ctx.clip()
+            const sX = badgeX - 30 + ((t * 90) % (badgeW + 60))
+            const sGrad = ctx.createLinearGradient(sX, 1248, sX + 25, 1248)
+            sGrad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+            sGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)')
+            sGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+            ctx.fillStyle = sGrad
+            ctx.fillRect(badgeX, 1248, badgeW, badgeH)
+          }
+
           ctx.fillStyle = '#34d399'
-          ctx.font = '900 16px monospace'
+          ctx.font = '900 17px monospace'
           ctx.textAlign = 'center'
-          ctx.fillText(`-${discPct}%`, badgeX + badgeW / 2, 1270)
+          ctx.fillText(`-${discPct}%`, badgeX + badgeW / 2, 1269)
+          ctx.restore()
         }
       } else {
         ctx.font = 'bold 20px sans-serif'
@@ -3453,26 +3560,33 @@ function renderFrame(timeMs = 0) {
         ctx.fillText('PRECIO EXCLUSIVO', W / 2, 1272)
       }
 
+      // Precio Promocional con micro-respiración orgánica y halo neón
+      ctx.save()
+      const priceScale = isAnimated.value ? (1.0 + Math.sin(t * 3.5) * 0.015) : 1.0
+      ctx.translate(W / 2, 1344)
+      ctx.scale(priceScale, priceScale)
       ctx.font = '900 78px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.fillStyle = '#ffffff'
       ctx.shadowColor = th.glow
-      ctx.shadowBlur = isAnimated.value ? (22 + Math.sin(t * 4.0) * 8) : 20
-      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, W / 2, 1344)
-      ctx.shadowBlur = 0
+      ctx.shadowBlur = isAnimated.value ? (24 + Math.sin(t * 4.0) * 10) : 20
+      ctx.textAlign = 'center'
+      ctx.fillText(`$${Number(reelPromoPrice.value).toLocaleString('es-AR')} ARS`, 0, 0)
+      ctx.restore()
 
       ctx.font = 'bold 18px sans-serif'
       ctx.fillStyle = th.accent
       ctx.fillText('🛡️ Garantía Oficial 30 Días · Soporte VIP 24/7', W / 2, 1378)
 
-      const divGrad = ctx.createLinearGradient(200, 0, W - 200, 0)
+      // Línea divisoria luminosa con halo animado
+      const divGrad = ctx.createLinearGradient(180, 0, W - 180, 0)
       divGrad.addColorStop(0, 'rgba(56, 189, 248, 0)')
-      divGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.6)')
+      divGrad.addColorStop(0.5, isAnimated.value ? `rgba(56, 189, 248, ${0.5 + Math.sin(t * 3) * 0.25})` : 'rgba(56, 189, 248, 0.6)')
       divGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
       ctx.strokeStyle = divGrad
-      ctx.lineWidth = 1.5
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.moveTo(200, 1400)
-      ctx.lineTo(W - 200, 1400)
+      ctx.moveTo(180, 1400)
+      ctx.lineTo(W - 180, 1400)
       ctx.stroke()
       ctx.restore()
 
@@ -3512,9 +3626,13 @@ function renderFrame(timeMs = 0) {
       }
       ctx.restore()
 
+      // Borde metálico pulsante con resplandor neón adaptativo
       ctx.save()
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
-      ctx.lineWidth = 2
+      const borderAlpha = isAnimated.value ? (0.35 + Math.sin(t * 3.0) * 0.15) : 0.4
+      ctx.strokeStyle = `rgba(56, 189, 248, ${borderAlpha})`
+      ctx.lineWidth = 2.5
+      ctx.shadowColor = th.glow || 'rgba(0, 220, 255, 0.7)'
+      ctx.shadowBlur = isAnimated.value ? (14 + Math.sin(t * 3.0) * 6) : 10
       roundRect(ctx, vx, vy, vw, vh, cornerR)
       ctx.stroke()
       ctx.restore()
@@ -4118,31 +4236,40 @@ function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
     // Modo Horizontal: 2 Píldoras lado a lado
     const gap = 16
     const pillW = (totalW - gap) / 2
-    const pillH = 48
+    const pillH = 50
     bullets.forEach((b, idx) => {
       const px = startX + idx * (pillW + gap)
       const py = startY
 
       // Fondo cápsula translúcida
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
-      roundRect(ctx, px, py, pillW, pillH, 24)
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)'
+      roundRect(ctx, px, py, pillW, pillH, 25)
       ctx.fill()
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
       ctx.lineWidth = 1.5
-      roundRect(ctx, px, py, pillW, pillH, 24)
+      roundRect(ctx, px, py, pillW, pillH, 25)
       ctx.stroke()
 
-      // Icono de checkmark animado
-      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 4 + idx * 1.5) * 0.08) : 1.0
+      // Icono de checkmark animado en secuencia
+      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.8 + idx * 1.8) * 0.12) : 1.0
       const cx = px + 26
       const cy = py + pillH / 2
 
       ctx.save()
       ctx.translate(cx, cy)
       ctx.scale(pulse, pulse)
+
+      // Halo exterior
+      if (isAnimated.value) {
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.25)'
+        ctx.beginPath()
+        ctx.arc(0, 0, 16, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
       ctx.fillStyle = th.bulletColor || '#22c55e'
       ctx.shadowColor = th.glow || '#22c55e'
-      ctx.shadowBlur = isAnimated.value ? 10 : 4
+      ctx.shadowBlur = isAnimated.value ? 12 : 4
       ctx.beginPath()
       ctx.arc(0, 0, 12, 0, Math.PI * 2)
       ctx.fill()
@@ -4153,33 +4280,42 @@ function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
       ctx.restore()
 
       // Texto
-      ctx.fillStyle = '#f1f5f9'
+      ctx.fillStyle = '#f8fafc'
       ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.textAlign = 'left'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
       ctx.shadowBlur = 6
       const maxLen = 25
       const clipText = b.length > maxLen ? b.slice(0, maxLen - 2) + '...' : b
-      ctx.fillText(clipText, px + 48, py + 31)
+      ctx.fillText(clipText, px + 48, py + 32)
     })
     ctx.restore()
     return pillH
   } else {
-    // Modo Vertical: Hasta 3 filas limpias con viñeta verde y texto nítido
-    const rowH = 38
+    // Modo Vertical: Hasta 3 filas limpias con viñeta verde y texto nítido idéntico a Flyer
+    const rowH = 48
     bullets.forEach((b, idx) => {
       const py = startY + idx * rowH
-      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.5 + idx * 1.5) * 0.06) : 1.0
+      const pulse = isAnimated.value ? (1.0 + Math.sin(t * 3.8 + idx * 1.8) * 0.12) : 1.0
       const cx = startX + 22
       const cy = py + 14
 
-      // Checkmark circular pulsante
       ctx.save()
       ctx.translate(cx, cy)
       ctx.scale(pulse, pulse)
+
+      // Aura exterior del check
+      if (isAnimated.value) {
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.28)'
+        ctx.beginPath()
+        ctx.arc(0, 0, 16, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // Checkmark circular pulsante
       ctx.fillStyle = th.bulletColor || '#22c55e'
       ctx.shadowColor = th.glow || '#22c55e'
-      ctx.shadowBlur = isAnimated.value ? 10 : 4
+      ctx.shadowBlur = isAnimated.value ? 12 : 4
       ctx.beginPath()
       ctx.arc(0, 0, 12, 0, Math.PI * 2)
       ctx.fill()
@@ -4189,9 +4325,9 @@ function drawAnimatedFlyerBullets(ctx, startX, startY, totalW, th, t = 0) {
       ctx.fillText('✓', 0, 5)
       ctx.restore()
 
-      // Texto de beneficio
+      // Texto de beneficio nítido
       ctx.fillStyle = '#f8fafc'
-      ctx.font = '600 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       ctx.textAlign = 'left'
       ctx.shadowColor = 'rgba(0, 0, 0, 0.92)'
       ctx.shadowBlur = 6
