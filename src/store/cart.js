@@ -109,6 +109,43 @@ export const useCartStore = defineStore('cart', {
       this.appliedCoupon = null
       this.persistCart()
     },
+    refreshItemPrices(adminStore) {
+      if (!adminStore) return
+      let changed = false
+      this.items.forEach(item => {
+        if (item.itemType === 'digital') {
+          const plans = adminStore.pricingCatalog?.[item.platform]?.plans || {}
+          const plan = plans[item.planKey]
+          if (plan && plan.clientPrice && plan.clientPrice !== item.clientPrice) {
+            item.clientPrice = plan.clientPrice
+            item.providerCost = plan.providerCost
+            item.resellerProfit = plan.resellerProfit
+            changed = true
+          }
+        } else if (item.itemType === 'package') {
+          const pkg = (adminStore.packages || []).find(p => p.id === item.id)
+          if (pkg && pkg.promoPrice && pkg.promoPrice !== item.clientPrice) {
+            item.clientPrice = pkg.promoPrice
+            item.providerCost = pkg.providerCost
+            item.resellerProfit = pkg.resellerProfit
+            changed = true
+          }
+        } else if (item.itemType === 'gaming') {
+          const game = (adminStore.processedGamingProducts || []).find(g => g.id === item.id || g.id === item.gameId)
+          if (game) {
+            const isPrim = item.licenseType === 'primary' || (item.planLabel && item.planLabel.includes('Primaria'))
+            const newPvp = isPrim ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
+            if (newPvp && newPvp !== item.clientPrice) {
+              item.clientPrice = newPvp
+              changed = true
+            }
+          }
+        }
+      })
+      if (changed) {
+        this.persistCart()
+      }
+    },
     openDrawer() {
       this.isDrawerOpen = true
     },

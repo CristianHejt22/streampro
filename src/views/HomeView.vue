@@ -448,7 +448,7 @@ const removeReceiptFile = () => {
   receiptFile.value = null
 }
 
-const products = ref([
+const defaultBaseProducts = [
   { 
     id: 1, 
     name: 'Netflix Premium Ultra HD', 
@@ -551,7 +551,46 @@ const products = ref([
     plans: PLATFORM_PLANS['Canva Pro']?.plans || {},
     requiresActivationEmail: true
   }
-])
+]
+
+const products = computed(() => {
+  const baseList = defaultBaseProducts.map(p => {
+    const custom = adminStore.pricingCatalog?.[p.platform]
+    if (!custom) return p
+    return {
+      ...p,
+      name: custom.name || p.name,
+      badge: custom.badge || custom.quality || p.badge,
+      deliveryTime: custom.deliveryBadge || custom.deliveryTime || p.deliveryTime,
+      description: custom.description || p.description,
+      features: (Array.isArray(custom.highlights) && custom.highlights.length) ? custom.highlights : ((Array.isArray(custom.features) && custom.features.length) ? custom.features : p.features),
+      plans: custom.plans || p.plans
+    }
+  })
+
+  const existingPlatforms = new Set(baseList.map(p => p.platform))
+  const catalog = adminStore.pricingCatalog || {}
+  let nextId = 500
+  Object.keys(catalog).forEach(platKey => {
+    if (!existingPlatforms.has(platKey)) {
+      const platData = catalog[platKey] || {}
+      baseList.push({
+        id: nextId++,
+        name: platData.name || platKey,
+        category: 'Streaming',
+        platform: platKey,
+        badge: platData.badge || platData.quality || '⭐ OFICIAL',
+        deliveryTime: platData.deliveryBadge || platData.deliveryTime || '🟢 10-15m',
+        specs: platData.quality || 'FULL HD / 4K',
+        description: platData.description || 'Suscripción oficial con activación garantizada y soporte.',
+        features: platData.features || platData.highlights || ['Entrega rápida garantizada', 'Soporte y reemplazo inmediato', 'Garantía oficial'],
+        plans: platData.plans || {}
+      })
+    }
+  })
+
+  return baseList.filter(p => Boolean(catalog[p.platform]))
+})
 
 // Modal de Configuración
 const selectedProduct = ref(null)
@@ -945,9 +984,15 @@ const showCartDrawer = ref(false)
 
 watch(() => cartStore.isDrawerOpen, (isOpen) => {
   showCartDrawer.value = isOpen
+  if (isOpen) {
+    cartStore.refreshItemPrices(adminStore)
+  }
 })
 watch(showCartDrawer, (isOpen) => {
   cartStore.isDrawerOpen = isOpen
+  if (isOpen) {
+    cartStore.refreshItemPrices(adminStore)
+  }
 })
 
 // Modal y Formulario Checkout
@@ -1812,7 +1857,7 @@ const homeFeaturedCategories = computed(() => {
 
 // 2. Selección de Ofertas 1: Top 4 Plataformas Digitales
 const homeFeaturedDigital = computed(() => {
-  const topPlatforms = ['Netflix', 'Disney+', 'Max', 'Spotify', 'IPTV', 'Prime Video']
+  const topPlatforms = ['Netflix', 'Netflix Perfil Extra', 'Disney+', 'Max', 'Spotify', 'IPTV', 'Prime Video']
   return products.value.filter(p => topPlatforms.includes(p.platform))
 })
 
@@ -2237,6 +2282,7 @@ const openCheckoutForm = () => {
     toast.add('El carrito está vacío', 'error')
     return
   }
+  cartStore.refreshItemPrices(adminStore)
   showCartDrawer.value = false
   showCheckoutModal.value = true
 }
@@ -3366,7 +3412,7 @@ const submitOrder = async () => {
                       {{ getStreamingMeta(product.platform).badge }}
                     </span>
                     <h4 class="text-base font-black text-white group-hover:text-sky-300 transition-colors leading-tight truncate">
-                      {{ product.name }}
+                      {{ adminStore.pricingCatalog?.[product.platform]?.name || product.name }}
                     </h4>
                   </div>
                 </div>

@@ -296,6 +296,10 @@ export async function saveStoreSettingsToFirebase(settings) {
       gamingResellerCommissionPercent: Number(settings.gamingResellerCommissionPercent ?? 10),
       gamingMinResellerProfit: Number(settings.gamingMinResellerProfit ?? 1000),
       ...(Array.isArray(settings.promoCodes) ? { promoCodes: JSON.parse(JSON.stringify(settings.promoCodes)) } : {}),
+      ...(settings.pricingCatalog && typeof settings.pricingCatalog === 'object' ? { pricingCatalog: JSON.parse(JSON.stringify(settings.pricingCatalog)) } : {}),
+      ...(Array.isArray(settings.packages) ? { packages: JSON.parse(JSON.stringify(settings.packages)) } : {}),
+      ...(Array.isArray(settings.gamingProviderSites) ? { gamingProviderSites: JSON.parse(JSON.stringify(settings.gamingProviderSites)) } : {}),
+      ...(settings.gamingOverrides && typeof settings.gamingOverrides === 'object' ? { gamingOverrides: JSON.parse(JSON.stringify(settings.gamingOverrides)) } : {}),
       updatedAt: new Date().toISOString()
     }
     await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })

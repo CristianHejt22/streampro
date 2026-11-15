@@ -1925,6 +1925,10 @@ const saveGamingPriceEdit = () => {
     const refreshed = (adminStore.processedGamingProducts || []).find(g => g.id === editingGamingProduct.value.id)
     if (refreshed) selectedGameForProvider.value = refreshed
   }
+  if (posSelectedGame.value && posSelectedGame.value.id === editingGamingProduct.value.id) {
+    const refreshed = (adminStore.processedGamingProducts || []).find(g => g.id === editingGamingProduct.value.id)
+    if (refreshed) posSelectedGame.value = refreshed
+  }
 
   const preview = gamingEditLivePreview.value
   toast.add(

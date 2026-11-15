@@ -1451,18 +1451,22 @@ export const useAdminStore = defineStore('admin', {
     persist(key) {
       if (key === DB_KEYS.PRICING_CATALOG) {
         saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.PACKAGES) {
         saveDb(DB_KEYS.PACKAGES, this.packages)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.GAMING_PRODUCTS) {
         persistGamingCatalogDeltas(this.gamingProducts, _loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
         this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
         invalidateGamingCache()
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.GAMING_PROVIDER_SITES) {
         saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
         this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
         invalidateGamingCache()
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.STORE_SETTINGS) {
         this.persistStoreSettings()
       } else if (key === DB_KEYS.PHYSICAL_PRODUCTS) {
@@ -1878,13 +1882,18 @@ export const useAdminStore = defineStore('admin', {
       return this.isPhysicalStoreVisible
     },
     persistStoreSettings() {
+      const overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
       const settings = {
         isStoreVisible: this.isStoreVisible,
         isPhysicalStoreVisible: this.isPhysicalStoreVisible,
         gamingStoreMarginPercent: Number(this.gamingStoreMarginPercent ?? 20),
         gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
         gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000),
-        promoCodes: Array.isArray(this.promoCodes) ? this.promoCodes : []
+        promoCodes: Array.isArray(this.promoCodes) ? this.promoCodes : [],
+        pricingCatalog: this.pricingCatalog,
+        packages: this.packages,
+        gamingProviderSites: this.gamingProviderSites,
+        gamingOverrides: overrides
       }
       saveDb(DB_KEYS.STORE_SETTINGS, settings)
       // Sincronización en la nube Firebase Firestore para todos los clientes en tiempo real
@@ -1933,8 +1942,25 @@ export const useAdminStore = defineStore('admin', {
           this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
           marginChanged = true
         }
-        if (typeof cloudSettings.gamingMinResellerProfit === 'number' && cloudSettings.gamingMinResellerProfit !== this.gamingMinResellerProfit) {
+        if (cloudSettings.gamingMinResellerProfit === 'number' && cloudSettings.gamingMinResellerProfit !== this.gamingMinResellerProfit) {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
+          marginChanged = true
+        }
+        if (cloudSettings.pricingCatalog && typeof cloudSettings.pricingCatalog === 'object' && Object.keys(cloudSettings.pricingCatalog).length > 0) {
+          this.pricingCatalog = { ...this.pricingCatalog, ...cloudSettings.pricingCatalog }
+          saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
+        }
+        if (Array.isArray(cloudSettings.packages) && cloudSettings.packages.length > 0) {
+          this.packages = cloudSettings.packages
+          saveDb(DB_KEYS.PACKAGES, this.packages)
+        }
+        if (Array.isArray(cloudSettings.gamingProviderSites) && cloudSettings.gamingProviderSites.length > 0) {
+          this.gamingProviderSites = cloudSettings.gamingProviderSites
+          saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
+          marginChanged = true
+        }
+        if (cloudSettings.gamingOverrides && typeof cloudSettings.gamingOverrides === 'object') {
+          saveDb(DB_KEYS.GAMING_OVERRIDES, cloudSettings.gamingOverrides)
           marginChanged = true
         }
         if (marginChanged) {
@@ -2291,13 +2317,16 @@ export const useAdminStore = defineStore('admin', {
 
     addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [] }) {
       if (this.pricingCatalog[key]) return { error: 'La plataforma ya existe' }
-      this.pricingCatalog[key] = {
-        name: name || key,
-        description,
-        badge,
-        deliveryBadge,
-        highlights,
-        plans: plans || {}
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [key]: {
+          name: name || key,
+          description,
+          badge,
+          deliveryBadge,
+          highlights,
+          plans: plans || {}
+        }
       }
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
@@ -2305,7 +2334,9 @@ export const useAdminStore = defineStore('admin', {
 
     deletePlatform(key) {
       if (this.pricingCatalog[key]) {
-        delete this.pricingCatalog[key]
+        const next = { ...this.pricingCatalog }
+        delete next[key]
+        this.pricingCatalog = next
         this.persist(DB_KEYS.PRICING_CATALOG)
         return { success: true }
       }
@@ -3923,7 +3954,7 @@ export const useAdminStore = defineStore('admin', {
         createdAt: new Date().toISOString().split('T')[0]
       }
 
-      this.packages.unshift(newPkg)
+      this.packages = [newPkg, ...this.packages]
       this.persist(DB_KEYS.PACKAGES)
 
       if (createdBy === 'provider') {
@@ -4037,7 +4068,7 @@ export const useAdminStore = defineStore('admin', {
     deletePackage(pkgId) {
       const idx = this.packages.findIndex(pkg => pkg.id === pkgId)
       if (idx !== -1) {
-        this.packages.splice(idx, 1)
+        this.packages = this.packages.filter(pkg => pkg.id !== pkgId)
         this.persist(DB_KEYS.PACKAGES)
         return { success: true }
       }
