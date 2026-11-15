@@ -867,7 +867,9 @@ const submitCreateResellerPackage = () => {
     badge: resellerPackageForm.value.badge.trim() || `🔥 ${resellerPackageCalc.value.discount}% OFF`,
     services: formatted,
     originalPrice: resellerPackageCalc.value.regular,
-    providerCost: resellerPackageCalc.value.cost,
+    resellerCost: resellerPackageCalc.value.cost,
+    providerCost: Math.round(resellerPackageCalc.value.cost * 0.75),
+    platformProfit: Math.round(resellerPackageCalc.value.cost * 0.25),
     resellerProfit: resellerPackageCalc.value.profit,
     promoPrice: Number(resellerPackageForm.value.promoPrice) || resellerPackageCalc.value.promo,
     discountPercent: resellerPackageCalc.value.discount
@@ -2423,9 +2425,9 @@ const submitResellerGameInquiry = () => {
                     <span class="text-sm font-black text-emerald-400 font-mono">+${{ Number(pkg.resellerProfit || 0).toLocaleString() }} ARS</span>
                   </div>
                 </div>
-                <div class="flex justify-between items-center pt-1.5 border-t border-slate-800/60 text-[10px] text-slate-400 font-mono">
-                  <span>Costo Proveedor: ${{ Number(pkg.providerCost || 0).toLocaleString() }} ARS</span>
-                  <span class="text-pink-300 font-semibold">{{ pkg.durationDays || 30 }} Días</span>
+                <div class="flex justify-between items-center pt-1.5 border-t border-slate-800/60 text-[10px] font-mono">
+                  <span class="text-purple-300 font-bold">Tu Costo Mayorista: ${{ Number(pkg.resellerCost || pkg.providerCost || 0).toLocaleString() }} ARS</span>
+                  <span class="text-pink-300 font-semibold">⏱️ {{ pkg.durationDays || 30 }} Días</span>
                 </div>
               </div>
             </div>

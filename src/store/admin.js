@@ -838,7 +838,7 @@ export const useAdminStore = defineStore('admin', {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
       if (stored && Array.isArray(stored) && stored.length >= 5) {
         const c1 = stored.find(p => p.sku === 'C001' || p.id === 'C001')
-        if (c1 && (c1.providerCost !== 4300 || c1.discountPercent !== 45)) {
+        if (c1 && (c1.providerCost !== 4300 || c1.resellerCost !== 6000 || c1.platformProfit !== 1700 || c1.discountPercent !== 45)) {
           const fresh = getFreshOfficialCombos()
           saveDb(DB_KEYS.PACKAGES, fresh)
           return fresh
@@ -3653,12 +3653,21 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, providerCost, resellerProfit, discountPercent, createdBy = 'provider', resellerId = 'ALL' }) {
+    createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, providerCost, platformProfit, resellerCost, resellerProfit, discountPercent, createdBy = 'provider', resellerId = 'ALL' }) {
       const origPrice = Number(originalPrice) || services.reduce((sum, s) => sum + (Number(s.regularPrice) || 0), 0)
       const costTotal = providerCost !== undefined ? Number(providerCost) : services.reduce((sum, s) => sum + (Number(s.cost) || 0), 0)
+      
+      // Estructura oficial de 3 niveles:
+      // 1. providerCost: Precio Proveedor
+      // 2. resellerCost: Precio con Ganancia Propia (providerCost + platformProfit)
+      let finalResellerCost = resellerCost !== undefined ? Number(resellerCost) : (platformProfit !== undefined ? costTotal + Number(platformProfit) : Math.round((costTotal * 1.30) / 100) * 100)
+      let finalPlatformProfit = platformProfit !== undefined ? Number(platformProfit) : Math.max(0, finalResellerCost - costTotal)
+
+      // 3. promoPrice: Precio Promo Venta Cliente
       const finalPromo = Number(promoPrice || origPrice)
-      const grossMargin = finalPromo > costTotal ? finalPromo - costTotal : 0
-      const finalProfit = resellerProfit !== undefined ? Number(resellerProfit) : Math.round(grossMargin * 0.65)
+      
+      // 4. resellerProfit: Lo que Gana el Revendedor (promoPrice - resellerCost)
+      let finalResellerProfit = resellerProfit !== undefined ? Number(resellerProfit) : Math.max(0, finalPromo - finalResellerCost)
       const discountPct = discountPercent !== undefined ? Number(discountPercent) : (origPrice > 0 ? Math.max(0, Math.round(((origPrice - finalPromo) / origPrice) * 100)) : 0)
       const sku = `PKG-${Date.now().toString().slice(-4)}`
 
@@ -3684,7 +3693,9 @@ export const useAdminStore = defineStore('admin', {
         originalPrice: origPrice,
         promoPrice: finalPromo,
         providerCost: costTotal,
-        resellerProfit: finalProfit,
+        platformProfit: finalPlatformProfit,
+        resellerCost: finalResellerCost,
+        resellerProfit: finalResellerProfit,
         discountPercent: discountPct,
         createdBy,
         resellerId: resellerId || 'ALL',
@@ -3715,17 +3726,27 @@ export const useAdminStore = defineStore('admin', {
       if (idx === -1) return { error: 'Paquete no encontrado' }
       const p = this.packages[idx]
       const updated = { ...p, ...patch }
-      if (patch.promoPrice !== undefined || patch.originalPrice !== undefined || patch.providerCost !== undefined || patch.resellerProfit !== undefined) {
+      if (patch.promoPrice !== undefined || patch.originalPrice !== undefined || patch.providerCost !== undefined || patch.resellerCost !== undefined || patch.platformProfit !== undefined || patch.resellerProfit !== undefined) {
         const orig = Number(updated.originalPrice || 0)
         const promo = Number(updated.promoPrice || 0)
         const cost = Number(updated.providerCost || 0)
-        if (orig > promo && orig > 0) {
-          updated.discountPercent = Math.round(((orig - promo) / orig) * 100)
+
+        if (patch.resellerCost !== undefined) {
+          updated.resellerCost = Number(patch.resellerCost || 0)
+          updated.platformProfit = Math.max(0, updated.resellerCost - cost)
+        } else if (patch.platformProfit !== undefined) {
+          updated.platformProfit = Number(patch.platformProfit || 0)
+          updated.resellerCost = cost + updated.platformProfit
         }
+
         if (patch.resellerProfit !== undefined) {
           updated.resellerProfit = Number(patch.resellerProfit || 0)
-        } else if (cost > 0 && promo > cost) {
-          updated.resellerProfit = Math.round((promo - cost) * 0.65)
+        } else if (promo > (updated.resellerCost || cost)) {
+          updated.resellerProfit = promo - (updated.resellerCost || cost)
+        }
+
+        if (orig > promo && orig > 0) {
+          updated.discountPercent = Math.round(((orig - promo) / orig) * 100)
         }
       }
       this.packages[idx] = updated

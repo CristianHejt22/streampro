@@ -4024,6 +4024,9 @@ const newPackageForm = ref({
     { platform: 'Prime Video', planKey: '1_perfil', units: 1 }
   ],
   discountPercent: 25,
+  providerCost: 0,
+  platformProfit: 0,
+  resellerCost: 0,
   promoPrice: 0
 })
 
@@ -4065,6 +4068,8 @@ const editingPackageForm = ref({
   promoPrice: 0,
   originalPrice: 0,
   providerCost: 0,
+  platformProfit: 0,
+  resellerCost: 0,
   resellerProfit: 0,
   image: '',
   active: true
@@ -4073,6 +4078,10 @@ const editingPackageForm = ref({
 const openEditPackageModal = (pkg) => {
   const orig = Number(pkg.originalPrice || 0)
   const promo = Number(pkg.promoPrice || 0)
+  const cost = Number(pkg.providerCost || 0)
+  const resCost = Number(pkg.resellerCost || (cost + Number(pkg.platformProfit || 0)))
+  const platProfit = Number(pkg.platformProfit !== undefined ? pkg.platformProfit : Math.max(0, resCost - cost))
+  const resProfit = Number(pkg.resellerProfit !== undefined ? pkg.resellerProfit : Math.max(0, promo - resCost))
   const discount = pkg.discountPercent || (orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 25)
   editingPackageForm.value = {
     id: pkg.id,
@@ -4084,8 +4093,10 @@ const openEditPackageModal = (pkg) => {
     devices: String(pkg.devices || '1'),
     promoPrice: promo,
     originalPrice: orig,
-    providerCost: Number(pkg.providerCost || 0),
-    resellerProfit: Number(pkg.resellerProfit || 0),
+    providerCost: cost,
+    platformProfit: platProfit,
+    resellerCost: resCost,
+    resellerProfit: resProfit,
     discountPercent: discount,
     image: pkg.image || '',
     active: pkg.active !== false
@@ -4097,6 +4108,9 @@ const submitUpdatePackage = () => {
   const orig = Number(editingPackageForm.value.originalPrice || 0)
   const promo = Number(editingPackageForm.value.promoPrice || 0)
   const cost = Number(editingPackageForm.value.providerCost || 0)
+  const resCost = Number(editingPackageForm.value.resellerCost || (cost + Number(editingPackageForm.value.platformProfit || 0)))
+  const platProfit = Number(editingPackageForm.value.platformProfit !== undefined ? editingPackageForm.value.platformProfit : Math.max(0, resCost - cost))
+  const resProfit = Number(editingPackageForm.value.resellerProfit !== undefined ? editingPackageForm.value.resellerProfit : Math.max(0, promo - resCost))
   const discount = orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 0
   const badgeVal = editingPackageForm.value.badge.trim() || (discount > 0 ? `🔥 ${discount}% OFF` : '⭐ COMBO VIP')
 
@@ -4110,7 +4124,9 @@ const submitUpdatePackage = () => {
     promoPrice: promo,
     originalPrice: orig,
     providerCost: cost,
-    resellerProfit: Number(editingPackageForm.value.resellerProfit || 0),
+    platformProfit: platProfit,
+    resellerCost: resCost,
+    resellerProfit: resProfit,
     discountPercent: discount,
     image: editingPackageForm.value.image.trim(),
     active: editingPackageForm.value.active
@@ -4243,8 +4259,8 @@ const setPackageDiscountPreset = (pct, target = 'new') => {
     const orig = Number(editingPackageForm.value.originalPrice || 0)
     if (orig > 0) {
       editingPackageForm.value.promoPrice = Math.round((orig * (1 - pct / 100)) / 50) * 50
-      const cost = Number(editingPackageForm.value.providerCost || 0)
-      editingPackageForm.value.resellerProfit = editingPackageForm.value.promoPrice - cost
+      const cost = Number(editingPackageForm.value.resellerCost || editingPackageForm.value.providerCost || 0)
+      editingPackageForm.value.resellerProfit = Math.max(0, editingPackageForm.value.promoPrice - cost)
       editingPackageForm.value.badge = pct === 45 ? '🔥 45% OFF ESPECIAL' : `🔥 ${pct}% OFF`
     }
   } else {
@@ -4257,7 +4273,7 @@ const setPackageDiscountPreset = (pct, target = 'new') => {
   }
 }
 
-// Cálculo dinámico de costos y precios sugeridos de los servicios seleccionados
+// Cálculo dinámico de costos y precios sugeridos de los servicios seleccionados (Modelo Oficial de 3 Niveles)
 const packageCalculation = computed(() => {
   let totalCost = 0
   let totalRegular = 0
@@ -4275,14 +4291,42 @@ const packageCalculation = computed(() => {
     }
   })
 
-  // Descuento configurable (15% al 35% o Especial 45%)
+  // 1. PRECIO PROVEEDOR BASE
+  const baseCost = totalCost
+
+  // 2. PRECIO CON GANANCIA PROPIA (COSTO REVENDEDOR)
+  let resellerCost = Number(newPackageForm.value.resellerCost || 0)
+  let platformProfit = Number(newPackageForm.value.platformProfit || 0)
+
+  if (resellerCost > 0) {
+    platformProfit = Math.max(0, resellerCost - baseCost)
+  } else if (platformProfit > 0) {
+    resellerCost = baseCost + platformProfit
+  } else {
+    // Margen propio sugerido (~25-30% redondeado a 100)
+    platformProfit = Math.round((baseCost * 0.30) / 100) * 100 || 1500
+    resellerCost = baseCost + platformProfit
+  }
+
+  // Descuento configurable (15% al 35% o Especial 45%) sobre el Precio Real Tienda
   const discount = Number(newPackageForm.value.discountPercent || 25)
-  const suggestedPromo = totalRegular > 0 ? Math.round((totalRegular * (1 - discount / 100)) / 50) * 50 : 0
+  const suggestedPromo = totalRegular > 0 ? Math.round((totalRegular * (1 - discount / 100)) / 50) * 50 : (resellerCost + 2000)
   const promo = Number(newPackageForm.value.promoPrice) || suggestedPromo
-  const resellerProfit = promo > totalCost ? promo - totalCost : 0
+
+  // 3. LO QUE GANA EL REVENDEDOR (promo - resellerCost)
+  const resellerProfit = promo > resellerCost ? promo - resellerCost : 0
   const calculatedDiscount = totalRegular > 0 ? Math.max(0, Math.round(((totalRegular - promo) / totalRegular) * 100)) : 0
 
-  return { totalCost, totalRegular, promo, profit: resellerProfit, resellerProfit, discount: calculatedDiscount }
+  return {
+    totalCost: baseCost,
+    platformProfit,
+    resellerCost,
+    resellerProfit,
+    totalRegular,
+    promo,
+    profit: resellerProfit,
+    discount: calculatedDiscount
+  }
 })
 
 // Auto sugerir precio promo cuando cambia la lista de servicios seleccionados
@@ -4322,6 +4366,8 @@ const submitCreatePackage = () => {
     image: newPackageForm.value.image.trim(),
     services: servicesFormatted,
     providerCost: packageCalculation.value.totalCost,
+    platformProfit: packageCalculation.value.platformProfit,
+    resellerCost: packageCalculation.value.resellerCost,
     resellerProfit: packageCalculation.value.resellerProfit,
     originalPrice: packageCalculation.value.totalRegular,
     promoPrice: Number(newPackageForm.value.promoPrice) || packageCalculation.value.promo,
@@ -7729,38 +7775,53 @@ const deletePackageItem = (pkgId) => {
           </div>
         </div>
 
-        <!-- CÁLCULO EN VIVO Y PRECIO PROMO -->
-        <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-purple-500/20 grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
+        <!-- CÁLCULO EN VIVO Y ESTRUCTURA DE 3 NIVELES -->
+        <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-purple-500/20 grid grid-cols-2 sm:grid-cols-6 gap-3 items-center">
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Costo Proveedor Base:</span>
-            <span class="text-base font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }} ARS</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">1. Precio Proveedor:</span>
+            <span class="text-base font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }} <span class="text-[9px] text-slate-400">ARS</span></span>
+            <span class="text-[9px] text-slate-500 block">Costo mayorista base</span>
           </div>
 
           <div>
-            <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Ganancia Revendedor:</span>
-            <span class="text-base font-black text-emerald-400 font-mono">+${{ packageCalculation.resellerProfit.toLocaleString() }} ARS</span>
+            <label class="text-[10px] uppercase font-bold text-purple-300 block tracking-wider mb-1">2. Con Ganancia Propia:</label>
+            <input 
+              v-model.number="newPackageForm.resellerCost" 
+              type="number" 
+              step="50" 
+              :placeholder="String(packageCalculation.resellerCost)"
+              class="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-1.5 text-xs font-black text-purple-300 font-mono outline-none"
+            >
+            <span class="text-[9px] text-purple-400 block font-mono font-bold mt-0.5">+${{ packageCalculation.platformProfit.toLocaleString() }} propia</span>
           </div>
 
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Real Tienda (Antes):</span>
+            <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">3. Gana Revendedor:</span>
+            <span class="text-base font-black text-emerald-400 font-mono">+${{ packageCalculation.resellerProfit.toLocaleString() }} <span class="text-[9px] text-emerald-500">ARS</span></span>
+            <span class="text-[9px] text-emerald-400/80 block">Margen revendedor</span>
+          </div>
+
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Real Tienda:</span>
             <span class="text-base font-black text-slate-400 line-through font-mono">${{ packageCalculation.totalRegular.toLocaleString() }} ARS</span>
+            <span class="text-[9px] text-slate-500 block">Suma por plataforma</span>
           </div>
 
           <div>
-            <label class="text-[10px] uppercase font-bold text-purple-300 block tracking-wider mb-1">Precio Promo Venta:</label>
+            <label class="text-[10px] uppercase font-bold text-pink-300 block tracking-wider mb-1">Precio Promo Venta:</label>
             <input 
               v-model="newPackageForm.promoPrice" 
               type="number" 
               step="50" 
               required
-              class="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-2 text-sm font-black text-pink-400 font-mono outline-none"
+              class="w-full bg-slate-900 border border-pink-500/50 rounded-xl p-2 text-sm font-black text-pink-400 font-mono outline-none"
             >
           </div>
 
           <div class="bg-purple-500/15 p-2.5 rounded-xl border border-purple-500/30 text-center col-span-2 sm:col-span-1">
             <span class="text-[9px] text-purple-300 uppercase font-bold block">Descuento Cliente:</span>
             <span class="text-base font-black text-emerald-400">{{ packageCalculation.discount }}% OFF</span>
-            <span class="text-[9px] text-slate-400 block font-mono">Margen: +${{ packageCalculation.profit.toLocaleString() }}</span>
+            <span class="text-[9px] text-slate-400 block font-mono">Gana Rev: +${{ packageCalculation.resellerProfit.toLocaleString() }}</span>
           </div>
         </div>
 
@@ -7911,13 +7972,18 @@ const deletePackageItem = (pkgId) => {
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[10px]">
+                  <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80 text-[10px]">
                     <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
-                      <span class="text-slate-400 block">🏭 Costo Proveedor:</span>
+                      <span class="text-slate-400 block text-[9px]">1. Proveedor:</span>
                       <span class="font-mono font-bold text-slate-200">${{ Number(pkg.providerCost || 0).toLocaleString() }}</span>
                     </div>
+                    <div class="bg-purple-950/40 p-1.5 rounded-lg border border-purple-500/30">
+                      <span class="text-purple-300 block text-[9px]">2. Con Ganancia Propia:</span>
+                      <span class="font-mono font-bold text-purple-200">${{ Number(pkg.resellerCost || ((pkg.providerCost || 0) + (pkg.platformProfit || 0))).toLocaleString() }}</span>
+                      <span class="text-[8px] text-purple-400 block font-mono font-bold">(+${{ Number(pkg.platformProfit || Math.max(0, (pkg.resellerCost || 0) - (pkg.providerCost || 0))).toLocaleString() }} propia)</span>
+                    </div>
                     <div class="bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-500/30">
-                      <span class="text-emerald-300 block">💼 Ganancia Revendedor:</span>
+                      <span class="text-emerald-300 block text-[9px]">3. Gana Revendedor:</span>
                       <span class="font-mono font-black text-emerald-400">+${{ Number(pkg.resellerProfit || 0).toLocaleString() }}</span>
                     </div>
                   </div>
@@ -13537,9 +13603,10 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <!-- 3 NIVELES ECONÓMICOS: PRECIO PROVEEDOR, PRECIO CON GANANCIA PROPIA, Y LO QUE GANA EL REVENDEDOR -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             <div>
-              <label class="block text-[11px] font-black text-slate-400 uppercase mb-1">Costo Proveedor ($)</label>
+              <label class="block text-[11px] font-black text-slate-400 uppercase mb-1">1. Proveedor ($)</label>
               <input 
                 v-model.number="editingPackageForm.providerCost" 
                 type="number" 
@@ -13548,7 +13615,18 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               >
             </div>
             <div>
-              <label class="block text-[11px] font-black text-emerald-400 uppercase mb-1">Ganancia Revendedor ($)</label>
+              <label class="block text-[11px] font-black text-purple-300 uppercase mb-1">2. Con Ganancia Propia ($)</label>
+              <input 
+                v-model.number="editingPackageForm.resellerCost" 
+                type="number" 
+                step="50" 
+                @input="editingPackageForm.platformProfit = Math.max(0, (editingPackageForm.resellerCost || 0) - (editingPackageForm.providerCost || 0))"
+                class="w-full bg-slate-950 border border-purple-500/50 rounded-xl p-2 text-xs font-black text-purple-300 font-mono outline-none"
+              >
+              <span class="text-[9px] text-purple-400 block font-mono font-bold mt-0.5">+${{ Math.max(0, (editingPackageForm.resellerCost || 0) - (editingPackageForm.providerCost || 0)).toLocaleString() }} propia</span>
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-emerald-400 uppercase mb-1">3. Gana Revendedor ($)</label>
               <input 
                 v-model.number="editingPackageForm.resellerProfit" 
                 type="number" 
@@ -13557,7 +13635,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               >
             </div>
             <div>
-              <label class="block text-[11px] font-black text-pink-300 uppercase mb-1">Precio Promo Venta ($)</label>
+              <label class="block text-[11px] font-black text-pink-300 uppercase mb-1">Precio Promo ($)</label>
               <input 
                 v-model.number="editingPackageForm.promoPrice" 
                 type="number" 
