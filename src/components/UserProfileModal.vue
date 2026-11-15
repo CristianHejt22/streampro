@@ -11,7 +11,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'profileSaved'])
+const emit = defineEmits(['update:modelValue', 'profileSaved', 'openGiftCards'])
 
 const router = useRouter()
 const adminStore = useAdminStore()
@@ -26,22 +26,39 @@ const profile = ref({
   email: '',
   address: '',
   pin: '',
+  birthDate: '',
   role: 'client'
 })
 
 const isEditing = ref(false)
+const showQuickRedeem = ref(false)
+const quickRedeemCode = ref('')
+const isRedeeming = ref(false)
 
 const loadSavedProfile = () => {
   try {
     const raw = localStorage.getItem(STORAGE_PROFILE_KEY)
     if (raw) {
-      profile.value = JSON.parse(raw)
+      profile.value = { ...profile.value, ...JSON.parse(raw) }
       isEditing.value = false
     } else {
       isEditing.value = true
     }
   } catch (e) {
     isEditing.value = true
+  }
+
+  // Sincronizar datos desde el directorio central de usuarios registrados si existe
+  if (profile.value.phone) {
+    const reg = (adminStore.registeredUsers || []).find(u => 
+      u.phone && adminStore.normalizeCustomerWalletKey(u.phone) === adminStore.normalizeCustomerWalletKey(profile.value.phone)
+    )
+    if (reg) {
+      if (reg.birthDate && !profile.value.birthDate) profile.value.birthDate = reg.birthDate
+      if (reg.name && !profile.value.name) profile.value.name = reg.name
+      if (reg.email && !profile.value.email) profile.value.email = reg.email
+      if (reg.pin && !profile.value.pin) profile.value.pin = reg.pin
+    }
   }
 }
 
@@ -50,6 +67,58 @@ onMounted(() => {
 })
 
 const isSaved = computed(() => Boolean(profile.value.name && profile.value.phone))
+
+// Datos de Billetera Cliente
+const customerWallet = computed(() => {
+  if (!profile.value.phone) return { balance: 0, transactions: [] }
+  return adminStore.getCustomerWallet(profile.value.phone)
+})
+
+const walletBalance = computed(() => {
+  return Number(customerWallet.value?.balance || 0)
+})
+
+// Detección y formato de Cumpleaños
+const formattedBirthday = computed(() => {
+  if (!profile.value.birthDate) return ''
+  try {
+    const parts = profile.value.birthDate.split('-')
+    if (parts.length === 3) {
+      const day = parseInt(parts[2], 10)
+      const monthIdx = parseInt(parts[1], 10) - 1
+      const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+      return `${day} de ${months[monthIdx] || ''}`
+    }
+  } catch {}
+  return profile.value.birthDate
+})
+
+const isBirthdayToday = computed(() => {
+  if (!profile.value.birthDate) return false
+  try {
+    const now = new Date()
+    const parts = profile.value.birthDate.split('-')
+    if (parts.length === 3) {
+      const bDay = parseInt(parts[2], 10)
+      const bMonth = parseInt(parts[1], 10)
+      return now.getDate() === bDay && (now.getMonth() + 1) === bMonth
+    }
+  } catch {}
+  return false
+})
+
+const isBirthdayMonth = computed(() => {
+  if (!profile.value.birthDate) return false
+  try {
+    const now = new Date()
+    const parts = profile.value.birthDate.split('-')
+    if (parts.length === 3) {
+      const bMonth = parseInt(parts[1], 10)
+      return (now.getMonth() + 1) === bMonth
+    }
+  } catch {}
+  return false
+})
 
 const clientOrders = computed(() => {
   if (!profile.value.phone && !profile.value.name) return []
@@ -67,6 +136,34 @@ const clientOrders = computed(() => {
 
 const closeModal = () => {
   emit('update:modelValue', false)
+}
+
+const handleQuickRedeem = () => {
+  if (!quickRedeemCode.value.trim()) {
+    toast.add('Ingresa el código de la Tarjeta de Regalo', 'warning')
+    return
+  }
+  isRedeeming.value = true
+  const res = adminStore.redeemGiftCard({
+    code: quickRedeemCode.value.trim(),
+    customerPhone: profile.value.phone,
+    customerName: profile.value.name
+  })
+  isRedeeming.value = false
+
+  if (!res.success) {
+    toast.add(res.error || 'Código no válido', 'error')
+    return
+  }
+
+  toast.add(`🎉 ¡Acreditado! Sumaste $${res.amount.toLocaleString('es-AR')} a tu Billetera`, 'success')
+  quickRedeemCode.value = ''
+  showQuickRedeem.value = false
+}
+
+const triggerOpenGiftCards = (tab = 'create') => {
+  closeModal()
+  emit('openGiftCards', { tab })
 }
 
 const saveProfile = () => {
@@ -95,12 +192,13 @@ const saveProfile = () => {
     phone: profile.value.phone.trim(),
     email: profile.value.email.trim(),
     address: profile.value.address.trim(),
+    birthDate: profile.value.birthDate || '',
     pin: profile.value.pin,
     role: profile.value.role || 'client'
   })
 
   isEditing.value = false
-  toast.add('¡Perfil guardado! Tus compras y envíos se completarán automáticamente.', 'success')
+  toast.add('¡Perfil guardado! Tus compras, billetera y beneficios se sincronizaron con éxito.', 'success')
   emit('profileSaved', profile.value)
 }
 
@@ -183,6 +281,31 @@ onUnmounted(() => {
             <p class="text-xs font-mono text-sky-400">{{ profile.phone }}</p>
             <p v-if="profile.email" class="text-xs text-slate-400">{{ profile.email }}</p>
             <p v-if="profile.address" class="text-xs text-slate-300 mt-1">📍 {{ profile.address }}</p>
+
+            <!-- Campo Fecha de Cumpleaños -->
+            <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+              <span class="text-slate-400 flex items-center gap-1.5">
+                <span>🎂</span>
+                <span>Cumpleaños:</span>
+              </span>
+              <div v-if="profile.birthDate" class="flex items-center gap-2">
+                <span class="font-bold text-amber-300">{{ formattedBirthday }}</span>
+                <span v-if="isBirthdayToday" class="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 text-[10px] font-black animate-pulse border border-pink-500/40">
+                  ¡HOY ES TU DÍA! 🎉
+                </span>
+                <span v-else-if="isBirthdayMonth" class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                  Mes de Festejo 🎈
+                </span>
+              </div>
+              <button 
+                v-else
+                type="button"
+                @click="isEditing = true"
+                class="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline cursor-pointer"
+              >
+                + Agregar fecha
+              </button>
+            </div>
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
@@ -190,6 +313,62 @@ onUnmounted(() => {
             <span class="font-mono font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 tracking-widest">
               {{ profile.pin }}
             </span>
+          </div>
+        </div>
+
+        <!-- TARJETA: Billetera Cliente StreamePro -->
+        <div class="bg-gradient-to-r from-emerald-950/50 via-teal-950/30 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3 shadow-lg">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">Billetera StreamePro</span>
+              <div class="text-2xl font-black text-white font-mono mt-0.5">
+                ${{ walletBalance.toLocaleString('es-AR') }} <span class="text-xs text-slate-400 font-sans">ARS</span>
+              </div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl shadow">
+              💳
+            </div>
+          </div>
+
+          <!-- Acciones de Billetera: Canjear Gift Card o Regalar -->
+          <div class="flex gap-2 pt-1">
+            <button 
+              type="button"
+              @click="showQuickRedeem = !showQuickRedeem"
+              class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>⚡️</span>
+              <span>Canjear Gift Card</span>
+            </button>
+            <button 
+              type="button"
+              @click="triggerOpenGiftCards('create')"
+              class="flex-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>🎁</span>
+              <span>Regalar Tarjeta</span>
+            </button>
+          </div>
+
+          <!-- Input Desplegable de Canje Rápido -->
+          <div v-if="showQuickRedeem" class="pt-2 border-t border-emerald-500/20 space-y-2 animate-fade-in">
+            <div class="flex gap-2">
+              <input 
+                v-model="quickRedeemCode"
+                type="text"
+                placeholder="GIFT-STP-XXXX-XXXX"
+                class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold uppercase focus:border-emerald-500 focus:outline-none"
+              >
+              <button 
+                type="button"
+                :disabled="isRedeeming"
+                @click="handleQuickRedeem"
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                {{ isRedeeming ? '...' : 'Sumar' }}
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-400">El saldo se acreditará inmediatamente para pagar tus compras.</p>
           </div>
         </div>
 
@@ -301,6 +480,19 @@ onUnmounted(() => {
             placeholder="Calle, Número, Ciudad, Provincia" 
             class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-sky-500 text-sm"
           >
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-bold uppercase text-slate-300">Fecha de Nacimiento / Cumpleaños</label>
+            <span class="text-[10px] text-amber-400 font-bold">🎂 ¡Beneficios en tu día!</span>
+          </div>
+          <input 
+            v-model="profile.birthDate" 
+            type="date" 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-sky-500 text-sm"
+          >
+          <span class="text-[10px] text-slate-500">Recibirás saldo y bonificaciones exclusivas en tu fecha especial.</span>
         </div>
 
         <div>

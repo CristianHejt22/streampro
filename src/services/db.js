@@ -60,7 +60,9 @@ export const DB_KEYS = {
   DISCOUNT_CREDITS_LOG: 'discount_credits_log',
   GIVEAWAYS: 'giveaways',
   GIVEAWAY_ENTRIES: 'giveaway_entries',
-  CUSTOMER_REVIEWS: 'customer_reviews'
+  CUSTOMER_REVIEWS: 'customer_reviews',
+  GIFT_CARDS: 'gift_cards',
+  CUSTOMER_WALLETS: 'customer_wallets'
 }
 
 export function loadDb(key, defaultValue) {

@@ -967,9 +967,62 @@ export const useAdminStore = defineStore('admin', {
       if (stored && Array.isArray(stored) && stored.length > 0) return stored
       saveDb(DB_KEYS.CUSTOMER_REVIEWS, INITIAL_CUSTOMER_REVIEWS)
       return getFreshCustomerReviews()
-    })()
+    })(),
+
+    // TARJETAS DE REGALO OFICIALES (GIFT CARDS)
+    giftCards: (() => {
+      const stored = loadDb(DB_KEYS.GIFT_CARDS, null)
+      if (stored && Array.isArray(stored) && stored.length > 0) return stored
+      const initialCards = [
+        {
+          id: 'GIFT-OFFICIAL-20K',
+          code: 'GIFT-STP-PROMO-20K',
+          amount: 20000,
+          price: 19000,
+          discountPercent: 5,
+          discountAmount: 1000,
+          senderName: 'StreamePro Oficial',
+          recipientName: 'Comunidad StreamePro',
+          recipientPhone: '',
+          message: '¡Bienvenido a StreamePro! Tarjeta de regalo oficial para canjear por streaming, juegos o combos.',
+          theme: 'neon',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          redeemedBy: null,
+          redeemedAt: null,
+          createdBy: 'admin'
+        },
+        {
+          id: 'GIFT-OFFICIAL-50K',
+          code: 'GIFT-STP-VIP-50K',
+          amount: 50000,
+          price: 42500,
+          discountPercent: 15,
+          discountAmount: 7500,
+          senderName: 'StreamePro VIP',
+          recipientName: 'Cliente Distinguido',
+          recipientPhone: '',
+          message: 'Tarjeta VIP StreamePro. Válida para suscripciones 4K, videojuegos PS5/PS4 y combos.',
+          theme: 'luxury',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          redeemedBy: null,
+          redeemedAt: null,
+          createdBy: 'admin'
+        }
+      ]
+      saveDb(DB_KEYS.GIFT_CARDS, initialCards)
+      return initialCards
+    })(),
+
+    // BILLETERAS DE CLIENTES PERSISTENTES (Saldo canjeable en compras)
+    customerWallets: loadDb(DB_KEYS.CUSTOMER_WALLETS, {})
   }},
   getters: {
+    activeGiftCards: (state) => (state.giftCards || []).filter(c => c.status === 'active'),
+    redeemedGiftCards: (state) => (state.giftCards || []).filter(c => c.status === 'redeemed'),
     activeGiveaways: (state) => (state.giveaways || []).filter(g => g.status === 'active'),
     visibleGiveaways: (state) => (state.giveaways || []).filter(g => g.status && g.status !== 'draft' && (g.resellerRef === 'DIRECT' || !g.resellerRef || g.isOfficial === true)),
     activeDiscountUsers: (state) => (state.discountUsers || []).filter(u => u.status === 'active'),
@@ -1382,6 +1435,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GIVEAWAY_ENTRIES, this.giveawayEntries)
       } else if (key === DB_KEYS.CUSTOMER_REVIEWS) {
         saveDb(DB_KEYS.CUSTOMER_REVIEWS, this.customerReviews)
+      } else if (key === DB_KEYS.GIFT_CARDS) {
+        saveDb(DB_KEYS.GIFT_CARDS, this.giftCards)
+      } else if (key === DB_KEYS.CUSTOMER_WALLETS) {
+        saveDb(DB_KEYS.CUSTOMER_WALLETS, this.customerWallets)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -1403,6 +1460,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.TELEGRAM_CONFIG, this.telegramConfig)
         saveDb(DB_KEYS.MERCADOPAGO_CONFIG, this.mercadoPagoConfig)
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
+        saveDb(DB_KEYS.GIFT_CARDS, this.giftCards)
+        saveDb(DB_KEYS.CUSTOMER_WALLETS, this.customerWallets)
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
           isPhysicalStoreVisible: this.isPhysicalStoreVisible,
@@ -2486,6 +2545,8 @@ export const useAdminStore = defineStore('admin', {
         if (userData.address) existing.address = userData.address
         if (userData.pin) existing.pin = userData.pin
         if (userData.role) existing.role = userData.role
+        if (userData.birthDate) existing.birthDate = userData.birthDate
+        if (userData.walletBalance !== undefined) existing.walletBalance = Number(userData.walletBalance)
         existing.lastActive = nowStr
         existing.ordersCount = (existing.ordersCount || 0) + (userData.isNewOrder ? 1 : 0)
         existing.totalSpent = (existing.totalSpent || 0) + amount
@@ -2498,6 +2559,8 @@ export const useAdminStore = defineStore('admin', {
           phone: phone,
           email: email,
           address: userData.address || '',
+          birthDate: userData.birthDate || '',
+          walletBalance: Number(userData.walletBalance || 0),
           role: userData.role || 'client',
           status: 'Activo',
           pin: userData.pin || String(Math.floor(1000 + Math.random() * 9000)),
@@ -5591,6 +5654,296 @@ export const useAdminStore = defineStore('admin', {
         } catch {}
         return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
       }
+    },
+
+    // ==========================================
+    // TARJETAS DE REGALO OFICIALES & BILLETERA CLIENTE
+    // ==========================================
+    calculateGiftCardDiscount(rawAmount) {
+      const amount = Math.round(Number(rawAmount) || 0)
+      if (amount < 20000) {
+        return {
+          valid: false,
+          error: 'El monto mínimo para una Tarjeta de Regalo es de $20.000 ARS',
+          minAmount: 20000,
+          amount,
+          discountPercent: 0,
+          discountAmount: 0,
+          priceToPay: amount
+        }
+      }
+
+      let discountPercent = 5
+      if (amount >= 100000) {
+        discountPercent = 20
+      } else if (amount >= 50000) {
+        discountPercent = 15
+      } else if (amount >= 30000) {
+        discountPercent = 10
+      } else {
+        discountPercent = 5
+      }
+
+      const discountAmount = Math.round(amount * (discountPercent / 100))
+      const priceToPay = Math.max(0, amount - discountAmount)
+
+      return {
+        valid: true,
+        amount,
+        discountPercent,
+        discountAmount,
+        priceToPay
+      }
+    },
+
+    generateGiftCardCode() {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+      let code = ''
+      let isUnique = false
+      let attempts = 0
+      while (!isUnique && attempts < 100) {
+        attempts++
+        const part1 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+        const part2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+        code = `GIFT-STP-${part1}-${part2}`
+        const exists = (this.giftCards || []).some(c => c.code === code)
+        if (!exists) isUnique = true
+      }
+      return code
+    },
+
+    createGiftCard({ amount, senderName, recipientName, recipientPhone, message, theme, createdBy = 'user' }) {
+      const calc = this.calculateGiftCardDiscount(amount)
+      if (!calc.valid) {
+        return { success: false, error: calc.error }
+      }
+
+      const code = this.generateGiftCardCode()
+      const now = new Date()
+      const expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) // 1 año de vigencia garantizada
+
+      const newCard = {
+        id: `GIFT-${Date.now().toString().slice(-6)}`,
+        code,
+        amount: calc.amount,
+        price: calc.priceToPay,
+        discountPercent: calc.discountPercent,
+        discountAmount: calc.discountAmount,
+        senderName: (senderName || '').trim() || 'StreamePro Oficial',
+        recipientName: (recipientName || '').trim() || 'A Quien Corresponda',
+        recipientPhone: (recipientPhone || '').trim(),
+        message: (message || '').trim() || '¡Que disfrutes tu tarjeta de regalo oficial StreamePro!',
+        theme: theme || 'neon',
+        status: 'active',
+        createdAt: now.toISOString(),
+        expiresAt: expires.toISOString(),
+        redeemedBy: null,
+        redeemedAt: null,
+        createdBy
+      }
+
+      if (!Array.isArray(this.giftCards)) this.giftCards = []
+      this.giftCards.unshift(newCard)
+      this.persist(DB_KEYS.GIFT_CARDS)
+
+      return { success: true, card: newCard }
+    },
+
+    findGiftCard(rawCode) {
+      if (!rawCode) return null
+      const clean = String(rawCode).trim().toUpperCase()
+      const cleanSimple = clean.replace(/[^A-Z0-9]/g, '')
+      return (this.giftCards || []).find(c => {
+        const cCode = String(c.code || '').trim().toUpperCase()
+        return cCode === clean || cCode.replace(/[^A-Z0-9]/g, '') === cleanSimple
+      }) || null
+    },
+
+    normalizeCustomerWalletKey(phoneOrId) {
+      if (!phoneOrId) return ''
+      const digits = String(phoneOrId).replace(/[^0-9]/g, '')
+      if (digits.length >= 6) return digits.slice(-10) // Normaliza últimos 10 dígitos (soporta +549, 0, 15, etc.)
+      return String(phoneOrId).trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+    },
+
+    getCustomerWallet(phoneOrId) {
+      const key = this.normalizeCustomerWalletKey(phoneOrId)
+      if (!key) return { balance: 0, transactions: [] }
+      if (!this.customerWallets) this.customerWallets = {}
+      if (!this.customerWallets[key]) {
+        // Verificar si el usuario registrado tiene un balance preexistente
+        const regUser = (this.registeredUsers || []).find(u => 
+          (u.phone && this.normalizeCustomerWalletKey(u.phone) === key) ||
+          (u.clientNumber && this.normalizeCustomerWalletKey(u.clientNumber) === key)
+        )
+        const initialBal = Number(regUser?.walletBalance || 0)
+        this.customerWallets[key] = {
+          balance: initialBal,
+          transactions: initialBal > 0 ? [{
+            id: `TX-INIT-${Date.now().toString().slice(-4)}`,
+            type: 'credit',
+            amount: initialBal,
+            description: 'Saldo inicial registrado en cuenta',
+            date: new Date().toISOString()
+          }] : []
+        }
+      }
+      return this.customerWallets[key]
+    },
+
+    redeemGiftCard({ code, customerPhone, customerId, customerName }) {
+      const card = this.findGiftCard(code)
+      if (!card) {
+        return { success: false, error: 'Código de Tarjeta de Regalo inválido o inexistente.' }
+      }
+      if (card.status === 'redeemed') {
+        const dateStr = card.redeemedAt ? new Date(card.redeemedAt).toLocaleDateString('es-AR') : 'recientemente'
+        return { success: false, error: `Esta tarjeta de regalo ya fue canjeada el ${dateStr}.` }
+      }
+      if (card.status === 'expired' || (card.expiresAt && new Date(card.expiresAt).getTime() < Date.now())) {
+        card.status = 'expired'
+        this.persist(DB_KEYS.GIFT_CARDS)
+        return { success: false, error: 'Esta tarjeta de regalo ha expirado su vigencia.' }
+      }
+
+      const identifier = customerPhone || customerId || customerName || 'Cliente'
+      const key = this.normalizeCustomerWalletKey(identifier)
+      if (!key) {
+        return { success: false, error: 'Se requiere WhatsApp o Identificador del cliente para acreditar el saldo.' }
+      }
+
+      // Marcar tarjeta como canjeada
+      card.status = 'redeemed'
+      card.redeemedBy = identifier
+      card.redeemedByName = customerName || identifier
+      card.redeemedAt = new Date().toISOString()
+
+      // Acreditar saldo en billetera
+      if (!this.customerWallets) this.customerWallets = {}
+      if (!this.customerWallets[key]) {
+        this.customerWallets[key] = { balance: 0, transactions: [] }
+      }
+      this.customerWallets[key].balance = (Number(this.customerWallets[key].balance) || 0) + Number(card.amount)
+      if (!Array.isArray(this.customerWallets[key].transactions)) {
+        this.customerWallets[key].transactions = []
+      }
+      this.customerWallets[key].transactions.unshift({
+        id: `TX-${Date.now().toString().slice(-5)}`,
+        type: 'credit',
+        amount: card.amount,
+        description: `Canje de Tarjeta de Regalo ${card.code} ($${card.amount.toLocaleString('es-AR')} ARS) - De: ${card.senderName}`,
+        date: new Date().toISOString(),
+        giftCardCode: card.code
+      })
+
+      // Sincronizar usuario registrado
+      const regUser = (this.registeredUsers || []).find(u => 
+        (u.phone && this.normalizeCustomerWalletKey(u.phone) === key) ||
+        (u.clientNumber && this.normalizeCustomerWalletKey(u.clientNumber) === key)
+      )
+      if (regUser) {
+        regUser.walletBalance = this.customerWallets[key].balance
+        this.persist(DB_KEYS.REGISTERED_USERS)
+      }
+
+      this.persist(DB_KEYS.GIFT_CARDS)
+      this.persist(DB_KEYS.CUSTOMER_WALLETS)
+
+      return {
+        success: true,
+        amount: card.amount,
+        newBalance: this.customerWallets[key].balance,
+        card
+      }
+    },
+
+    chargeCustomerWallet({ phoneOrId, amount, reason = 'Pago de compra', orderId = null }) {
+      const key = this.normalizeCustomerWalletKey(phoneOrId)
+      if (!key) return { success: false, error: 'Identificador de cliente no válido' }
+      const wallet = this.getCustomerWallet(key)
+      const chargeAmt = Math.min(Number(wallet.balance) || 0, Math.round(Number(amount) || 0))
+      if (chargeAmt <= 0) return { success: false, debited: 0, remaining: Number(amount) || 0 }
+
+      wallet.balance -= chargeAmt
+      if (!Array.isArray(wallet.transactions)) wallet.transactions = []
+      wallet.transactions.unshift({
+        id: `TX-DEB-${Date.now().toString().slice(-5)}`,
+        type: 'debit',
+        amount: chargeAmt,
+        description: `${reason}${orderId ? ` (#${orderId})` : ''}`,
+        date: new Date().toISOString(),
+        orderId
+      })
+
+      // Sincronizar en registeredUsers
+      const regUser = (this.registeredUsers || []).find(u => 
+        (u.phone && this.normalizeCustomerWalletKey(u.phone) === key) ||
+        (u.clientNumber && this.normalizeCustomerWalletKey(u.clientNumber) === key)
+      )
+      if (regUser) {
+        regUser.walletBalance = wallet.balance
+        this.persist(DB_KEYS.REGISTERED_USERS)
+      }
+
+      this.persist(DB_KEYS.CUSTOMER_WALLETS)
+      return {
+        success: true,
+        debited: chargeAmt,
+        newBalance: wallet.balance,
+        remainingOrderTotal: Math.max(0, (Number(amount) || 0) - chargeAmt)
+      }
+    },
+
+    refundCustomerWallet({ phoneOrId, amount, reason = 'Reintegro / Devolución', orderId = null }) {
+      const key = this.normalizeCustomerWalletKey(phoneOrId)
+      if (!key) return { success: false, error: 'Identificador no válido' }
+      const wallet = this.getCustomerWallet(key)
+      const refAmt = Math.round(Number(amount) || 0)
+      if (refAmt <= 0) return { success: false }
+
+      wallet.balance += refAmt
+      if (!Array.isArray(wallet.transactions)) wallet.transactions = []
+      wallet.transactions.unshift({
+        id: `TX-REF-${Date.now().toString().slice(-5)}`,
+        type: 'credit',
+        amount: refAmt,
+        description: `${reason}${orderId ? ` (#${orderId})` : ''}`,
+        date: new Date().toISOString(),
+        orderId
+      })
+
+      // Sincronizar en registeredUsers
+      const regUser = (this.registeredUsers || []).find(u => 
+        (u.phone && this.normalizeCustomerWalletKey(u.phone) === key) ||
+        (u.clientNumber && this.normalizeCustomerWalletKey(u.clientNumber) === key)
+      )
+      if (regUser) {
+        regUser.walletBalance = wallet.balance
+        this.persist(DB_KEYS.REGISTERED_USERS)
+      }
+
+      this.persist(DB_KEYS.CUSTOMER_WALLETS)
+      return { success: true, refunded: refAmt, newBalance: wallet.balance }
+    },
+
+    toggleGiftCardStatus(code) {
+      const card = this.findGiftCard(code)
+      if (!card) return false
+      if (card.status === 'redeemed') return false
+      card.status = card.status === 'active' ? 'cancelled' : 'active'
+      this.persist(DB_KEYS.GIFT_CARDS)
+      return true
+    },
+
+    deleteGiftCard(code) {
+      if (!Array.isArray(this.giftCards)) return false
+      const idx = this.giftCards.findIndex(c => (c.code || '').trim().toUpperCase() === (code || '').trim().toUpperCase())
+      if (idx !== -1) {
+        this.giftCards.splice(idx, 1)
+        this.persist(DB_KEYS.GIFT_CARDS)
+        return true
+      }
+      return false
     }
   }
 })

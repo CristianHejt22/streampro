@@ -6,6 +6,7 @@ import { useToastStore } from '../store/toast'
 import { buildDiscountProgramFormalities, generateMarketingCopy } from '../utils/marketing'
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
+const GiftCardModal = defineAsyncComponent(() => import('../components/GiftCardModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -14,11 +15,140 @@ const isUnlocked = ref(false)
 const searchIdentifier = ref('') // WhatsApp (ej: 11 9988-1122) o N° Cliente (CLI-9024)
 const masterPin = ref('') // PIN personal de 4 dígitos
 const error = ref('')
-const portalTab = ref('gaming') // 'gaming' | 'streaming' | 'physical' | 'support' | 'promos'
+const portalTab = ref('gaming') // 'gaming' | 'streaming' | 'physical' | 'wallet' | 'support' | 'promos'
 
 const resellerStore = useResellerStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+// ==========================================
+// BILLETERA CLIENTE, TARJETAS DE REGALO & CUMPLEAÑOS
+// ==========================================
+const portalRedeemCode = ref('')
+const isPortalRedeeming = ref(false)
+const showPortalGiftCardModal = ref(false)
+const portalGiftCardModalTab = ref('create')
+const showEditBirthdayModal = ref(false)
+const editBirthdayInput = ref('')
+
+const primaryAuthenticatedUser = computed(() => {
+  return authenticatedUsers.value[0] || authenticatedClients.value[0] || authenticatedOrders.value[0] || null
+})
+
+const customerPhone = computed(() => {
+  const u = primaryAuthenticatedUser.value
+  return u?.phone || u?.customerPhone || searchIdentifier.value
+})
+
+const customerName = computed(() => {
+  const u = primaryAuthenticatedUser.value
+  return u?.name || u?.customerName || 'Cliente StreamePro'
+})
+
+const customerClientNumber = computed(() => {
+  const u = primaryAuthenticatedUser.value
+  return u?.clientNumber || u?.customerNumber || u?.id || 'CLI-0000'
+})
+
+const customerBirthDate = computed(() => {
+  const u = primaryAuthenticatedUser.value
+  return u?.birthDate || ''
+})
+
+const portalCustomerWallet = computed(() => {
+  if (!customerPhone.value) return { balance: 0, transactions: [] }
+  return adminStore.getCustomerWallet(customerPhone.value)
+})
+
+const portalWalletBalance = computed(() => {
+  return Number(portalCustomerWallet.value?.balance || 0)
+})
+
+const formattedCustomerBirthday = computed(() => {
+  if (!customerBirthDate.value) return ''
+  try {
+    const parts = customerBirthDate.value.split('-')
+    if (parts.length === 3) {
+      const day = parseInt(parts[2], 10)
+      const monthIdx = parseInt(parts[1], 10) - 1
+      const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+      return `${day} de ${months[monthIdx] || ''}`
+    }
+  } catch {}
+  return customerBirthDate.value
+})
+
+const isCustomerBirthdayToday = computed(() => {
+  if (!customerBirthDate.value) return false
+  try {
+    const now = new Date()
+    const parts = customerBirthDate.value.split('-')
+    if (parts.length === 3) {
+      const bDay = parseInt(parts[2], 10)
+      const bMonth = parseInt(parts[1], 10)
+      return now.getDate() === bDay && (now.getMonth() + 1) === bMonth
+    }
+  } catch {}
+  return false
+})
+
+const isCustomerBirthdayMonth = computed(() => {
+  if (!customerBirthDate.value) return false
+  try {
+    const now = new Date()
+    const parts = customerBirthDate.value.split('-')
+    if (parts.length === 3) {
+      const bMonth = parseInt(parts[1], 10)
+      return (now.getMonth() + 1) === bMonth
+    }
+  } catch {}
+  return false
+})
+
+const handlePortalRedeem = () => {
+  if (!portalRedeemCode.value.trim()) {
+    toast.add('Ingresa el código de la Tarjeta de Regalo', 'warning')
+    return
+  }
+  isPortalRedeeming.value = true
+  const res = adminStore.redeemGiftCard({
+    code: portalRedeemCode.value.trim(),
+    customerPhone: customerPhone.value,
+    customerName: customerName.value
+  })
+  isPortalRedeeming.value = false
+
+  if (!res.success) {
+    toast.add(res.error || 'Código no válido', 'error')
+    return
+  }
+
+  toast.add(`🎉 ¡Éxito! Sumaste $${res.amount.toLocaleString('es-AR')} a tu Billetera`, 'success')
+  portalRedeemCode.value = ''
+}
+
+const openEditBirthday = () => {
+  editBirthdayInput.value = customerBirthDate.value || ''
+  showEditBirthdayModal.value = true
+}
+
+const saveCustomerBirthday = () => {
+  if (!editBirthdayInput.value) {
+    toast.add('Ingresa tu fecha de cumpleaños', 'warning')
+    return
+  }
+  adminStore.registerOrUpdateUser({
+    clientNumber: customerClientNumber.value,
+    phone: customerPhone.value,
+    name: customerName.value,
+    birthDate: editBirthdayInput.value
+  })
+  if (authenticatedUsers.value[0]) {
+    authenticatedUsers.value[0].birthDate = editBirthdayInput.value
+  }
+  showEditBirthdayModal.value = false
+  toast.add('🎂 ¡Fecha de cumpleaños guardada con éxito!', 'success')
+}
 
 // Control de visibilidad de contraseñas y guías de consola
 const revealedPasswords = ref({})
@@ -741,6 +871,81 @@ const getGameInstallSteps = (order) => {
 
       <!-- Estado Desbloqueado: Mis Juegos, Streaming, Físicos y Soporte -->
       <div v-else class="space-y-6">
+
+        <!-- BANNER DE IDENTIDAD VIP, CUMPLEAÑOS Y BILLETERA CLIENTE -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/50 p-5 rounded-3xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-500 via-sky-500 to-blue-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/20 font-black">
+              👤
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-base sm:text-lg font-black text-white">{{ customerName }}</h3>
+                <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-sky-400 font-bold border border-slate-700">
+                  {{ customerClientNumber }}
+                </span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
+                  Bóveda Verificada
+                </span>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-400 mt-1 flex-wrap">
+                <span class="font-mono text-slate-300">📱 {{ customerPhone }}</span>
+                <span class="text-slate-600">•</span>
+                <!-- Cumpleaños -->
+                <div class="flex items-center gap-1.5">
+                  <span>🎂</span>
+                  <span v-if="customerBirthDate" class="text-amber-300 font-bold">{{ formattedCustomerBirthday }}</span>
+                  <button 
+                    v-else
+                    @click="openEditBirthday"
+                    class="text-sky-400 hover:text-sky-300 underline font-bold text-[11px] cursor-pointer"
+                  >
+                    + Registrar Cumpleaños
+                  </button>
+                  <button 
+                    v-if="customerBirthDate"
+                    @click="openEditBirthday"
+                    class="text-[10px] text-slate-500 hover:text-slate-300 underline cursor-pointer ml-1"
+                    title="Editar fecha"
+                  >
+                    ✏️
+                  </button>
+                  <span v-if="isCustomerBirthdayToday" class="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 text-[10px] font-black animate-pulse border border-pink-500/40">
+                    ¡HOY ES TU DÍA! 🎉
+                  </span>
+                  <span v-else-if="isCustomerBirthdayMonth" class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                    Mes Cumpleaños 🎈
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Billetera Resumen Rápido -->
+          <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
+            <div class="text-left md:text-right">
+              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Saldo en Billetera</span>
+              <div class="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
+                ${{ portalWalletBalance.toLocaleString('es-AR') }} <span class="text-xs text-slate-400 font-sans">ARS</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="portalTab = 'wallet'"
+                class="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-black border border-emerald-500/30 transition-all cursor-pointer"
+              >
+                Canjear
+              </button>
+              <button 
+                @click="showPortalGiftCardModal = true; portalGiftCardModalTab = 'create'"
+                class="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-black border border-amber-500/30 transition-all cursor-pointer"
+              >
+                Regalar
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-wrap justify-between items-center gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
           <div class="flex flex-wrap items-center gap-2">
             <button 
@@ -778,6 +983,18 @@ const getGameInstallSteps = (order) => {
             >
               <span>📦</span>
               <span>Físicos ({{ customerPhysicalOrders.length }})</span>
+            </button>
+            <button 
+              @click="portalTab = 'wallet'"
+              :class="[
+                'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                portalTab === 'wallet' 
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black shadow-md' 
+                  : 'bg-slate-950 text-emerald-400 hover:text-white border border-emerald-500/30'
+              ]"
+            >
+              <span>💳</span>
+              <span>Mi Billetera (${{ portalWalletBalance.toLocaleString('es-AR') }})</span>
             </button>
             <button 
               @click="portalTab = 'support'"
@@ -1295,6 +1512,108 @@ const getGameInstallSteps = (order) => {
           </div>
         </div>
 
+        <!-- ==================== PESTAÑA: MI BILLETERA & TARJETAS DE REGALO ==================== -->
+        <div v-else-if="portalTab === 'wallet'" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <!-- Saldo y Acciones -->
+            <div class="md:col-span-7 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border border-emerald-500/30 rounded-3xl p-6 shadow-xl space-y-4">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="text-xs font-black uppercase tracking-wider text-emerald-400 block">Billetera Oficial StreamePro</span>
+                  <div class="text-3xl sm:text-4xl font-black text-white font-mono mt-1">
+                    ${{ portalWalletBalance.toLocaleString('es-AR') }} <span class="text-sm font-sans text-slate-300">ARS</span>
+                  </div>
+                  <p class="text-xs text-slate-300 mt-1">
+                    Tu saldo está disponible inmediatamente para abonar suscripciones 4K, videojuegos digitales PS5/PS4, combos o productos de la tienda.
+                  </p>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl shadow">
+                  💳
+                </div>
+              </div>
+
+              <!-- Formulario de Canje Directo -->
+              <div class="pt-4 border-t border-emerald-500/20 space-y-3">
+                <label class="block text-xs font-black uppercase text-slate-200">
+                  ⚡️ Canjear Código de Tarjeta de Regalo
+                </label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <input 
+                    v-model="portalRedeemCode"
+                    type="text"
+                    placeholder="GIFT-STP-XXXX-XXXX"
+                    class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-amber-300 font-mono font-bold uppercase focus:border-emerald-500 focus:outline-none"
+                  >
+                  <button 
+                    type="button"
+                    :disabled="isPortalRedeeming"
+                    @click="handlePortalRedeem"
+                    class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black px-6 py-3 rounded-xl text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {{ isPortalRedeeming ? 'Validando...' : 'Acreditar Saldo' }}
+                  </button>
+                </div>
+                <p class="text-[11px] text-slate-400">
+                  Las tarjetas de regalo se acreditan al instante en tu saldo y no tienen comisiones ni cargos de mantenimiento.
+                </p>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Tarjeta de Regalar a Amigo / Familiar -->
+            <div class="md:col-span-5 bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+              <div>
+                <span class="text-2xl block mb-2">🎁</span>
+                <h4 class="text-lg font-black text-white">¿Quieres regalar saldo a alguien?</h4>
+                <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Genera una Tarjeta de Regalo personalizada desde <b>$20.000</b> con hasta un <b>20% OFF</b> de bonificación oficial. Perfecta para cumpleaños, sorpresas y ocasiones especiales.
+                </p>
+              </div>
+              <div class="pt-2">
+                <button 
+                  type="button"
+                  @click="showPortalGiftCardModal = true; portalGiftCardModalTab = 'create'"
+                  class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg transition-all cursor-pointer"
+                >
+                  Crear y Enviar Tarjeta de Regalo →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Historial de Movimientos de la Billetera -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4">
+            <h4 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <span>📋</span>
+              <span>Historial de Movimientos de Billetera</span>
+            </h4>
+
+            <div v-if="!portalCustomerWallet.transactions || portalCustomerWallet.transactions.length === 0" class="text-center py-8 text-xs text-slate-400 bg-slate-950 rounded-2xl border border-slate-800">
+              Aún no tienes movimientos registrados en tu billetera. ¡Canjea un código de regalo para sumar saldo!
+            </div>
+
+            <div v-else class="space-y-2">
+              <div 
+                v-for="tx in portalCustomerWallet.transactions" 
+                :key="tx.id"
+                class="bg-slate-950 border border-slate-800/80 p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs"
+              >
+                <div>
+                  <strong class="text-white text-sm block">{{ tx.description }}</strong>
+                  <span class="text-[10px] text-slate-500 font-mono">{{ new Date(tx.date).toLocaleString('es-AR') }}</span>
+                </div>
+                <div class="text-right">
+                  <span 
+                    class="text-base font-black font-mono"
+                    :class="tx.type === 'credit' ? 'text-emerald-400' : 'text-rose-400'"
+                  >
+                    {{ tx.type === 'credit' ? '+' : '-' }} ${{ tx.amount.toLocaleString('es-AR') }} ARS
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ==================== PESTAÑA 4: REPORTES & AYUDA EN GARANTÍA ==================== -->
         <div v-else-if="portalTab === 'support'" class="space-y-4">
           <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-3">
@@ -1712,6 +2031,52 @@ const getGameInstallSteps = (order) => {
       :promo-code="matchedDiscountUser?.code || ''"
       :promo-label="promoPlaquePayload?.promoLabel || ''"
       @close="showPromoPlaqueModal = false; promoPlaquePayload = null"
+    />
+
+    <!-- MODAL: EDITAR / REGISTRAR CUMPLEAÑOS -->
+    <div v-if="showEditBirthdayModal" class="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🎂</span>
+            <h4 class="text-base font-black text-white">Fecha de Cumpleaños</h4>
+          </div>
+          <button @click="showEditBirthdayModal = false" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs">✕</button>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Selecciona tu Fecha</label>
+          <input 
+            v-model="editBirthdayInput"
+            type="date"
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-amber-400 focus:outline-none"
+          >
+          <p class="text-[11px] text-slate-400 mt-2">
+            ¡Registra tu fecha para recibir promociones y bonificaciones exclusivas en tu día!
+          </p>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button 
+            type="button" 
+            @click="showEditBirthdayModal = false" 
+            class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs font-bold"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            @click="saveCustomerBirthday" 
+            class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-2.5 rounded-xl text-xs shadow-md"
+          >
+            Guardar Fecha
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: TARJETAS DE REGALO OFICIALES -->
+    <GiftCardModal
+      v-model="showPortalGiftCardModal"
+      :initialTab="portalGiftCardModalTab"
     />
   </div>
 </template>

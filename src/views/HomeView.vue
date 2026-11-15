@@ -12,6 +12,7 @@ import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/mar
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
+const GiftCardModal = defineAsyncComponent(() => import('../components/GiftCardModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -915,6 +916,61 @@ const showOrderSuccessModal = ref(false)
 const lastPlacedOrder = ref(null)
 const isProcessingMpPayment = ref(false)
 
+// TARJETAS DE REGALO OFICIALES & BILLETERA CLIENTE
+const showGiftCardModal = ref(false)
+const giftCardModalTab = ref('create')
+const useWalletBalance = ref(false)
+const showCheckoutGiftCardInput = ref(false)
+const checkoutGiftCardCode = ref('')
+const isCheckoutRedeeming = ref(false)
+
+const checkoutCustomerWallet = computed(() => {
+  const phone = clientForm.value.whatsapp
+  if (!phone) return { balance: 0, transactions: [] }
+  return adminStore.getCustomerWallet(phone)
+})
+
+const checkoutWalletBalance = computed(() => {
+  return Number(checkoutCustomerWallet.value?.balance || 0)
+})
+
+const appliedWalletAmount = computed(() => {
+  if (!useWalletBalance.value) return 0
+  return Math.min(checkoutWalletBalance.value, cartStore.total)
+})
+
+const netCheckoutTotal = computed(() => {
+  return Math.max(0, cartStore.total - appliedWalletAmount.value)
+})
+
+const redeemGiftCardInCheckout = () => {
+  if (!checkoutGiftCardCode.value.trim()) {
+    toast.add('Ingresa el código de la Tarjeta de Regalo', 'warning')
+    return
+  }
+  if (!clientForm.value.whatsapp.trim()) {
+    toast.add('Ingresa tu WhatsApp arriba para acreditar el saldo', 'warning')
+    return
+  }
+  isCheckoutRedeeming.value = true
+  const res = adminStore.redeemGiftCard({
+    code: checkoutGiftCardCode.value.trim(),
+    customerPhone: clientForm.value.whatsapp.trim(),
+    customerName: clientForm.value.fullName.trim()
+  })
+  isCheckoutRedeeming.value = false
+
+  if (!res.success) {
+    toast.add(res.error || 'Código inválido o ya canjeado', 'error')
+    return
+  }
+
+  toast.add(`🎉 ¡Éxito! Sumaste $${res.amount.toLocaleString('es-AR')} ARS a tu Billetera`, 'success')
+  checkoutGiftCardCode.value = ''
+  showCheckoutGiftCardInput.value = false
+  useWalletBalance.value = true
+}
+
 const getInitialClientForm = () => {
   let saved = null
   try {
@@ -1044,7 +1100,8 @@ const isAnyModalOpen = computed(() => {
     showPhysicalModal.value ||
     showGamingDetailModal.value ||
     showImageZoomModal.value ||
-    showSharePlaqueModal.value
+    showSharePlaqueModal.value ||
+    showGiftCardModal.value
 })
 
 watch(isAnyModalOpen, (isOpen) => {
@@ -1304,6 +1361,15 @@ const applyRouteParams = () => {
   if (route.query.openCart === 'true' || route.query.cart === 'true') {
     showCartDrawer.value = true
     cartStore.openDrawer()
+  }
+
+  // Apertura automática de Tarjetas de Regalo (?giftcard=1 o ?redeem=GIFT-STP-...)
+  if (route.query.giftcard || route.query.regalo) {
+    giftCardModalTab.value = 'create'
+    showGiftCardModal.value = true
+  } else if (route.query.redeem || route.query.canjear) {
+    giftCardModalTab.value = 'redeem'
+    showGiftCardModal.value = true
   }
 
   // Previsualización y apertura automática de producto físico compartido (solo si tienda física está visible)
@@ -1680,28 +1746,23 @@ const homeFeaturedCategories = computed(() => {
   const list = [
     { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
     { id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
-    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 35% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' }
+    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 45% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' },
+    { id: 'giftcards', name: 'Tarjetas de Regalo', icon: '💳', count: 'Hasta 20% OFF', action: 'open_giftcards', desc: 'Saldo canjeable desde $20.000', badge: 'Beneficio VIP', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
   ]
 
   if (isPhysicalNavVisible.value) {
     const phys = adminStore.physicalProducts || []
     const countVirales = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'virales' || (p.categoryIds && p.categoryIds.includes('virales')))).length
-    const countPerfumes = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'perfumes' || (p.categoryIds && p.categoryIds.includes('perfumes')))).length
     const countCelulares = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (String(p.categoryId || '').includes('celular') || (p.categoryIds && p.categoryIds.some(c => c.includes('celular'))))).length
-    const countHerramientas = phys.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.categoryId === 'herramientas' || (p.categoryIds && p.categoryIds.includes('herramientas')))).length
 
     list.push(
       { id: 'virales', name: 'Virales TikTok', icon: '🔥', count: `${countVirales} Items`, path: '/tienda', query: { cat: 'virales' }, desc: 'Tendencias más pedidas del momento', badge: 'Tendencia', badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-      { id: 'perfumes', name: 'Perfumería', icon: '🌸', count: `${countPerfumes} Fragancias`, path: '/tienda', query: { cat: 'perfumes' }, desc: 'Línea árabe y perfumes importados', badge: 'Importado', badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-      { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-      { id: 'herramientas', name: 'Herramientas', icon: '🔧', count: `${countHerramientas} Equipos`, path: '/tienda', query: { cat: 'herramientas' }, desc: 'Kits multifunción, medición y taller', badge: 'Garantía', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+      { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
     )
   } else {
     list.push(
       { id: 'iptv', name: 'IPTV MagisTV Pro', icon: '📺', count: '+1200 Canales', path: '/suscripciones', desc: 'Fútbol en vivo y eventos deportivos', badge: 'FHD 24/7', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-      { id: 'musica', name: 'Spotify Familiar', icon: '🎧', count: 'Sin Anuncios', path: '/suscripciones', desc: 'Música ilimitada y reproducción offline', badge: 'Audio HD', badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/30' },
-      { id: 'youtube', name: 'YouTube Premium', icon: '▶️', count: 'Sin Publicidad', path: '/suscripciones', desc: 'Videos y YouTube Music en segundo plano', badge: 'Oficial', badgeBg: 'bg-red-500/20 text-red-300 border-red-500/30' },
-      { id: 'canva', name: 'Canva Pro', icon: '🎨', count: 'Kit de Marcas', path: '/suscripciones', desc: 'Plantillas y diseño a tu propio correo', badge: 'Diseño', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
+      { id: 'musica', name: 'Spotify Familiar', icon: '🎧', count: 'Sin Anuncios', path: '/suscripciones', desc: 'Música ilimitada y reproducción offline', badge: 'Audio HD', badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/30' }
     )
   }
 
@@ -1733,6 +1794,11 @@ const homeFeaturedPhysicalDeals = computed(() => {
 })
 
 const goToCategory = (item) => {
+  if (item.action === 'open_giftcards' || item.id === 'giftcards') {
+    giftCardModalTab.value = 'create'
+    showGiftCardModal.value = true
+    return
+  }
   if (item.query?.cat) {
     physicalCategoryFilter.value = item.query.cat
   }
@@ -2196,6 +2262,8 @@ const sendOrderToWhatsApp = () => {
     `📱 *WhatsApp:* ${ord.customerPhone}\n` +
     (ord.pin ? `🔐 *PIN de Bóveda:* ${ord.pin}\n\n` : `\n`) +
     `🛒 *Detalle de la compra:*\n${itemsList}\n\n` +
+    (ord.walletUsedAmount ? `💳 *Saldo de Billetera Aplicado:* -$${Number(ord.walletUsedAmount).toLocaleString('es-AR')} ARS\n` : '') +
+    (ord.isFullyPaidWithWallet ? `✅ *Estado:* ¡Abonado 100% con Billetera StreamePro!\n` : '') +
     `💰 *Total:* $${ord.total.toFixed(2)} ARS\n` +
     `\n🔐 *Mi Bóveda de Accesos:* https://streamepro.me/boveda\n` +
     `(Consulto mis accesos con mi número de celular y mi PIN)`
@@ -2262,6 +2330,10 @@ const submitOrder = async () => {
   const cartSubtotalSnapshot = cartStore.subtotal || 0
   const totalOrderNet = Math.round(cartStore.total)
 
+  // Saldo de billetera cliente aplicado
+  const walletAmountApplied = useWalletBalance.value ? appliedWalletAmount.value : 0
+  const finalOrderTotal = Math.max(0, cartStore.total - walletAmountApplied)
+
   // Snapshot del pedido antes de vaciar el carrito
   const prevNum = clientForm.value.clientNumber
   const currentRef = clientForm.value.selectedResellerId
@@ -2283,13 +2355,25 @@ const submitOrder = async () => {
     discountPercentage: cartStore.discountPercentage,
     promoCode: verifiedCoupon?.code || null,
     promoDiscountAmount: totalPromoDiscount,
-    total: cartStore.total,
-    paymentMethod: clientForm.value.paymentMethod,
+    walletUsedAmount: walletAmountApplied,
+    isFullyPaidWithWallet: (finalOrderTotal === 0 && walletAmountApplied > 0),
+    total: finalOrderTotal,
+    paymentMethod: (finalOrderTotal === 0 && walletAmountApplied > 0) ? 'Billetera StreamePro (100% Cubierto)' : clientForm.value.paymentMethod,
     hasReceipt: hasUploadedReceipt,
     receiptFileName: receiptMeta.fileName || null,
     receiptFileType: receiptMeta.fileType || null,
     receiptFileSize: receiptMeta.fileSize || 0,
     date: new Date().toLocaleString()
+  }
+
+  // Si se aplicó saldo de billetera, debitarlo de la cuenta del cliente
+  if (walletAmountApplied > 0) {
+    adminStore.chargeCustomerWallet({
+      phoneOrId: clientForm.value.whatsapp,
+      amount: walletAmountApplied,
+      reason: 'Pago de compra en Checkout',
+      orderId: prevNum
+    })
   }
 
   // Guardar comprobante en la Mini Nube (IndexedDB) para consulta directa del Proveedor y Revendedor
@@ -2478,11 +2562,23 @@ const submitOrder = async () => {
   })
   orderSnapshot.awardedGiveawayTickets = awardedGiveawayTickets
 
-  // 4. Si el medio de pago seleccionado es Mercado Pago: Crear preferencia y redirigir
+  // 4. Si el pedido quedó 100% cubierto con saldo de billetera:
+  if (finalOrderTotal === 0 && walletAmountApplied > 0) {
+    cartStore.clearCart()
+    clearActivePromo()
+    useWalletBalance.value = false
+    showCheckoutModal.value = false
+    showOrderSuccessModal.value = true
+    lastPlacedOrder.value = orderSnapshot
+    toast.add('🎉 ¡Pedido 100% cubierto con tu saldo de Billetera! Procesamiento automático inmediato.', 'success')
+    return
+  }
+
+  // 5. Si el medio de pago seleccionado es Mercado Pago: Crear preferencia y redirigir
   if (clientForm.value.paymentMethod === 'mercadopago') {
     isProcessingMpPayment.value = true
     try {
-      const mpDiscountRatio = cartStore.subtotal > 0 ? Math.max(0.05, cartStore.total / cartStore.subtotal) : 1
+      const mpDiscountRatio = cartSubtotalSnapshot > 0 ? Math.max(0.05, finalOrderTotal / cartSubtotalSnapshot) : 1
       const res = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3012,6 +3108,19 @@ const submitOrder = async () => {
             {{ adminStore.activeGiveaways.length }}
           </span>
         </RouterLink>
+
+        <!-- Pastilla de Acceso Rápido: Tarjetas de Regalo (Gift Cards) -->
+        <button 
+          type="button"
+          @click="giftCardModalTab = 'create'; showGiftCardModal = true"
+          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 hover:border-emerald-400"
+        >
+          <span>💳</span>
+          <span>Gift Cards</span>
+          <span class="bg-emerald-500/30 text-emerald-200 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+            20% OFF
+          </span>
+        </button>
       </div>
 
       <!-- Badge de Tienda Oficial Verificada -->
@@ -3029,31 +3138,88 @@ const submitOrder = async () => {
 
     <!-- ==================== VISTA 1: PÁGINA PRINCIPAL / SELECCIONES DE OFERTAS MÚLTIPLES ==================== -->
     <div v-if="currentPageSection === 'home'" id="pagina-principal-ofertas" class="space-y-12 sm:space-y-16">
-      <!-- 1. Teaser de 6 Rubros Curados (en lugar de todas las 20+ categorías) -->
-      <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-xl space-y-5">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div class="flex items-center gap-3">
-            <span class="text-3xl">🧭</span>
+      <!-- 1. Teaser Curado de Rubros Destacados -->
+      <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-xl space-y-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-sky-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg shadow-sky-500/20">
+              🧭
+            </div>
             <div>
-              <h3 class="text-xl sm:text-2xl font-black text-white">Rubros Destacados</h3>
-              <p class="text-xs sm:text-sm text-slate-300">Explora de forma directa nuestras principales colecciones oficiales</p>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl sm:text-2xl font-black text-white">Rubros Destacados</h3>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30">
+                  Colecciones Oficiales
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">Explora de forma directa nuestras principales colecciones oficiales</p>
             </div>
           </div>
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Botón Rápido Gift Cards -->
+            <button
+              type="button"
+              @click="giftCardModalTab = 'create'; showGiftCardModal = true"
+              class="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span>🎁</span>
+              <span>Regalar Saldo (20% OFF)</span>
+            </button>
+
+            <!-- Enlace Limpio a Suscripciones -->
+            <RouterLink 
+              to="/suscripciones" 
+              class="px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-sky-400 hover:text-sky-300 border border-slate-700/80 text-xs font-bold transition-all flex items-center gap-1.5 group cursor-pointer"
+            >
+              <span>Ver catálogo de suscripciones</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </RouterLink>
+          </div>
+        </div>
+
+        <!-- Pastillas de Acceso Directo por Rubro -->
+        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
+          <RouterLink 
+            to="/suscripciones" 
+            class="px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/20 transition-all flex items-center gap-1.5"
+          >
+            <span>🎬</span>
+            <span>Suscripciones 4K</span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/juegos" 
+            class="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/20 transition-all flex items-center gap-1.5"
+          >
+            <span>🎮</span>
+            <span>Juegos PS5/PS4</span>
+          </RouterLink>
+
+          <RouterLink 
+            to="/combos" 
+            class="px-3 py-1.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 text-xs font-bold border border-pink-500/20 transition-all flex items-center gap-1.5"
+          >
+            <span>🎁</span>
+            <span>Combos & Packs</span>
+          </RouterLink>
+
+          <button 
+            type="button"
+            @click="giftCardModalTab = 'create'; showGiftCardModal = true"
+            class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>💳</span>
+            <span>Tarjetas de Regalo (Desde $20k)</span>
+          </button>
+
           <RouterLink 
             v-if="isPhysicalNavVisible"
             to="/tienda" 
-            class="text-xs font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1.5 transition-colors group cursor-pointer"
+            class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/20 transition-all flex items-center gap-1.5"
           >
-            <span>Ver todas las categorías en Tienda</span>
-            <span class="group-hover:translate-x-1 transition-transform">→</span>
-          </RouterLink>
-          <RouterLink 
-            v-else
-            to="/suscripciones" 
-            class="text-xs font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1.5 transition-colors group cursor-pointer"
-          >
-            <span>Ver catálogo completo de suscripciones</span>
-            <span class="group-hover:translate-x-1 transition-transform">→</span>
+            <span>📦</span>
+            <span>Catálogo Físico</span>
           </RouterLink>
         </div>
 
@@ -6390,13 +6556,90 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm">
-            <span class="text-slate-400 font-semibold">
-              {{ cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'Total Estimado del Pedido:' : (clientForm.paymentMethod === 'mercadopago' ? 'Total a abonar en Mercado Pago:' : 'Total a transferir:') }}
-            </span>
-            <span :class="['font-black text-lg', cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'text-amber-400' : 'text-brand-accent']">
-              ${{ cartStore.total.toFixed(2) }} ARS
-            </span>
+          <!-- SECCIÓN DE BILLETERA CLIENTE Y CANJE EN CHECKOUT -->
+          <div class="bg-gradient-to-r from-emerald-950/40 via-slate-950 to-teal-950/30 border border-emerald-500/30 rounded-2xl p-4 space-y-3 shadow-md">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-base">💳</span>
+                <strong class="text-xs font-black text-white">Billetera StreamePro</strong>
+                <span v-if="checkoutWalletBalance > 0" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  Saldo: ${{ checkoutWalletBalance.toLocaleString('es-AR') }} ARS
+                </span>
+                <span v-else class="text-[10px] font-mono text-slate-400">
+                  Saldo: $0 ARS
+                </span>
+              </div>
+              <button 
+                type="button"
+                @click="showCheckoutGiftCardInput = !showCheckoutGiftCardInput"
+                class="text-[11px] text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer"
+              >
+                {{ showCheckoutGiftCardInput ? 'Ocultar' : '+ Canjear Gift Card' }}
+              </button>
+            </div>
+
+            <!-- Desplegable para canjear Gift Card aquí mismo -->
+            <div v-if="showCheckoutGiftCardInput" class="pt-2 border-t border-emerald-500/20 space-y-2 animate-in fade-in duration-150">
+              <div class="flex gap-2">
+                <input 
+                  v-model="checkoutGiftCardCode"
+                  type="text"
+                  placeholder="GIFT-STP-XXXX-XXXX"
+                  class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold uppercase focus:border-emerald-400 focus:outline-none"
+                >
+                <button 
+                  type="button"
+                  :disabled="isCheckoutRedeeming"
+                  @click="redeemGiftCardInCheckout"
+                  class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {{ isCheckoutRedeeming ? '...' : 'Canjear' }}
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">El saldo se sumará a tu billetera y se aplicará inmediatamente a tu orden.</p>
+            </div>
+
+            <!-- Checkbox para usar saldo de billetera si tiene saldo > 0 -->
+            <div v-if="checkoutWalletBalance > 0" class="pt-1">
+              <label class="flex items-center gap-2.5 cursor-pointer bg-slate-900/80 p-2.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-all">
+                <input 
+                  v-model="useWalletBalance" 
+                  type="checkbox" 
+                  class="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-400 bg-slate-950 border-slate-700 cursor-pointer"
+                >
+                <div class="flex-1 text-xs">
+                  <span class="font-bold text-white">Usar saldo de mi billetera para este pedido</span>
+                  <span class="block text-[10px] text-emerald-300 font-mono">
+                    Descuenta ${{ appliedWalletAmount.toLocaleString('es-AR') }} ARS del total
+                  </span>
+                </div>
+              </label>
+
+              <!-- Notificación de 100% cubierto -->
+              <div v-if="useWalletBalance && netCheckoutTotal === 0" class="mt-2 p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-pulse">
+                <span>🎉</span>
+                <span>¡Pedido 100% bonificado con saldo de billetera! No necesitas hacer transferencias ni esperar comprobantes.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+            <div v-if="useWalletBalance && appliedWalletAmount > 0" class="flex justify-between items-center text-slate-400">
+              <span>Subtotal del pedido:</span>
+              <span class="font-mono">${{ cartStore.total.toFixed(2) }} ARS</span>
+            </div>
+            <div v-if="useWalletBalance && appliedWalletAmount > 0" class="flex justify-between items-center text-emerald-400 font-bold">
+              <span>Saldo aplicado de Billetera:</span>
+              <span class="font-mono">- ${{ appliedWalletAmount.toFixed(2) }} ARS</span>
+            </div>
+            <div class="flex justify-between items-center text-sm pt-1 border-t border-slate-800">
+              <span class="text-slate-300 font-semibold">
+                {{ netCheckoutTotal === 0 ? 'Total a abonar:' : (clientForm.paymentMethod === 'mercadopago' ? 'Total a abonar en Mercado Pago:' : 'Total a transferir:') }}
+              </span>
+              <span :class="['font-black text-lg', netCheckoutTotal === 0 ? 'text-emerald-400' : (cartStore.hasPhysicalItems && !cartStore.hasDigitalItems ? 'text-amber-400' : 'text-brand-accent')]">
+                ${{ netCheckoutTotal.toFixed(2) }} ARS
+              </span>
+            </div>
           </div>
 
           <div class="flex gap-3 pt-2">
@@ -6408,11 +6651,13 @@ const submitOrder = async () => {
               :disabled="isProcessingMpPayment"
               :class="[
                 'w-2/3 font-black py-3 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50',
-                cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
-                  ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
-                  : (clientForm.paymentMethod === 'mercadopago' 
-                      ? 'bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 shadow-sky-400/25' 
-                      : 'bg-brand-accent text-slate-950 hover:bg-sky-400 shadow-brand-accent/20')
+                netCheckoutTotal === 0
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/25'
+                  : (cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20' 
+                      : (clientForm.paymentMethod === 'mercadopago' 
+                          ? 'bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 shadow-sky-400/25' 
+                          : 'bg-brand-accent text-slate-950 hover:bg-sky-400 shadow-brand-accent/20'))
               ]"
             >
               <span v-if="isProcessingMpPayment" class="animate-spin text-base">⏳</span>
@@ -6420,11 +6665,13 @@ const submitOrder = async () => {
                 {{ 
                   isProcessingMpPayment 
                     ? 'Conectando con Mercado Pago...' 
-                    : (cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
-                        ? 'Confirmar Pedido Físico (Estado Pendiente)' 
-                        : (clientForm.paymentMethod === 'mercadopago' 
-                            ? `Pagar con Mercado Pago ($${cartStore.total.toLocaleString()} ARS) →` 
-                            : 'Confirmar y Finalizar Pedido'))
+                    : (netCheckoutTotal === 0 
+                        ? '⚡️ Confirmar Pedido con Saldo de Billetera' 
+                        : (cartStore.hasPhysicalItems && !cartStore.hasDigitalItems 
+                            ? 'Confirmar Pedido Físico (Estado Pendiente)' 
+                            : (clientForm.paymentMethod === 'mercadopago' 
+                                ? `Pagar con Mercado Pago ($${netCheckoutTotal.toLocaleString()} ARS) →` 
+                                : 'Confirmar y Finalizar Pedido')))
                 }}
               </span>
             </button>
@@ -7257,6 +7504,14 @@ const submitOrder = async () => {
         </form>
       </div>
     </div>
+
+    <!-- Modal Tarjeta de Regalo / Billetera StreamePro -->
+    <GiftCardModal
+      v-model="showGiftCardModal"
+      :initial-tab="giftCardModalTab"
+      :prefilled-code="route.query.redeem ? String(route.query.redeem) : ''"
+      @openCheckout="showGiftCardModal = false; showCheckoutModal = true"
+    />
   </div>
 </template>
 

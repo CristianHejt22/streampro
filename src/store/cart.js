@@ -45,7 +45,7 @@ export const useCartStore = defineStore('cart', {
     discountPercentage(state) {
       // Aplica solo a productos digitales de streaming por volumen
       const streamingUnits = state.items
-        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package' && i.itemType !== 'giftcard')
         .reduce((acc, item) => acc + ((item.units || 1) * item.quantity), 0)
       if (streamingUnits >= 8) return 15
       if (streamingUnits >= 4) return 7
@@ -54,7 +54,7 @@ export const useCartStore = defineStore('cart', {
     },
     volumeDiscountAmount(state) {
       const streamingSubtotal = state.items
-        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package' && i.itemType !== 'giftcard')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       return Math.round(streamingSubtotal * (this.discountPercentage / 100))
     },
@@ -73,7 +73,7 @@ export const useCartStore = defineStore('cart', {
     },
     total(state) {
       const streamingSubtotal = state.items
-        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package')
+        .filter(i => i.itemType !== 'physical' && i.itemType !== 'gaming' && i.itemType !== 'package' && i.itemType !== 'giftcard')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
       const gamingSubtotal = state.items
         .filter(i => i.itemType === 'gaming')
@@ -84,13 +84,17 @@ export const useCartStore = defineStore('cart', {
       const physicalSubtotal = state.items
         .filter(i => i.itemType === 'physical')
         .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
+      const giftcardSubtotal = state.items
+        .filter(i => i.itemType === 'giftcard')
+        .reduce((acc, item) => acc + (item.clientPrice * item.quantity), 0)
 
       const volumeDiscount = Math.round(streamingSubtotal * (this.discountPercentage / 100))
-      const rawTotal = (streamingSubtotal - volumeDiscount) + gamingSubtotal + packageSubtotal + physicalSubtotal
+      const rawTotal = (streamingSubtotal - volumeDiscount) + gamingSubtotal + packageSubtotal + physicalSubtotal + giftcardSubtotal
       return Math.max(0, rawTotal - this.couponDiscountAmount)
     },
     hasPhysicalItems: (state) => state.items.some(i => i.itemType === 'physical'),
     hasGamingItems: (state) => state.items.some(i => i.itemType === 'gaming'),
+    hasGiftCardItems: (state) => state.items.some(i => i.itemType === 'giftcard'),
     hasDigitalItems: (state) => state.items.some(i => i.itemType !== 'physical')
   },
   actions: {

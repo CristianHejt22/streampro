@@ -875,6 +875,166 @@ const openUserVault = (user) => {
   showUserVaultModal.value = true
 }
 
+// ==========================================
+// GESTIÓN DE TARJETAS DE REGALO & BILLETERAS VIP
+// ==========================================
+const giftCardSearch = ref('')
+const giftCardStatusFilter = ref('all')
+const showCreateAdminGiftCardModal = ref(false)
+const adminGiftCardForm = ref({
+  amount: 20000,
+  recipientName: '',
+  recipientPhone: '',
+  senderName: 'StreamePro VIP',
+  message: '¡Disfrutá de tu saldo exclusivo!',
+  theme: 'neon'
+})
+const showCreditWalletModal = ref(false)
+const adminWalletCreditForm = ref({
+  phoneOrId: '',
+  customerName: '',
+  amount: 10000,
+  reason: 'Bonificación / Cortesía Administrador'
+})
+
+const isUserBirthdayToday = (birthDate) => {
+  if (!birthDate) return false
+  const parts = String(birthDate).split('-').map(Number)
+  if (parts.length < 3) return false
+  const month = parts[1]
+  const day = parts[2]
+  const now = new Date()
+  return (now.getMonth() + 1 === month) && (now.getDate() === day)
+}
+
+const openCreditWalletForUser = (user) => {
+  adminWalletCreditForm.value = {
+    phoneOrId: user.phone || user.clientNumber || user.id,
+    customerName: user.name || 'Cliente',
+    amount: 10000,
+    reason: 'Bonificación / Acreditación Administrador'
+  }
+  showCreditWalletModal.value = true
+}
+
+const filteredAdminGiftCards = computed(() => {
+  const cards = adminStore.giftCards || []
+  const q = giftCardSearch.value.trim().toLowerCase()
+  const st = giftCardStatusFilter.value
+  return cards.filter(c => {
+    if (st !== 'all' && c.status !== st) return false
+    if (!q) return true
+    return (
+      (c.code && c.code.toLowerCase().includes(q)) ||
+      (c.recipientName && c.recipientName.toLowerCase().includes(q)) ||
+      (c.recipientPhone && c.recipientPhone.toLowerCase().includes(q)) ||
+      (c.senderName && c.senderName.toLowerCase().includes(q))
+    )
+  })
+})
+
+const createAdminGiftCard = () => {
+  const amount = Number(adminGiftCardForm.value.amount) || 20000
+  if (amount < 20000) {
+    toast.add('El monto mínimo para una Tarjeta de Regalo es de $20.000 ARS', 'error')
+    return
+  }
+  const result = adminStore.createGiftCard({
+    amount,
+    senderName: adminGiftCardForm.value.senderName || 'StreamePro VIP',
+    recipientName: adminGiftCardForm.value.recipientName || 'Cliente VIP',
+    recipientPhone: adminGiftCardForm.value.recipientPhone || '',
+    message: adminGiftCardForm.value.message || '¡Saldo exclusivo en StreamePro!',
+    theme: adminGiftCardForm.value.theme || 'neon',
+    createdBy: 'admin'
+  })
+  if (result.success) {
+    toast.add(`Tarjeta de regalo creada con éxito: ${result.card.code}`, 'success')
+    showCreateAdminGiftCardModal.value = false
+    adminGiftCardForm.value = {
+      amount: 20000,
+      recipientName: '',
+      recipientPhone: '',
+      senderName: 'StreamePro VIP',
+      message: '¡Disfrutá de tu saldo exclusivo!',
+      theme: 'neon'
+    }
+  } else {
+    toast.add(result.error || 'No se pudo crear la tarjeta', 'error')
+  }
+}
+
+const toggleAdminGiftCardStatus = (card) => {
+  if (card.status === 'redeemed') {
+    toast.add('No se puede alterar una tarjeta que ya fue canjeada', 'warning')
+    return
+  }
+  const success = adminStore.toggleGiftCardStatus(card.code)
+  if (success) {
+    toast.add(`Tarjeta ${card.code} actualizada a: ${card.status}`, 'info')
+  }
+}
+
+const deleteAdminGiftCard = (card) => {
+  if (confirm(`¿Estás seguro de eliminar la tarjeta ${card.code}?`)) {
+    adminStore.deleteGiftCard(card.code)
+    toast.add(`Tarjeta ${card.code} eliminada`, 'info')
+  }
+}
+
+const copyGiftCardCode = (code) => {
+  navigator.clipboard?.writeText(code)
+  toast.add(`Código ${code} copiado al portapapeles`, 'success')
+}
+
+const copyGiftCardLink = (code) => {
+  const url = `${window.location.origin}/?redeem=${encodeURIComponent(code)}`
+  navigator.clipboard?.writeText(url)
+  toast.add('Enlace de canje directo copiado al portapapeles', 'success')
+}
+
+const shareGiftCardWhatsApp = (card) => {
+  const url = `${window.location.origin}/?redeem=${encodeURIComponent(card.code)}`
+  const text = `🎁 *¡Hola ${card.recipientName || ''}! Tenés una Tarjeta de Regalo en StreamePro* 🎁\n\n` +
+    `💰 *Saldo acreditado:* $${card.amount.toLocaleString('es-AR')} ARS\n` +
+    `🔑 *Código de Canje:* \`${card.code}\`\n` +
+    `💬 *Mensaje:* "${card.message || 'Disfrutá de tus suscripciones y juegos favoritos'}"\n\n` +
+    `✨ *Canjealo en 1 clic aquí:* ${url}`
+  const phone = (card.recipientPhone || '').replace(/[^0-9]/g, '')
+  const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`
+  window.open(waUrl, '_blank')
+}
+
+const submitAdminWalletCredit = () => {
+  const { phoneOrId, amount, reason } = adminWalletCreditForm.value
+  const numAmt = Number(amount) || 0
+  if (!phoneOrId) {
+    toast.add('Ingresá el WhatsApp o N° de Cliente', 'error')
+    return
+  }
+  if (numAmt <= 0) {
+    toast.add('El monto debe ser mayor a 0', 'error')
+    return
+  }
+  const res = adminStore.refundCustomerWallet({
+    phoneOrId,
+    amount: numAmt,
+    reason: reason || 'Acreditación manual del Administrador'
+  })
+  if (res.success) {
+    toast.add(`¡Saldo acreditado con éxito! Nuevo balance: $${res.newBalance.toLocaleString('es-AR')} ARS`, 'success')
+    showCreditWalletModal.value = false
+    adminWalletCreditForm.value = {
+      phoneOrId: '',
+      customerName: '',
+      amount: 10000,
+      reason: 'Bonificación / Cortesía Administrador'
+    }
+  } else {
+    toast.add(res.error || 'Error al acreditar saldo', 'error')
+  }
+}
+
 
 const showFlyerModal = ref(false)
 const showAdminReelsModal = ref(false)
@@ -4745,6 +4905,12 @@ const deletePackageItem = (pkgId) => {
           📇 Directorio Clientes & PINs ({{ adminStore.registeredUsers.length }})
         </button>
         <button 
+          @click="adminTab = 'giftcards'"
+          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'giftcards' ? 'bg-gradient-to-r from-amber-400 to-rose-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+        >
+          🎁 Tarjetas de Regalo & Billeteras ({{ adminStore.giftCards?.length || 0 }})
+        </button>
+        <button 
           @click="adminTab = 'physical'"
           :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'physical' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
         >
@@ -6089,13 +6255,14 @@ const deletePackageItem = (pkgId) => {
               <th class="p-3.5">Rol</th>
               <th class="p-3.5">Estado</th>
               <th class="p-3.5">Pedidos / Total</th>
+              <th class="p-3.5">Billetera / Cumple</th>
               <th class="p-3.5">PIN Bóveda</th>
               <th class="p-3.5 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800/80">
             <tr v-if="filteredRegisteredUsers.length === 0">
-              <td colspan="7" class="p-8 text-center text-slate-500">
+              <td colspan="8" class="p-8 text-center text-slate-500">
                 No se encontraron usuarios registrados con los filtros aplicados.
               </td>
             </tr>
@@ -6141,12 +6308,29 @@ const deletePackageItem = (pkgId) => {
                 <div class="text-emerald-400 font-bold text-[11px]">${{ (user.totalSpent || 0).toLocaleString() }} ARS</div>
               </td>
               <td class="p-3.5 font-mono">
+                <div class="text-emerald-400 font-bold flex items-center gap-1">
+                  <span>💳 ${{ (user.walletBalance || adminStore.getCustomerWallet(user.phone || user.clientNumber)?.balance || 0).toLocaleString('es-AR') }}</span>
+                </div>
+                <div v-if="user.birthDate" class="text-pink-300 text-[10px] flex items-center gap-1 mt-0.5 font-sans">
+                  <span>🎂 {{ user.birthDate }}</span>
+                  <span v-if="isUserBirthdayToday(user.birthDate)" class="bg-pink-500/20 text-pink-300 px-1 py-0.2 rounded font-black text-[9px] animate-pulse">¡HOY!</span>
+                </div>
+                <div v-else class="text-slate-500 text-[10px] font-sans">Sin cumpleaños</div>
+              </td>
+              <td class="p-3.5 font-mono">
                 <span class="bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-black tracking-wider">
                   {{ user.pin || '1234' }}
                 </span>
               </td>
               <td class="p-3.5 text-right">
                 <div class="flex items-center justify-end gap-1.5">
+                  <button 
+                    @click="openCreditWalletForUser(user)" 
+                    class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors"
+                    title="Acreditar saldo en Billetera de este cliente"
+                  >
+                    💳 Saldo
+                  </button>
                   <button 
                     v-if="user.role === 'client'" 
                     @click="handleChangeUserRole(user, 'reseller')" 
@@ -6175,6 +6359,491 @@ const deletePackageItem = (pkgId) => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PESTAÑA: GESTIÓN DE TARJETAS DE REGALO & BILLETERAS VIP -->
+    <!-- ======================================================== -->
+    <div v-if="adminTab === 'giftcards'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-8">
+      <!-- Encabezado -->
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-6 border-b border-slate-800">
+        <div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h2 class="text-2xl font-black text-white flex items-center gap-2">
+              <span>🎁</span>
+              <span>Tarjetas de Regalo & Billeteras de Clientes</span>
+            </h2>
+            <span class="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">
+              {{ adminStore.giftCards?.length || 0 }} Tarjetas
+            </span>
+            <span class="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30">
+              Saldo Billeteras: ${{ Object.values(adminStore.customerWallets || {}).reduce((s, w) => s + (w.balance || 0), 0).toLocaleString('es-AR') }} ARS
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">
+            Emisión de Gift Cards con descuentos escalonados (5% a 20% OFF desde $20.000 ARS), seguimiento de canjes y acreditación de saldo en billeteras virtuales para compras en 1 clic.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          <button 
+            @click="showCreateAdminGiftCardModal = true" 
+            class="flex-1 lg:flex-none bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>+</span>
+            <span>Emitir Tarjeta VIP / Regalo</span>
+          </button>
+          <button 
+            @click="showCreditWalletModal = true" 
+            class="flex-1 lg:flex-none bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>💳</span>
+            <span>Acreditar Saldo a Cliente</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas Clave -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+          <span class="text-[11px] text-slate-400 uppercase font-black tracking-wider">Total Emitidas</span>
+          <div class="text-2xl font-black text-white">{{ adminStore.giftCards?.length || 0 }}</div>
+          <div class="text-[10px] text-slate-500 font-mono">
+            Valor facial: ${{ (adminStore.giftCards || []).reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString('es-AR') }}
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+          <span class="text-[11px] text-emerald-400 uppercase font-black tracking-wider">Activas / En Circulación</span>
+          <div class="text-2xl font-black text-emerald-400">{{ (adminStore.activeGiftCards || []).length }}</div>
+          <div class="text-[10px] text-emerald-500/80 font-mono">
+            Disponibles: ${{ (adminStore.activeGiftCards || []).reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString('es-AR') }}
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+          <span class="text-[11px] text-purple-400 uppercase font-black tracking-wider">Canjeadas en Tienda</span>
+          <div class="text-2xl font-black text-purple-400">{{ (adminStore.redeemedGiftCards || []).length }}</div>
+          <div class="text-[10px] text-purple-500/80 font-mono">
+            Acreditado: ${{ (adminStore.redeemedGiftCards || []).reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString('es-AR') }}
+          </div>
+        </div>
+
+        <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 space-y-1">
+          <span class="text-[11px] text-sky-400 uppercase font-black tracking-wider">Saldos en Billeteras</span>
+          <div class="text-2xl font-black text-sky-400">
+            ${{ Object.values(adminStore.customerWallets || {}).reduce((s, w) => s + (w.balance || 0), 0).toLocaleString('es-AR') }}
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono">
+            {{ Object.values(adminStore.customerWallets || {}).filter(w => (w.balance || 0) > 0).length }} billeteras activas
+          </div>
+        </div>
+      </div>
+
+      <!-- Buscador y Filtros -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+          <input 
+            v-model="giftCardSearch" 
+            type="text" 
+            placeholder="Buscar por código (GIFT-STP-...), destinatario, WhatsApp o remitente..." 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+          >
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button 
+            @click="giftCardStatusFilter = 'all'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer', giftCardStatusFilter === 'all' ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Todas ({{ adminStore.giftCards?.length || 0 }})
+          </button>
+          <button 
+            @click="giftCardStatusFilter = 'active'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer', giftCardStatusFilter === 'active' ? 'bg-emerald-500 text-slate-950 font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Activas ({{ (adminStore.activeGiftCards || []).length }})
+          </button>
+          <button 
+            @click="giftCardStatusFilter = 'redeemed'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer', giftCardStatusFilter === 'redeemed' ? 'bg-purple-500 text-white font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Canjeadas ({{ (adminStore.redeemedGiftCards || []).length }})
+          </button>
+          <button 
+            @click="giftCardStatusFilter = 'cancelled'" 
+            :class="['px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer', giftCardStatusFilter === 'cancelled' ? 'bg-rose-500 text-white font-black' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white']"
+          >
+            Canceladas
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Tarjetas de Regalo -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[11px]">
+              <th class="p-3.5">Código / Tema</th>
+              <th class="p-3.5">Monto Facial / Pagado</th>
+              <th class="p-3.5">Remitente & Destinatario</th>
+              <th class="p-3.5">Estado</th>
+              <th class="p-3.5">Vigencia / Fecha</th>
+              <th class="p-3.5 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80">
+            <tr v-if="filteredAdminGiftCards.length === 0">
+              <td colspan="6" class="p-8 text-center text-slate-500">
+                No hay tarjetas de regalo que coincidan con la búsqueda o filtro seleccionado.
+              </td>
+            </tr>
+            <tr v-for="card in filteredAdminGiftCards" :key="card.id" class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-3.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-black text-amber-300 text-xs bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    {{ card.code }}
+                  </span>
+                  <button 
+                    @click="copyGiftCardCode(card.code)"
+                    class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+                    title="Copiar código"
+                  >
+                    📋
+                  </button>
+                </div>
+                <div class="text-[10px] text-slate-500 uppercase font-mono mt-0.5">Tema: {{ card.theme || 'neon' }}</div>
+              </td>
+              <td class="p-3.5 font-mono">
+                <div class="font-black text-white text-sm">
+                  ${{ (Number(card.amount) || 0).toLocaleString('es-AR') }} ARS
+                </div>
+                <div v-if="card.paidAmount && card.paidAmount < card.amount" class="text-emerald-400 text-[11px] font-bold">
+                  Pagó: ${{ Number(card.paidAmount).toLocaleString('es-AR') }} ({{ card.discountPercent }}% OFF)
+                </div>
+                <div v-else class="text-slate-500 text-[10px]">Sin descuento de compra</div>
+              </td>
+              <td class="p-3.5">
+                <div class="font-bold text-slate-200">De: {{ card.senderName || 'StreamePro VIP' }}</div>
+                <div class="text-slate-400 text-[11px] flex items-center gap-1">
+                  <span>Para: {{ card.recipientName || 'Cliente' }}</span>
+                  <span v-if="card.recipientPhone" class="font-mono text-sky-400 font-bold">({{ card.recipientPhone }})</span>
+                </div>
+                <div v-if="card.message" class="text-slate-500 text-[10px] italic truncate max-w-xs mt-0.5">
+                  "{{ card.message }}"
+                </div>
+              </td>
+              <td class="p-3.5">
+                <span 
+                  v-if="card.status === 'active'"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Activa (Sin Canjear)
+                </span>
+                <span 
+                  v-else-if="card.status === 'redeemed'"
+                  class="inline-flex flex-col gap-0.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                >
+                  <span class="font-black uppercase tracking-wider">✓ Canjeada</span>
+                  <span class="text-[9px] text-purple-200 font-mono">Por: {{ card.redeemedByName || card.redeemedBy || 'Cliente' }}</span>
+                  <span v-if="card.redeemedAt" class="text-[9px] text-slate-400">{{ new Date(card.redeemedAt).toLocaleDateString('es-AR') }}</span>
+                </span>
+                <span 
+                  v-else
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700"
+                >
+                  {{ card.status === 'expired' ? 'Expirada' : 'Cancelada' }}
+                </span>
+              </td>
+              <td class="p-3.5 font-mono text-[11px] text-slate-400">
+                <div>Creada: {{ card.createdAt ? new Date(card.createdAt).toLocaleDateString('es-AR') : 'Reciente' }}</div>
+                <div class="text-slate-500 text-[10px]">Vence: {{ card.expiresAt ? new Date(card.expiresAt).toLocaleDateString('es-AR') : '365 días' }}</div>
+              </td>
+              <td class="p-3.5 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button 
+                    @click="shareGiftCardWhatsApp(card)"
+                    class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                    title="Enviar por WhatsApp"
+                  >
+                    💬 WhatsApp
+                  </button>
+                  <button 
+                    @click="copyGiftCardLink(card.code)"
+                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                    title="Copiar Enlace de Canje Directo"
+                  >
+                    🔗 Link
+                  </button>
+                  <button 
+                    v-if="card.status !== 'redeemed'"
+                    @click="toggleAdminGiftCardStatus(card)"
+                    :class="['px-2 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer', card.status === 'active' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/20']"
+                    :title="card.status === 'active' ? 'Pausar / Cancelar tarjeta' : 'Reactivar tarjeta'"
+                  >
+                    {{ card.status === 'active' ? 'Pausar' : 'Activar' }}
+                  </button>
+                  <button 
+                    @click="deleteAdminGiftCard(card)"
+                    class="text-red-400 hover:text-red-300 hover:bg-red-950/40 p-1.5 rounded-lg transition cursor-pointer"
+                    title="Eliminar tarjeta"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumen de Billeteras Activas de Clientes -->
+      <div class="bg-slate-950/40 rounded-2xl border border-slate-800 p-6 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-base font-black text-white flex items-center gap-2">
+              <span>💳</span>
+              <span>Billeteras de Clientes con Saldo</span>
+            </h3>
+            <p class="text-xs text-slate-400">Clientes que disponen de saldo a favor canjeado o bonificado.</p>
+          </div>
+          <button 
+            @click="showCreditWalletModal = true"
+            class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
+          >
+            + Acreditar Saldo Manual
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div 
+            v-for="(wallet, key) in adminStore.customerWallets" 
+            :key="key"
+            v-show="(wallet.balance || 0) > 0 || (wallet.transactions && wallet.transactions.length > 0)"
+            class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-3"
+          >
+            <div>
+              <div class="font-mono text-xs font-bold text-white flex items-center gap-1.5">
+                <span>📱 {{ key }}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">
+                {{ wallet.transactions?.length || 0 }} transacciones registradas
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-black text-emerald-400 font-mono">
+                ${{ (Number(wallet.balance) || 0).toLocaleString('es-AR') }}
+              </div>
+              <button 
+                @click="adminWalletCreditForm.phoneOrId = key; showCreditWalletModal = true"
+                class="text-[10px] text-sky-400 hover:text-sky-300 font-bold underline mt-0.5 cursor-pointer"
+              >
+                + Modificar Saldo
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL ADMIN: Emitir Tarjeta VIP / Regalo -->
+      <div 
+        v-if="showCreateAdminGiftCardModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      >
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-lg font-black text-white flex items-center gap-2">
+              <span>🎁</span>
+              <span>Emitir Tarjeta de Regalo VIP</span>
+            </h3>
+            <button @click="showCreateAdminGiftCardModal = false" class="text-slate-400 hover:text-white text-lg cursor-pointer">✕</button>
+          </div>
+
+          <form @submit.prevent="createAdminGiftCard" class="space-y-4 text-xs">
+            <div>
+              <label class="block text-slate-300 font-bold mb-1.5">Monto de la Tarjeta (Mínimo $20.000 ARS)</label>
+              <div class="grid grid-cols-4 gap-1.5 mb-2">
+                <button 
+                  type="button" 
+                  v-for="amt in [20000, 30000, 50000, 100000]" 
+                  :key="amt"
+                  @click="adminGiftCardForm.amount = amt"
+                  :class="['py-2 px-1 rounded-xl text-center font-bold border transition cursor-pointer', adminGiftCardForm.amount === amt ? 'bg-amber-500 text-slate-950 border-amber-400 font-black' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700']"
+                >
+                  ${{ (amt/1000) }}k
+                </button>
+              </div>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-slate-500 font-bold">$</span>
+                <input 
+                  v-model.number="adminGiftCardForm.amount" 
+                  type="number" 
+                  min="20000" 
+                  step="1000" 
+                  required 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-4 py-2.5 text-white font-mono font-bold focus:border-amber-400 outline-none"
+                >
+              </div>
+              <div class="text-[11px] text-emerald-400 font-bold mt-1">
+                Descuento automático: {{ adminStore.calculateGiftCardDiscount(adminGiftCardForm.amount).discountPercent }}% OFF (Costo: ${{ adminStore.calculateGiftCardDiscount(adminGiftCardForm.amount).discountedPrice.toLocaleString('es-AR') }} ARS)
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-slate-300 font-bold mb-1">Nombre Destinatario</label>
+                <input 
+                  v-model="adminGiftCardForm.recipientName" 
+                  type="text" 
+                  placeholder="Ej: Lucas Pérez" 
+                  required
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-amber-400 outline-none"
+                >
+              </div>
+              <div>
+                <label class="block text-slate-300 font-bold mb-1">WhatsApp Destinatario</label>
+                <input 
+                  v-model="adminGiftCardForm.recipientPhone" 
+                  type="text" 
+                  placeholder="Ej: 1123456789" 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-400 outline-none"
+                >
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Nombre Remitente</label>
+              <input 
+                v-model="adminGiftCardForm.senderName" 
+                type="text" 
+                placeholder="Ej: StreamePro VIP" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-amber-400 outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Mensaje / Dedicatoria</label>
+              <textarea 
+                v-model="adminGiftCardForm.message" 
+                rows="2" 
+                placeholder="Ej: ¡Disfrutá de tus juegos y series preferidas!" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-amber-400 outline-none resize-none"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Estilo / Tema Visual</label>
+              <div class="grid grid-cols-4 gap-2">
+                <button 
+                  type="button" 
+                  v-for="th in ['neon', 'gold', 'gaming', 'crimson']" 
+                  :key="th"
+                  @click="adminGiftCardForm.theme = th"
+                  :class="['py-1.5 px-2 rounded-xl text-center font-bold text-[11px] uppercase border transition cursor-pointer', adminGiftCardForm.theme === th ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-950 text-slate-400 border-slate-800']"
+                >
+                  {{ th }}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button 
+                type="button" 
+                @click="showCreateAdminGiftCardModal = false" 
+                class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black shadow-lg cursor-pointer active:scale-95"
+              >
+                Emitir Tarjeta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL ADMIN: Acreditar Saldo a Billetera de Cliente -->
+      <div 
+        v-if="showCreditWalletModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      >
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-lg font-black text-white flex items-center gap-2">
+              <span>💳</span>
+              <span>Acreditar Saldo en Billetera</span>
+            </h3>
+            <button @click="showCreditWalletModal = false" class="text-slate-400 hover:text-white text-lg cursor-pointer">✕</button>
+          </div>
+
+          <form @submit.prevent="submitAdminWalletCredit" class="space-y-4 text-xs">
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">WhatsApp o N° Cliente *</label>
+              <input 
+                v-model="adminWalletCreditForm.phoneOrId" 
+                type="text" 
+                placeholder="Ej: 1123456789 o CLI-1234" 
+                required
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-mono focus:border-emerald-400 outline-none"
+              >
+              <p class="text-[10px] text-slate-500 mt-1">El sistema asocia el saldo al número único del cliente automáticamente.</p>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Monto a Acreditar (ARS) *</label>
+              <div class="grid grid-cols-4 gap-1.5 mb-2">
+                <button 
+                  type="button" 
+                  v-for="amt in [5000, 10000, 20000, 50000]" 
+                  :key="amt"
+                  @click="adminWalletCreditForm.amount = amt"
+                  :class="['py-1.5 px-1 rounded-xl text-center font-bold border transition cursor-pointer', adminWalletCreditForm.amount === amt ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black' : 'bg-slate-950 text-slate-300 border-slate-800']"
+                >
+                  +${{ (amt/1000) }}k
+                </button>
+              </div>
+              <input 
+                v-model.number="adminWalletCreditForm.amount" 
+                type="number" 
+                min="100" 
+                step="500" 
+                required 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-mono font-bold focus:border-emerald-400 outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-bold mb-1">Motivo / Concepto</label>
+              <input 
+                v-model="adminWalletCreditForm.reason" 
+                type="text" 
+                placeholder="Ej: Bonificación de fidelidad / Regalo de cumpleaños" 
+                required
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:border-emerald-400 outline-none"
+              >
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button 
+                type="button" 
+                @click="showCreditWalletModal = false" 
+                class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-lg cursor-pointer active:scale-95"
+              >
+                Acreditar Saldo
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
