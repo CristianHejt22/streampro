@@ -1921,6 +1921,11 @@ const saveGamingPriceEdit = () => {
     resetCustomPvp: !gamingEditForm.value.useCustomPvp
   })
 
+  if (selectedGameForProvider.value && selectedGameForProvider.value.id === editingGamingProduct.value.id) {
+    const refreshed = (adminStore.processedGamingProducts || []).find(g => g.id === editingGamingProduct.value.id)
+    if (refreshed) selectedGameForProvider.value = refreshed
+  }
+
   const preview = gamingEditLivePreview.value
   toast.add(
     `✓ Cotizaciones guardadas para "${gamingEditForm.value.title}". PVP Web (Mayor Costo): $${(preview.finalPvpPrimary || 0).toLocaleString()} ARS • Compra en: ${preview.chosenBuyerName}.`,

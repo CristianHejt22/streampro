@@ -13,6 +13,12 @@ import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/mar
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
 const GiftCardModal = defineAsyncComponent(() => import('../components/GiftCardModal.vue'))
+const UserProfileModal = defineAsyncComponent(() => import('../components/UserProfileModal.vue'))
+
+const showUserProfileModal = ref(false)
+const openUserProfileModal = () => {
+  showUserProfileModal.value = true
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -1135,7 +1141,8 @@ const isAnyModalOpen = computed(() => {
     showGamingDetailModal.value ||
     showImageZoomModal.value ||
     showSharePlaqueModal.value ||
-    showGiftCardModal.value
+    showGiftCardModal.value ||
+    showUserProfileModal.value
 })
 
 watch(isAnyModalOpen, (isOpen) => {
@@ -3164,6 +3171,17 @@ const submitOrder = async () => {
           <span>🔐</span>
           <span>Mi Bóveda &amp; Pedidos</span>
         </RouterLink>
+
+        <!-- Pastilla de Acceso Rápido: Opciones de Cliente & Perfil -->
+        <button 
+          type="button"
+          @click="openUserProfileModal"
+          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 hover:border-sky-400"
+          title="Mis opciones de cliente, billetera y datos guardados"
+        >
+          <span>⚙️</span>
+          <span>Opciones de Cliente</span>
+        </button>
       </div>
 
       <!-- Badge de Tienda Oficial Verificada -->
@@ -4052,7 +4070,7 @@ const submitOrder = async () => {
                     {{ getStreamingMeta(product.platform).badge }}
                   </span>
                   <h3 class="text-base sm:text-lg font-black text-white group-hover:text-sky-300 transition-colors leading-tight truncate">
-                    {{ product.name }}
+                    {{ adminStore.pricingCatalog?.[product.platform]?.name || product.name }}
                   </h3>
                 </div>
               </div>
@@ -6778,7 +6796,7 @@ const submitOrder = async () => {
         <!-- Descripción General -->
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Descripción del Servicio</h4>
-          <p class="text-xs text-slate-300 leading-relaxed">{{ selectedStreamingInfo.description }}</p>
+          <p class="text-xs text-slate-300 leading-relaxed">{{ adminStore.pricingCatalog?.[selectedStreamingInfo.platform]?.description || selectedStreamingInfo.description }}</p>
         </div>
 
         <!-- Modalidades y Precios -->
@@ -6786,15 +6804,15 @@ const submitOrder = async () => {
           <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Modalidades Disponibles</h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div 
-              v-for="(plan, pKey) in selectedStreamingInfo.plans" 
+              v-for="(plan, pKey) in getStreamingPlansDisplay(selectedStreamingInfo)" 
               :key="pKey"
               class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center"
             >
               <div>
                 <span class="font-bold text-white block">{{ plan.label }}</span>
-                <span class="text-[10px] text-slate-400">{{ plan.type === 'perfil' ? '1 Pantalla exclusiva' : plan.units + ' Pantallas simultáneas' }}</span>
+                <span class="text-[10px] text-slate-400">{{ plan.type === 'perfil' ? '1 Pantalla exclusiva' : (plan.units || 1) + ' Pantallas simultáneas' }}</span>
               </div>
-              <span class="text-sm font-black text-amber-300 font-mono">${{ plan.clientPrice }} ARS</span>
+              <span class="text-sm font-black text-emerald-400 font-mono">${{ Number(plan.clientPrice || 0).toLocaleString() }} ARS</span>
             </div>
           </div>
         </div>
@@ -7590,6 +7608,12 @@ const submitOrder = async () => {
       :initial-tab="giftCardModalTab"
       :prefilled-code="route.query.redeem ? String(route.query.redeem) : ''"
       @openCheckout="showGiftCardModal = false; showCheckoutModal = true"
+    />
+
+    <!-- Modal Opciones de Cuenta & Perfil de Cliente -->
+    <UserProfileModal
+      v-model="showUserProfileModal"
+      @openGiftCards="giftCardModalTab = 'create'; showGiftCardModal = true"
     />
   </div>
 </template>

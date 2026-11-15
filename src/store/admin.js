@@ -896,13 +896,7 @@ export const useAdminStore = defineStore('admin', {
     // PAQUETES Y COMBOS VIRTUALES OFICIALES (32 COMBOS DE STREAMING, INTERNET Y PANELES)
     packages: (() => {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
-      if (stored && Array.isArray(stored) && stored.length >= 5) {
-        const c1 = stored.find(p => p.sku === 'C001' || p.id === 'C001')
-        if (c1 && (c1.providerCost !== 4300 || c1.resellerCost !== 6000 || c1.platformProfit !== 1700 || c1.discountPercent !== 45)) {
-          const fresh = getFreshOfficialCombos()
-          saveDb(DB_KEYS.PACKAGES, fresh)
-          return fresh
-        }
+      if (stored && Array.isArray(stored) && stored.length > 0) {
         return stored
       }
       const fresh = getFreshOfficialCombos()
@@ -1455,7 +1449,43 @@ export const useAdminStore = defineStore('admin', {
   actions: {
     // Sincronización forzada a Base de Datos
     persist(key) {
-      if (key && this[key] !== undefined) {
+      if (key === DB_KEYS.PRICING_CATALOG) {
+        saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
+      } else if (key === DB_KEYS.PACKAGES) {
+        saveDb(DB_KEYS.PACKAGES, this.packages)
+      } else if (key === DB_KEYS.GAMING_PRODUCTS) {
+        persistGamingCatalogDeltas(this.gamingProducts, _loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
+        saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
+        saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        invalidateGamingCache()
+      } else if (key === DB_KEYS.GAMING_PROVIDER_SITES) {
+        saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        invalidateGamingCache()
+      } else if (key === DB_KEYS.STORE_SETTINGS) {
+        this.persistStoreSettings()
+      } else if (key === DB_KEYS.PHYSICAL_PRODUCTS) {
+        saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
+      } else if (key === DB_KEYS.PHYSICAL_CATEGORIES) {
+        saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
+      } else if (key === DB_KEYS.PHYSICAL_ORDERS) {
+        saveDb(DB_KEYS.PHYSICAL_ORDERS, this.physicalOrders)
+      } else if (key === DB_KEYS.WALLET_TRANSACTIONS) {
+        saveDb(DB_KEYS.WALLET_TRANSACTIONS, this.walletTransactions)
+      } else if (key === DB_KEYS.RESELLER_ALERTS) {
+        saveDb(DB_KEYS.RESELLER_ALERTS, this.resellerAlerts)
+      } else if (key === DB_KEYS.RENEWAL_REQUESTS) {
+        saveDb(DB_KEYS.RENEWAL_REQUESTS, this.renewalRequests)
+      } else if (key === DB_KEYS.REGISTERED_USERS) {
+        saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
+      } else if (key === DB_KEYS.PROVIDER_BANK) {
+        saveDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+      } else if (key === DB_KEYS.PROVIDER_BANK_ACCOUNTS) {
+        saveDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, this.providerBankAccounts)
+      } else if (key === DB_KEYS.BANK_TRANSFERS) {
+        saveDb(DB_KEYS.BANK_TRANSFERS, this.bankTransfers)
+      } else if (key && this[key] !== undefined) {
         saveDb(key, this[key])
       } else if (key === DB_KEYS.ADMIN_AUTH) {
         saveDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
@@ -1467,16 +1497,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.MERCADOPAGO_CONFIG, this.mercadoPagoConfig)
       } else if (key === DB_KEYS.FIREBASE_CONFIG) {
         saveDb(DB_KEYS.FIREBASE_CONFIG, this.firebaseConfig)
-      } else if (key === DB_KEYS.GAMING_PRODUCTS) {
-        persistGamingCatalogDeltas(this.gamingProducts, _loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
-        saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
-        saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
       } else if (key === DB_KEYS.GAMING_CATEGORIES) {
         saveDb(DB_KEYS.GAMING_CATEGORIES, this.gamingCategories)
       } else if (key === DB_KEYS.GAMING_SUBCATEGORIES) {
         saveDb(DB_KEYS.GAMING_SUBCATEGORIES, this.gamingSubcategories)
-      } else if (key === DB_KEYS.GAMING_PROVIDER_SITES) {
-        saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
       } else if (key === DB_KEYS.PROMO_CODES) {
         saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
       } else if (key === DB_KEYS.SUPPORT_TICKETS) {
@@ -1877,6 +1901,8 @@ export const useAdminStore = defineStore('admin', {
       if (minResellerProfit !== undefined && minResellerProfit !== null) {
         this.gamingMinResellerProfit = Math.max(0, Number(minResellerProfit))
       }
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persistStoreSettings()
       return {
         success: true,
@@ -1892,20 +1918,28 @@ export const useAdminStore = defineStore('admin', {
 
       const applyCloudSettings = (cloudSettings) => {
         if (!cloudSettings) return
+        let marginChanged = false
         if (typeof cloudSettings.isStoreVisible === 'boolean') {
           this.isStoreVisible = cloudSettings.isStoreVisible
         }
         if (typeof cloudSettings.isPhysicalStoreVisible === 'boolean') {
           this.isPhysicalStoreVisible = cloudSettings.isPhysicalStoreVisible
         }
-        if (typeof cloudSettings.gamingStoreMarginPercent === 'number') {
+        if (typeof cloudSettings.gamingStoreMarginPercent === 'number' && cloudSettings.gamingStoreMarginPercent !== this.gamingStoreMarginPercent) {
           this.gamingStoreMarginPercent = cloudSettings.gamingStoreMarginPercent
+          marginChanged = true
         }
-        if (typeof cloudSettings.gamingResellerCommissionPercent === 'number') {
+        if (typeof cloudSettings.gamingResellerCommissionPercent === 'number' && cloudSettings.gamingResellerCommissionPercent !== this.gamingResellerCommissionPercent) {
           this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
+          marginChanged = true
         }
-        if (typeof cloudSettings.gamingMinResellerProfit === 'number') {
+        if (typeof cloudSettings.gamingMinResellerProfit === 'number' && cloudSettings.gamingMinResellerProfit !== this.gamingMinResellerProfit) {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
+          marginChanged = true
+        }
+        if (marginChanged) {
+          this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+          invalidateGamingCache()
         }
         if (Array.isArray(cloudSettings.promoCodes)) {
           this.promoCodes = cloudSettings.promoCodes
@@ -2189,33 +2223,68 @@ export const useAdminStore = defineStore('admin', {
     // Gestión de Catálogo de Productos Virtuales y Precios
     updatePricingPlan({ platform, planKey, planData }) {
       if (!this.pricingCatalog[platform]) return { error: 'Plataforma no encontrada' }
-      if (!this.pricingCatalog[platform].plans[planKey]) return { error: 'Plan no encontrado' }
+      if (!this.pricingCatalog[platform].plans?.[planKey]) return { error: 'Plan no encontrado' }
       
-      Object.assign(this.pricingCatalog[platform].plans[planKey], planData)
+      const currentPlan = this.pricingCatalog[platform].plans[planKey]
+      const updatedPlan = { ...currentPlan, ...planData }
+
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [platform]: {
+          ...this.pricingCatalog[platform],
+          plans: {
+            ...this.pricingCatalog[platform].plans,
+            [planKey]: updatedPlan
+          }
+        }
+      }
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
     },
 
     updatePlatformInfo({ platformKey, data }) {
-      if (!this.pricingCatalog[platformKey]) {
-        this.pricingCatalog[platformKey] = { name: platformKey, plans: {} }
+      const plat = this.pricingCatalog[platformKey] || { name: platformKey, plans: {} }
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [platformKey]: {
+          ...plat,
+          ...data
+        }
       }
-      Object.assign(this.pricingCatalog[platformKey], data)
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
     },
 
     addPricingPlan({ platform, planKey, planData }) {
       if (!this.pricingCatalog[platform]) return { error: 'Plataforma no encontrada' }
-      if (!this.pricingCatalog[platform].plans) this.pricingCatalog[platform].plans = {}
-      this.pricingCatalog[platform].plans[planKey] = planData
+      const plat = this.pricingCatalog[platform]
+      const currentPlans = plat.plans || {}
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [platform]: {
+          ...plat,
+          plans: {
+            ...currentPlans,
+            [planKey]: planData
+          }
+        }
+      }
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
     },
 
     deletePricingPlan({ platform, planKey }) {
       if (!this.pricingCatalog[platform]?.plans?.[planKey]) return { error: 'Plan no encontrado' }
-      delete this.pricingCatalog[platform].plans[planKey]
+      const plat = this.pricingCatalog[platform]
+      const newPlans = { ...plat.plans }
+      delete newPlans[planKey]
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [platform]: {
+          ...plat,
+          plans: newPlans
+        }
+      }
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
     },
@@ -3900,7 +3969,11 @@ export const useAdminStore = defineStore('admin', {
           updated.discountPercent = Math.round(((orig - promo) / orig) * 100)
         }
       }
-      this.packages[idx] = updated
+      this.packages = [
+        ...this.packages.slice(0, idx),
+        updated,
+        ...this.packages.slice(idx + 1)
+      ]
       this.persist(DB_KEYS.PACKAGES)
       return { success: true, package: updated }
     },
@@ -4217,7 +4290,22 @@ export const useAdminStore = defineStore('admin', {
       if (!newGame.id) {
         newGame.id = 'GAME-' + String(Date.now()).slice(-4)
       }
+      this.ensureGamingProviderSitesLoaded()
+      const sites = this.gamingProviderSites || []
+      const processed = processGamingProduct(
+        newGame,
+        Number(this.gamingStoreMarginPercent ?? 20),
+        Number(this.gamingResellerCommissionPercent ?? 10),
+        Number(this.gamingMinResellerProfit ?? 1000),
+        sites
+      )
+      Object.assign(newGame, {
+        effectivePrimaryPrice: processed.effectivePrimaryPrice,
+        effectiveSecondaryPrice: processed.effectiveSecondaryPrice
+      })
       this.gamingProducts.unshift(newGame)
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return newGame
     },
@@ -4225,6 +4313,8 @@ export const useAdminStore = defineStore('admin', {
       const idx = this.gamingProducts.findIndex(g => g.id === gameId)
       if (idx !== -1) {
         this.gamingProducts.splice(idx, 1)
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        invalidateGamingCache()
         this.persist(DB_KEYS.GAMING_PRODUCTS)
         return true
       }
@@ -4279,6 +4369,8 @@ export const useAdminStore = defineStore('admin', {
       )
 
       this.gamingProducts = result.updatedCatalog
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return {
         success: true,
@@ -4296,7 +4388,8 @@ export const useAdminStore = defineStore('admin', {
       if (!game) return { error: 'Juego no encontrado' }
 
       this.ensureGamingProviderSitesLoaded()
-      const siteMeta = (this.gamingProviderSites || []).find(s => s.key === providerKey)
+      const sites = this.gamingProviderSites || []
+      const siteMeta = sites.find(s => s.key === providerKey)
 
       if (!game.providers) game.providers = {}
       if (providerKey && !game.providers[providerKey]) {
@@ -4335,7 +4428,33 @@ export const useAdminStore = defineStore('admin', {
         }
       }
 
+      // Recalcular inmediatamente los precios efectivos en la propia instancia del juego
+      const processedGame = processGamingProduct(
+        game,
+        Number(this.gamingStoreMarginPercent ?? 20),
+        Number(this.gamingResellerCommissionPercent ?? 10),
+        Number(this.gamingMinResellerProfit ?? 1000),
+        sites
+      )
+      Object.assign(game, {
+        effectivePrimaryPrice: processedGame.effectivePrimaryPrice,
+        effectiveSecondaryPrice: processedGame.effectiveSecondaryPrice,
+        baseCostPrimary: processedGame.baseCostPrimary,
+        baseCostSecondary: processedGame.baseCostSecondary,
+        minCostPrimary: processedGame.minCostPrimary,
+        minCostSecondary: processedGame.minCostSecondary,
+        diffPrimary: processedGame.diffPrimary,
+        diffSecondary: processedGame.diffSecondary,
+        bestFulfillmentPrimary: processedGame.bestFulfillmentPrimary,
+        bestFulfillmentSecondary: processedGame.bestFulfillmentSecondary,
+        highestProviderName: processedGame.highestProviderName,
+        bestFulfillmentPrimaryName: processedGame.bestFulfillmentPrimaryName,
+        bestFulfillmentSecondaryName: processedGame.bestFulfillmentSecondaryName
+      })
+
       game.lastConveyedDate = new Date().toISOString()
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
@@ -4347,6 +4466,8 @@ export const useAdminStore = defineStore('admin', {
       if (!game) return { error: 'Juego no encontrado' }
       game.preferredFulfillmentProvider = providerKey
       game.lastConveyedDate = new Date().toISOString()
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
@@ -4406,7 +4527,33 @@ export const useAdminStore = defineStore('admin', {
         else delete game.customSecondaryPrice
       }
 
+      // Recalcular inmediatamente los precios efectivos en la propia instancia del juego
+      const processedGame = processGamingProduct(
+        game,
+        Number(this.gamingStoreMarginPercent ?? 20),
+        Number(this.gamingResellerCommissionPercent ?? 10),
+        Number(this.gamingMinResellerProfit ?? 1000),
+        sites
+      )
+      Object.assign(game, {
+        effectivePrimaryPrice: processedGame.effectivePrimaryPrice,
+        effectiveSecondaryPrice: processedGame.effectiveSecondaryPrice,
+        baseCostPrimary: processedGame.baseCostPrimary,
+        baseCostSecondary: processedGame.baseCostSecondary,
+        minCostPrimary: processedGame.minCostPrimary,
+        minCostSecondary: processedGame.minCostSecondary,
+        diffPrimary: processedGame.diffPrimary,
+        diffSecondary: processedGame.diffSecondary,
+        bestFulfillmentPrimary: processedGame.bestFulfillmentPrimary,
+        bestFulfillmentSecondary: processedGame.bestFulfillmentSecondary,
+        highestProviderName: processedGame.highestProviderName,
+        bestFulfillmentPrimaryName: processedGame.bestFulfillmentPrimaryName,
+        bestFulfillmentSecondaryName: processedGame.bestFulfillmentSecondaryName
+      })
+
       game.lastConveyedDate = new Date().toISOString()
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
@@ -4415,6 +4562,34 @@ export const useAdminStore = defineStore('admin', {
       if (!game) return { error: 'Juego no encontrado' }
       delete game.customPrimaryPrice
       delete game.customSecondaryPrice
+
+      this.ensureGamingProviderSitesLoaded()
+      const sites = this.gamingProviderSites || []
+      const processedGame = processGamingProduct(
+        game,
+        Number(this.gamingStoreMarginPercent ?? 20),
+        Number(this.gamingResellerCommissionPercent ?? 10),
+        Number(this.gamingMinResellerProfit ?? 1000),
+        sites
+      )
+      Object.assign(game, {
+        effectivePrimaryPrice: processedGame.effectivePrimaryPrice,
+        effectiveSecondaryPrice: processedGame.effectiveSecondaryPrice,
+        baseCostPrimary: processedGame.baseCostPrimary,
+        baseCostSecondary: processedGame.baseCostSecondary,
+        minCostPrimary: processedGame.minCostPrimary,
+        minCostSecondary: processedGame.minCostSecondary,
+        diffPrimary: processedGame.diffPrimary,
+        diffSecondary: processedGame.diffSecondary,
+        bestFulfillmentPrimary: processedGame.bestFulfillmentPrimary,
+        bestFulfillmentSecondary: processedGame.bestFulfillmentSecondary,
+        highestProviderName: processedGame.highestProviderName,
+        bestFulfillmentPrimaryName: processedGame.bestFulfillmentPrimaryName,
+        bestFulfillmentSecondaryName: processedGame.bestFulfillmentSecondaryName
+      })
+
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, game }
     },
@@ -4467,6 +4642,8 @@ export const useAdminStore = defineStore('admin', {
         notes: String(notes || 'Sitio proveedor agregado por administrador').trim()
       }
       this.gamingProviderSites.push(newSite)
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
       return { success: true, site: newSite }
     },
@@ -4479,6 +4656,8 @@ export const useAdminStore = defineStore('admin', {
         ...updates,
         key
       }
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
       return { success: true, site: this.gamingProviderSites[idx] }
     },
@@ -4488,6 +4667,8 @@ export const useAdminStore = defineStore('admin', {
       if (!target) return { error: 'Sitio proveedor no encontrado' }
       if (target.isDefault) return { error: 'Los sitios base no pueden eliminarse; puedes desactivarlos.' }
       this.gamingProviderSites = this.gamingProviderSites.filter(s => s.key !== key)
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       this.persist(DB_KEYS.GAMING_PROVIDER_SITES)
       return { success: true }
     },
@@ -4669,6 +4850,8 @@ export const useAdminStore = defineStore('admin', {
           resetCount++
         }
       })
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
       if (resetCount > 0) this.persist(DB_KEYS.GAMING_PRODUCTS)
       return { success: true, resetCount }
     },

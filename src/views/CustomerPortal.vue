@@ -203,7 +203,7 @@ const saveClientOptions = () => {
   } catch (e) {}
 
   // 2. Sincronizar en adminStore.registeredUsers
-  adminStore.registerOrUpdateUser({
+  const savedUser = adminStore.registerOrUpdateUser({
     clientNumber: customerClientNumber.value,
     name: clientOptionsForm.value.name.trim(),
     phone: clientOptionsForm.value.phone.trim(),
@@ -213,16 +213,38 @@ const saveClientOptions = () => {
     role: 'client'
   })
 
-  // 3. Actualizar memoria local
+  // 3. Actualizar memoria local para reactividad inmediata
   masterPin.value = clientOptionsForm.value.pin.trim()
   searchIdentifier.value = clientOptionsForm.value.phone.trim()
 
-  if (authenticatedUsers.value[0]) {
-    authenticatedUsers.value[0].name = clientOptionsForm.value.name.trim()
-    authenticatedUsers.value[0].phone = clientOptionsForm.value.phone.trim()
-    authenticatedUsers.value[0].email = clientOptionsForm.value.email.trim()
-    authenticatedUsers.value[0].birthDate = clientOptionsForm.value.birthDate || ''
-    authenticatedUsers.value[0].pin = clientOptionsForm.value.pin.trim()
+  const updatedObj = {
+    clientNumber: customerClientNumber.value,
+    customerNumber: customerClientNumber.value,
+    name: clientOptionsForm.value.name.trim(),
+    customerName: clientOptionsForm.value.name.trim(),
+    phone: clientOptionsForm.value.phone.trim(),
+    customerPhone: clientOptionsForm.value.phone.trim(),
+    email: clientOptionsForm.value.email.trim(),
+    birthDate: clientOptionsForm.value.birthDate || '',
+    pin: clientOptionsForm.value.pin.trim(),
+    role: 'client'
+  }
+
+  if (authenticatedUsers.value.length > 0) {
+    Object.assign(authenticatedUsers.value[0], updatedObj)
+  } else {
+    authenticatedUsers.value = [savedUser || updatedObj]
+  }
+
+  if (authenticatedClients.value.length > 0) {
+    Object.assign(authenticatedClients.value[0], updatedObj)
+  }
+
+  if (authenticatedOrders.value.length > 0) {
+    authenticatedOrders.value.forEach(o => {
+      o.customerName = clientOptionsForm.value.name.trim()
+      o.customerPhone = clientOptionsForm.value.phone.trim()
+    })
   }
 
   showClientOptionsModal.value = false
