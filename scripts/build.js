@@ -1,7 +1,17 @@
 import { spawnSync } from 'node:child_process'
+import path from 'node:path'
+import fs from 'node:fs'
+
+const localTemp = path.resolve('node_modules/.cache/temp')
+try {
+  fs.mkdirSync(localTemp, { recursive: true })
+} catch {}
 
 const env = {
   ...process.env,
+  TMPDIR: localTemp,
+  TEMP: localTemp,
+  TMP: localTemp,
   RAYON_NUM_THREADS: '1'
 }
 

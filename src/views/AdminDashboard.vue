@@ -4117,7 +4117,12 @@ const openPlanEdit = (platKey, pKey, plan) => {
     label: plan.label || '',
     providerCost: Number(plan.providerCost || 0),
     resellerProfit: Number(plan.resellerProfit || 0),
-    clientPrice: Number(plan.clientPrice || 0)
+    clientPrice: Number(plan.clientPrice || 0),
+    description: plan.description || (Array.isArray(plan.features) ? plan.features[0] : '') || '',
+    quality: plan.quality || '',
+    deliveryTime: plan.deliveryTime || '',
+    type: plan.type || 'perfil',
+    units: Number(plan.units || 1)
   }
   editingPlanModal.value = true
 }
@@ -4130,17 +4135,135 @@ const savePlanEdit = () => {
       label: planEditForm.value.label,
       providerCost: Number(planEditForm.value.providerCost),
       resellerProfit: Number(planEditForm.value.resellerProfit),
-      clientPrice: Number(planEditForm.value.clientPrice)
+      clientPrice: Number(planEditForm.value.clientPrice),
+      description: (planEditForm.value.description || '').trim(),
+      quality: (planEditForm.value.quality || '').trim(),
+      deliveryTime: (planEditForm.value.deliveryTime || '').trim(),
+      type: planEditForm.value.type || 'perfil',
+      units: Number(planEditForm.value.units || 1)
     }
   })
-  toast.add(`Precios de ${editingPlatformKey.value} (${planEditForm.value.label}) actualizados y guardados en DB`, 'success')
+  toast.add(`Precios y detalles de ${editingPlatformKey.value} (${planEditForm.value.label}) actualizados y guardados en DB`, 'success')
   editingPlanModal.value = false
+}
+
+const deletePlanFromCatalog = (platKey, pKey) => {
+  if (confirm(`¿Estás seguro de eliminar el plan "${pKey}" de la plataforma ${platKey}?`)) {
+    adminStore.deletePricingPlan({ platform: platKey, planKey: pKey })
+    toast.add(`Plan eliminado de ${platKey}`, 'info')
+    editingPlanModal.value = false
+  }
+}
+
+// EDICIÓN DE INFORMACIÓN, DESCRIPCIONES Y BENEFICIOS DE PLATAFORMAS STREAMING
+const showEditPlatformModal = ref(false)
+const editPlatformForm = ref({
+  key: '',
+  name: '',
+  description: '',
+  badge: '',
+  deliveryBadge: '',
+  highlights: '',
+  warranty: ''
+})
+
+const openEditPlatformModal = (platKey, platData) => {
+  const highlightsText = Array.isArray(platData.highlights) 
+    ? platData.highlights.join('\n') 
+    : (Array.isArray(platData.features) ? platData.features.join('\n') : (platData.highlights || ''))
+
+  editPlatformForm.value = {
+    key: platKey,
+    name: platData.name || platKey,
+    description: platData.description || '',
+    badge: platData.badge || platData.quality || '4K ULTRA HD • HDR10',
+    deliveryBadge: platData.deliveryBadge || platData.deliveryTime || '🟢 10-15m',
+    highlights: highlightsText,
+    warranty: platData.warranty || 'Garantía oficial y reposición 100% activa durante los 30 días.'
+  }
+  showEditPlatformModal.value = true
+}
+
+const submitUpdatePlatformInfo = () => {
+  const hList = editPlatformForm.value.highlights
+    .split('\n')
+    .map(h => h.trim())
+    .filter(Boolean)
+
+  adminStore.updatePlatformInfo({
+    platformKey: editPlatformForm.value.key,
+    data: {
+      name: editPlatformForm.value.name.trim(),
+      description: editPlatformForm.value.description.trim(),
+      badge: editPlatformForm.value.badge.trim(),
+      deliveryBadge: editPlatformForm.value.deliveryBadge.trim(),
+      highlights: hList,
+      warranty: editPlatformForm.value.warranty.trim()
+    }
+  })
+  toast.add(`Información, descripción y beneficios de ${editPlatformForm.value.name} actualizados`, 'success')
+  showEditPlatformModal.value = false
+}
+
+// CREACIÓN DE NUEVO PLAN EN PLATAFORMA EXISTENTE
+const showAddPlanModal = ref(false)
+const newPlanForm = ref({
+  platform: '',
+  planKey: '',
+  label: '',
+  units: 1,
+  type: 'perfil',
+  providerCost: 3500,
+  resellerProfit: 1500,
+  clientPrice: 5000,
+  description: ''
+})
+
+const openAddPlanModal = (platKey) => {
+  newPlanForm.value = {
+    platform: platKey,
+    planKey: '',
+    label: '',
+    units: 1,
+    type: 'perfil',
+    providerCost: 3500,
+    resellerProfit: 1500,
+    clientPrice: 5000,
+    description: ''
+  }
+  showAddPlanModal.value = true
+}
+
+const submitAddPlan = () => {
+  const pKey = newPlanForm.value.planKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') || `plan_${Date.now().toString().slice(-4)}`
+  if (!newPlanForm.value.label.trim()) {
+    toast.add('Ingresa el nombre del plan', 'error')
+    return
+  }
+  adminStore.addPricingPlan({
+    platform: newPlanForm.value.platform,
+    planKey: pKey,
+    planData: {
+      label: newPlanForm.value.label.trim(),
+      units: Number(newPlanForm.value.units || 1),
+      type: newPlanForm.value.type || 'perfil',
+      providerCost: Number(newPlanForm.value.providerCost || 0),
+      resellerProfit: Number(newPlanForm.value.resellerProfit || 0),
+      clientPrice: Number(newPlanForm.value.clientPrice || 0),
+      description: newPlanForm.value.description.trim()
+    }
+  })
+  toast.add(`Nuevo plan "${newPlanForm.value.label}" agregado a ${newPlanForm.value.platform}`, 'success')
+  showAddPlanModal.value = false
 }
 
 const showAddPlatformModal = ref(false)
 const newPlatformForm = ref({
   key: '',
   name: '',
+  description: '',
+  badge: '4K ULTRA HD',
+  deliveryBadge: '🟢 10-15m',
   planLabel: '1 Pantalla / Perfil',
   providerCost: 3500,
   resellerProfit: 1500,
@@ -4155,6 +4278,9 @@ const submitAddPlatform = () => {
   adminStore.addPlatform({
     key: newPlatformForm.value.key.trim(),
     name: newPlatformForm.value.name.trim(),
+    description: newPlatformForm.value.description.trim(),
+    badge: newPlatformForm.value.badge.trim(),
+    deliveryBadge: newPlatformForm.value.deliveryBadge.trim(),
     plans: {
       '1_perfil': {
         label: newPlatformForm.value.planLabel.trim(),
@@ -4232,7 +4358,11 @@ const editingPackageForm = ref({
   resellerCost: 0,
   resellerProfit: 0,
   image: '',
-  active: true
+  active: true,
+  services: [],
+  highlights: '',
+  notes: '',
+  deliveryBadge: '🟢 Entrega Inmediata (10-15m)'
 })
 
 const openEditPackageModal = (pkg) => {
@@ -4243,6 +4373,11 @@ const openEditPackageModal = (pkg) => {
   const platProfit = Number(pkg.platformProfit !== undefined ? pkg.platformProfit : Math.max(0, resCost - cost))
   const resProfit = Number(pkg.resellerProfit !== undefined ? pkg.resellerProfit : Math.max(0, promo - resCost))
   const discount = pkg.discountPercent || (orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 25)
+  const servs = (pkg.services && Array.isArray(pkg.services) && pkg.services.length)
+    ? JSON.parse(JSON.stringify(pkg.services))
+    : [{ platform: 'Netflix', planLabel: '1 Perfil Ultra HD', duration: '30 Días' }]
+  const hText = Array.isArray(pkg.highlights) ? pkg.highlights.join('\n') : (pkg.highlights || '')
+
   editingPackageForm.value = {
     id: pkg.id,
     title: pkg.title || '',
@@ -4259,9 +4394,30 @@ const openEditPackageModal = (pkg) => {
     resellerProfit: resProfit,
     discountPercent: discount,
     image: pkg.image || '',
-    active: pkg.active !== false
+    active: pkg.active !== false,
+    services: servs,
+    highlights: hText,
+    notes: pkg.notes || '',
+    deliveryBadge: pkg.deliveryBadge || '🟢 Entrega Inmediata (10-15m)'
   }
   showEditPackageModal.value = true
+}
+
+const addServiceToEditingPackage = () => {
+  if (!Array.isArray(editingPackageForm.value.services)) editingPackageForm.value.services = []
+  editingPackageForm.value.services.push({
+    platform: 'Netflix',
+    planLabel: '1 Perfil Premium',
+    duration: '30 Días'
+  })
+}
+
+const removeServiceFromEditingPackage = (index) => {
+  if (editingPackageForm.value.services.length > 1) {
+    editingPackageForm.value.services.splice(index, 1)
+  } else {
+    toast.add('El combo debe contener al menos un servicio', 'warning')
+  }
 }
 
 const submitUpdatePackage = () => {
@@ -4273,6 +4429,9 @@ const submitUpdatePackage = () => {
   const resProfit = Number(editingPackageForm.value.resellerProfit !== undefined ? editingPackageForm.value.resellerProfit : Math.max(0, promo - resCost))
   const discount = orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 0
   const badgeVal = editingPackageForm.value.badge.trim() || (discount > 0 ? `🔥 ${discount}% OFF` : '⭐ COMBO VIP')
+  const hArr = editingPackageForm.value.highlights
+    ? editingPackageForm.value.highlights.split('\n').map(h => h.trim()).filter(Boolean)
+    : []
 
   const res = adminStore.updatePackage(editingPackageForm.value.id, {
     title: editingPackageForm.value.title.trim(),
@@ -4289,7 +4448,11 @@ const submitUpdatePackage = () => {
     resellerProfit: resProfit,
     discountPercent: discount,
     image: editingPackageForm.value.image.trim(),
-    active: editingPackageForm.value.active
+    active: editingPackageForm.value.active,
+    services: editingPackageForm.value.services,
+    highlights: hArr,
+    notes: (editingPackageForm.value.notes || '').trim(),
+    deliveryBadge: (editingPackageForm.value.deliveryBadge || '').trim()
   })
   if (res.success) {
     toast.add(`Combo "${editingPackageForm.value.title}" actualizado con éxito`, 'success')
@@ -6872,23 +7035,56 @@ const deletePackageItem = (pkgId) => {
           :key="platKey"
           class="bg-[#020617] rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl relative overflow-hidden"
         >
-          <div class="flex justify-between items-start border-b border-slate-800 pb-3">
-            <div>
-              <div class="flex items-center gap-2">
+          <!-- Encabezado de Plataforma con Acciones de Edición de Información -->
+          <div class="flex flex-col sm:flex-row justify-between items-start gap-3 border-b border-slate-800 pb-3.5">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
                 <span class="font-black text-white text-lg">{{ platData.name || platKey }}</span>
                 <span class="text-[10px] font-mono font-bold bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-800">
                   {{ platKey }}
                 </span>
+                <span v-if="platData.badge || platData.quality" class="text-[9px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+                  {{ platData.badge || platData.quality }}
+                </span>
+                <span v-if="platData.deliveryBadge || platData.deliveryTime" class="text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  {{ platData.deliveryBadge || platData.deliveryTime }}
+                </span>
               </div>
-              <p class="text-xs text-slate-500">{{ Object.keys(platData.plans || {}).length }} plan(es) configurados</p>
+              <p v-if="platData.description" class="text-xs text-slate-400 leading-snug line-clamp-2">
+                {{ platData.description }}
+              </p>
+              <div v-if="platData.highlights && platData.highlights.length > 0" class="flex flex-wrap gap-1 pt-0.5">
+                <span v-for="(hl, hIdx) in platData.highlights.slice(0, 3)" :key="hIdx" class="text-[9px] text-slate-300 bg-slate-900/90 border border-slate-800 px-1.5 py-0.5 rounded">
+                  ✓ {{ hl }}
+                </span>
+              </div>
             </div>
-            <button 
-              @click="handleDeletePlatform(platKey)"
-              class="text-slate-500 hover:text-red-400 text-xs p-1"
-              title="Eliminar plataforma del catálogo"
-            >
-              ✕
-            </button>
+
+            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
+              <button 
+                @click="openEditPlatformModal(platKey, platData)"
+                class="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold border border-indigo-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                title="Editar descripción, información, badges y beneficios de esta plataforma"
+              >
+                <span>✏️</span>
+                <span>Editar Info</span>
+              </button>
+              <button 
+                @click="openAddPlanModal(platKey)"
+                class="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                title="Agregar nuevo plan a esta plataforma"
+              >
+                <span>+</span>
+                <span>Plan</span>
+              </button>
+              <button 
+                @click="handleDeletePlatform(platKey)"
+                class="text-slate-500 hover:text-red-400 text-xs p-1.5 rounded-lg hover:bg-slate-900 transition-colors"
+                title="Eliminar plataforma del catálogo"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div class="space-y-2">
@@ -6899,7 +7095,8 @@ const deletePackageItem = (pkgId) => {
             >
               <div>
                 <strong class="text-white block">{{ plan.label }}</strong>
-                <span class="text-[11px] text-slate-400 font-mono">Tipo: {{ plan.type }} • Unidades: {{ plan.units }}</span>
+                <span class="text-[11px] text-slate-400 font-mono">Tipo: {{ plan.type || 'perfil' }} • Unidades: {{ plan.units || 1 }}</span>
+                <span v-if="plan.description" class="text-[10px] text-slate-500 block mt-0.5">{{ plan.description }}</span>
               </div>
               <div class="flex flex-wrap items-center gap-3">
                 <div class="text-right font-mono">
@@ -6909,7 +7106,7 @@ const deletePackageItem = (pkgId) => {
                 </div>
                 <button 
                   @click="openPlanEdit(platKey, pKey, plan)"
-                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
+                  class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
                 >
                   ✏️ Editar
                 </button>
@@ -13905,45 +14102,237 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       </div>
     </div>
 
-    <!-- MODAL: EDITAR PRECIOS Y COSTOS DE PLAN VIRTUAL -->
+    <!-- MODAL: EDITAR PRECIOS, DETALLES Y FICHAS DE PLAN VIRTUAL -->
     <div v-if="editingPlanModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+      <div class="bg-slate-900 border border-cyan-500/30 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
         <div class="flex justify-between items-start border-b border-slate-800 pb-3">
           <div>
-            <span class="text-xs font-mono font-bold text-cyan-400">{{ editingPlatformKey }}</span>
-            <h3 class="text-lg font-black text-white">Editar Precios y Ganancias</h3>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">{{ editingPlatformKey }}</span>
+              <span class="text-[10px] font-mono text-slate-400">Plan: {{ editingPlanKey }}</span>
+            </div>
+            <h3 class="text-lg font-black text-white mt-1">Editar Precios y Ficha del Plan</h3>
           </div>
           <button @click="editingPlanModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
         </div>
 
-        <form @submit.prevent="savePlanEdit" class="space-y-3">
+        <form @submit.prevent="savePlanEdit" class="space-y-3.5">
           <div>
-            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Etiqueta del Plan</label>
-            <input v-model="planEditForm.label" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Etiqueta del Plan *</label>
+            <input v-model="planEditForm.label" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold outline-none focus:border-cyan-400" required>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Costo Proveedor (ARS)</label>
-              <input v-model="planEditForm.providerCost" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Tipo de Plan</label>
+              <select v-model="planEditForm.type" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none">
+                <option value="perfil">Perfil / Pantalla</option>
+                <option value="perfil_extra">Perfil Extra</option>
+                <option value="cuenta_completa">Cuenta Completa</option>
+                <option value="dispositivo">Dispositivos</option>
+                <option value="anual">Anual / Semestral</option>
+              </select>
             </div>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Ganancia Revendedor (ARS)</label>
-              <input v-model="planEditForm.resellerProfit" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-emerald-400 font-mono outline-none" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Unidades / Dispositivos</label>
+              <input v-model.number="planEditForm.units" type="number" min="1" max="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none">
             </div>
           </div>
 
           <div>
-            <label class="block font-bold uppercase text-slate-400 mb-1">Precio al Cliente Final (ARS)</label>
-            <input v-model="planEditForm.clientPrice" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl p-3 text-amber-400 font-mono font-black text-base outline-none" required>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Descripción / Ficha Técnica del Plan</label>
+            <textarea 
+              v-model="planEditForm.description" 
+              rows="2" 
+              placeholder="Ej: Acceso privado en 4K Ultra HD sin restricciones de hogar. PIN exclusivo."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none resize-none focus:border-cyan-400"
+            ></textarea>
           </div>
 
-          <div class="flex gap-3 pt-3">
-            <button type="button" @click="editingPlanModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Badge Calidad (Opcional)</label>
+              <input v-model="planEditForm.quality" type="text" placeholder="Ej: 4K ULTRA HD" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none">
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Tiempo de Entrega (Opcional)</label>
+              <input v-model="planEditForm.deliveryTime" type="text" placeholder="Ej: 🟢 10-15m" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white outline-none">
+            </div>
+          </div>
+
+          <!-- Nivel de Precios -->
+          <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-3">
+            <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">Estructura de Precios (ARS)</span>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">1. Proveedor</label>
+                <input v-model="planEditForm.providerCost" type="number" min="0" step="50" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none" required>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-emerald-400 mb-1">2. Revendedor</label>
+                <input v-model="planEditForm.resellerProfit" type="number" min="0" step="50" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono outline-none" required>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-amber-400 mb-1">3. Precio Venta</label>
+                <input v-model="planEditForm.clientPrice" type="number" min="0" step="50" class="w-full bg-slate-900 border border-amber-500/40 rounded-xl p-2 text-amber-400 font-mono font-bold outline-none" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
+            <button 
+              type="button" 
+              @click="deletePlanFromCatalog(editingPlatformKey, editingPlanKey)" 
+              class="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+            >
+              🗑️ Eliminar Plan
+            </button>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="editingPlanModal = false" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-xl cursor-pointer">
+                Cancelar
+              </button>
+              <button type="submit" class="bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer">
+                Guardar Ficha
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITAR INFORMACIÓN GENERAL, DESCRIPCIÓN Y BENEFICIOS DE PLATAFORMA STREAMING -->
+    <div v-if="showEditPlatformModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-indigo-500/40 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{{ editPlatformForm.key }}</span>
+            <h3 class="text-lg font-black text-white mt-1">Editar Información & Textos de Plataforma</h3>
+          </div>
+          <button @click="showEditPlatformModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
+        </div>
+
+        <form @submit.prevent="submitUpdatePlatformInfo" class="space-y-3.5">
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Comercial de la Plataforma *</label>
+            <input v-model="editPlatformForm.name" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold outline-none focus:border-indigo-400" required>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Descripción / Subtítulo Oficial</label>
+            <textarea 
+              v-model="editPlatformForm.description" 
+              rows="2" 
+              placeholder="Ej: Catálogo completo en ultra alta definición 4K HDR con soporte multilingüe y reproducción simultánea."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none resize-none focus:border-indigo-400"
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Badge de Calidad / Promo</label>
+              <input v-model="editPlatformForm.badge" type="text" placeholder="Ej: 4K ULTRA HD • HDR10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-red-400 font-bold outline-none">
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Badge de Entrega</label>
+              <input v-model="editPlatformForm.deliveryBadge" type="text" placeholder="Ej: 🟢 10-15m" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-emerald-400 font-bold outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">
+              Puntos Fuertes / Beneficios Clave (1 por línea)
+            </label>
+            <textarea 
+              v-model="editPlatformForm.highlights" 
+              rows="3" 
+              placeholder="PIN Privado de 4 dígitos&#10;Sin bloqueo de hogar en Argentina (Pide actualizar hogar)&#10;Renovación mes a mes misma cuenta (Modificación de cuenta)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono text-[11px] outline-none resize-none focus:border-indigo-400"
+            ></textarea>
+            <p class="text-[10px] text-slate-500 mt-1">Estos puntos se muestran con tilde verde en las tarjetas de la tienda.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Garantía / Términos de Servicio</label>
+            <input v-model="editPlatformForm.warranty" type="text" placeholder="Ej: Garantía oficial y reposición 100% activa durante los 30 días." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-300 outline-none">
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <button type="button" @click="showEditPlatformModal = false" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-xl cursor-pointer">
               Cancelar
             </button>
-            <button type="submit" class="w-2/3 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black py-2.5 rounded-xl shadow transition-all">
-              Guardar Precios
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer">
+              Guardar Información
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: AGREGAR NUEVO PLAN A PLATAFORMA EXISTENTE -->
+    <div v-if="showAddPlanModal" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-cyan-500/40 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-6 shadow-2xl relative space-y-4 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-mono font-bold text-cyan-400">{{ newPlanForm.platform }}</span>
+            <h3 class="text-lg font-black text-white mt-1">Agregar Nuevo Plan</h3>
+          </div>
+          <button @click="showAddPlanModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
+        </div>
+
+        <form @submit.prevent="submitAddPlan" class="space-y-3.5">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Clave de Plan (ej: 2_pantallas)</label>
+              <input v-model="newPlanForm.planKey" type="text" placeholder="2_pantallas" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none">
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Etiqueta *</label>
+              <input v-model="newPlanForm.label" type="text" placeholder="2 Pantallas Simultáneas" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold outline-none" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Tipo</label>
+              <select v-model="newPlanForm.type" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none">
+                <option value="perfil">Perfil</option>
+                <option value="perfil_extra">Perfil Extra</option>
+                <option value="cuenta_completa">Cuenta Completa</option>
+                <option value="dispositivo">Dispositivo</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Unidades</label>
+              <input v-model.number="newPlanForm.units" type="number" min="1" max="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Costo Prov.</label>
+              <input v-model.number="newPlanForm.providerCost" type="number" step="50" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono outline-none" required>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-emerald-400 mb-1">Ganancia Rev.</label>
+              <input v-model.number="newPlanForm.resellerProfit" type="number" step="50" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono outline-none" required>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-amber-400 mb-1">Precio Venta</label>
+              <input v-model.number="newPlanForm.clientPrice" type="number" step="50" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2 text-amber-400 font-mono font-bold outline-none" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Descripción / Ficha del Plan</label>
+            <input v-model="newPlanForm.description" type="text" placeholder="Ej: Calidad 4K HDR, 2 dispositivos a la vez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none">
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <button type="button" @click="showAddPlanModal = false" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-xl cursor-pointer">
+              Cancelar
+            </button>
+            <button type="submit" class="bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer">
+              Agregar Plan
             </button>
           </div>
         </form>
@@ -14210,12 +14599,108 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción</label>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Descripción del Combo</label>
             <textarea 
               v-model="editingPackageForm.description" 
               rows="2"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+              placeholder="Descripción completa del combo para el cliente..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-purple-400"
             ></textarea>
+          </div>
+
+          <!-- SERVICIOS INCLUIDOS EN EL COMBO -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-black uppercase text-purple-300 tracking-wider flex items-center gap-1.5">
+                <span>🎬</span> Servicios &amp; Plataformas en el Combo ({{ editingPackageForm.services?.length || 0 }})
+              </label>
+              <button 
+                type="button" 
+                @click="addServiceToEditingPackage"
+                class="bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-500/40 transition cursor-pointer"
+              >
+                + Agregar Servicio
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              <div 
+                v-for="(srv, sIdx) in editingPackageForm.services" 
+                :key="sIdx"
+                class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+              >
+                <div class="flex-1">
+                  <input 
+                    v-model="srv.platform" 
+                    type="text" 
+                    placeholder="Plataforma (ej: Netflix, Disney+, Max)" 
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-bold outline-none"
+                    required
+                  >
+                </div>
+                <div class="flex-1">
+                  <input 
+                    v-model="srv.planLabel" 
+                    type="text" 
+                    placeholder="Plan (ej: 1 Perfil Ultra HD)" 
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-300 outline-none"
+                    required
+                  >
+                </div>
+                <div class="w-24">
+                  <input 
+                    v-model="srv.duration" 
+                    type="text" 
+                    placeholder="Duración (30 Días)" 
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-400 font-mono outline-none"
+                  >
+                </div>
+                <button 
+                  type="button" 
+                  @click="removeServiceFromEditingPackage(sIdx)"
+                  class="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs self-end sm:self-center"
+                  title="Quitar este servicio del combo"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PUNTOS FUERTES / BENEFICIOS DEL COMBO (HIGHLIGHTS) -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <label class="block text-xs font-bold uppercase text-slate-300 flex items-center gap-1.5">
+              <span>⭐</span> Beneficios Clave del Combo (1 por línea)
+            </label>
+            <textarea 
+              v-model="editingPackageForm.highlights" 
+              rows="3" 
+              placeholder="Perfiles 100% privados con PIN&#10;Calidad 4K Ultra HD HDR&#10;Soporte prioritario y reposición inmediata&#10;Ahorro de hasta 45% vs compras individuales" 
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-purple-400 resize-none"
+            ></textarea>
+            <p class="text-[10px] text-slate-500">Se mostrarán con tildes verdes en la tarjeta de oferta del cliente.</p>
+          </div>
+
+          <!-- NOTAS DE ENTREGA Y GARANTÍA -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Badge de Entrega</label>
+              <input 
+                v-model="editingPackageForm.deliveryBadge" 
+                type="text" 
+                placeholder="🟢 Entrega Inmediata (10-15m)" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-emerald-400 font-bold outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Garantía / Términos del Combo</label>
+              <input 
+                v-model="editingPackageForm.notes" 
+                type="text" 
+                placeholder="Garantía total de 30 días en todos los servicios" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-300 outline-none"
+              >
+            </div>
           </div>
 
           <!-- SELECTOR DE DESCUENTO CONFIGURABLE EN EDICIÓN (15% AL 35% Y ESPECIALES DEL 45%) -->

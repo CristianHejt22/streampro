@@ -2136,10 +2136,38 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    addPlatform({ key, name, plans }) {
+    updatePlatformInfo({ platformKey, data }) {
+      if (!this.pricingCatalog[platformKey]) {
+        this.pricingCatalog[platformKey] = { name: platformKey, plans: {} }
+      }
+      Object.assign(this.pricingCatalog[platformKey], data)
+      this.persist(DB_KEYS.PRICING_CATALOG)
+      return { success: true }
+    },
+
+    addPricingPlan({ platform, planKey, planData }) {
+      if (!this.pricingCatalog[platform]) return { error: 'Plataforma no encontrada' }
+      if (!this.pricingCatalog[platform].plans) this.pricingCatalog[platform].plans = {}
+      this.pricingCatalog[platform].plans[planKey] = planData
+      this.persist(DB_KEYS.PRICING_CATALOG)
+      return { success: true }
+    },
+
+    deletePricingPlan({ platform, planKey }) {
+      if (!this.pricingCatalog[platform]?.plans?.[planKey]) return { error: 'Plan no encontrado' }
+      delete this.pricingCatalog[platform].plans[planKey]
+      this.persist(DB_KEYS.PRICING_CATALOG)
+      return { success: true }
+    },
+
+    addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [] }) {
       if (this.pricingCatalog[key]) return { error: 'La plataforma ya existe' }
       this.pricingCatalog[key] = {
         name: name || key,
+        description,
+        badge,
+        deliveryBadge,
+        highlights,
         plans: plans || {}
       }
       this.persist(DB_KEYS.PRICING_CATALOG)

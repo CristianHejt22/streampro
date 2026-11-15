@@ -150,6 +150,85 @@ const saveCustomerBirthday = () => {
   toast.add('🎂 ¡Fecha de cumpleaños guardada con éxito!', 'success')
 }
 
+// ==========================================
+// OPCIONES DE CUENTA Y DATOS DEL CLIENTE
+// ==========================================
+const showClientOptionsModal = ref(false)
+const clientOptionsForm = ref({
+  name: '',
+  phone: '',
+  email: '',
+  birthDate: '',
+  pin: ''
+})
+
+const openClientOptionsModal = () => {
+  clientOptionsForm.value = {
+    name: customerName.value || '',
+    phone: customerPhone.value || '',
+    email: primaryAuthenticatedUser.value?.email || '',
+    birthDate: customerBirthDate.value || '',
+    pin: masterPin.value || primaryAuthenticatedUser.value?.pin || '1234'
+  }
+  showClientOptionsModal.value = true
+}
+
+const saveClientOptions = () => {
+  if (!clientOptionsForm.value.name.trim()) {
+    toast.add('Ingresa tu nombre completo', 'error')
+    return
+  }
+  if (!clientOptionsForm.value.phone.trim()) {
+    toast.add('Ingresa tu WhatsApp de contacto', 'error')
+    return
+  }
+  if (!clientOptionsForm.value.pin.trim() || clientOptionsForm.value.pin.trim().length < 4) {
+    toast.add('El PIN de bóveda debe tener al menos 4 dígitos', 'error')
+    return
+  }
+
+  // 1. Guardar en localStorage de cliente
+  try {
+    const raw = localStorage.getItem('streampro_user_profile')
+    const existing = raw ? JSON.parse(raw) : {}
+    const updated = {
+      ...existing,
+      name: clientOptionsForm.value.name.trim(),
+      phone: clientOptionsForm.value.phone.trim(),
+      email: clientOptionsForm.value.email.trim(),
+      birthDate: clientOptionsForm.value.birthDate || '',
+      pin: clientOptionsForm.value.pin.trim()
+    }
+    localStorage.setItem('streampro_user_profile', JSON.stringify(updated))
+  } catch (e) {}
+
+  // 2. Sincronizar en adminStore.registeredUsers
+  adminStore.registerOrUpdateUser({
+    clientNumber: customerClientNumber.value,
+    name: clientOptionsForm.value.name.trim(),
+    phone: clientOptionsForm.value.phone.trim(),
+    email: clientOptionsForm.value.email.trim(),
+    birthDate: clientOptionsForm.value.birthDate || '',
+    pin: clientOptionsForm.value.pin.trim(),
+    role: 'client'
+  })
+
+  // 3. Actualizar memoria local
+  masterPin.value = clientOptionsForm.value.pin.trim()
+  searchIdentifier.value = clientOptionsForm.value.phone.trim()
+
+  if (authenticatedUsers.value[0]) {
+    authenticatedUsers.value[0].name = clientOptionsForm.value.name.trim()
+    authenticatedUsers.value[0].phone = clientOptionsForm.value.phone.trim()
+    authenticatedUsers.value[0].email = clientOptionsForm.value.email.trim()
+    authenticatedUsers.value[0].birthDate = clientOptionsForm.value.birthDate || ''
+    authenticatedUsers.value[0].pin = clientOptionsForm.value.pin.trim()
+  }
+
+  showClientOptionsModal.value = false
+  toast.add('✅ Datos y PIN de Bóveda actualizados con éxito', 'success')
+}
+
 // Control de visibilidad de contraseñas y guías de consola
 const revealedPasswords = ref({})
 const expandedGameGuides = ref({})
@@ -263,6 +342,31 @@ const unlockVault = (silent = false) => {
   const matchedPhysical = (adminStore.physicalOrders || []).filter(o => matchPhoneOrIdExact(o.customerPhone, o.customerNumber, o.id))
   const matchedUsers = (adminStore.registeredUsers || []).filter(u => matchPhoneOrIdExact(u.phone, u.clientNumber, u.id))
   const matchedDiscountUsers = (adminStore.discountUsers || []).filter(d => matchPhoneOrIdExact(d.phone, d.id, d.code))
+
+  // Coincidencia avanzada por clave normalizada (garantiza acceso en cualquier formato de WhatsApp +54, 9, 15)
+  const normKey = adminStore.normalizeCustomerWalletKey(rawQuery)
+  if (normKey && normKey.length >= 7) {
+    (adminStore.registeredUsers || []).forEach(u => {
+      if (u.phone && adminStore.normalizeCustomerWalletKey(u.phone) === normKey && !matchedUsers.some(mu => mu.id === u.id)) {
+        matchedUsers.push(u)
+      }
+    });
+    (adminStore.orders || []).forEach(o => {
+      if (o.customerPhone && adminStore.normalizeCustomerWalletKey(o.customerPhone) === normKey && !matchedOrders.some(mo => mo.id === o.id)) {
+        matchedOrders.push(o)
+      }
+    });
+    (adminStore.physicalOrders || []).forEach(o => {
+      if (o.customerPhone && adminStore.normalizeCustomerWalletKey(o.customerPhone) === normKey && !matchedPhysical.some(mo => mo.id === o.id)) {
+        matchedPhysical.push(o)
+      }
+    });
+    (resellerStore.clients || []).forEach(c => {
+      if (c.phone && adminStore.normalizeCustomerWalletKey(c.phone) === normKey && !matchedClients.some(mc => mc.id === c.id)) {
+        matchedClients.push(c)
+      }
+    });
+  }
 
   const hasAnyRecord = matchedClients.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0 || matchedUsers.length > 0 || matchedDiscountUsers.length > 0
   if (!hasAnyRecord) {
@@ -887,6 +991,14 @@ const getGameInstallSteps = (order) => {
                 <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
                   Bóveda Verificada
                 </span>
+                <button 
+                  @click="openClientOptionsModal"
+                  class="px-2.5 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-sky-300 hover:text-white border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+                  title="Modificar mis datos personales y PIN de Bóveda"
+                >
+                  <span>⚙️</span>
+                  <span>Opciones de Cuenta &amp; PIN</span>
+                </button>
               </div>
               <div class="flex items-center gap-3 text-xs text-slate-400 mt-1 flex-wrap">
                 <span class="font-mono text-slate-300">📱 {{ customerPhone }}</span>
@@ -970,7 +1082,7 @@ const getGameInstallSteps = (order) => {
               ]"
             >
               <span>🎬</span>
-              <span>Streaming ({{ customerStreamingActiveAccounts.length + customerStreamingPendingOrders.length }})</span>
+              <span>Streaming &amp; Combos ({{ customerStreamingActiveAccounts.length + customerStreamingPendingOrders.length }})</span>
             </button>
             <button 
               @click="portalTab = 'physical'"
@@ -2068,6 +2180,96 @@ const getGameInstallSteps = (order) => {
             class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-2.5 rounded-xl text-xs shadow-md"
           >
             Guardar Fecha
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: OPCIONES DE CUENTA Y DATOS DEL CLIENTE -->
+    <div v-if="showClientOptionsModal" class="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">⚙️</span>
+            <div>
+              <h4 class="text-base font-black text-white leading-tight">Opciones de Cuenta & PIN</h4>
+              <p class="text-[11px] text-slate-400">Actualiza tus datos de contacto y clave de seguridad</p>
+            </div>
+          </div>
+          <button @click="showClientOptionsModal = false" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs">✕</button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Nombre Completo</label>
+            <input 
+              v-model="clientOptionsForm.name"
+              type="text"
+              placeholder="Ej: Juan Pérez"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-cyan-400 focus:outline-none"
+            >
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">WhatsApp / Teléfono Móvil</label>
+            <input 
+              v-model="clientOptionsForm.phone"
+              type="tel"
+              placeholder="Ej: +54 9 11 2345-6789"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-cyan-400 focus:outline-none"
+            >
+            <p class="text-[10px] text-slate-400 mt-1">Este número se usa para identificar y sincronizar tus pedidos y billetera.</p>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Correo Electrónico (opcional)</label>
+            <input 
+              v-model="clientOptionsForm.email"
+              type="email"
+              placeholder="Ej: cliente@correo.com"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-cyan-400 focus:outline-none"
+            >
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Fecha de Nacimiento / Cumpleaños</label>
+            <input 
+              v-model="clientOptionsForm.birthDate"
+              type="date"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-cyan-400 focus:outline-none"
+            >
+          </div>
+
+          <div class="pt-2 border-t border-slate-800">
+            <label class="block text-[11px] font-bold text-amber-400 uppercase mb-1 flex items-center justify-between">
+              <span>PIN de Seguridad para Bóveda</span>
+              <span class="text-[10px] font-normal text-slate-400">Mínimo 4 dígitos</span>
+            </label>
+            <input 
+              v-model="clientOptionsForm.pin"
+              type="text"
+              maxlength="8"
+              placeholder="Ej: 1234"
+              class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-3 text-amber-300 font-mono tracking-widest text-base focus:border-amber-400 focus:outline-none"
+            >
+            <p class="text-[10px] text-slate-400 mt-1">Tu PIN personal para desbloquear esta Bóveda en cualquier dispositivo.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-3">
+          <button 
+            type="button" 
+            @click="showClientOptionsModal = false" 
+            class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs font-bold transition-colors"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            @click="saveClientOptions" 
+            class="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition-all"
+          >
+            Guardar Cambios
           </button>
         </div>
       </div>

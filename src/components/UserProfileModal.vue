@@ -123,15 +123,23 @@ const isBirthdayMonth = computed(() => {
 const clientOrders = computed(() => {
   if (!profile.value.phone && !profile.value.name) return []
   const cleanPhone = profile.value.phone.replace(/[^0-9]/g, '')
-  const streaming = adminStore.orders.filter(o => 
-    (o.customerPhone && o.customerPhone.replace(/[^0-9]/g, '') === cleanPhone) ||
-    (o.customerName && o.customerName.toLowerCase() === profile.value.name.toLowerCase())
-  )
-  const physical = adminStore.physicalOrders.filter(o => 
-    (o.customerPhone && o.customerPhone.replace(/[^0-9]/g, '') === cleanPhone) ||
-    (o.customerName && o.customerName.toLowerCase() === profile.value.name.toLowerCase())
-  )
-  return [...streaming, ...physical]
+  const normKey = adminStore.normalizeCustomerWalletKey(profile.value.phone)
+
+  const matchesOrder = (o) => {
+    if (o.customerPhone) {
+      const oClean = o.customerPhone.replace(/[^0-9]/g, '')
+      if (cleanPhone && (oClean === cleanPhone || oClean.endsWith(cleanPhone) || cleanPhone.endsWith(oClean))) return true
+      if (normKey && adminStore.normalizeCustomerWalletKey(o.customerPhone) === normKey) return true
+    }
+    if (o.customerName && profile.value.name && o.customerName.toLowerCase().trim() === profile.value.name.toLowerCase().trim()) {
+      return true
+    }
+    return false
+  }
+
+  const general = (adminStore.orders || []).filter(matchesOrder)
+  const physical = (adminStore.physicalOrders || []).filter(matchesOrder)
+  return [...general, ...physical]
 })
 
 const closeModal = () => {
@@ -406,16 +414,30 @@ onUnmounted(() => {
 
         <!-- Historial de Pedidos Recientes -->
         <div v-if="clientOrders.length > 0" class="space-y-2">
-          <h5 class="text-xs font-bold uppercase text-slate-400">Tus Pedidos Recientes ({{ clientOrders.length }})</h5>
-          <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-            <div v-for="ord in clientOrders.slice(0, 5)" :key="ord.id" class="p-2.5 rounded-xl bg-slate-950/40 border border-slate-800/80 flex justify-between items-center text-xs">
+          <div class="flex items-center justify-between">
+            <h5 class="text-xs font-bold uppercase text-slate-400">Tus Pedidos Recientes ({{ clientOrders.length }})</h5>
+            <button @click="goToVault" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold underline cursor-pointer">
+              Ver Todos en Bóveda →
+            </button>
+          </div>
+          <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div 
+              v-for="ord in clientOrders.slice(0, 6)" 
+              :key="ord.id" 
+              @click="goToVault"
+              class="p-2.5 rounded-xl bg-slate-950/40 border border-slate-800/80 flex justify-between items-center text-xs hover:border-sky-500/40 cursor-pointer transition-colors"
+              title="Click para abrir en tu Bóveda"
+            >
               <div>
-                <span class="font-bold text-white">{{ ord.platform || (ord.items?.[0]?.name) || ord.id }}</span>
-                <span class="block text-[10px] text-slate-500 font-mono">{{ ord.customerNumber || ord.id }}</span>
+                <span class="font-bold text-white block">{{ ord.gameTitle || ord.platform || ord.title || (ord.items?.[0]?.name) || ord.id }}</span>
+                <span class="text-[10px] text-slate-500 font-mono">{{ ord.customerNumber || ord.id }}</span>
               </div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="ord.status === 'Delivered' || ord.status === 'Confirmado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'">
-                {{ ord.status || 'En Proceso' }}
-              </span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="ord.status === 'Delivered' || ord.status === 'Confirmado' || ord.status === 'Dispatched' || ord.status === 'Entregado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'">
+                  {{ ord.status || 'En Proceso' }}
+                </span>
+                <span class="text-slate-500 text-xs">→</span>
+              </div>
             </div>
           </div>
         </div>

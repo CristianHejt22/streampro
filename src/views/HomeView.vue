@@ -169,15 +169,35 @@ const STREAMING_BRAND_METADATA = {
 }
 
 const getStreamingMeta = (platform) => {
-  return STREAMING_BRAND_METADATA[platform] || {
+  const base = STREAMING_BRAND_METADATA[platform] || {
     badge: 'CALIDAD PREMIUM',
+    deliveryBadge: '🟢 10-15m',
     badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
     accentGlow: 'hover:shadow-[0_0_30px_rgba(56,189,248,0.2)]',
     borderClass: 'border-white/[0.08] hover:border-sky-500/50',
     gradientBg: 'from-slate-900 via-slate-900/90 to-slate-950',
     accentColor: 'text-sky-300',
     iconSvg: `<svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>`,
-    highlights: ['Perfil individual garantizado', 'Soporte y reemplazo inmediato', 'Entrega en 10-60 min']
+    highlights: ['Perfil individual garantizado', 'Soporte y reemplazo inmediato', 'Entrega en 10-60 min'],
+    description: '',
+    warranty: '',
+    instructions: ''
+  }
+  const custom = adminStore.pricingCatalog?.[platform]
+  if (!custom) return base
+
+  const customHighlights = (Array.isArray(custom.highlights) && custom.highlights.length)
+    ? custom.highlights
+    : ((Array.isArray(custom.features) && custom.features.length) ? custom.features : base.highlights)
+
+  return {
+    ...base,
+    badge: custom.badge || custom.quality || base.badge,
+    deliveryBadge: custom.deliveryBadge || custom.deliveryTime || base.deliveryBadge,
+    highlights: customHighlights,
+    description: custom.description || base.description || '',
+    warranty: custom.warranty || base.warranty || '',
+    instructions: custom.instructions || base.instructions || ''
   }
 }
 
@@ -3121,6 +3141,15 @@ const submitOrder = async () => {
             20% OFF
           </span>
         </button>
+
+        <!-- Pastilla de Acceso Rápido: Bóveda de Cliente & Mis Pedidos -->
+        <RouterLink 
+          to="/portal"
+          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400"
+        >
+          <span>🔐</span>
+          <span>Mi Bóveda &amp; Pedidos</span>
+        </RouterLink>
       </div>
 
       <!-- Badge de Tienda Oficial Verificada -->
@@ -3457,6 +3486,24 @@ const submitOrder = async () => {
                   <span>{{ srv.platform }}</span>
                   <span class="text-[10px] text-pink-300 font-mono">({{ srv.planLabel }})</span>
                 </span>
+              </div>
+
+              <!-- Beneficios / Highlights si están definidos -->
+              <div v-if="pkg.highlights && pkg.highlights.length" class="space-y-1 py-1">
+                <div 
+                  v-for="(hl, hIdx) in pkg.highlights.slice(0, 3)" 
+                  :key="hIdx"
+                  class="flex items-center gap-2 text-xs text-slate-300"
+                >
+                  <span class="text-emerald-400 font-bold shrink-0">✓</span>
+                  <span class="truncate">{{ hl }}</span>
+                </div>
+              </div>
+
+              <!-- Notas de Entrega / Garantía si existen -->
+              <div v-if="pkg.notes || pkg.deliveryBadge" class="flex items-center justify-between text-[11px] bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-800/60 text-slate-400">
+                <span v-if="pkg.deliveryBadge" class="text-emerald-400 font-mono font-bold">{{ pkg.deliveryBadge }}</span>
+                <span v-if="pkg.notes" class="text-slate-400 truncate">{{ pkg.notes }}</span>
               </div>
 
               <!-- Precio y Descuento -->
@@ -4335,6 +4382,24 @@ const submitOrder = async () => {
                   <span class="text-[10px] text-slate-400 font-mono">1 mes</span>
                 </div>
               </div>
+            </div>
+
+            <!-- Beneficios / Highlights del Combo si están definidos -->
+            <div v-if="pkg.highlights && pkg.highlights.length" class="space-y-1 py-1">
+              <div 
+                v-for="(hl, hIdx) in pkg.highlights.slice(0, 3)" 
+                :key="hIdx"
+                class="flex items-center gap-2 text-xs text-slate-300"
+              >
+                <span class="text-emerald-400 font-bold shrink-0">✓</span>
+                <span class="truncate">{{ hl }}</span>
+              </div>
+            </div>
+
+            <!-- Notas de Entrega / Garantía si existen -->
+            <div v-if="pkg.notes || pkg.deliveryBadge" class="flex items-center justify-between text-[11px] bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-800/60 text-slate-400">
+              <span v-if="pkg.deliveryBadge" class="text-emerald-400 font-mono font-bold">{{ pkg.deliveryBadge }}</span>
+              <span v-if="pkg.notes" class="text-slate-400 truncate">{{ pkg.notes }}</span>
             </div>
 
             <!-- Precio y Descuento -->
