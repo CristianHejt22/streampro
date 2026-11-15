@@ -13,6 +13,11 @@ export const STORE_STREAMING_UNIT_PRICES = {
     "unitPrice": 7700,
     "cost": 4300
   },
+  "Netflix Perfil Extra": {
+    "name": "Netflix Perfil Extra (Sin Bloqueo)",
+    "unitPrice": 6500,
+    "cost": 4500
+  },
   "Disney+": {
     "name": "Disney+ Premium con ESPN",
     "unitPrice": 6300,

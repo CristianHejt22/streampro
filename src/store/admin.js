@@ -320,28 +320,21 @@ export const DEFAULT_PLATFORM_PLANS = {
     name: 'Netflix Premium Ultra HD 4K',
     quality: '4K ULTRA HD • HDR10',
     deliveryTime: '🟢 10-15m',
+    badge: '4K ULTRA HD • HDR10',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Cuentas y perfiles oficiales 4K Ultra HD con PIN privado de 4 dígitos y renovación mes a mes.',
+    warranty: 'Garantía oficial y soporte directo.',
     features: [
+      '4K ULTRA HD • HDR10',
       'PIN Privado de 4 dígitos',
-      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
-      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+      'Renovación mes a mes misma cuenta'
+    ],
+    highlights: [
+      '4K ULTRA HD • HDR10',
+      'PIN Privado de 4 dígitos',
+      'Renovación mes a mes misma cuenta'
     ],
     plans: {
-      'perfil_extra': {
-        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
-        units: 1,
-        type: 'perfil_extra',
-        providerCost: 4500,
-        resellerProfit: 2000,
-        clientPrice: 6500,
-        quality: '4K ULTRA HD • HDR10',
-        deliveryTime: '🟢 10-15m',
-        features: [
-          '4K ULTRA HD • HDR10',
-          'PIN Privado de 4 dígitos',
-          'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
-          'Renovación mes a mes misma cuenta (Modificación de cuenta)'
-        ]
-      },
       '1_perfil': {
         label: '1 Perfil Premium 4K (1 Dispositivo)',
         units: 1,
@@ -354,8 +347,7 @@ export const DEFAULT_PLATFORM_PLANS = {
         features: [
           '4K ULTRA HD • HDR10',
           'PIN Privado de 4 dígitos',
-          'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
-          'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+          'Renovación mes a mes misma cuenta'
         ]
       },
       '2_dispositivos': {
@@ -381,6 +373,61 @@ export const DEFAULT_PLATFORM_PLANS = {
         providerCost: 18500,
         resellerProfit: 5500,
         clientPrice: 24000
+      }
+    }
+  },
+  'Netflix Perfil Extra': {
+    name: 'Netflix Perfil Extra (Sin Bloqueo)',
+    quality: '4K ULTRA HD • HDR10',
+    deliveryTime: '🟢 10-15m',
+    badge: '⭐ SIN BLOQUEO DE HOGAR',
+    deliveryBadge: '🟢 10-15m',
+    description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado de 4 dígitos y renovación mes a mes en la misma cuenta.',
+    warranty: 'Garantía total de 30 días y soporte inmediato.',
+    features: [
+      'Sin bloqueo de hogar en Argentina (Smart TV directa)',
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K ULTRA HD • HDR10',
+      'Renovación mes a mes en la misma cuenta'
+    ],
+    highlights: [
+      'Sin bloqueo de hogar en Smart TV',
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K Ultra HD • HDR10',
+      'Renovación mes a mes misma cuenta'
+    ],
+    plans: {
+      'perfil_extra': {
+        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
+        units: 1,
+        type: 'perfil_extra',
+        providerCost: 4500,
+        resellerProfit: 2000,
+        clientPrice: 6500,
+        quality: '4K ULTRA HD • HDR10',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Sin bloqueo de hogar en Argentina (Smart TV)',
+          'PIN Privado de 4 dígitos',
+          'Calidad 4K ULTRA HD • HDR10',
+          'Renovación mes a mes misma cuenta'
+        ]
+      },
+      '2_perfiles_extra': {
+        label: '2 Perfiles Extra (2 Dispositivos)',
+        units: 2,
+        type: 'perfil_extra',
+        providerCost: 9000,
+        resellerProfit: 4000,
+        clientPrice: 13000,
+        quality: '4K ULTRA HD • HDR10',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Sin bloqueo de hogar en Argentina (Smart TV)',
+          '2 Pines Privados de 4 dígitos',
+          'Calidad 4K ULTRA HD • HDR10',
+          'Renovación mes a mes misma cuenta'
+        ]
       }
     }
   },
@@ -720,7 +767,20 @@ export const useAdminStore = defineStore('admin', {
       })(),
 
       // Catálogo de Productos Virtuales y Precios persistente
-      pricingCatalog: loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS),
+      pricingCatalog: (() => {
+        const loaded = loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS) || {}
+        // Asegurar que 'Netflix Perfil Extra' exista como contenedor independiente en la base de datos
+        if (!loaded['Netflix Perfil Extra']) {
+          loaded['Netflix Perfil Extra'] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra']))
+          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
+        }
+        // Desacoplar 'perfil_extra' del contenedor general de Netflix si venía en el guardado previo
+        if (loaded.Netflix?.plans?.perfil_extra) {
+          delete loaded.Netflix.plans.perfil_extra
+          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
+        }
+        return loaded
+      })(),
 
       // Revendedores reales generados desde el panel con usuario, contraseña y datos bancarios
       resellers: (() => {

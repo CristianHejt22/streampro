@@ -49,7 +49,7 @@ const shopConfig = computed(() => {
     showCombos: true,
     showGaming: true,
     showPhysical: false,
-    enabledStreamingPlatforms: ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
+    enabledStreamingPlatforms: ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV'],
     enabledGamingPlatforms: ['PS5', 'PS4']
   }
 })
@@ -86,7 +86,7 @@ onMounted(async () => {
 // 1. Streaming
 const filteredStreaming = computed(() => {
   if (shopConfig.value.showStreaming === false) return []
-  const enabledPlats = shopConfig.value.enabledStreamingPlatforms || ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV']
+  const enabledPlats = shopConfig.value.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV']
   const allProds = adminStore.streamingProducts || []
   
   return allProds.filter(prod => {

@@ -36,6 +36,14 @@ export const STREAMING_PLATFORMS_META = {
     bgGrad: ['#450a0a', '#090d16'],
     description: 'Calidad 4K HDR con audio espacial, perfil privado con PIN y descargas offline.'
   },
+  'Netflix Perfil Extra': {
+    name: 'Netflix Perfil Extra (Sin Bloqueo)',
+    minPrice: 6500,
+    tag: '⭐ SIN BLOQUEO DE HOGAR',
+    accentHex: '#f43f5e',
+    bgGrad: ['#4c0519', '#090d16'],
+    description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado y compatible con Smart TV.'
+  },
   Spotify: {
     name: 'Spotify Familiar Individual',
     minPrice: 3800,

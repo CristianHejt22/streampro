@@ -11,14 +11,6 @@ export const CLEAN_PRICING_CATALOG = {
   Netflix: {
     name: 'Netflix Premium Ultra HD 4K',
     plans: {
-      'perfil_extra': {
-        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
-        units: 1,
-        type: 'perfil_extra',
-        providerCost: 4500,
-        resellerProfit: 2000,
-        clientPrice: 6500
-      },
       '1_perfil': {
         label: '1 Perfil (1 Dispositivo)',
         units: 1,
@@ -50,6 +42,27 @@ export const CLEAN_PRICING_CATALOG = {
         providerCost: 18500,
         resellerProfit: 5500,
         clientPrice: 24000
+      }
+    }
+  },
+  'Netflix Perfil Extra': {
+    name: 'Netflix Perfil Extra (Sin Bloqueo)',
+    plans: {
+      'perfil_extra': {
+        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
+        units: 1,
+        type: 'perfil_extra',
+        providerCost: 4500,
+        resellerProfit: 2000,
+        clientPrice: 6500
+      },
+      '2_perfiles_extra': {
+        label: '2 Perfiles Extra (2 Dispositivos)',
+        units: 2,
+        type: 'perfil_extra',
+        providerCost: 9000,
+        resellerProfit: 4000,
+        clientPrice: 13000
       }
     }
   },
@@ -261,7 +274,7 @@ export function createStarterAccountForPlatform(platform, index = 1) {
 }
 
 export function getCleanStarterInventory() {
-  const platforms = ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium']
+  const platforms = ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium']
   return platforms.map((plat, idx) => createStarterAccountForPlatform(plat, idx + 1))
 }
 

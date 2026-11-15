@@ -1458,13 +1458,20 @@ const getGameInstallSteps = (order) => {
               
               <div class="flex flex-wrap gap-2.5 pt-2 border-t border-slate-800/80">
                 <button 
-                  v-if="acc.platform && acc.platform.toLowerCase().includes('netflix')"
+                  v-if="acc.platform && acc.platform.toLowerCase().includes('netflix') && !acc.platform.toLowerCase().includes('extra')"
                   @click="openHogarModal(acc)" 
                   class="w-full sm:w-auto flex-1 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 hover:text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex justify-center items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <span>🏠</span>
                   <span>Actualizar Hogar</span>
                 </button>
+                <div 
+                  v-if="acc.platform && acc.platform.toLowerCase().includes('extra')"
+                  class="w-full sm:w-auto flex-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold py-2 px-3 rounded-xl flex justify-center items-center gap-1.5 shadow-sm"
+                >
+                  <span>✨</span>
+                  <span>Sin Bloqueo de Hogar (Smart TV)</span>
+                </div>
                 <button @click="openSupportTicketModal('streaming', acc)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors flex justify-center items-center gap-1.5 text-slate-300 cursor-pointer">
                   <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                   <span>Reportar Falla</span>

@@ -44,7 +44,7 @@ const shopForm = ref({
   enabledGamingPlatforms: ['PS5', 'PS4']
 })
 
-const availableStreamingOptions = ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
+const availableStreamingOptions = ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
 
 const toggleStreamingPlatformOption = (plat) => {
   const list = shopForm.value.enabledStreamingPlatforms
@@ -731,9 +731,10 @@ const clearAllResellerAlerts = () => {
 }
 
 // Marketing Flyer Generator (Todas las plataformas del catálogo)
-const MARKETING_STREAMING_PLATFORMS = ['Netflix', 'Max', 'Spotify', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
+const MARKETING_STREAMING_PLATFORMS = ['Netflix', 'Netflix Perfil Extra', 'Max', 'Spotify', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
 const platformStyles = {
   Netflix: { bg: 'bg-red-600', text: 'text-white', price: 'text-yellow-300' },
+  'Netflix Perfil Extra': { bg: 'bg-rose-600', text: 'text-white', price: 'text-yellow-300' },
   Max: { bg: 'bg-blue-600', text: 'text-white', price: 'text-white' },
   Spotify: { bg: 'bg-emerald-600', text: 'text-black', price: 'text-black' },
   'Disney+': { bg: 'bg-sky-600', text: 'text-white', price: 'text-white' },
@@ -782,6 +783,7 @@ const removeServiceFromResellerPackage = (index) => {
 // y costo mayorista de referencia tomado de la lista subida ($4.300 Netflix, etc.)
 const COMBO_STREAMING_REFERENCE = {
   'Netflix': { cost: 4300, regular: 7700 },
+  'Netflix Perfil Extra': { cost: 4500, regular: 6500 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
   'Disney+': { cost: 2000, regular: 6300 },

@@ -4552,6 +4552,7 @@ const removeServiceFromPackage = (index) => {
 // y costo mayorista de referencia tomado de la lista subida
 const COMBO_STREAMING_REFERENCE = {
   'Netflix': { cost: 4300, regular: 7700 },
+  'Netflix Perfil Extra': { cost: 4500, regular: 6500 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
   'Disney+': { cost: 2000, regular: 6300 },
@@ -8995,6 +8996,7 @@ const deletePackageItem = (pkgId) => {
             <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Plataforma</label>
             <select v-model="newStock.platform" class="w-full bg-slate-900 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white font-semibold outline-none text-sm">
               <option>Netflix</option>
+              <option>Netflix Perfil Extra</option>
               <option>Max</option>
               <option>Spotify</option>
               <option>Disney+</option>
@@ -13243,6 +13245,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Plataforma</label>
               <select v-model="editingInvItem.platform" class="w-full bg-slate-950 border border-slate-800 focus:border-brand-accent rounded-xl p-3 text-white font-semibold outline-none text-sm">
                 <option>Netflix</option>
+                <option>Netflix Perfil Extra</option>
                 <option>Max</option>
                 <option>Spotify</option>
                 <option>Disney+</option>

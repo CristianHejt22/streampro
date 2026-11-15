@@ -92,8 +92,23 @@ const STREAMING_BRAND_METADATA = {
     highlights: [
       '4K ULTRA HD • HDR10',
       'PIN Privado de 4 dígitos',
-      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
       'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+    ]
+  },
+  'Netflix Perfil Extra': {
+    badge: '⭐ SIN BLOQUEO',
+    deliveryBadge: '🟢 10-15m',
+    badgeClass: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(244,63,94,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-rose-500/50',
+    gradientBg: 'from-rose-950/25 via-slate-900/90 to-slate-950',
+    accentColor: 'text-rose-400',
+    iconSvg: `<svg class="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h4.5l7.5 13.5V2H20v20h-4.5L8 8.5V22H4V2z"/><circle cx="19" cy="5" r="3" fill="#22c55e"/></svg>`,
+    highlights: [
+      'Sin bloqueo de hogar en Smart TV',
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K Ultra HD • HDR10',
+      'Renovación mes a mes misma cuenta'
     ]
   },
   'Disney+': {
@@ -436,35 +451,34 @@ const products = ref([
     badge: '4K ULTRA HD • HDR10',
     deliveryTime: '🟢 10-15m',
     specs: '4K ULTRA HD • HDR10',
-    description: 'Calidad 4K ULTRA HD • HDR10 con PIN privado de 4 dígitos y sin bloqueo de hogar en Argentina.',
+    description: 'Calidad 4K ULTRA HD • HDR10 con perfiles privados con PIN exclusivo y renovación mes a mes en la misma cuenta.',
     features: [
       '4K ULTRA HD • HDR10',
       'Entrega inmediata: 🟢 10-15m',
       'PIN Privado de 4 dígitos',
-      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
       'Renovación mes a mes misma cuenta (Modificación de cuenta)'
     ],
-    plans: PLATFORM_PLANS.Netflix.plans
+    plans: PLATFORM_PLANS.Netflix?.plans || {}
   },
   { 
     id: 101, 
     name: 'Netflix Perfil Extra', 
     category: 'Streaming', 
-    platform: 'Netflix',
+    platform: 'Netflix Perfil Extra',
     badge: '⭐ SIN BLOQUEO',
     deliveryTime: '🟢 10-15m',
     specs: '4K ULTRA HD • HDR10',
     description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado de 4 dígitos y renovación mes a mes en la misma cuenta.',
     features: [
-      '4K ULTRA HD • HDR10',
+      'Sin bloqueo de hogar en Smart TV',
       'Entrega inmediata: 🟢 10-15m',
-      'PIN Privado de 4 dígitos',
-      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
-      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K ULTRA HD • HDR10',
+      'Renovación mes a mes en la misma cuenta'
     ],
-    plans: {
+    plans: PLATFORM_PLANS['Netflix Perfil Extra']?.plans || {
       'perfil_extra': {
-        label: '1 Perfil Extra (1 Dispositivo)',
+        label: '1 Perfil Extra (Sin Bloqueo)',
         units: 1,
         type: 'perfil_extra',
         providerCost: 4500,
@@ -3482,7 +3496,7 @@ const submitOrder = async () => {
                   :key="sIdx"
                   class="bg-slate-950/90 border border-pink-500/25 px-2.5 py-1 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm"
                 >
-                  <span>{{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}</span>
+                  <span>{{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Netflix Perfil Extra' ? '⭐' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}</span>
                   <span>{{ srv.platform }}</span>
                   <span class="text-[10px] text-pink-300 font-mono">({{ srv.planLabel }})</span>
                 </span>
@@ -3964,10 +3978,10 @@ const submitOrder = async () => {
                 : 'bg-slate-900 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
             ]"
           >
-            🌟 Todas (8)
+            🌟 Todas (9)
           </button>
           <button 
-            v-for="plat in ['Netflix', 'Spotify', 'Max', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']" 
+            v-for="plat in ['Netflix', 'Netflix Perfil Extra', 'Spotify', 'Max', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']" 
             :key="plat"
             type="button"
             @click="digitalPlatformFilter = digitalPlatformFilter === plat ? 'All' : plat"
@@ -3978,7 +3992,7 @@ const submitOrder = async () => {
                 : 'bg-slate-900 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
             ]"
           >
-            <span>{{ plat === 'Netflix' ? '🍿' : plat === 'Spotify' ? '🎧' : plat === 'Max' ? '🎬' : plat === 'Disney+' ? '✨' : plat === 'IPTV' ? '📺' : plat === 'Prime Video' ? '📦' : plat === 'YouTube Premium' ? '▶️' : '🎨' }}</span>
+            <span>{{ plat === 'Netflix' ? '🍿' : plat === 'Netflix Perfil Extra' ? '⭐' : plat === 'Spotify' ? '🎧' : plat === 'Max' ? '🎬' : plat === 'Disney+' ? '✨' : plat === 'IPTV' ? '📺' : plat === 'Prime Video' ? '📦' : plat === 'YouTube Premium' ? '▶️' : '🎨' }}</span>
             <span>{{ plat }}</span>
           </button>
         </div>
@@ -4374,7 +4388,7 @@ const submitOrder = async () => {
                 >
                   <div class="flex items-center gap-2">
                     <span class="text-base">
-                      {{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}
+                      {{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Netflix Perfil Extra' ? '⭐' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}
                     </span>
                     <strong class="text-white">{{ srv.platform }}</strong>
                     <span class="text-[11px] text-slate-400">({{ srv.planLabel }})</span>
@@ -5965,7 +5979,7 @@ const submitOrder = async () => {
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 font-black text-white text-xs">
               <span>🛡️</span>
-              <span>{{ selectedProduct?.platform === 'Netflix' ? 'Garantía Oficial Netflix Argentina' : 'Garantía Oficial StreamePro' }}</span>
+              <span>{{ selectedProduct?.platform?.includes('Netflix') ? 'Garantía Oficial Netflix Argentina' : 'Garantía Oficial StreamePro' }}</span>
             </div>
             <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
               🟢 Entrega 10-15m
@@ -5973,7 +5987,7 @@ const submitOrder = async () => {
           </div>
 
           <!-- Si es Netflix, mostramos los puntos oficiales exactos -->
-          <div v-if="selectedProduct?.platform === 'Netflix'" class="space-y-1.5 pt-1 text-[11px]">
+          <div v-if="selectedProduct?.platform?.includes('Netflix')" class="space-y-1.5 pt-1 text-[11px]">
             <div class="flex items-center gap-2 bg-red-950/20 border border-red-500/30 rounded-xl px-2.5 py-1.5">
               <span class="text-xs">📺</span>
               <span class="font-black text-red-300">Calidad: 4K ULTRA HD • HDR10</span>
@@ -6814,7 +6828,7 @@ const submitOrder = async () => {
         </div>
 
         <!-- Sección Específica si es Netflix: Hogar con Netflix -->
-        <div v-if="selectedStreamingInfo.platform === 'Netflix'" class="bg-red-950/30 border border-red-500/30 p-4 rounded-2xl text-xs space-y-1.5">
+        <div v-if="selectedStreamingInfo.platform?.includes('Netflix')" class="bg-red-950/30 border border-red-500/30 p-4 rounded-2xl text-xs space-y-1.5">
           <div class="flex items-center gap-2 text-red-400 font-bold">
             <span>🏠</span>
             <span>Soporte de Actualización de Hogar con Netflix y Viajes</span>
