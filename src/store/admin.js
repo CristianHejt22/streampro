@@ -807,7 +807,7 @@ export const useAdminStore = defineStore('admin', {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
       if (stored && Array.isArray(stored) && stored.length >= 5) {
         const c1 = stored.find(p => p.sku === 'C001' || p.id === 'C001')
-        if (c1 && Number(c1.providerCost) < 7000) {
+        if (c1 && (c1.providerCost !== 4300 || c1.discountPercent !== 45)) {
           const fresh = getFreshOfficialCombos()
           saveDb(DB_KEYS.PACKAGES, fresh)
           return fresh

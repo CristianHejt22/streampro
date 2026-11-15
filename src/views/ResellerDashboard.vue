@@ -747,11 +747,12 @@ const getCatalogStreamingPrice = (platform, screens = 1) => {
 const resellerPackageForm = ref({
   title: '',
   description: '',
-  badge: '🔥 20% OFF',
+  badge: '🔥 25% OFF',
   selectedServices: [
     { platform: 'Netflix', planKey: '1_perfil', units: 1 },
-    { platform: 'Spotify', planKey: '1_perfil', units: 1 }
+    { platform: 'Prime Video', planKey: '1_perfil', units: 1 }
   ],
+  discountPercent: 25,
   promoPrice: 0
 })
 
@@ -769,9 +770,10 @@ const removeServiceFromResellerPackage = (index) => {
   }
 }
 
-// Costos de referencia oficial de perfiles individuales en combos (Netflix $4500, Prime $1500, etc.)
+// Precios de unidad en tienda streaming por nombre de plataforma para el PRECIO REAL
+// y costo mayorista de referencia tomado de la lista subida ($4.300 Netflix, etc.)
 const COMBO_STREAMING_REFERENCE = {
-  'Netflix': { cost: 4500, regular: 7700 },
+  'Netflix': { cost: 4300, regular: 7700 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
   'Disney+': { cost: 2000, regular: 6300 },
@@ -780,13 +782,28 @@ const COMBO_STREAMING_REFERENCE = {
   'YouTube': { cost: 1500, regular: 4400 },
   'YouTube Premium': { cost: 1500, regular: 4400 },
   'ChatGPT Plus': { cost: 3000, regular: 6500 },
-  'Canva Pro': { cost: 1200, regular: 3500 },
+  'Canva Pro': { cost: 1200, regular: 4500 },
   'CapCut Pro': { cost: 1200, regular: 3500 },
   'Paramount+': { cost: 1500, regular: 3800 },
   'Crunchyroll': { cost: 1500, regular: 3800 },
   'ViX': { cost: 1500, regular: 3800 },
   'Viki Rakuten': { cost: 1500, regular: 3800 },
-  'DramaBox': { cost: 1500, regular: 3800 }
+  'DramaBox': { cost: 1500, regular: 3800 },
+  'FreeReels': { cost: 1500, regular: 3800 },
+  'NetShort': { cost: 1500, regular: 3800 },
+  'ReelShort': { cost: 1500, regular: 3800 },
+  'Pornhub': { cost: 1500, regular: 4000 },
+  'Claro': { cost: 2000, regular: 4800 },
+  'Personal': { cost: 2500, regular: 5400 }
+}
+
+const setResellerDiscountPreset = (pct) => {
+  resellerPackageForm.value.discountPercent = pct
+  const orig = resellerPackageCalc.value.regular
+  if (orig > 0) {
+    resellerPackageForm.value.promoPrice = Math.round((orig * (1 - pct / 100)) / 50) * 50
+    resellerPackageForm.value.badge = pct === 45 ? '🔥 45% OFF ESPECIAL' : `🔥 ${pct}% OFF`
+  }
 }
 
 const resellerPackageCalc = computed(() => {
@@ -806,19 +823,21 @@ const resellerPackageCalc = computed(() => {
     }
   })
 
-  // Sugerencia de precio promo con ~25-28% de descuento
-  const suggestedPromo = regular > 0 ? Math.max(cost + 2000, Math.round((regular * 0.72) / 100) * 100) : 0
+  // Descuento configurable (15% al 35% o Especial 45%)
+  const discount = Number(resellerPackageForm.value.discountPercent || 25)
+  const suggestedPromo = regular > 0 ? Math.round((regular * (1 - discount / 100)) / 50) * 50 : 0
   const promo = Number(resellerPackageForm.value.promoPrice) || suggestedPromo
   const profit = promo > cost ? promo - cost : 0
-  const discount = regular > 0 ? Math.max(0, Math.round(((regular - promo) / regular) * 100)) : 0
+  const calculatedDiscount = regular > 0 ? Math.max(0, Math.round(((regular - promo) / regular) * 100)) : 0
 
-  return { cost, regular, promo, profit, discount }
+  return { cost, regular, promo, profit, discount: calculatedDiscount }
 })
 
 // Auto sugerir precio promo cuando cambia la lista de servicios seleccionados
 watch(() => resellerPackageForm.value.selectedServices, () => {
   if (resellerPackageCalc.value.regular > 0 && (!resellerPackageForm.value.promoPrice || resellerPackageForm.value.promoPrice === 0)) {
-    resellerPackageForm.value.promoPrice = Math.max(resellerPackageCalc.value.cost + 2000, Math.round((resellerPackageCalc.value.regular * 0.72) / 100) * 100)
+    const pct = Number(resellerPackageForm.value.discountPercent || 25)
+    resellerPackageForm.value.promoPrice = Math.round((resellerPackageCalc.value.regular * (1 - pct / 100)) / 50) * 50
   }
 }, { deep: true, immediate: true })
 
@@ -2246,6 +2265,66 @@ const submitResellerGameInquiry = () => {
           </div>
         </div>
 
+        <!-- SELECTOR DE DESCUENTO CONFIGURABLE (15% AL 35% Y ESPECIALES DEL 45%) -->
+        <div class="bg-slate-950/90 p-4 rounded-2xl border border-pink-500/30 space-y-3">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <span class="text-xs uppercase font-black text-pink-300 tracking-wider flex items-center gap-1.5">
+                <span>⚡</span> Descuento Configurable para tu Combo
+              </span>
+              <p class="text-[11px] text-slate-400">Elige el porcentaje de descuento promocional (15% al 35% o Especial 45%) sobre el Precio Real de tienda.</p>
+            </div>
+            <span class="text-xs font-black px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono">
+              {{ resellerPackageForm.discountPercent || 25 }}% OFF Seleccionado
+            </span>
+          </div>
+
+          <!-- Botones de Descuento Rápido y Slider -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button" 
+              v-for="d in [15, 20, 25, 30, 35]" 
+              :key="d"
+              @click="setResellerDiscountPreset(d)"
+              :class="[
+                'px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                (resellerPackageForm.discountPercent === d) 
+                  ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30 scale-105' 
+                  : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+              ]"
+            >
+              {{ d }}% OFF
+            </button>
+            <button 
+              type="button" 
+              @click="setResellerDiscountPreset(45)"
+              :class="[
+                'px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1',
+                (resellerPackageForm.discountPercent === 45) 
+                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg shadow-rose-500/30 scale-105 animate-pulse' 
+                  : 'bg-gradient-to-r from-amber-950/60 to-rose-950/60 text-amber-300 border border-amber-500/40 hover:brightness-125'
+              ]"
+            >
+              <span>⭐</span> 45% ESPECIAL
+            </button>
+
+            <!-- Slider interactivo -->
+            <div class="flex-1 min-w-[160px] flex items-center gap-2 px-2">
+              <span class="text-[10px] text-slate-400 font-bold font-mono">15%</span>
+              <input 
+                type="range" 
+                min="15" 
+                max="45" 
+                step="1"
+                v-model.number="resellerPackageForm.discountPercent"
+                @input="setResellerDiscountPreset(resellerPackageForm.discountPercent)"
+                class="w-full accent-pink-500 cursor-pointer"
+              >
+              <span class="text-[10px] text-amber-300 font-bold font-mono">45%</span>
+            </div>
+          </div>
+        </div>
+
         <!-- CÁLCULO DE GANANCIAS EN TIEMPO REAL -->
         <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-pink-500/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
           <div>
@@ -2254,7 +2333,7 @@ const submitResellerGameInquiry = () => {
           </div>
 
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Sugerido Regular:</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Real Tienda (Antes):</span>
             <span class="text-lg font-black text-slate-400 line-through font-mono">${{ resellerPackageCalc.regular.toLocaleString() }} ARS</span>
           </div>
 
@@ -2263,7 +2342,7 @@ const submitResellerGameInquiry = () => {
             <input 
               v-model="resellerPackageForm.promoPrice" 
               type="number" 
-              step="100" 
+              step="50" 
               required
               class="w-full bg-[#020617] border border-pink-500/50 rounded-xl p-2.5 text-base font-black text-pink-400 font-mono outline-none"
             >
@@ -2272,7 +2351,7 @@ const submitResellerGameInquiry = () => {
           <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30 text-center">
             <span class="text-[10px] text-emerald-400 uppercase font-bold block">Tu Ganancia Neta:</span>
             <span class="text-xl font-black text-emerald-400">+${{ resellerPackageCalc.profit.toLocaleString() }} ARS</span>
-            <span class="text-[10px] text-slate-400 block">({{ resellerPackageCalc.discount }}% descuento cliente)</span>
+            <span class="text-[10px] text-slate-400 block font-mono font-bold text-emerald-300">({{ resellerPackageCalc.discount }}% descuento cliente)</span>
           </div>
         </div>
 

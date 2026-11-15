@@ -4021,8 +4021,9 @@ const newPackageForm = ref({
   image: '',
   selectedServices: [
     { platform: 'Netflix', planKey: '1_perfil', units: 1 },
-    { platform: 'Spotify', planKey: '1_perfil', units: 1 }
+    { platform: 'Prime Video', planKey: '1_perfil', units: 1 }
   ],
+  discountPercent: 25,
   promoPrice: 0
 })
 
@@ -4070,6 +4071,9 @@ const editingPackageForm = ref({
 })
 
 const openEditPackageModal = (pkg) => {
+  const orig = Number(pkg.originalPrice || 0)
+  const promo = Number(pkg.promoPrice || 0)
+  const discount = pkg.discountPercent || (orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 25)
   editingPackageForm.value = {
     id: pkg.id,
     title: pkg.title || '',
@@ -4078,10 +4082,11 @@ const openEditPackageModal = (pkg) => {
     badge: pkg.badge || '',
     durationDays: String(pkg.durationDays || '30'),
     devices: String(pkg.devices || '1'),
-    promoPrice: Number(pkg.promoPrice || 0),
-    originalPrice: Number(pkg.originalPrice || 0),
+    promoPrice: promo,
+    originalPrice: orig,
     providerCost: Number(pkg.providerCost || 0),
     resellerProfit: Number(pkg.resellerProfit || 0),
+    discountPercent: discount,
     image: pkg.image || '',
     active: pkg.active !== false
   }
@@ -4204,9 +4209,10 @@ const removeServiceFromPackage = (index) => {
   }
 }
 
-// Costos de referencia oficial de perfiles individuales en combos (Netflix $4500, Prime $1500, etc.)
+// Precios de unidad en tienda streaming por nombre de plataforma para el PRECIO REAL
+// y costo mayorista de referencia tomado de la lista subida
 const COMBO_STREAMING_REFERENCE = {
-  'Netflix': { cost: 4500, regular: 7700 },
+  'Netflix': { cost: 4300, regular: 7700 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
   'Disney+': { cost: 2000, regular: 6300 },
@@ -4215,13 +4221,40 @@ const COMBO_STREAMING_REFERENCE = {
   'YouTube': { cost: 1500, regular: 4400 },
   'YouTube Premium': { cost: 1500, regular: 4400 },
   'ChatGPT Plus': { cost: 3000, regular: 6500 },
-  'Canva Pro': { cost: 1200, regular: 3500 },
+  'Canva Pro': { cost: 1200, regular: 4500 },
   'CapCut Pro': { cost: 1200, regular: 3500 },
   'Paramount+': { cost: 1500, regular: 3800 },
   'Crunchyroll': { cost: 1500, regular: 3800 },
   'ViX': { cost: 1500, regular: 3800 },
   'Viki Rakuten': { cost: 1500, regular: 3800 },
-  'DramaBox': { cost: 1500, regular: 3800 }
+  'DramaBox': { cost: 1500, regular: 3800 },
+  'FreeReels': { cost: 1500, regular: 3800 },
+  'NetShort': { cost: 1500, regular: 3800 },
+  'ReelShort': { cost: 1500, regular: 3800 },
+  'Pornhub': { cost: 1500, regular: 4000 },
+  'Claro': { cost: 2000, regular: 4800 },
+  'Personal': { cost: 2500, regular: 5400 }
+}
+
+// Selector y sincronizador de descuento configurable (15% al 35% y Especiales del 45%)
+const setPackageDiscountPreset = (pct, target = 'new') => {
+  if (target === 'edit') {
+    editingPackageForm.value.discountPercent = pct
+    const orig = Number(editingPackageForm.value.originalPrice || 0)
+    if (orig > 0) {
+      editingPackageForm.value.promoPrice = Math.round((orig * (1 - pct / 100)) / 50) * 50
+      const cost = Number(editingPackageForm.value.providerCost || 0)
+      editingPackageForm.value.resellerProfit = editingPackageForm.value.promoPrice - cost
+      editingPackageForm.value.badge = pct === 45 ? '🔥 45% OFF ESPECIAL' : `🔥 ${pct}% OFF`
+    }
+  } else {
+    newPackageForm.value.discountPercent = pct
+    const orig = packageCalculation.value.totalRegular
+    if (orig > 0) {
+      newPackageForm.value.promoPrice = Math.round((orig * (1 - pct / 100)) / 50) * 50
+      newPackageForm.value.badge = pct === 45 ? '🔥 45% OFF ESPECIAL' : `🔥 ${pct}% OFF`
+    }
+  }
 }
 
 // Cálculo dinámico de costos y precios sugeridos de los servicios seleccionados
@@ -4242,21 +4275,21 @@ const packageCalculation = computed(() => {
     }
   })
 
-  // Sugerencia de precio promo con ~28% de descuento sobre el precio de lista regular
-  const suggestedPromo = totalRegular > 0 ? Math.max(totalCost + 2500, Math.round((totalRegular * 0.72) / 100) * 100) : 0
+  // Descuento configurable (15% al 35% o Especial 45%)
+  const discount = Number(newPackageForm.value.discountPercent || 25)
+  const suggestedPromo = totalRegular > 0 ? Math.round((totalRegular * (1 - discount / 100)) / 50) * 50 : 0
   const promo = Number(newPackageForm.value.promoPrice) || suggestedPromo
-  const grossMargin = promo - totalCost
-  const resellerProfit = Math.round((grossMargin * 0.65) / 50) * 50
-  const providerProfit = grossMargin - resellerProfit
-  const discount = totalRegular > 0 ? Math.max(0, Math.round(((totalRegular - promo) / totalRegular) * 100)) : 0
+  const resellerProfit = promo > totalCost ? promo - totalCost : 0
+  const calculatedDiscount = totalRegular > 0 ? Math.max(0, Math.round(((totalRegular - promo) / totalRegular) * 100)) : 0
 
-  return { totalCost, totalRegular, promo, profit: grossMargin, resellerProfit, providerProfit, discount }
+  return { totalCost, totalRegular, promo, profit: resellerProfit, resellerProfit, discount: calculatedDiscount }
 })
 
 // Auto sugerir precio promo cuando cambia la lista de servicios seleccionados
 watch(() => newPackageForm.value.selectedServices, () => {
   if (packageCalculation.value.totalRegular > 0 && (!newPackageForm.value.promoPrice || newPackageForm.value.promoPrice === 0)) {
-    newPackageForm.value.promoPrice = Math.max(packageCalculation.value.totalCost + 2500, Math.round((packageCalculation.value.totalRegular * 0.72) / 100) * 100)
+    const pct = Number(newPackageForm.value.discountPercent || 25)
+    newPackageForm.value.promoPrice = Math.round((packageCalculation.value.totalRegular * (1 - pct / 100)) / 50) * 50
   }
 }, { deep: true, immediate: true })
 
@@ -7636,21 +7669,81 @@ const deletePackageItem = (pkgId) => {
           </div>
         </div>
 
+        <!-- SELECTOR DE DESCUENTO CONFIGURABLE (15% AL 35% Y ESPECIALES DEL 45%) -->
+        <div class="bg-slate-950/90 p-4 rounded-2xl border border-purple-500/30 space-y-3">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <span class="text-xs uppercase font-black text-purple-300 tracking-wider flex items-center gap-1.5">
+                <span>⚡</span> Descuento Configurable de Combo
+              </span>
+              <p class="text-[11px] text-slate-400">Rango estándar del 15% al 35% o Especial Promocional del 45% sobre el Precio Real de tienda.</p>
+            </div>
+            <span class="text-xs font-black px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono">
+              {{ newPackageForm.discountPercent || 25 }}% OFF Seleccionado
+            </span>
+          </div>
+
+          <!-- Botones Rápidos de Descuento y Slider -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button" 
+              v-for="d in [15, 20, 25, 30, 35]" 
+              :key="d"
+              @click="setPackageDiscountPreset(d, 'new')"
+              :class="[
+                'px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                (newPackageForm.discountPercent === d) 
+                  ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30 scale-105' 
+                  : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+              ]"
+            >
+              {{ d }}% OFF
+            </button>
+            <button 
+              type="button" 
+              @click="setPackageDiscountPreset(45, 'new')"
+              :class="[
+                'px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1',
+                (newPackageForm.discountPercent === 45) 
+                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg shadow-rose-500/30 scale-105 animate-pulse' 
+                  : 'bg-gradient-to-r from-amber-950/60 to-rose-950/60 text-amber-300 border border-amber-500/40 hover:brightness-125'
+              ]"
+            >
+              <span>⭐</span> 45% ESPECIAL
+            </button>
+
+            <!-- Slider interactivo -->
+            <div class="flex-1 min-w-[160px] flex items-center gap-2 px-2">
+              <span class="text-[10px] text-slate-400 font-bold font-mono">15%</span>
+              <input 
+                type="range" 
+                min="15" 
+                max="45" 
+                step="1"
+                v-model.number="newPackageForm.discountPercent"
+                @input="setPackageDiscountPreset(newPackageForm.discountPercent, 'new')"
+                class="w-full accent-pink-500 cursor-pointer"
+              >
+              <span class="text-[10px] text-amber-300 font-bold font-mono">45%</span>
+            </div>
+          </div>
+        </div>
+
         <!-- CÁLCULO EN VIVO Y PRECIO PROMO -->
         <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-purple-500/20 grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Costo Proveedor:</span>
-            <span class="text-base font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }}</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Costo Proveedor Base:</span>
+            <span class="text-base font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }} ARS</span>
           </div>
 
           <div>
             <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Ganancia Revendedor:</span>
-            <span class="text-base font-black text-emerald-400 font-mono">+${{ packageCalculation.resellerProfit.toLocaleString() }}</span>
+            <span class="text-base font-black text-emerald-400 font-mono">+${{ packageCalculation.resellerProfit.toLocaleString() }} ARS</span>
           </div>
 
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Lista (Antes):</span>
-            <span class="text-base font-black text-slate-400 line-through font-mono">${{ packageCalculation.totalRegular.toLocaleString() }}</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Real Tienda (Antes):</span>
+            <span class="text-base font-black text-slate-400 line-through font-mono">${{ packageCalculation.totalRegular.toLocaleString() }} ARS</span>
           </div>
 
           <div>
@@ -7658,7 +7751,7 @@ const deletePackageItem = (pkgId) => {
             <input 
               v-model="newPackageForm.promoPrice" 
               type="number" 
-              step="100" 
+              step="50" 
               required
               class="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-2 text-sm font-black text-pink-400 font-mono outline-none"
             >
@@ -7667,7 +7760,7 @@ const deletePackageItem = (pkgId) => {
           <div class="bg-purple-500/15 p-2.5 rounded-xl border border-purple-500/30 text-center col-span-2 sm:col-span-1">
             <span class="text-[9px] text-purple-300 uppercase font-bold block">Descuento Cliente:</span>
             <span class="text-base font-black text-emerald-400">{{ packageCalculation.discount }}% OFF</span>
-            <span class="text-[9px] text-slate-400 block font-mono">Margen Total: +${{ packageCalculation.profit.toLocaleString() }}</span>
+            <span class="text-[9px] text-slate-400 block font-mono">Margen: +${{ packageCalculation.profit.toLocaleString() }}</span>
           </div>
         </div>
 
@@ -13390,24 +13483,96 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             ></textarea>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- SELECTOR DE DESCUENTO CONFIGURABLE EN EDICIÓN (15% AL 35% Y ESPECIALES DEL 45%) -->
+          <div class="bg-slate-950 p-4 rounded-2xl border border-pink-500/30 space-y-2.5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs uppercase font-black text-pink-300 tracking-wider flex items-center gap-1.5">
+                <span>⚡</span> Descuento Configurable
+              </span>
+              <span class="text-xs font-black px-2.5 py-0.5 rounded-lg bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono">
+                {{ editingPackageForm.discountPercent || 25 }}% OFF
+              </span>
+            </div>
+
+            <!-- Chips de Descuento y Slider -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button 
+                type="button" 
+                v-for="d in [15, 20, 25, 30, 35]" 
+                :key="d"
+                @click="setPackageDiscountPreset(d, 'edit')"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  (editingPackageForm.discountPercent === d) 
+                    ? 'bg-pink-500 text-white shadow scale-105' 
+                    : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                ]"
+              >
+                {{ d }}%
+              </button>
+              <button 
+                type="button" 
+                @click="setPackageDiscountPreset(45, 'edit')"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1',
+                  (editingPackageForm.discountPercent === 45) 
+                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow scale-105' 
+                    : 'bg-gradient-to-r from-amber-950/60 to-rose-950/60 text-amber-300 border border-amber-500/40'
+                ]"
+              >
+                <span>⭐</span> 45% ESPECIAL
+              </button>
+
+              <div class="flex-1 min-w-[120px] flex items-center gap-1 px-1">
+                <input 
+                  type="range" 
+                  min="15" 
+                  max="45" 
+                  step="1"
+                  v-model.number="editingPackageForm.discountPercent"
+                  @input="setPackageDiscountPreset(editingPackageForm.discountPercent, 'edit')"
+                  class="w-full accent-pink-500 cursor-pointer"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div>
-              <label class="block text-xs font-bold text-pink-300 uppercase mb-1">Precio Promocional ($ ARS)</label>
+              <label class="block text-[11px] font-black text-slate-400 uppercase mb-1">Costo Proveedor ($)</label>
               <input 
-                v-model.number="editingPackageForm.promoPrice" 
+                v-model.number="editingPackageForm.providerCost" 
                 type="number" 
-                step="50"
-                required
-                class="w-full bg-slate-950 border border-pink-500/50 rounded-xl p-2.5 text-sm font-black text-pink-400 font-mono outline-none"
+                step="50" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs font-mono text-slate-200 outline-none"
               >
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Precio Regular / Antes ($ ARS)</label>
+              <label class="block text-[11px] font-black text-emerald-400 uppercase mb-1">Ganancia Revendedor ($)</label>
+              <input 
+                v-model.number="editingPackageForm.resellerProfit" 
+                type="number" 
+                step="50" 
+                class="w-full bg-slate-950 border border-emerald-500/40 rounded-xl p-2 text-xs font-black text-emerald-400 font-mono outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-pink-300 uppercase mb-1">Precio Promo Venta ($)</label>
+              <input 
+                v-model.number="editingPackageForm.promoPrice" 
+                type="number" 
+                step="50" 
+                required
+                class="w-full bg-slate-950 border border-pink-500/50 rounded-xl p-2 text-xs font-black text-pink-400 font-mono outline-none"
+              >
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-400 uppercase mb-1">Precio Real / Antes ($)</label>
               <input 
                 v-model.number="editingPackageForm.originalPrice" 
                 type="number" 
-                step="50"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-300 font-mono outline-none"
+                step="50" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-slate-400 font-mono outline-none"
               >
             </div>
           </div>
