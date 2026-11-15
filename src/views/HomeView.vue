@@ -6280,11 +6280,14 @@ const submitOrder = async () => {
             <div v-else class="space-y-1 text-slate-300 font-mono text-xs">
               <p>Titular: <strong class="text-white">{{ currentReseller?.holderName || currentReseller?.name }}</strong></p>
               <p>Entidad: <span class="text-slate-300">{{ currentReseller?.bankName || 'Mercado Pago / Banco' }}</span></p>
-              <p>CUIT/CUIL: <span class="text-slate-300">{{ currentReseller?.cuit || '20-00000000-0' }}</span></p>
+              <p v-if="currentReseller?.cuit">CUIT/CUIL: <span class="text-slate-300">{{ currentReseller.cuit }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
-                <span class="text-amber-300 font-bold">Alias/CBU: {{ currentReseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR' }}</span>
+                <span class="text-amber-300 font-bold select-all">Alias/CBU: {{ currentReseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR' }}</span>
                 <span class="text-[11px] text-slate-300 font-sans">WhatsApp: {{ currentReseller?.contactNumber }}</span>
               </div>
+              <p v-if="currentReseller?.cbuNumber" class="text-[11px] text-slate-400 font-mono pt-0.5">
+                CBU/CVU N°: <span class="text-slate-200 select-all">{{ currentReseller.cbuNumber }}</span>
+              </p>
             </div>
           </div>
 

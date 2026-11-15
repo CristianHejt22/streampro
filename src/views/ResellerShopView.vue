@@ -857,6 +857,7 @@ const shareShopLink = () => {
               <div class="font-bold text-amber-300">💳 Transferencia Directa a este Distribuidor:</div>
               <div class="text-slate-300"><strong>Titular:</strong> {{ reseller.holderName || reseller.name }}</div>
               <div class="text-slate-300"><strong>Alias / CBU:</strong> <span class="font-mono text-amber-300 font-bold select-all">{{ reseller.cbuAlias }}</span></div>
+              <div v-if="reseller.cbuNumber" class="text-slate-300 font-mono"><strong>CBU/CVU:</strong> <span class="select-all">{{ reseller.cbuNumber }}</span></div>
               <div v-if="reseller.bankName" class="text-slate-400 text-[11px]">{{ reseller.bankName }}</div>
             </div>
 

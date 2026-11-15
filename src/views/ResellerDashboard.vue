@@ -32,6 +32,10 @@ const shopForm = ref({
   tagline: '',
   whatsapp: '',
   bannerText: '',
+  cbuAlias: '',
+  cbuNumber: '',
+  bankName: 'Mercado Pago / Banco',
+  holderName: '',
   showStreaming: true,
   showCombos: true,
   showGaming: true,
@@ -74,6 +78,10 @@ const initShopForm = () => {
     tagline: cfg.tagline || 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
     whatsapp: cur.contactNumber || cfg.whatsapp || '',
     bannerText: cfg.bannerText || '¡Activación rápida en 10-60 minutos con garantía oficial StreamePro!',
+    cbuAlias: cur.cbuAlias || cfg.cbuAlias || '',
+    cbuNumber: cur.cbuNumber || cfg.cbuNumber || '',
+    bankName: cur.bankName || cfg.bankName || 'Mercado Pago / Banco',
+    holderName: cur.holderName || cfg.holderName || cur.name || '',
     showStreaming: cfg.showStreaming !== false,
     showCombos: cfg.showCombos !== false,
     showGaming: cfg.showGaming !== false,
@@ -1567,6 +1575,15 @@ const submitResellerGameInquiry = () => {
           <span>Estudio Flyers</span>
         </button>
 
+        <button 
+          @click="tab = 'my_shop'"
+          class="bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 hover:text-white border border-amber-500/40 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow cursor-pointer"
+          title="Configurar tu cuenta bancaria de cobro (Alias/CBU) y tienda corta"
+        >
+          <span>💳</span>
+          <span>Mi Cuenta & Cobros</span>
+        </button>
+
         <div class="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-right">
           <span class="text-[10px] uppercase font-bold text-slate-500 block">Billetera Disponible</span>
           <span class="text-xs font-black text-emerald-400 font-mono">${{ resellerStore.wallet }} ARS</span>
@@ -1625,7 +1642,7 @@ const submitResellerGameInquiry = () => {
         :class="['font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap', tab === 'my_shop' ? 'bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
       >
         <span>🏪</span>
-        <span>Mi Tienda Online (streamepro.me/:slug)</span>
+        <span>Mi Tienda & Datos de Cobro</span>
       </button>
     </div>
 
@@ -3845,35 +3862,84 @@ const submitResellerGameInquiry = () => {
           </div>
 
           <!-- Bloque 2: Datos de Cobro Directo al Cliente -->
-          <div class="bg-slate-900/80 border border-white/[0.08] p-6 rounded-3xl shadow-xl space-y-4">
-            <h4 class="text-base font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-              <span>💳</span>
-              <span>Datos Bancarios para que tus Clientes te Paguen</span>
-            </h4>
-            <p class="text-xs text-slate-400">
-              Cuando tus clientes finalicen su pedido en tu tienda, se les mostrarán estos datos para transferirte directamente a ti:
+          <div class="bg-slate-900/80 border border-amber-500/30 p-6 rounded-3xl shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <h4 class="text-base font-black text-white flex items-center gap-2">
+                <span>💳</span>
+                <span>Datos Bancarios para que tus Clientes te Paguen</span>
+              </h4>
+              <span class="text-[10px] font-black uppercase tracking-wider bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+                Cobro Directo 100% Tuyo
+              </span>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Configura tu cuenta bancaria o billetera virtual. Cuando tus clientes compren en tu tienda (<span class="text-amber-300 font-mono">streamepro.me/{{ shopForm.slug }}</span>) o mediante tus enlaces de catálogo, se les mostrarán estos datos para transferirte directamente a ti:
             </p>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label class="block font-bold text-slate-400 uppercase mb-1">Tu Alias o CBU</label>
+                <label class="block font-bold text-amber-300 uppercase mb-1">Tu Alias o CVU/CBU Principal *</label>
                 <input 
-                  :value="resellerStore.sessionUser?.cbuAlias" 
-                  disabled 
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-amber-300 font-mono font-bold"
+                  v-model="shopForm.cbuAlias" 
+                  type="text" 
+                  placeholder="Ej: MARIO.STREAM.MP o 000000310..."
+                  class="w-full bg-slate-950 border border-amber-500/40 focus:border-amber-400 rounded-xl p-2.5 text-amber-300 font-mono font-bold outline-none"
+                  required
                 >
+                <span class="text-[10px] text-slate-400 block mt-0.5">El alias que le pasarás a tus clientes para transferirte.</span>
               </div>
+
               <div>
-                <label class="block font-bold text-slate-400 uppercase mb-1">Banco / Billetera</label>
+                <label class="block font-bold text-slate-300 uppercase mb-1">Banco o Billetera Virtual *</label>
                 <input 
-                  :value="resellerStore.sessionUser?.bankName || 'Mercado Pago / Banco'" 
-                  disabled 
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-300"
+                  v-model="shopForm.bankName" 
+                  type="text" 
+                  placeholder="Ej: Mercado Pago, Lemon, Brubank, Galicia..."
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-2.5 text-white outline-none"
+                  required
                 >
+                <span class="text-[10px] text-slate-400 block mt-0.5">Entidad financiera donde recibes el dinero.</span>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase mb-1">Nombre del Titular de la Cuenta</label>
+                <input 
+                  v-model="shopForm.holderName" 
+                  type="text" 
+                  :placeholder="resellerStore.sessionUser?.name || 'Nombre y Apellido del Titular'"
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-2.5 text-white outline-none"
+                >
+                <span class="text-[10px] text-slate-400 block mt-0.5">Figura en la transferencia para que el cliente verifique tu nombre.</span>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase mb-1">CBU / CVU Numérico (22 Dígitos Opcional)</label>
+                <input 
+                  v-model="shopForm.cbuNumber" 
+                  type="text" 
+                  maxlength="22"
+                  placeholder="0000003100012345678901"
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl p-2.5 text-slate-300 font-mono outline-none"
+                >
+                <span class="text-[10px] text-slate-400 block mt-0.5">Opcional si prefieren transferirte por número largo.</span>
               </div>
             </div>
-            <p class="text-[10px] text-slate-500">
-              Puedes actualizar tus datos de cobro en cualquier momento desde la sección de ajustes de perfil.
-            </p>
+
+            <!-- Previsualización en Vivo de la Ficha Bancaria del Cliente -->
+            <div class="bg-slate-950/90 p-3.5 rounded-2xl border border-white/[0.08] space-y-1.5 text-xs font-mono">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-sans">
+                👀 Vista Previa para tus Clientes al Pagar:
+              </span>
+              <div class="flex flex-wrap justify-between items-center text-slate-200">
+                <span>Titular: <strong class="text-white">{{ shopForm.holderName || resellerStore.sessionUser?.name || 'Tu Nombre' }}</strong></span>
+                <span class="text-slate-400">{{ shopForm.bankName || 'Mercado Pago' }}</span>
+              </div>
+              <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 flex justify-between items-center text-amber-300 font-bold">
+                <span>Alias/CBU: {{ shopForm.cbuAlias || 'SIN-CONFIGURAR' }}</span>
+                <span class="text-[10px] text-emerald-400 font-sans font-bold">✓ Verificado</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3989,7 +4055,7 @@ const submitResellerGameInquiry = () => {
                 class="w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 <span>💾</span>
-                <span>Guardar Configuración de Mi Tienda</span>
+                <span>Guardar Tienda y Cuenta Bancaria de Cobro</span>
               </button>
             </div>
           </div>

@@ -5858,7 +5858,7 @@ export const useResellerStore = defineStore('reseller', {
       const adminStore = useAdminStore()
       return adminStore.clearResellerAlerts(this.activeResellerId)
     },
-updateShopConfig(config) {
+    updateShopConfig(config) {
       const adminStore = useAdminStore()
       const res = adminStore.resellers.find(r => r.id === this.activeResellerId)
       if (!res) return { error: 'Distribuidor no encontrado' }
@@ -5874,11 +5874,31 @@ updateShopConfig(config) {
         res.contactNumber = config.whatsapp
         res.shopConfig.whatsapp = config.whatsapp
       }
+      if (config.cbuAlias !== undefined) {
+        res.cbuAlias = String(config.cbuAlias).trim()
+        res.shopConfig.cbuAlias = res.cbuAlias
+      }
+      if (config.cbuNumber !== undefined) {
+        res.cbuNumber = String(config.cbuNumber).trim()
+        res.shopConfig.cbuNumber = res.cbuNumber
+      }
+      if (config.bankName !== undefined) {
+        res.bankName = String(config.bankName).trim()
+        res.shopConfig.bankName = res.bankName
+      }
+      if (config.holderName !== undefined) {
+        res.holderName = String(config.holderName).trim()
+        res.shopConfig.holderName = res.holderName
+      }
       adminStore.persist(DB_KEYS.RESELLERS)
       saveResellerToFirebase(res).catch(() => {})
       this.sessionUser = { ...res }
       this.persist()
       return { success: true, shopConfig: res.shopConfig, reseller: res }
+    },
+
+    updateMyBankInfo({ cbuAlias, cbuNumber, bankName, holderName }) {
+      return this.updateShopConfig({ cbuAlias, cbuNumber, bankName, holderName })
     },
 
 

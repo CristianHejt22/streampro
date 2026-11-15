@@ -36,8 +36,11 @@ const isGamingOrder = (o) => {
   if (!o) return false
   return o.orderType === 'gaming' ||
     o.category === 'Videojuegos Digitales' ||
+    o.category === 'gaming' ||
     Boolean(o.gameTitle) ||
-    Boolean(o.licenseType)
+    Boolean(o.licenseType) ||
+    Boolean(o.gamePlatform) ||
+    (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PS3') || o.platform.includes('Juego')))
 }
 
 const normalizeDigits = (val) => String(val || '').replace(/[^0-9]/g, '').replace(/^549?/, '').replace(/^0/, '')
@@ -48,14 +51,15 @@ const matchPhoneOrIdExact = (storedPhone, storedId, extraOrderId = '') => {
   const qId = normalizeId(rawQuery)
   const qDigits = normalizeDigits(rawQuery)
 
-  if (qId && qId.length >= 4) {
+  if (qId && qId.length >= 3) {
     if (storedId && normalizeId(storedId) === qId) return true
     if (extraOrderId && normalizeId(extraOrderId) === qId) return true
   }
   if (qDigits && qDigits.length >= 6 && storedPhone) {
     const sDigits = normalizeDigits(storedPhone)
-    if (sDigits && (sDigits === qDigits || sDigits.endsWith(qDigits) || qDigits.endsWith(sDigits))) {
-      return true
+    if (sDigits) {
+      if (sDigits === qDigits || sDigits.endsWith(qDigits) || qDigits.endsWith(sDigits)) return true
+      if (sDigits.length >= 7 && qDigits.length >= 7 && sDigits.slice(-7) === qDigits.slice(-7)) return true
     }
   }
   return false
@@ -72,6 +76,8 @@ const collectAuthenticatedContext = () => {
   const clientIds = new Set()
   const qDigits = normalizeDigits(searchIdentifier.value)
   if (qDigits.length >= 6) phones.add(qDigits)
+  const qId = normalizeId(searchIdentifier.value)
+  if (qId.length >= 3) clientIds.add(qId)
 
   authenticatedUsers.value.forEach(u => {
     if (normalizeDigits(u.phone)) phones.add(normalizeDigits(u.phone))
@@ -80,10 +86,16 @@ const collectAuthenticatedContext = () => {
   authenticatedOrders.value.forEach(o => {
     if (normalizeDigits(o.customerPhone)) phones.add(normalizeDigits(o.customerPhone))
     if (normalizeId(o.customerNumber)) clientIds.add(normalizeId(o.customerNumber))
+    if (normalizeId(o.id)) clientIds.add(normalizeId(o.id))
   })
   authenticatedClients.value.forEach(c => {
     if (normalizeDigits(c.phone)) phones.add(normalizeDigits(c.phone))
     if (normalizeId(c.clientNumber || c.id)) clientIds.add(normalizeId(c.clientNumber || c.id))
+  })
+  authenticatedPhysicalOrders.value.forEach(o => {
+    if (normalizeDigits(o.customerPhone)) phones.add(normalizeDigits(o.customerPhone))
+    if (normalizeId(o.customerNumber)) clientIds.add(normalizeId(o.customerNumber))
+    if (normalizeId(o.id)) clientIds.add(normalizeId(o.id))
   })
 
   return { phones: Array.from(phones), clientIds: Array.from(clientIds) }
@@ -92,7 +104,11 @@ const collectAuthenticatedContext = () => {
 const belongsToAuthenticated = (phone, idA, idB = '') => {
   const { phones, clientIds } = collectAuthenticatedContext()
   const p = normalizeDigits(phone)
-  if (p && phones.some(ap => ap === p || ap.endsWith(p) || p.endsWith(ap))) return true
+  if (p && phones.some(ap => {
+    if (ap === p) return true
+    if (p.length >= 7 && ap.length >= 7 && p.slice(-7) === ap.slice(-7)) return true
+    return ap.endsWith(p) || p.endsWith(ap)
+  })) return true
   const nA = normalizeId(idA)
   const nB = normalizeId(idB)
   if (nA && clientIds.includes(nA)) return true
@@ -107,8 +123,8 @@ const unlockVault = (silent = false) => {
   const qDigits = normalizeDigits(rawQuery)
   const pin = masterPin.value.trim()
 
-  if (qDigits.length < 6 && qId.length < 4) {
-    error.value = 'Ingresa un Número de WhatsApp completo (ej: 11 2233-4455) o tu N° Cliente (ej: CLI-9024).'
+  if (qDigits.length < 6 && qId.length < 3) {
+    error.value = 'Ingresa un Número de WhatsApp completo (ej: 11 2233-4455), tu N° Cliente (ej: CLI-9024) o N° de Orden.'
     return
   }
 
@@ -120,17 +136,14 @@ const unlockVault = (silent = false) => {
 
   const hasAnyRecord = matchedClients.length > 0 || matchedOrders.length > 0 || matchedPhysical.length > 0 || matchedUsers.length > 0 || matchedDiscountUsers.length > 0
   if (!hasAnyRecord) {
-    error.value = 'No se encontraron servicios ni pedidos activos con esos datos. Verifica tu WhatsApp o N° de Cliente.'
+    error.value = 'No se encontraron servicios ni pedidos activos con esos datos. Verifica tu WhatsApp, N° de Cliente u Orden.'
     if (!silent) toast.add('No encontramos tus servicios ni pedidos', 'error')
     return
   }
 
-  // Validación estricta de PIN si existe algún PIN registrado en los registros encontrados
+  // Validación estricta de PIN personal de cliente (excluyendo PIN de perfil de Netflix)
   const registeredPins = new Set()
-  matchedClients.forEach(c => {
-    if (c.pin) registeredPins.add(String(c.pin).trim())
-    ;(c.profiles || []).forEach(p => { if (p.pin && p.pin !== 'N/A') registeredPins.add(String(p.pin).trim()) })
-  })
+  matchedClients.forEach(c => { if (c.pin) registeredPins.add(String(c.pin).trim()) })
   matchedOrders.forEach(o => { if (o.pin) registeredPins.add(String(o.pin).trim()) })
   matchedPhysical.forEach(o => { if (o.pin) registeredPins.add(String(o.pin).trim()) })
   matchedUsers.forEach(u => { if (u.pin) registeredPins.add(String(u.pin).trim()) })
@@ -196,6 +209,16 @@ onMounted(async () => {
 
   if (route.query.track) {
     searchIdentifier.value = String(route.query.track)
+  } else if (route.query.phone) {
+    searchIdentifier.value = String(route.query.phone)
+  } else if (route.query.client) {
+    searchIdentifier.value = String(route.query.client)
+  } else if (route.query.order) {
+    searchIdentifier.value = String(route.query.order)
+  }
+
+  if (route.query.pin) {
+    masterPin.value = String(route.query.pin)
   }
 
   try {
@@ -208,11 +231,12 @@ onMounted(async () => {
       if (saved.pin && !masterPin.value) {
         masterPin.value = saved.pin
       }
-      if (searchIdentifier.value && masterPin.value) {
-        unlockVault(true)
-      }
     }
   } catch {}
+
+  if (searchIdentifier.value) {
+    unlockVault(true)
+  }
 })
 
 const copyToClipboard = (text, field) => {
@@ -374,7 +398,7 @@ const customerGamingOrders = computed(() => {
   )
 })
 
-// 2. Pedidos Streaming pendientes (solo los no-entregados, arreglando el bug previo)
+// 2. Pedidos Streaming pendientes (en activación o preparación)
 const customerStreamingPendingOrders = computed(() => {
   if (!isUnlocked.value) return []
   return (adminStore.orders || []).filter(o =>
@@ -386,7 +410,7 @@ const customerStreamingPendingOrders = computed(() => {
   )
 })
 
-// 3. Cuentas Streaming activas (CRM local + órdenes Dispatched con accountDetails en Firestore!)
+// 3. Cuentas Streaming activas / entregadas (CRM local + órdenes Dispatched oficiales)
 const customerStreamingActiveAccounts = computed(() => {
   if (!isUnlocked.value) return []
   const crmList = (resellerStore.clients || []).filter(c =>
@@ -396,35 +420,48 @@ const customerStreamingActiveAccounts = computed(() => {
     .filter(o =>
       !isGamingOrder(o) &&
       (o.status === 'Dispatched' || o.status === 'Entregado') &&
-      o.accountDetails &&
-      o.accountDetails.email &&
       belongsToAuthenticated(o.customerPhone, o.customerNumber, o.id)
     )
     .map(o => ({
       id: `ORD-ACC-${o.id}`,
+      orderId: o.id,
       name: o.customerName,
       phone: o.customerPhone,
       clientNumber: o.customerNumber,
-      platform: o.platform,
+      platform: o.platform || 'Streaming',
       planName: o.planLabel || `${o.devices || 1} Pantalla(s)`,
       devices: o.devices || 1,
-      account: o.accountDetails.email,
-      pass: o.accountDetails.pass || '',
-      profiles: o.accountDetails.profiles || [{ name: 'Perfil Asignado', pin: o.pin || 'Ver en ficha' }],
-      expiry: o.expiryDate || 'Vigente (30 días)',
-      resellerId: o.resellerId || 'DIRECT'
+      account: o.accountDetails?.email || o.account || o.activationEmail || o.email || 'Cuenta Oficial Activada',
+      pass: o.accountDetails?.pass || o.pass || '',
+      profiles: o.accountDetails?.profiles || (o.profileSelections?.length ? o.profileSelections : [{ name: 'Perfil Asignado', pin: o.pin || 'Ver en ficha' }]),
+      expiry: o.expiryDate || o.accountDetails?.expiry || 'Vigente (30 días)',
+      resellerId: o.resellerId || 'DIRECT',
+      orderDate: o.createdAt || '',
+      dispatchedAt: o.dispatchedAt || o.accountDetails?.dispatchedAt || '',
+      notes: o.accountDetails?.notes || o.notes || '',
+      pin: o.pin || ''
     }))
 
-  const seenEmails = new Set(crmList.map(c => `${c.platform}::${c.account}`.toLowerCase()))
+  const seenKeys = new Set(crmList.map(c => `${(c.platform || '').toLowerCase()}::${(c.account || '').toLowerCase()}`))
   const merged = [...crmList]
   cloudDispatched.forEach(item => {
-    const sig = `${item.platform}::${item.account}`.toLowerCase()
-    if (!seenEmails.has(sig)) {
-      seenEmails.add(sig)
+    const sig = `${(item.platform || '').toLowerCase()}::${(item.account || '').toLowerCase()}`
+    if (!seenKeys.has(sig) || item.account === 'Cuenta Oficial Activada') {
+      seenKeys.add(sig)
       merged.push(item)
     }
   })
   return merged
+})
+
+// 3b. Pedidos Streaming cancelados (para información del cliente)
+const customerStreamingCancelledOrders = computed(() => {
+  if (!isUnlocked.value) return []
+  return (adminStore.orders || []).filter(o =>
+    !isGamingOrder(o) &&
+    o.status === 'Cancelado' &&
+    belongsToAuthenticated(o.customerPhone, o.customerNumber, o.id)
+  )
 })
 
 // 4. Pedidos Físicos estrictamente filtrados
@@ -991,8 +1028,33 @@ const getGameInstallSteps = (order) => {
           </div>
 
           <!-- CUENTAS ACTIVAS ENTREGADAS -->
-          <div v-if="customerStreamingActiveAccounts.length === 0 && customerStreamingPendingOrders.length === 0" class="text-center py-12 bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 text-xs">
-            No tienes suscripciones de streaming activas registradas aún.
+          <div v-if="customerStreamingActiveAccounts.length === 0 && customerStreamingPendingOrders.length === 0 && customerStreamingCancelledOrders.length === 0" class="text-center py-12 bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3">
+            <span class="text-4xl block">🎬</span>
+            <p class="text-slate-300 text-sm font-bold">No tienes suscripciones de streaming activas registradas aún.</p>
+            <button @click="router.push('/suscripciones')" class="px-5 py-2.5 rounded-xl bg-brand-accent hover:bg-sky-400 text-slate-950 text-xs font-black shadow cursor-pointer">
+              Ver Planes y Suscripciones Oficiales →
+            </button>
+          </div>
+
+          <!-- PEDIDOS CANCELADOS DE STREAMING SI HUBIESE -->
+          <div v-if="customerStreamingCancelledOrders.length > 0" class="space-y-3 pt-2">
+            <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+              <span>❌</span>
+              <span>Pedidos Streaming Cancelados ({{ customerStreamingCancelledOrders.length }})</span>
+            </h4>
+            <div v-for="order in customerStreamingCancelledOrders" :key="order.id" class="bg-rose-950/20 border border-rose-500/30 p-4 rounded-2xl space-y-2 text-xs">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="font-mono text-rose-300 font-bold">#{{ order.id }}</span>
+                  <h4 class="text-white font-bold">{{ order.platform }} - {{ order.planLabel || '1 Pantalla' }}</h4>
+                </div>
+                <span class="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-bold">Cancelado</span>
+              </div>
+              <p v-if="order.cancelReason" class="text-slate-300 text-[11px]"><strong>Motivo:</strong> {{ order.cancelReason }}</p>
+              <button @click="openOrderWhatsApp(order)" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                <span>💬 Consultar motivo por WhatsApp</span>
+              </button>
+            </div>
           </div>
 
           <div v-for="acc in customerStreamingActiveAccounts" :key="acc.id" class="bg-slate-900/60 rounded-2xl border border-slate-700/50 overflow-hidden relative group backdrop-blur-md shadow-xl">
@@ -1089,8 +1151,13 @@ const getGameInstallSteps = (order) => {
 
         <!-- ==================== PESTAÑA 3: HISTORIAL DE PEDIDOS FÍSICOS ==================== -->
         <div v-else-if="portalTab === 'physical'" class="space-y-4">
-          <div v-if="customerPhysicalOrders.length === 0" class="text-center py-12 bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 text-xs">
-            No tienes pedidos de productos físicos registrados con estos datos.
+          <div v-if="customerPhysicalOrders.length === 0" class="text-center py-12 bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3">
+            <span class="text-4xl block">📦</span>
+            <p class="text-slate-300 text-sm font-bold">No tienes pedidos de productos físicos registrados con estos datos.</p>
+            <p class="text-slate-400 text-xs">Si realizaste un pedido recientemente, verifica que tu WhatsApp coincida exactamente o consulta con un asesor.</p>
+            <button @click="router.push('/productos')" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow cursor-pointer">
+              Explorar Catálogo de Productos Físicos →
+            </button>
           </div>
 
           <div v-else class="space-y-4">
@@ -1152,6 +1219,30 @@ const getGameInstallSteps = (order) => {
                   <div class="sm:text-right">
                     <span class="text-slate-400 block text-[11px] uppercase tracking-wider font-semibold">Total del Pedido:</span>
                     <span class="text-xl font-black text-amber-400">${{ (order.totalAmount || 0).toLocaleString() }} ARS</span>
+                  </div>
+                </div>
+
+                <!-- SEGUIMIENTO DE ENVÍO FÍSICO SI FUE DESPACHADO -->
+                <div v-if="order.trackingNumber" class="p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-xl text-xs space-y-2 font-mono">
+                  <div class="flex items-center justify-between">
+                    <span class="text-indigo-300 font-bold uppercase text-[10px] tracking-wider font-sans flex items-center gap-1.5">
+                      <span>🚚</span>
+                      <span>Paquete Despachado por Encomienda</span>
+                    </span>
+                    <span class="text-slate-300 font-sans text-xs font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ order.courier || 'Correo Argentino' }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 pt-1 border-t border-indigo-500/20">
+                    <div>
+                      <span class="text-[10px] text-slate-400 font-sans block">Código de Seguimiento Oficial:</span>
+                      <strong class="text-white text-sm select-all">#{{ order.trackingNumber }}</strong>
+                    </div>
+                    <button 
+                      type="button"
+                      @click="copyToClipboard(order.trackingNumber, 'Código de Seguimiento')" 
+                      class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold font-sans cursor-pointer transition shadow"
+                    >
+                      Copiar Código
+                    </button>
                   </div>
                 </div>
 

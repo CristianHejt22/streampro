@@ -136,7 +136,7 @@ const router = createRouter({
     },
     {
       path: '/portal',
-      alias: ['/cliente', '/clientes', '/boveda', '/portal-cliente'],
+      alias: ['/cliente', '/clientes', '/boveda', '/portal-cliente', '/pedidos', '/mis-pedidos'],
       name: 'portal',
       component: CustomerPortal
     },
