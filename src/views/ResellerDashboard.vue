@@ -769,21 +769,47 @@ const removeServiceFromResellerPackage = (index) => {
   }
 }
 
+// Costos de referencia oficial de perfiles individuales en combos (Netflix $4500, Prime $1500, etc.)
+const COMBO_STREAMING_REFERENCE = {
+  'Netflix': { cost: 4500, regular: 7700 },
+  'Prime Video': { cost: 1500, regular: 4200 },
+  'Spotify': { cost: 1500, regular: 3800 },
+  'Disney+': { cost: 2000, regular: 6300 },
+  'Max': { cost: 2000, regular: 6000 },
+  'IPTV': { cost: 2000, regular: 5500 },
+  'YouTube': { cost: 1500, regular: 4400 },
+  'YouTube Premium': { cost: 1500, regular: 4400 },
+  'ChatGPT Plus': { cost: 3000, regular: 6500 },
+  'Canva Pro': { cost: 1200, regular: 3500 },
+  'CapCut Pro': { cost: 1200, regular: 3500 },
+  'Paramount+': { cost: 1500, regular: 3800 },
+  'Crunchyroll': { cost: 1500, regular: 3800 },
+  'ViX': { cost: 1500, regular: 3800 },
+  'Viki Rakuten': { cost: 1500, regular: 3800 },
+  'DramaBox': { cost: 1500, regular: 3800 }
+}
+
 const resellerPackageCalc = computed(() => {
   let cost = 0
   let regular = 0
 
   resellerPackageForm.value.selectedServices.forEach(s => {
-    const platData = adminStore.pricingCatalog[s.platform]
-    const plan = platData?.plans[s.planKey]
-    if (plan) {
-      cost += plan.providerCost || 0
-      regular += plan.clientPrice || 0
+    const ref = COMBO_STREAMING_REFERENCE[s.platform]
+    if (ref) {
+      cost += ref.cost
+      regular += ref.regular
+    } else {
+      const platData = adminStore.pricingCatalog[s.platform]
+      const plan = platData?.plans[s.planKey]
+      cost += plan?.providerCost || 1500
+      regular += plan?.clientPrice || 4000
     }
   })
 
-  const promo = Number(resellerPackageForm.value.promoPrice) || regular
-  const profit = promo - cost
+  // Sugerencia de precio promo con ~25-28% de descuento
+  const suggestedPromo = regular > 0 ? Math.max(cost + 2000, Math.round((regular * 0.72) / 100) * 100) : 0
+  const promo = Number(resellerPackageForm.value.promoPrice) || suggestedPromo
+  const profit = promo > cost ? promo - cost : 0
   const discount = regular > 0 ? Math.max(0, Math.round(((regular - promo) / regular) * 100)) : 0
 
   return { cost, regular, promo, profit, discount }
@@ -791,14 +817,8 @@ const resellerPackageCalc = computed(() => {
 
 // Auto sugerir precio promo cuando cambia la lista de servicios seleccionados
 watch(() => resellerPackageForm.value.selectedServices, () => {
-  let regular = 0
-  resellerPackageForm.value.selectedServices.forEach(s => {
-    const platData = adminStore.pricingCatalog[s.platform]
-    const plan = platData?.plans[s.planKey]
-    if (plan) regular += plan.clientPrice || 0
-  })
-  if (regular > 0 && (!resellerPackageForm.value.promoPrice || resellerPackageForm.value.promoPrice === 0)) {
-    resellerPackageForm.value.promoPrice = Math.round(regular * 0.85) // 15% OFF inicial
+  if (resellerPackageCalc.value.regular > 0 && (!resellerPackageForm.value.promoPrice || resellerPackageForm.value.promoPrice === 0)) {
+    resellerPackageForm.value.promoPrice = Math.max(resellerPackageCalc.value.cost + 2000, Math.round((resellerPackageCalc.value.regular * 0.72) / 100) * 100)
   }
 }, { deep: true, immediate: true })
 
@@ -809,6 +829,7 @@ const submitCreateResellerPackage = () => {
   }
 
   const formatted = resellerPackageForm.value.selectedServices.map(s => {
+    const ref = COMBO_STREAMING_REFERENCE[s.platform]
     const platData = adminStore.pricingCatalog[s.platform]
     const plan = platData?.plans[s.planKey]
     return {
@@ -816,8 +837,8 @@ const submitCreateResellerPackage = () => {
       planKey: s.planKey,
       planLabel: plan?.label || s.planKey,
       units: plan?.units || 1,
-      regularPrice: plan?.clientPrice || 0,
-      cost: plan?.providerCost || 0
+      regularPrice: ref ? ref.regular : (plan?.clientPrice || 4000),
+      cost: ref ? ref.cost : (plan?.providerCost || 1500)
     }
   })
 
@@ -826,7 +847,11 @@ const submitCreateResellerPackage = () => {
     description: resellerPackageForm.value.description.trim() || 'Combo promocional armado por tu distribuidor oficial.',
     badge: resellerPackageForm.value.badge.trim() || `🔥 ${resellerPackageCalc.value.discount}% OFF`,
     services: formatted,
-    promoPrice: Number(resellerPackageForm.value.promoPrice) || resellerPackageCalc.value.regular
+    originalPrice: resellerPackageCalc.value.regular,
+    providerCost: resellerPackageCalc.value.cost,
+    resellerProfit: resellerPackageCalc.value.profit,
+    promoPrice: Number(resellerPackageForm.value.promoPrice) || resellerPackageCalc.value.promo,
+    discountPercent: resellerPackageCalc.value.discount
   })
 
   if (res.success) {
@@ -834,10 +859,10 @@ const submitCreateResellerPackage = () => {
     resellerPackageForm.value = {
       title: '',
       description: '',
-      badge: '🔥 20% OFF',
+      badge: '🔥 25% OFF',
       selectedServices: [
         { platform: 'Netflix', planKey: '1_perfil', units: 1 },
-        { platform: 'Spotify', planKey: '1_perfil', units: 1 }
+        { platform: 'Prime Video', planKey: '1_perfil', units: 1 }
       ],
       promoPrice: 0
     }
@@ -2305,14 +2330,23 @@ const submitResellerGameInquiry = () => {
               </div>
 
               <!-- Resumen Financiero para el Revendedor -->
-              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex justify-between items-center text-xs">
-                <div>
-                  <span class="text-[10px] text-slate-400 uppercase block">Precio Cliente:</span>
-                  <span class="text-base font-black text-white font-mono">${{ pkg.promoPrice.toLocaleString() }} ARS</span>
+              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2 text-xs">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <span class="text-[10px] text-slate-400 uppercase block">Precio Cliente:</span>
+                    <span class="text-base font-black text-white font-mono">${{ Number(pkg.promoPrice || 0).toLocaleString() }} ARS</span>
+                    <span v-if="Number(pkg.originalPrice) > Number(pkg.promoPrice)" class="text-[10px] text-slate-400 line-through block font-mono">
+                      Antes: ${{ Number(pkg.originalPrice).toLocaleString() }} ARS ({{ pkg.discountPercent || 25 }}% OFF)
+                    </span>
+                  </div>
+                  <div class="text-right bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+                    <span class="text-[10px] text-emerald-400 uppercase font-bold block">Tu Ganancia:</span>
+                    <span class="text-sm font-black text-emerald-400 font-mono">+${{ Number(pkg.resellerProfit || 0).toLocaleString() }} ARS</span>
+                  </div>
                 </div>
-                <div class="text-right bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                  <span class="text-[10px] text-emerald-400 uppercase font-bold block">Tu Ganancia:</span>
-                  <span class="text-sm font-black text-emerald-400 font-mono">+${{ pkg.resellerProfit.toLocaleString() }} ARS</span>
+                <div class="flex justify-between items-center pt-1.5 border-t border-slate-800/60 text-[10px] text-slate-400 font-mono">
+                  <span>Costo Proveedor: ${{ Number(pkg.providerCost || 0).toLocaleString() }} ARS</span>
+                  <span class="text-pink-300 font-semibold">{{ pkg.durationDays || 30 }} Días</span>
                 </div>
               </div>
             </div>

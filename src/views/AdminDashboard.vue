@@ -4063,6 +4063,8 @@ const editingPackageForm = ref({
   devices: '1',
   promoPrice: 0,
   originalPrice: 0,
+  providerCost: 0,
+  resellerProfit: 0,
   image: '',
   active: true
 })
@@ -4078,6 +4080,8 @@ const openEditPackageModal = (pkg) => {
     devices: String(pkg.devices || '1'),
     promoPrice: Number(pkg.promoPrice || 0),
     originalPrice: Number(pkg.originalPrice || 0),
+    providerCost: Number(pkg.providerCost || 0),
+    resellerProfit: Number(pkg.resellerProfit || 0),
     image: pkg.image || '',
     active: pkg.active !== false
   }
@@ -4085,15 +4089,24 @@ const openEditPackageModal = (pkg) => {
 }
 
 const submitUpdatePackage = () => {
+  const orig = Number(editingPackageForm.value.originalPrice || 0)
+  const promo = Number(editingPackageForm.value.promoPrice || 0)
+  const cost = Number(editingPackageForm.value.providerCost || 0)
+  const discount = orig > promo && orig > 0 ? Math.round(((orig - promo) / orig) * 100) : 0
+  const badgeVal = editingPackageForm.value.badge.trim() || (discount > 0 ? `🔥 ${discount}% OFF` : '⭐ COMBO VIP')
+
   const res = adminStore.updatePackage(editingPackageForm.value.id, {
     title: editingPackageForm.value.title.trim(),
     category: editingPackageForm.value.category,
     description: editingPackageForm.value.description.trim(),
-    badge: editingPackageForm.value.badge.trim(),
+    badge: badgeVal,
     durationDays: editingPackageForm.value.durationDays,
     devices: editingPackageForm.value.devices,
-    promoPrice: Number(editingPackageForm.value.promoPrice || 0),
-    originalPrice: Number(editingPackageForm.value.originalPrice || 0),
+    promoPrice: promo,
+    originalPrice: orig,
+    providerCost: cost,
+    resellerProfit: Number(editingPackageForm.value.resellerProfit || 0),
+    discountPercent: discount,
     image: editingPackageForm.value.image.trim(),
     active: editingPackageForm.value.active
   })
@@ -4191,39 +4204,59 @@ const removeServiceFromPackage = (index) => {
   }
 }
 
+// Costos de referencia oficial de perfiles individuales en combos (Netflix $4500, Prime $1500, etc.)
+const COMBO_STREAMING_REFERENCE = {
+  'Netflix': { cost: 4500, regular: 7700 },
+  'Prime Video': { cost: 1500, regular: 4200 },
+  'Spotify': { cost: 1500, regular: 3800 },
+  'Disney+': { cost: 2000, regular: 6300 },
+  'Max': { cost: 2000, regular: 6000 },
+  'IPTV': { cost: 2000, regular: 5500 },
+  'YouTube': { cost: 1500, regular: 4400 },
+  'YouTube Premium': { cost: 1500, regular: 4400 },
+  'ChatGPT Plus': { cost: 3000, regular: 6500 },
+  'Canva Pro': { cost: 1200, regular: 3500 },
+  'CapCut Pro': { cost: 1200, regular: 3500 },
+  'Paramount+': { cost: 1500, regular: 3800 },
+  'Crunchyroll': { cost: 1500, regular: 3800 },
+  'ViX': { cost: 1500, regular: 3800 },
+  'Viki Rakuten': { cost: 1500, regular: 3800 },
+  'DramaBox': { cost: 1500, regular: 3800 }
+}
+
 // Cálculo dinámico de costos y precios sugeridos de los servicios seleccionados
 const packageCalculation = computed(() => {
   let totalCost = 0
   let totalRegular = 0
 
   newPackageForm.value.selectedServices.forEach(s => {
-    const platData = adminStore.pricingCatalog[s.platform]
-    if (platData) {
-      const plan = platData.plans[s.planKey]
-      if (plan) {
-        totalCost += plan.providerCost || 0
-        totalRegular += plan.clientPrice || 0
-      }
+    const ref = COMBO_STREAMING_REFERENCE[s.platform]
+    if (ref) {
+      totalCost += ref.cost
+      totalRegular += ref.regular
+    } else {
+      const platData = adminStore.pricingCatalog[s.platform]
+      const plan = platData?.plans[s.planKey]
+      totalCost += plan?.providerCost || 1500
+      totalRegular += plan?.clientPrice || 4000
     }
   })
 
-  const promo = Number(newPackageForm.value.promoPrice) || totalRegular
-  const profit = promo - totalCost
+  // Sugerencia de precio promo con ~28% de descuento sobre el precio de lista regular
+  const suggestedPromo = totalRegular > 0 ? Math.max(totalCost + 2500, Math.round((totalRegular * 0.72) / 100) * 100) : 0
+  const promo = Number(newPackageForm.value.promoPrice) || suggestedPromo
+  const grossMargin = promo - totalCost
+  const resellerProfit = Math.round((grossMargin * 0.65) / 50) * 50
+  const providerProfit = grossMargin - resellerProfit
   const discount = totalRegular > 0 ? Math.max(0, Math.round(((totalRegular - promo) / totalRegular) * 100)) : 0
 
-  return { totalCost, totalRegular, promo, profit, discount }
+  return { totalCost, totalRegular, promo, profit: grossMargin, resellerProfit, providerProfit, discount }
 })
 
 // Auto sugerir precio promo cuando cambia la lista de servicios seleccionados
 watch(() => newPackageForm.value.selectedServices, () => {
-  let totalRegular = 0
-  newPackageForm.value.selectedServices.forEach(s => {
-    const platData = adminStore.pricingCatalog[s.platform]
-    const plan = platData?.plans[s.planKey]
-    if (plan) totalRegular += plan.clientPrice || 0
-  })
-  if (totalRegular > 0 && (!newPackageForm.value.promoPrice || newPackageForm.value.promoPrice === 0)) {
-    newPackageForm.value.promoPrice = Math.round(totalRegular * 0.8) // 20% OFF por defecto
+  if (packageCalculation.value.totalRegular > 0 && (!newPackageForm.value.promoPrice || newPackageForm.value.promoPrice === 0)) {
+    newPackageForm.value.promoPrice = Math.max(packageCalculation.value.totalCost + 2500, Math.round((packageCalculation.value.totalRegular * 0.72) / 100) * 100)
   }
 }, { deep: true, immediate: true })
 
@@ -4255,7 +4288,11 @@ const submitCreatePackage = () => {
     devices: newPackageForm.value.devices || '1',
     image: newPackageForm.value.image.trim(),
     services: servicesFormatted,
-    promoPrice: Number(newPackageForm.value.promoPrice) || packageCalculation.value.totalRegular,
+    providerCost: packageCalculation.value.totalCost,
+    resellerProfit: packageCalculation.value.resellerProfit,
+    originalPrice: packageCalculation.value.totalRegular,
+    promoPrice: Number(newPackageForm.value.promoPrice) || packageCalculation.value.promo,
+    discountPercent: packageCalculation.value.discount,
     createdBy: 'provider',
     resellerId: 'ALL'
   })
@@ -7600,32 +7637,37 @@ const deletePackageItem = (pkgId) => {
         </div>
 
         <!-- CÁLCULO EN VIVO Y PRECIO PROMO -->
-        <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-purple-500/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+        <div class="bg-gradient-to-r from-slate-950 via-purple-950/30 to-slate-950 p-5 rounded-2xl border border-purple-500/20 grid grid-cols-2 sm:grid-cols-5 gap-3 items-center">
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Costo Proveedor Base:</span>
-            <span class="text-lg font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }} ARS</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Costo Proveedor:</span>
+            <span class="text-base font-black text-white font-mono">${{ packageCalculation.totalCost.toLocaleString() }}</span>
           </div>
 
           <div>
-            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Regular Sumado:</span>
-            <span class="text-lg font-black text-slate-400 line-through font-mono">${{ packageCalculation.totalRegular.toLocaleString() }} ARS</span>
+            <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Ganancia Revendedor:</span>
+            <span class="text-base font-black text-emerald-400 font-mono">+${{ packageCalculation.resellerProfit.toLocaleString() }}</span>
           </div>
 
           <div>
-            <label class="text-[10px] uppercase font-bold text-purple-300 block tracking-wider mb-1">Precio Oferta Promo (ARS):</label>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Precio Lista (Antes):</span>
+            <span class="text-base font-black text-slate-400 line-through font-mono">${{ packageCalculation.totalRegular.toLocaleString() }}</span>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-bold text-purple-300 block tracking-wider mb-1">Precio Promo Venta:</label>
             <input 
               v-model="newPackageForm.promoPrice" 
               type="number" 
               step="100" 
               required
-              class="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-2.5 text-base font-black text-pink-400 font-mono outline-none"
+              class="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-2 text-sm font-black text-pink-400 font-mono outline-none"
             >
           </div>
 
-          <div class="bg-purple-500/15 p-3 rounded-xl border border-purple-500/30 text-center">
-            <span class="text-[10px] text-purple-300 uppercase font-bold block">Descuento Cliente:</span>
-            <span class="text-lg font-black text-emerald-400">{{ packageCalculation.discount }}% OFF</span>
-            <span class="text-[10px] text-slate-400 block font-mono">Margen: +${{ packageCalculation.profit.toLocaleString() }} ARS</span>
+          <div class="bg-purple-500/15 p-2.5 rounded-xl border border-purple-500/30 text-center col-span-2 sm:col-span-1">
+            <span class="text-[9px] text-purple-300 uppercase font-bold block">Descuento Cliente:</span>
+            <span class="text-base font-black text-emerald-400">{{ packageCalculation.discount }}% OFF</span>
+            <span class="text-[9px] text-slate-400 block font-mono">Margen Total: +${{ packageCalculation.profit.toLocaleString() }}</span>
           </div>
         </div>
 
@@ -7756,19 +7798,35 @@ const deletePackageItem = (pkgId) => {
                   </div>
                 </div>
 
-                <!-- Precios -->
-                <div class="flex justify-between items-end border-t border-slate-800 pt-3">
-                  <div>
-                    <span v-if="Number(pkg.originalPrice) > Number(pkg.promoPrice)" class="text-[10px] text-slate-400 line-through block font-mono">
-                      ${{ Number(pkg.originalPrice).toLocaleString() }} ARS
-                    </span>
-                    <span class="text-xl font-black text-pink-400 font-mono">
-                      {{ Number(pkg.promoPrice) > 0 ? `${Number(pkg.promoPrice).toLocaleString()} ARS` : 'Consultar' }}
-                    </span>
+                <!-- Precios y Desglose Económico Completo (Costo Proveedor + Ganancia Revendedor + Aumento + Descuento) -->
+                <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 space-y-2">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <span class="text-[9px] uppercase font-bold text-slate-400 block">Precio Promo Venta</span>
+                      <span class="text-lg font-black text-pink-400 font-mono">
+                        ${{ Number(pkg.promoPrice || 0).toLocaleString() }} <span class="text-[10px] text-slate-400">ARS</span>
+                      </span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-[9px] uppercase font-bold text-slate-400 block">Precio Lista (Antes)</span>
+                      <span class="text-xs font-mono text-slate-400 line-through">
+                        ${{ Number(pkg.originalPrice || 0).toLocaleString() }} ARS
+                      </span>
+                      <span class="text-[9px] text-emerald-400 font-bold block">
+                        -{{ pkg.discountPercent || 25 }}% Ahorro
+                      </span>
+                    </div>
                   </div>
-                  <div class="text-right">
-                    <span class="text-[10px] text-slate-400 block">Costo Mayorista:</span>
-                    <span class="text-xs font-mono text-slate-300">${{ Number(pkg.providerCost || 0).toLocaleString() }} ARS</span>
+
+                  <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[10px]">
+                    <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+                      <span class="text-slate-400 block">🏭 Costo Proveedor:</span>
+                      <span class="font-mono font-bold text-slate-200">${{ Number(pkg.providerCost || 0).toLocaleString() }}</span>
+                    </div>
+                    <div class="bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-500/30">
+                      <span class="text-emerald-300 block">💼 Ganancia Revendedor:</span>
+                      <span class="font-mono font-black text-emerald-400">+${{ Number(pkg.resellerProfit || 0).toLocaleString() }}</span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -806,9 +806,17 @@ export const useAdminStore = defineStore('admin', {
     packages: (() => {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
       if (stored && Array.isArray(stored) && stored.length >= 5) {
+        const c1 = stored.find(p => p.sku === 'C001' || p.id === 'C001')
+        if (c1 && Number(c1.providerCost) < 7000) {
+          const fresh = getFreshOfficialCombos()
+          saveDb(DB_KEYS.PACKAGES, fresh)
+          return fresh
+        }
         return stored
       }
-      return getFreshOfficialCombos()
+      const fresh = getFreshOfficialCombos()
+      saveDb(DB_KEYS.PACKAGES, fresh)
+      return fresh
     })(),
 
     // Visibilidad de la tienda pública y del catálogo físico (Mostrar u Ocultar tienda desde el Panel Admin)
@@ -3614,12 +3622,13 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, createdBy = 'provider', resellerId = 'ALL' }) {
+    createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, providerCost, resellerProfit, discountPercent, createdBy = 'provider', resellerId = 'ALL' }) {
       const origPrice = Number(originalPrice) || services.reduce((sum, s) => sum + (Number(s.regularPrice) || 0), 0)
-      const costTotal = services.reduce((sum, s) => sum + (Number(s.cost) || 0), 0)
+      const costTotal = providerCost !== undefined ? Number(providerCost) : services.reduce((sum, s) => sum + (Number(s.cost) || 0), 0)
       const finalPromo = Number(promoPrice || origPrice)
-      const profit = finalPromo - costTotal
-      const discountPct = origPrice > 0 ? Math.max(0, Math.round(((origPrice - finalPromo) / origPrice) * 100)) : 0
+      const grossMargin = finalPromo > costTotal ? finalPromo - costTotal : 0
+      const finalProfit = resellerProfit !== undefined ? Number(resellerProfit) : Math.round(grossMargin * 0.65)
+      const discountPct = discountPercent !== undefined ? Number(discountPercent) : (origPrice > 0 ? Math.max(0, Math.round(((origPrice - finalPromo) / origPrice) * 100)) : 0)
       const sku = `PKG-${Date.now().toString().slice(-4)}`
 
       const newPkg = {
@@ -3644,7 +3653,7 @@ export const useAdminStore = defineStore('admin', {
         originalPrice: origPrice,
         promoPrice: finalPromo,
         providerCost: costTotal,
-        resellerProfit: profit,
+        resellerProfit: finalProfit,
         discountPercent: discountPct,
         createdBy,
         resellerId: resellerId || 'ALL',
@@ -3675,14 +3684,17 @@ export const useAdminStore = defineStore('admin', {
       if (idx === -1) return { error: 'Paquete no encontrado' }
       const p = this.packages[idx]
       const updated = { ...p, ...patch }
-      if (patch.promoPrice !== undefined || patch.originalPrice !== undefined) {
+      if (patch.promoPrice !== undefined || patch.originalPrice !== undefined || patch.providerCost !== undefined || patch.resellerProfit !== undefined) {
         const orig = Number(updated.originalPrice || 0)
         const promo = Number(updated.promoPrice || 0)
+        const cost = Number(updated.providerCost || 0)
         if (orig > promo && orig > 0) {
           updated.discountPercent = Math.round(((orig - promo) / orig) * 100)
         }
-        if (updated.providerCost) {
-          updated.resellerProfit = promo - updated.providerCost
+        if (patch.resellerProfit !== undefined) {
+          updated.resellerProfit = Number(patch.resellerProfit || 0)
+        } else if (cost > 0 && promo > cost) {
+          updated.resellerProfit = Math.round((promo - cost) * 0.65)
         }
       }
       this.packages[idx] = updated
@@ -3718,7 +3730,6 @@ export const useAdminStore = defineStore('admin', {
             const existing = existingMap.get(key)
             return {
               ...f,
-              ...existing,
               image: existing.image || f.image,
               active: existing.active !== undefined ? existing.active : f.active
             }

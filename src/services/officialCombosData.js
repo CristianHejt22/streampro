@@ -1,5 +1,8 @@
 // Catálogo Oficial de Combos y Promociones StreamePro
-// Generado a partir de combos_y_promociones.txt con 32 paquetes activos de Streaming, Internet y Paneles
+// Modelo Económico Oficial:
+// - Netflix: $4.500 costo proveedor por perfil en combos
+// - Prime Video: $1.500 costo proveedor por perfil en combos
+// - Ganancia de revendedor integrada y aumento general de lista aplicado con descuento final transparente.
 
 export const OFFICIAL_COMBOS_CATALOG = [
   {
@@ -8,7 +11,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Imperdible 1",
     "category": "streaming",
     "description": "Netflix Premium, Disney+ (7 ESPN), Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -16,22 +19,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Ultra HD 4K",
         "units": 1,
-        "regularPrice": 2700,
-        "cost": 1400
+        "regularPrice": 7700,
+        "cost": 4500
       },
       {
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 2700,
-        "cost": 1400
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 2700,
-        "cost": 1400
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -40,11 +43,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "/flyers/combos/promo-pantallas-total.png",
-    "originalPrice": 8100,
-    "promoPrice": 6000,
-    "providerCost": 4300,
-    "resellerProfit": 1700,
-    "discountPercent": 26,
+    "originalPrice": 18200,
+    "promoPrice": 13100,
+    "providerCost": 8000,
+    "resellerProfit": 3300,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -56,7 +59,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Imperdible 2",
     "category": "streaming",
     "description": "Disney+ 7 + ESPN, Netflix Extra · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -64,15 +67,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 4388,
-        "cost": 2275
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 4388,
-        "cost": 2275
+        "regularPrice": 7700,
+        "cost": 4500
       }
     ],
     "logos": [
@@ -80,11 +83,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "netflix.png"
     ],
     "image": "/flyers/combos/promo-pantallas-total.png",
-    "originalPrice": 8800,
-    "promoPrice": 6500,
-    "providerCost": 4700,
-    "resellerProfit": 1800,
-    "discountPercent": 26,
+    "originalPrice": 14000,
+    "promoPrice": 10100,
+    "providerCost": 6500,
+    "resellerProfit": 2350,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -96,7 +99,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "El Combo Más Poderoso",
     "category": "streaming",
     "description": "Netflix Premium, ChatGPT Plus, Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -104,22 +107,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Ultra HD 4K",
         "units": 1,
-        "regularPrice": 2475,
-        "cost": 1283
+        "regularPrice": 7700,
+        "cost": 4500
       },
       {
         "platform": "ChatGPT Plus",
         "planLabel": "IA Premium Plus",
         "units": 1,
-        "regularPrice": 2475,
-        "cost": 1283
+        "regularPrice": 6500,
+        "cost": 3000
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 2475,
-        "cost": 1283
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -128,11 +131,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 7400,
-    "promoPrice": 5500,
-    "providerCost": 4000,
-    "resellerProfit": 1500,
-    "discountPercent": 26,
+    "originalPrice": 18400,
+    "promoPrice": 13200,
+    "providerCost": 9000,
+    "resellerProfit": 2750,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -144,7 +147,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo del Futuro",
     "category": "streaming",
     "description": "Max Standard, Disney Standard, ChatGPT Plus · 1 Dispositivo · 30 Días",
-    "badge": "🔥 27% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -152,22 +155,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "ChatGPT Plus",
         "planLabel": "IA Premium Plus",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 6500,
+        "cost": 3000
       }
     ],
     "logos": [
@@ -176,11 +179,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "chatgpt.png"
     ],
     "image": "",
-    "originalPrice": 4100,
-    "promoPrice": 3000,
-    "providerCost": 2200,
-    "resellerProfit": 800,
-    "discountPercent": 27,
+    "originalPrice": 18800,
+    "promoPrice": 13500,
+    "providerCost": 7000,
+    "resellerProfit": 4250,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -192,7 +195,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Bajo el Mar",
     "category": "streaming",
     "description": "Disney+ Standard, Max Standard, Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -200,22 +203,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -224,11 +227,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 2500,
-    "promoPrice": 1850,
-    "providerCost": 1300,
-    "resellerProfit": 550,
-    "discountPercent": 26,
+    "originalPrice": 16500,
+    "promoPrice": 11900,
+    "providerCost": 5500,
+    "resellerProfit": 4150,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -240,7 +243,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo para Adultos",
     "category": "streaming",
     "description": "Pornhub Premium, Crunchyroll Premium, Max Standard · 1 Dispositivo · 30 Días",
-    "badge": "🔥 27% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -248,22 +251,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Pornhub",
         "planLabel": "Premium Privado",
         "units": 1,
-        "regularPrice": 855,
-        "cost": 443
+        "regularPrice": 4500,
+        "cost": 1800
       },
       {
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 855,
-        "cost": 443
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 855,
-        "cost": 443
+        "regularPrice": 6000,
+        "cost": 2000
       }
     ],
     "logos": [
@@ -272,11 +275,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 2600,
-    "promoPrice": 1900,
-    "providerCost": 1400,
-    "resellerProfit": 500,
-    "discountPercent": 27,
+    "originalPrice": 14300,
+    "promoPrice": 10300,
+    "providerCost": 5300,
+    "resellerProfit": 3250,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -288,7 +291,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo Épico",
     "category": "streaming",
     "description": "Prime Video, Netflix Extra, Max Standard, Internet Personal (7 días) · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -296,29 +299,29 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 2008,
-        "cost": 1041
+        "regularPrice": 4200,
+        "cost": 1500
       },
       {
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 2008,
-        "cost": 1041
+        "regularPrice": 7700,
+        "cost": 4500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 2008,
-        "cost": 1041
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "Personal",
         "planLabel": "Internet Personal (7 días)",
         "units": 1,
-        "regularPrice": 2008,
-        "cost": 1041
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
@@ -328,11 +331,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 8000,
-    "promoPrice": 5950,
-    "providerCost": 4300,
-    "resellerProfit": 1650,
-    "discountPercent": 26,
+    "originalPrice": 22900,
+    "promoPrice": 16500,
+    "providerCost": 9750,
+    "resellerProfit": 4400,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -344,7 +347,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Nivel Super Saiyajin",
     "category": "streaming",
     "description": "Spotify Premium, Crunchyroll Premium, Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 27% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -352,22 +355,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Spotify",
         "planLabel": "Individual Premium",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 1350,
-        "cost": 700
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -376,11 +379,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 4100,
-    "promoPrice": 3000,
-    "providerCost": 2200,
-    "resellerProfit": 800,
-    "discountPercent": 27,
+    "originalPrice": 11800,
+    "promoPrice": 8500,
+    "providerCost": 4500,
+    "resellerProfit": 2600,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -392,7 +395,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo con Poder de Gemas",
     "category": "streaming",
     "description": "Paramount+ Premium, Max Standard, Crunchyroll Premium · 1 Dispositivo · 30 Días",
-    "badge": "🔥 25% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -400,22 +403,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Paramount+",
         "planLabel": "Premium",
         "units": 1,
-        "regularPrice": 1013,
-        "cost": 525
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 1013,
-        "cost": 525
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 1013,
-        "cost": 525
+        "regularPrice": 3800,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -424,11 +427,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "crunchyroll.png"
     ],
     "image": "",
-    "originalPrice": 3000,
-    "promoPrice": 2250,
-    "providerCost": 1600,
-    "resellerProfit": 650,
-    "discountPercent": 25,
+    "originalPrice": 13600,
+    "promoPrice": 9800,
+    "providerCost": 5000,
+    "resellerProfit": 3100,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -440,7 +443,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Aventura Matemática",
     "category": "streaming",
     "description": "Max Standard, Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -448,15 +451,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 844,
-        "cost": 438
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 844,
-        "cost": 438
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -464,11 +467,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 1700,
-    "promoPrice": 1250,
-    "providerCost": 900,
-    "resellerProfit": 350,
-    "discountPercent": 26,
+    "originalPrice": 10200,
+    "promoPrice": 7300,
+    "providerCost": 3500,
+    "resellerProfit": 2450,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -480,7 +483,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Especial Dramas y Series",
     "category": "streaming",
     "description": "DramaBox, FreeReels, NetShort, ReelShort · 5 Dispositivos · 60 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "60",
     "devices": "5",
     "services": [
@@ -488,29 +491,29 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "DramaBox",
         "planLabel": "5 Dispositivos",
         "units": 5,
-        "regularPrice": 1856,
-        "cost": 962
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "FreeReels",
         "planLabel": "Oficial",
         "units": 5,
-        "regularPrice": 1856,
-        "cost": 962
+        "regularPrice": 3200,
+        "cost": 1200
       },
       {
         "platform": "NetShort",
         "planLabel": "Oficial",
         "units": 5,
-        "regularPrice": 1856,
-        "cost": 962
+        "regularPrice": 3200,
+        "cost": 1200
       },
       {
         "platform": "ReelShort",
         "planLabel": "Oficial",
         "units": 5,
-        "regularPrice": 1856,
-        "cost": 962
+        "regularPrice": 3200,
+        "cost": 1200
       }
     ],
     "logos": [
@@ -520,11 +523,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "reelshort.png"
     ],
     "image": "",
-    "originalPrice": 7400,
-    "promoPrice": 5500,
-    "providerCost": 4000,
-    "resellerProfit": 1500,
-    "discountPercent": 26,
+    "originalPrice": 13400,
+    "promoPrice": 9600,
+    "providerCost": 5100,
+    "resellerProfit": 2950,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -536,7 +539,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo Premium con Estilo",
     "category": "streaming",
     "description": "Spotify Premium, ChatGPT Plus, Canva Edu · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -544,22 +547,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Spotify",
         "planLabel": "Individual Premium",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "ChatGPT Plus",
         "planLabel": "IA Premium Plus",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 6500,
+        "cost": 3000
       },
       {
         "platform": "Canva Pro",
         "planLabel": "Edu",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 3500,
+        "cost": 1200
       }
     ],
     "logos": [
@@ -568,11 +571,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "canva.png"
     ],
     "image": "",
-    "originalPrice": 6100,
-    "promoPrice": 4500,
-    "providerCost": 3200,
-    "resellerProfit": 1300,
-    "discountPercent": 26,
+    "originalPrice": 13800,
+    "promoPrice": 9900,
+    "providerCost": 5700,
+    "resellerProfit": 2750,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -584,7 +587,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Streaming Intergaláctica",
     "category": "streaming",
     "description": "Disney+ 7 ESPN, Prime Video, Max Standard · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -592,22 +595,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 1598,
-        "cost": 828
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 1598,
-        "cost": 828
+        "regularPrice": 4200,
+        "cost": 1500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 1598,
-        "cost": 828
+        "regularPrice": 6000,
+        "cost": 2000
       }
     ],
     "logos": [
@@ -616,11 +619,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 4800,
-    "promoPrice": 3550,
-    "providerCost": 2600,
-    "resellerProfit": 950,
-    "discountPercent": 26,
+    "originalPrice": 16500,
+    "promoPrice": 11900,
+    "providerCost": 5500,
+    "resellerProfit": 4150,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -632,7 +635,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo Aventurero",
     "category": "streaming",
     "description": "Canva Edu (6 meses), CapCut Pro (1 mes) · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 23% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -640,15 +643,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Canva Pro",
         "planLabel": "6 Meses Edu",
         "units": 1,
-        "regularPrice": 1789,
-        "cost": 927
+        "regularPrice": 3500,
+        "cost": 1200
       },
       {
         "platform": "CapCut Pro",
         "planLabel": "1 Mes Pro",
         "units": 1,
-        "regularPrice": 1789,
-        "cost": 927
+        "regularPrice": 3500,
+        "cost": 1200
       }
     ],
     "logos": [
@@ -656,11 +659,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "capcut.png"
     ],
     "image": "",
-    "originalPrice": 3600,
-    "promoPrice": 2650,
-    "providerCost": 1900,
-    "resellerProfit": 750,
-    "discountPercent": 26,
+    "originalPrice": 7000,
+    "promoPrice": 5400,
+    "providerCost": 2400,
+    "resellerProfit": 1950,
+    "discountPercent": 23,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -672,7 +675,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo Inteligente",
     "category": "streaming",
     "description": "ChatGPT Plus, Canva Edu, CapCut Pro · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -680,22 +683,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "ChatGPT Plus",
         "planLabel": "IA Premium Plus",
         "units": 1,
-        "regularPrice": 1575,
-        "cost": 817
+        "regularPrice": 6500,
+        "cost": 3000
       },
       {
         "platform": "Canva Pro",
         "planLabel": "Edu",
         "units": 1,
-        "regularPrice": 1575,
-        "cost": 817
+        "regularPrice": 3500,
+        "cost": 1200
       },
       {
         "platform": "CapCut Pro",
         "planLabel": "1 Mes Pro",
         "units": 1,
-        "regularPrice": 1575,
-        "cost": 817
+        "regularPrice": 3500,
+        "cost": 1200
       }
     ],
     "logos": [
@@ -704,11 +707,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "capcut.png"
     ],
     "image": "",
-    "originalPrice": 4700,
-    "promoPrice": 3500,
-    "providerCost": 2500,
-    "resellerProfit": 1000,
-    "discountPercent": 26,
+    "originalPrice": 13500,
+    "promoPrice": 9700,
+    "providerCost": 5400,
+    "resellerProfit": 2800,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -720,7 +723,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Combo Anime",
     "category": "streaming",
     "description": "Crunchyroll Premium, Viki Rakuten, Max Standard · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -728,22 +731,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Viki Rakuten",
         "planLabel": "Pass Standard",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 6000,
+        "cost": 2000
       }
     ],
     "logos": [
@@ -752,11 +755,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 2500,
-    "promoPrice": 1850,
-    "providerCost": 1300,
-    "resellerProfit": 550,
-    "discountPercent": 26,
+    "originalPrice": 13600,
+    "promoPrice": 9800,
+    "providerCost": 5000,
+    "resellerProfit": 3100,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -768,7 +771,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Misión Agente Secreto",
     "category": "streaming",
     "description": "Disney+ Standard, Crunchyroll Premium, Paramount+ Premium, Prime Video · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -776,29 +779,29 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 1198,
-        "cost": 621
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 1198,
-        "cost": 621
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Paramount+",
         "planLabel": "Premium",
         "units": 1,
-        "regularPrice": 1198,
-        "cost": 621
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 1198,
-        "cost": 621
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -808,11 +811,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 4800,
-    "promoPrice": 3550,
-    "providerCost": 2600,
-    "resellerProfit": 950,
-    "discountPercent": 26,
+    "originalPrice": 18100,
+    "promoPrice": 13000,
+    "providerCost": 6500,
+    "resellerProfit": 4250,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -824,7 +827,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Interdimensional",
     "category": "streaming",
     "description": "Disney+ Standard, Spotify Individual · 1 Dispositivo · 30 Días",
-    "badge": "🔥 27% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -832,15 +835,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 6300,
+        "cost": 2000
       },
       {
         "platform": "Spotify",
         "planLabel": "Individual Premium",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 3800,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -848,11 +851,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "spotify.png"
     ],
     "image": "",
-    "originalPrice": 4100,
-    "promoPrice": 3000,
-    "providerCost": 2200,
-    "resellerProfit": 800,
-    "discountPercent": 27,
+    "originalPrice": 10100,
+    "promoPrice": 7300,
+    "providerCost": 3500,
+    "resellerProfit": 2450,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -864,7 +867,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Brutal",
     "category": "streaming",
     "description": "Max Standard, ViX Premium, Crunchyroll Premium · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -872,22 +875,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 6000,
+        "cost": 2000
       },
       {
         "platform": "ViX",
         "planLabel": "Premium",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -896,11 +899,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "crunchyroll.png"
     ],
     "image": "",
-    "originalPrice": 2500,
-    "promoPrice": 1850,
-    "providerCost": 1300,
-    "resellerProfit": 550,
-    "discountPercent": 26,
+    "originalPrice": 13600,
+    "promoPrice": 9800,
+    "providerCost": 5000,
+    "resellerProfit": 3100,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -912,7 +915,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo EDM",
     "category": "streaming",
     "description": "YouTube Premium APK (5 disp), Prime Video (1 disp) · 1 Dispositivo · 30 Días",
-    "badge": "🔥 29% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -920,15 +923,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "YouTube",
         "planLabel": "Premium",
         "units": 1,
-        "regularPrice": 675,
-        "cost": 350
+        "regularPrice": 4400,
+        "cost": 1500
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 675,
-        "cost": 350
+        "regularPrice": 4200,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -936,11 +939,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 1400,
-    "promoPrice": 1000,
-    "providerCost": 700,
-    "resellerProfit": 300,
-    "discountPercent": 29,
+    "originalPrice": 8600,
+    "promoPrice": 6200,
+    "providerCost": 3000,
+    "resellerProfit": 2100,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -952,7 +955,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Triple Promo",
     "category": "streaming",
     "description": "Crunchyroll Premium, Viki Rakuten, DramaBox (5 disp) · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -960,22 +963,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Crunchyroll",
         "planLabel": "Mega Fan",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Viki Rakuten",
         "planLabel": "Pass Standard",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "DramaBox",
         "planLabel": "5 Dispositivos",
         "units": 1,
-        "regularPrice": 833,
-        "cost": 432
+        "regularPrice": 3800,
+        "cost": 1500
       }
     ],
     "logos": [
@@ -984,11 +987,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "dramabox.png"
     ],
     "image": "",
-    "originalPrice": 2500,
-    "promoPrice": 1850,
-    "providerCost": 1300,
-    "resellerProfit": 550,
-    "discountPercent": 26,
+    "originalPrice": 11400,
+    "promoPrice": 8200,
+    "providerCost": 4500,
+    "resellerProfit": 2400,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1008,15 +1011,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Spotify",
         "planLabel": "Individual Premium",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "ChatGPT Plus",
         "planLabel": "IA Premium Plus",
         "units": 1,
-        "regularPrice": 2025,
-        "cost": 1050
+        "regularPrice": 6500,
+        "cost": 3000
       }
     ],
     "logos": [
@@ -1024,10 +1027,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "chatgpt.png"
     ],
     "image": "/flyers/combos/combo-duo-series.png",
-    "originalPrice": 4100,
-    "promoPrice": 3000,
-    "providerCost": 2200,
-    "resellerProfit": 800,
+    "originalPrice": 10300,
+    "promoPrice": 7500,
+    "providerCost": 4500,
+    "resellerProfit": 1950,
     "discountPercent": 27,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1040,7 +1043,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Promo Monstruosa",
     "category": "streaming",
     "description": "Netflix Extra, Prime Video, Max Standard · 1 Dispositivo · 30 Días",
-    "badge": "🔥 26% OFF",
+    "badge": "🔥 28% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -1048,22 +1051,22 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 2633,
-        "cost": 1365
+        "regularPrice": 7700,
+        "cost": 4500
       },
       {
         "platform": "Prime Video",
         "planLabel": "1 Pantalla HD",
         "units": 1,
-        "regularPrice": 2633,
-        "cost": 1365
+        "regularPrice": 4200,
+        "cost": 1500
       },
       {
         "platform": "Max",
         "planLabel": "Estándar HD",
         "units": 1,
-        "regularPrice": 2633,
-        "cost": 1365
+        "regularPrice": 6000,
+        "cost": 2000
       }
     ],
     "logos": [
@@ -1072,11 +1075,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 7900,
-    "promoPrice": 5850,
-    "providerCost": 4200,
-    "resellerProfit": 1650,
-    "discountPercent": 26,
+    "originalPrice": 17900,
+    "promoPrice": 12900,
+    "providerCost": 8000,
+    "resellerProfit": 3200,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1088,7 +1091,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Internet Ilimitado (2 Líneas)",
     "category": "internet",
     "description": "Claro Internet, Personal Internet · 1 Dispositivo · 30 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 31% OFF",
     "durationDays": "30",
     "devices": "1",
     "services": [
@@ -1096,15 +1099,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Claro",
         "planLabel": "Claro Internet",
         "units": 1,
-        "regularPrice": 3274,
-        "cost": 1698
+        "regularPrice": 5000,
+        "cost": 1750
       },
       {
         "platform": "Personal",
         "planLabel": "Personal Internet",
         "units": 1,
-        "regularPrice": 3274,
-        "cost": 1698
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
@@ -1112,11 +1115,11 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "personal.png"
     ],
     "image": "/flyers/combos/streamepro-square.jpg",
-    "originalPrice": 6500,
-    "promoPrice": 4850,
+    "originalPrice": 10000,
+    "promoPrice": 6900,
     "providerCost": 3500,
-    "resellerProfit": 1350,
-    "discountPercent": 25,
+    "resellerProfit": 2400,
+    "discountPercent": 31,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1128,7 +1131,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Bender - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 3 Dispositivos · 90 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 29% OFF",
     "durationDays": "90",
     "devices": "3",
     "services": [
@@ -1136,19 +1139,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 3,
-        "regularPrice": 9450,
-        "cost": 4900
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 9500,
-    "promoPrice": 7000,
+    "originalPrice": 14000,
+    "promoPrice": 9900,
     "providerCost": 5000,
-    "resellerProfit": 2000,
-    "discountPercent": 26,
+    "resellerProfit": 3500,
+    "discountPercent": 29,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1160,7 +1163,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Nibbler - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 2 Dispositivos · 90 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 29% OFF",
     "durationDays": "90",
     "devices": "2",
     "services": [
@@ -1168,19 +1171,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 2,
-        "regularPrice": 9248,
-        "cost": 4795
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 9200,
-    "promoPrice": 6850,
-    "providerCost": 4900,
-    "resellerProfit": 1950,
-    "discountPercent": 26,
+    "originalPrice": 12000,
+    "promoPrice": 8500,
+    "providerCost": 4000,
+    "resellerProfit": 3000,
+    "discountPercent": 29,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1192,7 +1195,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Zapp - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 1 Dispositivo · 90 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 25% OFF",
     "durationDays": "90",
     "devices": "1",
     "services": [
@@ -1200,19 +1203,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 1,
-        "regularPrice": 5400,
-        "cost": 2800
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 5400,
-    "promoPrice": 4000,
-    "providerCost": 2900,
-    "resellerProfit": 1100,
-    "discountPercent": 26,
+    "originalPrice": 6000,
+    "promoPrice": 4500,
+    "providerCost": 2000,
+    "resellerProfit": 1800,
+    "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1224,7 +1227,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Zoidberg - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 3 Dispositivos · 60 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 28% OFF",
     "durationDays": "60",
     "devices": "3",
     "services": [
@@ -1232,19 +1235,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 3,
-        "regularPrice": 9248,
-        "cost": 4795
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 9200,
-    "promoPrice": 6850,
-    "providerCost": 4900,
-    "resellerProfit": 1950,
-    "discountPercent": 26,
+    "originalPrice": 16000,
+    "promoPrice": 11500,
+    "providerCost": 5500,
+    "resellerProfit": 4000,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1256,7 +1259,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Fry - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 3 Dispositivos · 30 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 25% OFF",
     "durationDays": "30",
     "devices": "3",
     "services": [
@@ -1264,19 +1267,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 3,
-        "regularPrice": 8100,
-        "cost": 4200
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 8100,
-    "promoPrice": 6000,
-    "providerCost": 4300,
-    "resellerProfit": 1700,
-    "discountPercent": 26,
+    "originalPrice": 10000,
+    "promoPrice": 7500,
+    "providerCost": 3500,
+    "resellerProfit": 2800,
+    "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1288,7 +1291,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Profesor - Internet Ilimitado",
     "category": "internet",
     "description": "Línea Personal (Android) · 2 Dispositivos · 60 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 28% OFF",
     "durationDays": "60",
     "devices": "2",
     "services": [
@@ -1296,19 +1299,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 2,
-        "regularPrice": 7898,
-        "cost": 4095
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 7900,
-    "promoPrice": 5850,
-    "providerCost": 4200,
-    "resellerProfit": 1650,
-    "discountPercent": 26,
+    "originalPrice": 11000,
+    "promoPrice": 7900,
+    "providerCost": 3500,
+    "resellerProfit": 3000,
+    "discountPercent": 28,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1320,7 +1323,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "Conectate a Otro Nivel",
     "category": "internet",
     "description": "Línea Personal (Android) · 2 Dispositivos · 55 Días",
-    "badge": "🌐 INTERNET ILIMITADO",
+    "badge": "🔥 31% OFF",
     "durationDays": "55",
     "devices": "2",
     "services": [
@@ -1328,19 +1331,19 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Personal",
         "planLabel": "Línea Personal (Android)",
         "units": 2,
-        "regularPrice": 6750,
-        "cost": 3500
+        "regularPrice": 5000,
+        "cost": 1750
       }
     ],
     "logos": [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 6800,
-    "promoPrice": 5000,
-    "providerCost": 3600,
-    "resellerProfit": 1400,
-    "discountPercent": 26,
+    "originalPrice": 8000,
+    "promoPrice": 5500,
+    "providerCost": 2500,
+    "resellerProfit": 2000,
+    "discountPercent": 31,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
@@ -1352,7 +1355,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "title": "TV Digital Plus (Panel)",
     "category": "panel",
     "description": "Panel sin vencimiento, Demos 1 hora, 1 crédito=3 disp · 3 Dispositivos · Ilimitado",
-    "badge": "⭐ PANEL REVENDEDOR",
+    "badge": "🔥 25% OFF",
     "durationDays": "Ilimitado",
     "devices": "3",
     "services": [
@@ -1360,40 +1363,40 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Panel sin vencimiento",
         "planLabel": "Oficial",
         "units": 3,
-        "regularPrice": 0,
-        "cost": 0
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "Demos 1 hora",
         "planLabel": "Oficial",
         "units": 3,
-        "regularPrice": 0,
-        "cost": 0
+        "regularPrice": 3800,
+        "cost": 1500
       },
       {
         "platform": "1 crédito=3 disp",
         "planLabel": "Oficial",
         "units": 3,
-        "regularPrice": 0,
-        "cost": 0
+        "regularPrice": 3800,
+        "cost": 1500
       }
     ],
     "logos": [
       "panel_admin.png"
     ],
     "image": "/og-banner.jpg",
-    "originalPrice": 0,
-    "promoPrice": 0,
-    "providerCost": 0,
-    "resellerProfit": 0,
-    "discountPercent": 0,
+    "originalPrice": 24000,
+    "promoPrice": 18000,
+    "providerCost": 12000,
+    "resellerProfit": 4500,
+    "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
     "active": true,
     "createdAt": "2026-11-14"
   }
-];
+]
 
 export function getFreshOfficialCombos() {
-  return JSON.parse(JSON.stringify(OFFICIAL_COMBOS_CATALOG));
+  return JSON.parse(JSON.stringify(OFFICIAL_COMBOS_CATALOG))
 }
