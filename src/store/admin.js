@@ -318,14 +318,45 @@ function sanitizePhone(phone) {
 export const DEFAULT_PLATFORM_PLANS = {
   Netflix: {
     name: 'Netflix Premium Ultra HD 4K',
+    quality: '4K ULTRA HD • HDR10',
+    deliveryTime: '🟢 10-15m',
+    features: [
+      'PIN Privado de 4 dígitos',
+      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+    ],
     plans: {
+      'perfil_extra': {
+        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
+        units: 1,
+        type: 'perfil_extra',
+        providerCost: 4500,
+        resellerProfit: 2000,
+        clientPrice: 6500,
+        quality: '4K ULTRA HD • HDR10',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          '4K ULTRA HD • HDR10',
+          'PIN Privado de 4 dígitos',
+          'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+          'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+        ]
+      },
       '1_perfil': {
-        label: '1 Perfil (1 Dispositivo)',
+        label: '1 Perfil Premium 4K (1 Dispositivo)',
         units: 1,
         type: 'perfil',
         providerCost: 5500,
         resellerProfit: 2200,
-        clientPrice: 7700
+        clientPrice: 7700,
+        quality: '4K ULTRA HD • HDR10',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          '4K ULTRA HD • HDR10',
+          'PIN Privado de 4 dígitos',
+          'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+          'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+        ]
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',

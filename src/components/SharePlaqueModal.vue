@@ -16,8 +16,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'openInStudio'])
 const toast = useToastStore()
 const isExporting = ref(false)
-const showFullCopy = ref(false)
 
+// Teléfono editable directo del distribuidor
 const localContactPhone = ref(props.contactPhone || '')
 watch(() => props.contactPhone, (newVal) => {
   if (newVal) localContactPhone.value = newVal
@@ -31,6 +31,80 @@ const activePromoCode = computed(() => String(props.payload?.promoCode || props.
 const activePromoLabel = computed(() => String(props.payload?.promoLabel || props.promoLabel || 'Descuento Oficial').trim())
 
 const isMultiMode = computed(() => props.payload?.mode === 'multi' && Array.isArray(props.payload?.items) && props.payload.items.length > 0)
+
+// Selector de Estilos Visuales para Placas Rápidas
+const plaqueThemeKey = ref('cyber')
+
+// Auto-selección inteligente de tema según el producto
+watch(() => props.payload, (p) => {
+  if (p) {
+    const titleStr = (p.title || p.name || p.platform || '').toLowerCase()
+    if (titleStr.includes('netflix')) {
+      plaqueThemeKey.value = 'ruby'
+    } else if (p.productType === 'physical') {
+      plaqueThemeKey.value = 'gold'
+    } else if (p.productType === 'package') {
+      plaqueThemeKey.value = 'ruby'
+    } else {
+      plaqueThemeKey.value = 'cyber'
+    }
+  }
+}, { immediate: true })
+
+const PLAQUE_THEMES = {
+  cyber: {
+    id: 'cyber',
+    label: '⚡ Cyber Neon',
+    glowRgba: 'rgba(56, 189, 248, 0.35)',
+    borderHex: '#38bdf8',
+    accentHex: '#7dd3fc',
+    badgeGrad: ['#0284c7', '#2563eb'],
+    bgGrad: ['#040814', '#0b1224', '#020617'],
+    cssPill: 'bg-sky-500/20 text-sky-300 border-sky-400/50',
+    cssPrice: 'text-sky-300',
+    cssBorder: 'border-sky-500/40'
+  },
+  ruby: {
+    id: 'ruby',
+    label: '🔴 Ruby Netflix',
+    glowRgba: 'rgba(239, 68, 68, 0.40)',
+    borderHex: '#ef4444',
+    accentHex: '#fca5a5',
+    badgeGrad: ['#dc2626', '#b91c1c'],
+    bgGrad: ['#140404', '#22080a', '#0a0204'],
+    cssPill: 'bg-red-500/20 text-red-300 border-red-400/50',
+    cssPrice: 'text-red-300',
+    cssBorder: 'border-red-500/40'
+  },
+  gold: {
+    id: 'gold',
+    label: '👑 Gold VIP',
+    glowRgba: 'rgba(245, 158, 11, 0.38)',
+    borderHex: '#f59e0b',
+    accentHex: '#fde68a',
+    badgeGrad: ['#f59e0b', '#d97706'],
+    bgGrad: ['#140e04', '#1f1608', '#0d0802'],
+    cssPill: 'bg-amber-500/20 text-amber-300 border-amber-400/50',
+    cssPrice: 'text-amber-300',
+    cssBorder: 'border-amber-500/40'
+  },
+  emerald: {
+    id: 'emerald',
+    label: '💬 Emerald Pro',
+    glowRgba: 'rgba(16, 185, 129, 0.38)',
+    borderHex: '#10b981',
+    accentHex: '#a7f3d0',
+    badgeGrad: ['#059669', '#047857'],
+    bgGrad: ['#02120d', '#052117', '#010c08'],
+    cssPill: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50',
+    cssPrice: 'text-emerald-300',
+    cssBorder: 'border-emerald-500/40'
+  }
+}
+
+const accentTheme = computed(() => {
+  return PLAQUE_THEMES[plaqueThemeKey.value] || PLAQUE_THEMES.cyber
+})
 
 const normalizedItems = computed(() => {
   if (!props.payload) return []
@@ -55,7 +129,8 @@ const normalizedItems = computed(() => {
     image: p.image || '',
     tag: String(p.tag || p.platform || 'OFICIAL').slice(0, 24),
     services: Array.isArray(p.services) ? p.services : null,
-    discountPct: Number(p.discountPct || 0)
+    discountPct: Number(p.discountPct || 0),
+    features: p.features || null
   }]
 })
 
@@ -70,6 +145,12 @@ const mainItem = computed(() => normalizedItems.value[0] || {
   discountPct: 0
 })
 
+const isNetflixItem = computed(() => {
+  const t = (mainItem.value.title || '').toLowerCase()
+  const tag = (mainItem.value.tag || '').toLowerCase()
+  return t.includes('netflix') || tag.includes('netflix')
+})
+
 const plaqueHeadline = computed(() => {
   if (isMultiMode.value) {
     return props.payload?.title || 'Mi Selección en StreamePro'
@@ -81,54 +162,15 @@ const plaqueSubline = computed(() => {
   if (isMultiMode.value) {
     return props.payload?.subtitle || `${normalizedItems.value.length} productos con garantía oficial y entrega rápida`
   }
+  if (isNetflixItem.value) {
+    return '4K ULTRA HD • HDR10 · 🟢 10-15m · PIN Privado'
+  }
   if (mainItem.value.subtitle) return mainItem.value.subtitle
   const pt = props.payload?.productType || 'gaming'
-  if (pt === 'physical') return '🚚 Stock Disponible · Envíos a Todo el País · Garantía Oficial'
-  if (pt === 'package') return '🎁 Combo Multi-Plataforma · Perfiles Privados con PIN'
-  if (pt === 'streaming') return '🎬 Perfil Privado Oficial 4K · Activación en 10m a 1h'
-  return '🎮 Licencia Digital Original · Entrega 60/90 min · Garantía Oficial'
-})
-
-const accentTheme = computed(() => {
-  const pt = props.payload?.productType || 'gaming'
-  if (pt === 'physical') {
-    return {
-      glowRgba: 'rgba(245, 158, 11, 0.32)',
-      borderHex: '#f59e0b',
-      accentHex: '#fbbf24',
-      badgeGrad: ['#f59e0b', '#d97706'],
-      cssPill: 'bg-amber-500/20 text-amber-300 border-amber-400/50',
-      cssPrice: 'text-amber-300'
-    }
-  }
-  if (pt === 'package') {
-    return {
-      glowRgba: 'rgba(236, 72, 153, 0.34)',
-      borderHex: '#ec4899',
-      accentHex: '#f472b6',
-      badgeGrad: ['#ec4899', '#a855f7'],
-      cssPill: 'bg-pink-500/20 text-pink-300 border-pink-400/50',
-      cssPrice: 'text-pink-300'
-    }
-  }
-  if (pt === 'streaming') {
-    return {
-      glowRgba: 'rgba(56, 189, 248, 0.32)',
-      borderHex: '#38bdf8',
-      accentHex: '#7dd3fc',
-      badgeGrad: ['#0284c7', '#2563eb'],
-      cssPill: 'bg-sky-500/20 text-sky-300 border-sky-400/50',
-      cssPrice: 'text-sky-300'
-    }
-  }
-  return {
-    glowRgba: 'rgba(99, 102, 241, 0.38)',
-    borderHex: '#38bdf8',
-    accentHex: '#38bdf8',
-    badgeGrad: ['#4f46e5', '#0284c7'],
-    cssPill: 'bg-indigo-500/25 text-cyan-200 border-cyan-400/50',
-    cssPrice: 'text-cyan-300'
-  }
+  if (pt === 'physical') return '🚚 Stock Inmediato · Envíos a Todo el País · Garantía Oficial'
+  if (pt === 'package') return '🎁 Combo Promocional · Perfiles Privados con PIN'
+  if (pt === 'streaming') return '🎬 Perfil Privado 4K · Entrega 10-15m · Garantía 30d'
+  return '🎮 Licencia Digital Original · Entrega 60/90m · Garantía Oficial'
 })
 
 const appendPromoToUrl = (baseUrl) => {
@@ -227,52 +269,52 @@ const roundRectPath = (ctx, x, y, w, h, r) => {
 
 const drawLogoOverlayCrest = (ctx, x, y) => {
   ctx.save()
-  const label = String(props.storeName || 'StreamePro Oficial').toUpperCase().slice(0, 22)
-  ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  const label = String(props.storeName || 'StreamePro Oficial').toUpperCase().slice(0, 20)
+  ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   const textW = ctx.measureText(label).width
-  const crestW = Math.max(290, Math.min(520, textW + 148))
-  const crestH = 74
+  const crestW = Math.max(280, Math.min(500, textW + 140))
+  const crestH = 68
 
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)'
   ctx.shadowBlur = 18
   const bg = ctx.createLinearGradient(x, y, x + crestW, y + crestH)
-  bg.addColorStop(0, 'rgba(6, 12, 28, 0.92)')
-  bg.addColorStop(1, 'rgba(15, 28, 56, 0.88)')
+  bg.addColorStop(0, 'rgba(4, 8, 20, 0.94)')
+  bg.addColorStop(1, 'rgba(12, 22, 44, 0.90)')
   ctx.fillStyle = bg
   roundRectPath(ctx, x, y, crestW, crestH, crestH / 2)
   ctx.fill()
   ctx.lineWidth = 2.5
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)'
+  ctx.strokeStyle = accentTheme.value.borderHex
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // Circular SP monogram badge
-  const circGrad = ctx.createLinearGradient(x + 12, y + 12, x + 62, y + 62)
-  circGrad.addColorStop(0, '#0ea5e9')
-  circGrad.addColorStop(1, '#2563eb')
+  // Monograma SP circular
+  const circGrad = ctx.createLinearGradient(x + 10, y + 10, x + 58, y + 58)
+  circGrad.addColorStop(0, accentTheme.value.badgeGrad[0])
+  circGrad.addColorStop(1, accentTheme.value.badgeGrad[1])
   ctx.fillStyle = circGrad
   ctx.beginPath()
-  ctx.arc(x + 37, y + 37, 25, 0, Math.PI * 2)
+  ctx.arc(x + 34, y + 34, 24, 0, Math.PI * 2)
   ctx.fill()
   ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(224, 242, 254, 0.85)'
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
   ctx.stroke()
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = '900 22px sans-serif'
+  ctx.font = '900 20px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('SP', x + 37, y + 38)
+  ctx.fillText('SP', x + 34, y + 35)
 
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   ctx.fillStyle = '#ffffff'
-  ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.fillText(label, x + 76, y + 36)
+  ctx.font = '900 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  ctx.fillText(label, x + 70, y + 33)
 
-  ctx.fillStyle = '#38bdf8'
-  ctx.font = 'bold 14px monospace'
-  ctx.fillText('✓ TIENDA OFICIAL VERIFICADA', x + 76, y + 57)
+  ctx.fillStyle = accentTheme.value.accentHex
+  ctx.font = 'bold 13px monospace'
+  ctx.fillText('✓ TIENDA OFICIAL VERIFICADA', x + 70, y + 53)
   ctx.restore()
 }
 
@@ -302,70 +344,75 @@ async function renderPlaqueBlob() {
   const ctx = canvas.getContext('2d')
   const th = accentTheme.value
 
-  // 1. Rich Studio Dark Background + Glows
+  // 1. Fondo Studio Cyber Dark de Alto Contraste con Tinte del Tema
   const bg = ctx.createLinearGradient(0, 0, 0, H)
-  bg.addColorStop(0, '#040814')
-  bg.addColorStop(0.55, '#0b1224')
-  bg.addColorStop(1, '#020617')
+  bg.addColorStop(0, th.bgGrad[0])
+  bg.addColorStop(0.55, th.bgGrad[1])
+  bg.addColorStop(1, th.bgGrad[2])
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, W, H)
 
-  const topGlow = ctx.createRadialGradient(W * 0.5, H * 0.25, 30, W * 0.5, H * 0.25, 580)
+  // Resplandor radial superior
+  const topGlow = ctx.createRadialGradient(W * 0.5, H * 0.22, 20, W * 0.5, H * 0.22, 560)
   topGlow.addColorStop(0, th.glowRgba)
   topGlow.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = topGlow
   ctx.fillRect(0, 0, W, H)
 
-  // Outer crisp border frame
+  // Doble marco exterior metálico
   ctx.save()
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)'
   ctx.lineWidth = 3
-  roundRectPath(ctx, 22, 22, W - 44, H - 44, 38)
+  roundRectPath(ctx, 20, 20, W - 40, H - 40, 36)
+  ctx.stroke()
+  ctx.strokeStyle = th.borderHex
+  ctx.lineWidth = 1
+  roundRectPath(ctx, 24, 24, W - 48, H - 48, 34)
   ctx.stroke()
   ctx.restore()
 
   if (isMultiMode.value) {
     // === PLACA MULTI-PRODUCTO ===
-    drawLogoOverlayCrest(ctx, 56, 52)
+    drawLogoOverlayCrest(ctx, 52, 48)
 
-    // Right pill tag
+    // Tag lateral
     ctx.save()
-    const tagTxt = `${normalizedItems.value.length} PRODUCTOS SELECCIONADOS`
+    const tagTxt = `${normalizedItems.value.length} SELECCIONADOS`
     ctx.font = '900 17px monospace'
-    const tagW = ctx.measureText(tagTxt).width + 44
-    const tagGrad = ctx.createLinearGradient(W - 56 - tagW, 64, W - 56, 114)
+    const tagW = ctx.measureText(tagTxt).width + 42
+    const tagGrad = ctx.createLinearGradient(W - 52 - tagW, 58, W - 52, 106)
     tagGrad.addColorStop(0, th.badgeGrad[0])
     tagGrad.addColorStop(1, th.badgeGrad[1])
     ctx.fillStyle = tagGrad
-    roundRectPath(ctx, W - 56 - tagW, 64, tagW, 48, 24)
+    roundRectPath(ctx, W - 52 - tagW, 58, tagW, 46, 23)
     ctx.fill()
     ctx.fillStyle = '#ffffff'
     ctx.textAlign = 'center'
-    ctx.fillText(tagTxt, W - 56 - tagW / 2, 94)
+    ctx.fillText(tagTxt, W - 52 - tagW / 2, 87)
     ctx.restore()
 
     // Title band
     ctx.save()
     ctx.fillStyle = '#ffffff'
     ctx.textAlign = 'left'
-    ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.fillText(plaqueHeadline.value.slice(0, 38), 58, 194)
+    ctx.font = '900 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    ctx.fillText(plaqueHeadline.value.slice(0, 38), 54, 178)
     ctx.fillStyle = th.accentHex
-    ctx.font = 'bold 21px sans-serif'
-    ctx.fillText(plaqueSubline.value.slice(0, 68), 58, 228)
+    ctx.font = 'bold 20px sans-serif'
+    ctx.fillText(plaqueSubline.value.slice(0, 68), 54, 212)
     ctx.restore()
 
     // Showcase Product Rows
     const items = normalizedItems.value
     const imgs = await Promise.all(items.map(it => loadImg(getCORSUrl(it.image))))
-    const startY = 264
-    const rowH = Math.min(162, Math.floor(600 / Math.max(1, items.length)) - 14)
+    const startY = 246
+    const rowH = Math.min(156, Math.floor(620 / Math.max(1, items.length)) - 14)
 
     items.forEach((it, idx) => {
-      const y = startY + idx * (rowH + 16)
+      const y = startY + idx * (rowH + 14)
       ctx.save()
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)'
-      roundRectPath(ctx, 56, y, W - 112, rowH, 24)
+      ctx.fillStyle = 'rgba(12, 18, 36, 0.92)'
+      roundRectPath(ctx, 52, y, W - 104, rowH, 22)
       ctx.fill()
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
       ctx.lineWidth = 2
@@ -373,10 +420,10 @@ async function renderPlaqueBlob() {
 
       // Thumbnail
       const thumbSize = rowH - 24
-      const tx = 70
+      const tx = 66
       const ty = y + 12
       ctx.save()
-      roundRectPath(ctx, tx, ty, thumbSize, thumbSize, 16)
+      roundRectPath(ctx, tx, ty, thumbSize, thumbSize, 14)
       ctx.clip()
       ctx.fillStyle = '#020617'
       ctx.fillRect(tx, ty, thumbSize, thumbSize)
@@ -392,36 +439,37 @@ async function renderPlaqueBlob() {
       // Title + tag
       ctx.textAlign = 'left'
       ctx.fillStyle = th.accentHex
-      ctx.font = 'bold 16px monospace'
-      ctx.fillText(it.tag.toUpperCase(), tx + thumbSize + 24, y + 44)
+      ctx.font = 'bold 15px monospace'
+      ctx.fillText(it.tag.toUpperCase(), tx + thumbSize + 22, y + 40)
 
       ctx.fillStyle = '#ffffff'
-      ctx.font = '900 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      ctx.fillText(it.title.length > 34 ? it.title.slice(0, 32) + '...' : it.title, tx + thumbSize + 24, y + 84)
+      ctx.font = '900 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.fillText(it.title.length > 32 ? it.title.slice(0, 30) + '...' : it.title, tx + thumbSize + 22, y + 78)
 
       ctx.fillStyle = '#94a3b8'
-      ctx.font = '600 18px sans-serif'
-      ctx.fillText(it.subtitle.slice(0, 44), tx + thumbSize + 24, y + 118)
+      ctx.font = '600 17px sans-serif'
+      ctx.fillText(it.subtitle.slice(0, 42), tx + thumbSize + 22, y + 110)
 
       // Price right aligned
       ctx.textAlign = 'right'
       ctx.fillStyle = '#34d399'
-      ctx.font = '900 34px monospace'
-      ctx.fillText(`$${it.price.toLocaleString()}`, W - 82, y + rowH / 2 + 6)
+      ctx.font = '900 32px monospace'
+      ctx.fillText(`$${it.price.toLocaleString()}`, W - 78, y + rowH / 2 + 6)
       ctx.fillStyle = '#94a3b8'
-      ctx.font = 'bold 15px monospace'
-      ctx.fillText('ARS', W - 82, y + rowH / 2 + 28)
+      ctx.font = 'bold 14px monospace'
+      ctx.fillText('ARS', W - 78, y + rowH / 2 + 26)
       ctx.restore()
     })
   } else {
-    // === PLACA PRODUCTO ÚNICO (CON LOGO SOBRE IMAGEN DEL PRODUCTO) ===
-    const visX = 52
-    const visY = 50
-    const visW = W - 104
-    const visH = 590
+    // === PLACA PRODUCTO ÚNICO (ARQUITECTURA DE CONTENIDO PERFECTA) ===
+    // 1. Visor de Imagen Superior: Alto ajustado a 470px (deja 540px limpios para textos)
+    const visX = 48
+    const visY = 46
+    const visW = W - 96
+    const visH = 470
 
     ctx.save()
-    roundRectPath(ctx, visX, visY, visW, visH, 32)
+    roundRectPath(ctx, visX, visY, visW, visH, 30)
     ctx.clip()
 
     ctx.fillStyle = '#060a16'
@@ -429,169 +477,224 @@ async function renderPlaqueBlob() {
 
     const mainImgEl = await loadImg(getCORSUrl(mainItem.value.image))
     if (mainImgEl) {
-      // Blurred luminous backdrop
-      const bgScale = Math.max(visW / mainImgEl.width, visH / mainImgEl.height) * 1.18
+      // Fondo difuminado de alto brillo
+      const bgScale = Math.max(visW / mainImgEl.width, visH / mainImgEl.height) * 1.2
       const bw = mainImgEl.width * bgScale
       const bh = mainImgEl.height * bgScale
       ctx.save()
-      ctx.filter = 'blur(26px) brightness(0.45) saturate(1.3)'
+      ctx.filter = 'blur(28px) brightness(0.42) saturate(1.35)'
       ctx.drawImage(mainImgEl, visX + (visW - bw) / 2, visY + (visH - bh) / 2, bw, bh)
       ctx.restore()
 
-      // Centered sharp full product artwork
-      const pad = 42
+      // Arte de producto nítido centrado
+      const pad = 36
       const sc = Math.min((visW - pad * 2) / mainImgEl.width, (visH - pad * 2) / mainImgEl.height)
       const dw = mainImgEl.width * sc
       const dh = mainImgEl.height * sc
       ctx.save()
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)'
-      ctx.shadowBlur = 32
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)'
+      ctx.shadowBlur = 36
       ctx.shadowOffsetY = 12
-      ctx.drawImage(mainImgEl, visX + (visW - dw) / 2, visY + (visH - dh) / 2 + 12, dw, dh)
+      ctx.drawImage(mainImgEl, visX + (visW - dw) / 2, visY + (visH - dh) / 2 + 8, dw, dh)
       ctx.restore()
     } else if (mainItem.value.services && mainItem.value.services.length > 0) {
-      // Combo visual tile grid when combo has no bitmap cover
+      // Rejilla de mosaicos combo
       const srvs = mainItem.value.services.slice(0, 4)
-      const cardW = Math.min(200, Math.floor((visW - 120) / srvs.length) - 16)
-      const cardH = 260
-      const totalRowW = srvs.length * cardW + (srvs.length - 1) * 18
+      const cardW = Math.min(195, Math.floor((visW - 110) / srvs.length) - 14)
+      const cardH = 240
+      const totalRowW = srvs.length * cardW + (srvs.length - 1) * 16
       const rx0 = visX + (visW - totalRowW) / 2
-      const ry0 = visY + (visH - cardH) / 2 + 24
+      const ry0 = visY + (visH - cardH) / 2 + 18
       srvs.forEach((srv, idx) => {
-        const sx = rx0 + idx * (cardW + 18)
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)'
-        roundRectPath(ctx, sx, ry0, cardW, cardH, 22)
+        const sx = rx0 + idx * (cardW + 16)
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)'
+        roundRectPath(ctx, sx, ry0, cardW, cardH, 20)
         ctx.fill()
         ctx.strokeStyle = th.borderHex
         ctx.lineWidth = 2
         ctx.stroke()
         ctx.fillStyle = '#ffffff'
-        ctx.font = '900 22px sans-serif'
+        ctx.font = '900 21px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(srv.platform, sx + cardW / 2, ry0 + cardH / 2 + 14)
+        ctx.fillText(srv.platform, sx + cardW / 2, ry0 + cardH / 2 + 10)
         ctx.fillStyle = th.accentHex
-        ctx.font = 'bold 15px monospace'
-        ctx.fillText(srv.planLabel || '1 Mes', sx + cardW / 2, ry0 + cardH - 36)
+        ctx.font = 'bold 14px monospace'
+        ctx.fillText(srv.planLabel || '1 Mes', sx + cardW / 2, ry0 + cardH - 32)
       })
     } else {
       ctx.fillStyle = th.accentHex
-      ctx.font = '900 68px sans-serif'
+      ctx.font = '900 64px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(String(props.storeName || 'SP').toUpperCase().slice(0, 14), visX + visW / 2, visY + visH / 2 + 20)
+      ctx.fillText(String(props.storeName || 'SP').toUpperCase().slice(0, 14), visX + visW / 2, visY + visH / 2 + 18)
     }
 
-    // Bottom vignette inside visor
-    const vig = ctx.createLinearGradient(0, visY + visH - 140, 0, visY + visH)
+    // Viñeta inferior suave
+    const vig = ctx.createLinearGradient(0, visY + visH - 120, 0, visY + visH)
     vig.addColorStop(0, 'rgba(6, 10, 22, 0)')
-    vig.addColorStop(1, 'rgba(6, 10, 22, 0.9)')
+    vig.addColorStop(1, 'rgba(6, 10, 22, 0.92)')
     ctx.fillStyle = vig
-    ctx.fillRect(visX, visY + visH - 140, visW, 140)
+    ctx.fillRect(visX, visY + visH - 120, visW, 120)
 
-    // LOGO DIRECTAMENTE SOBRE LA IMAGEN DEL PRODUCTO (ESQUINA SUP. IZQ.)
-    drawLogoOverlayCrest(ctx, visX + 26, visY + 26)
+    // Crest Logo sobre la imagen (Esquina superior izquierda)
+    drawLogoOverlayCrest(ctx, visX + 22, visY + 22)
 
-    // Tag categoría/plataforma esquina superior derecha sobre la imagen
-    if (mainItem.value.tag) {
-      ctx.save()
-      const tStr = mainItem.value.tag.toUpperCase()
-      ctx.font = '900 18px monospace'
-      const tw = ctx.measureText(tStr).width + 38
-      const tx = visX + visW - 26 - tw
-      const ty = visY + 34
-      const gPill = ctx.createLinearGradient(tx, ty, tx + tw, ty + 48)
-      gPill.addColorStop(0, th.badgeGrad[0])
-      gPill.addColorStop(1, th.badgeGrad[1])
-      ctx.fillStyle = gPill
-      roundRectPath(ctx, tx, ty, tw, 48, 24)
-      ctx.fill()
-      ctx.fillStyle = '#ffffff'
-      ctx.textAlign = 'center'
-      ctx.fillText(tStr, tx + tw / 2, ty + 30)
-      ctx.restore()
-    }
+    // Tag / Categoría / Calidad Top-Right sobre la imagen
+    ctx.save()
+    const qualityTag = isNetflixItem.value ? '4K ULTRA HD • HDR10' : (mainItem.value.tag || 'OFICIAL').toUpperCase()
+    ctx.font = '900 16px monospace'
+    const qtw = ctx.measureText(qualityTag).width + 36
+    const qtx = visX + visW - 22 - qtw
+    const qty = visY + 26
+    const gPill = ctx.createLinearGradient(qtx, qty, qtx + qtw, qty + 42)
+    gPill.addColorStop(0, th.badgeGrad[0])
+    gPill.addColorStop(1, th.badgeGrad[1])
+    ctx.fillStyle = gPill
+    roundRectPath(ctx, qtx, qty, qtw, 42, 21)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.fillText(qualityTag, qtx + qtw / 2, qty + 26)
+
+    // Delivery pill debajo del tag
+    const delPill = '🟢 10-15m ENTREGA'
+    ctx.font = 'bold 13px monospace'
+    const dtw = ctx.measureText(delPill).width + 24
+    const dtx = visX + visW - 22 - dtw
+    const dty = qty + 50
+    ctx.fillStyle = 'rgba(6, 78, 59, 0.90)'
+    roundRectPath(ctx, dtx, dty, dtw, 30, 15)
+    ctx.fill()
+    ctx.strokeStyle = '#34d399'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ctx.fillStyle = '#34d399'
+    ctx.fillText(delPill, dtx + dtw / 2, dty + 20)
     ctx.restore()
 
-    // Borde sutil metálico del visor de imagen
+    ctx.restore() // Fin visor clip
+
+    // Borde metálico del visor
     ctx.save()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
     ctx.lineWidth = 2.5
-    roundRectPath(ctx, visX, visY, visW, visH, 32)
+    roundRectPath(ctx, visX, visY, visW, visH, 30)
     ctx.stroke()
     ctx.restore()
 
-    // Título, Subtítulo y Precio limpios en zona inferior
+    // 2. Zona de Texto Inferior (Medición estricta de coordenadas para cero solapamiento)
     ctx.save()
     ctx.textAlign = 'center'
+
+    // 2.1 TÍTULO (Dinámico a 1 o 2 líneas, max 920px)
+    const titleText = mainItem.value.title
+    const titleLines = wrapTextLines(ctx, titleText, 940).slice(0, 2)
+    const isTwoLines = titleLines.length > 1
+
     ctx.fillStyle = '#ffffff'
-    ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    const lines = wrapTextLines(ctx, mainItem.value.title, W - 130).slice(0, 2)
-    lines.forEach((ln, i) => {
-      ctx.fillText(ln, W / 2, 696 + i * 50)
-    })
+    ctx.font = isTwoLines
+      ? '900 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      : '900 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 
-    const subY = lines.length > 1 ? 786 : 748
-    ctx.fillStyle = th.accentHex
-    ctx.font = 'bold 21px sans-serif'
-    ctx.fillText(plaqueSubline.value.slice(0, 72), W / 2, subY)
-
-    // Píldora limpia de Precio
-    const pY = lines.length > 1 ? 824 : 792
-    const priceText = mainItem.value.price > 0 ? `$${mainItem.value.price.toLocaleString()} ARS` : 'CONSULTAR PRECIO'
-    const hasOrig = mainItem.value.originalPrice > mainItem.value.price && mainItem.value.price > 0
-    if (hasOrig) {
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = 'bold 22px sans-serif'
-      ctx.fillText(`Antes: $${mainItem.value.originalPrice.toLocaleString()} ARS`, W / 2, pY + 22)
+    if (isTwoLines) {
+      ctx.fillText(titleLines[0], W / 2, 570)
+      ctx.fillText(titleLines[1], W / 2, 612)
+    } else {
+      ctx.fillText(titleLines[0], W / 2, 584)
     }
 
-    ctx.shadowColor = th.glowRgba
-    ctx.shadowBlur = 26
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '900 64px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.fillText(priceText, W / 2, pY + (hasOrig ? 92 : 72))
-    ctx.shadowBlur = 0
+    // 2.2 PÍLDORA DE ESPECIFICACIONES / SUBTÍTULO
+    const specsY = isTwoLines ? 654 : 640
+    const subText = isNetflixItem.value 
+      ? '✓ 4K ULTRA HD • HDR10 · 🟢 10-15m · PIN Privado 4 dígitos'
+      : (plaqueSubline.value.slice(0, 68))
+    
+    ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    const subW = Math.min(W - 120, ctx.measureText(subText).width + 48)
+    const subX = (W - subW) / 2
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    roundRectPath(ctx, subX, specsY - 22, subW, 36, 18)
+    ctx.fill()
+    ctx.strokeStyle = th.borderHex
+    ctx.lineWidth = 1.5
+    ctx.stroke()
 
-    // Sello de Confianza / Garantía Oficial
+    ctx.fillStyle = th.accentHex
+    ctx.fillText(subText, W / 2, specsY + 3)
+
+    // 2.3 BLOQUE DE PRECIOS (Antes tachado + Descuento + Precio Venta Promo)
+    const priceBoxY = isTwoLines ? 706 : 696
+    const hasOrig = mainItem.value.originalPrice > mainItem.value.price && mainItem.value.price > 0
+    const priceText = mainItem.value.price > 0 ? `$${mainItem.value.price.toLocaleString()} ARS` : 'CONSULTAR PRECIO'
+
+    if (hasOrig) {
+      // Línea de antes tachado
+      const origText = `Antes: $${mainItem.value.originalPrice.toLocaleString()} ARS`
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = 'bold 21px sans-serif'
+      ctx.fillText(origText, W / 2, priceBoxY + 18)
+
+      // Precio Principal Gigante con Glow
+      ctx.shadowColor = th.glowRgba
+      ctx.shadowBlur = 28
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 64px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.fillText(priceText, W / 2, priceBoxY + 82)
+      ctx.shadowBlur = 0
+    } else {
+      ctx.shadowColor = th.glowRgba
+      ctx.shadowBlur = 28
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 68px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      ctx.fillText(priceText, W / 2, priceBoxY + 68)
+      ctx.shadowBlur = 0
+    }
+
+    // 2.4 SELLO DE CONFIANZA Y GARANTÍA OFICIAL
+    const trustY = hasOrig ? (priceBoxY + 120) : (priceBoxY + 108)
+    const trustText = isNetflixItem.value
+      ? '🛡️ SIN BLOQUEO EN ARGENTINA · PIN 4 DÍGITOS · RENOVACIÓN MES A MES'
+      : '🛡️ GARANTÍA OFICIAL · ENTREGA INMEDIATA 10-15M · ATENCIÓN VIP'
+    
     ctx.fillStyle = '#34d399'
-    ctx.font = '900 16px monospace'
-    ctx.fillText('🛡️ GARANTÍA OFICIAL · ENTREGA INMEDIATA · PIN EXCLUSIVO', W / 2, pY + (hasOrig ? 126 : 106))
+    ctx.font = '900 15px monospace'
+    ctx.fillText(trustText, W / 2, trustY)
     ctx.restore()
   }
 
-  // Sello Promocional (si viene con código de Usuario Descuento o cupón activo)
+  // 3. SELLO PROMOCIONAL / CUPÓN (Si existe cupón)
   if (activePromoCode.value) {
     ctx.save()
-    const badgeStr = `🎟️ CUPÓN ${activePromoCode.value} · ${activePromoLabel.value}`.slice(0, 46)
-    ctx.font = '900 18px monospace'
-    const bw = Math.min(W - 140, ctx.measureText(badgeStr).width + 52)
+    const badgeStr = `🎟️ CUPÓN ${activePromoCode.value} · ${activePromoLabel.value}`.slice(0, 48)
+    ctx.font = '900 17px monospace'
+    const bw = Math.min(W - 140, ctx.measureText(badgeStr).width + 50)
     const bx = (W - bw) / 2
-    const by = 918
-    const bGrad = ctx.createLinearGradient(bx, by, bx + bw, by + 40)
+    const by = 886
+    const bGrad = ctx.createLinearGradient(bx, by, bx + bw, by + 38)
     bGrad.addColorStop(0, 'rgba(245, 158, 11, 0.95)')
     bGrad.addColorStop(1, 'rgba(234, 88, 12, 0.95)')
     ctx.fillStyle = bGrad
-    roundRectPath(ctx, bx, by, bw, 40, 20)
+    roundRectPath(ctx, bx, by, bw, 38, 19)
     ctx.fill()
     ctx.fillStyle = '#020617'
     ctx.textAlign = 'center'
-    ctx.fillText(badgeStr, W / 2, by + 26)
+    ctx.fillText(badgeStr, W / 2, by + 25)
     ctx.restore()
   }
 
-  // FOOTER: EXCLUSIVAMENTE WHATSAPP DEL DISTRIBUIDOR (SUPER ATRACTIVO Y LUMINOSO)
+  // 4. FOOTER: WHATSAPP DE DISTRIBUIDOR (EXCLUSIVO Y LUMINOSO)
   ctx.save()
   const phoneToDisplay = (effectiveDistributorPhone.value || '').trim()
-  const fY = activePromoCode.value ? 970 : 962
-  const fH = 72
-  const fW = Math.min(W - 100, 880)
+  const fY = activePromoCode.value ? 950 : 946
+  const fH = 76
+  const fW = Math.min(W - 96, 920)
   const fX = (W - fW) / 2
 
-  // Fondo cápsula verde esmeralda cyberpunk con resplandor
+  // Cápsula verde esmeralda cyberpunk con resplandor
   ctx.shadowColor = 'rgba(16, 185, 129, 0.45)'
   ctx.shadowBlur = 24
   const pillGrad = ctx.createLinearGradient(fX, fY, fX + fW, fY + fH)
   pillGrad.addColorStop(0, 'rgba(6, 78, 59, 0.95)')
-  pillGrad.addColorStop(0.5, 'rgba(5, 150, 105, 0.90)')
+  pillGrad.addColorStop(0.5, 'rgba(5, 150, 105, 0.92)')
   pillGrad.addColorStop(1, 'rgba(4, 120, 87, 0.95)')
   ctx.fillStyle = pillGrad
   roundRectPath(ctx, fX, fY, fW, fH, fH / 2)
@@ -603,8 +706,8 @@ async function renderPlaqueBlob() {
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // Monograma / Icono WhatsApp circular
-  const iconR = 25
+  // Monograma WhatsApp circular
+  const iconR = 26
   const iconX = fX + 44
   const iconY = fY + fH / 2
   ctx.beginPath()
@@ -616,24 +719,24 @@ async function renderPlaqueBlob() {
   ctx.stroke()
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = '26px sans-serif'
+  ctx.font = '28px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText('💬', iconX, iconY + 1)
 
-  // Texto del distribuidor
+  // Textos del contacto
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   ctx.fillStyle = '#a7f3d0'
   ctx.font = '900 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-  ctx.fillText('PEDIDOS & ATENCIÓN DIRECTA POR WHATSAPP', iconX + iconR + 18, fY + 29)
+  ctx.fillText('PEDIDOS & ATENCIÓN DIRECTA POR WHATSAPP', iconX + iconR + 18, fY + 31)
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = '900 28px monospace'
+  ctx.font = '900 30px monospace'
   const displayPhoneText = phoneToDisplay ? `📲 ${phoneToDisplay}` : '📲 WHATSAPP OFICIAL DISPONIBLE'
-  ctx.fillText(displayPhoneText, iconX + iconR + 18, fY + 58)
+  ctx.fillText(displayPhoneText, iconX + iconR + 18, fY + 62)
 
-  // Badge derecho "24/7 EN LÍNEA"
+  // Badge derecho "24/7 ACTIVO"
   ctx.textAlign = 'right'
   ctx.fillStyle = '#ecfdf5'
   ctx.font = 'bold 15px monospace'
@@ -775,15 +878,15 @@ const sharePlaqueDirect = async () => {
   <div v-if="show && payload" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700/80 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden text-white flex flex-col my-auto max-h-[95vh]">
       
-      <!-- Encabezado Simple -->
+      <!-- Encabezado Simple con Selector de Estilos Rápidos -->
       <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 shrink-0">
         <div class="flex items-center gap-2.5 min-w-0">
           <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-black text-xs text-white shadow shrink-0">
             SP
           </div>
           <div class="min-w-0">
-            <h3 class="text-sm sm:text-base font-black text-white truncate">Placa &amp; Enlace para Compartir</h3>
-            <p class="text-[11px] text-slate-400 truncate">Diseño oficial con enlace limpio y texto listo para enviar</p>
+            <h3 class="text-sm sm:text-base font-black text-white truncate">Placa Rápida para Compartir</h3>
+            <p class="text-[11px] text-slate-400 truncate">Diseño 1:1 de alto impacto con tu WhatsApp exclusivo</p>
           </div>
         </div>
         <button @click="emit('close')" type="button" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-bold text-sm flex items-center justify-center cursor-pointer shrink-0">
@@ -794,7 +897,30 @@ const sharePlaqueDirect = async () => {
       <!-- Contenido Scrolleable -->
       <div class="p-4 sm:p-5 overflow-y-auto space-y-4 bg-[#020617] flex-1">
         
-        <!-- Vista Previa de la Placa 1:1 -->
+        <!-- SELECTOR DE ESTILOS VISUALES RÁPIDOS -->
+        <div class="flex items-center justify-between gap-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800">
+          <span class="text-[11px] font-black uppercase text-slate-400 tracking-wider shrink-0 flex items-center gap-1">
+            <span>🎨</span> Estilo:
+          </span>
+          <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
+            <button
+              v-for="th in Object.values(PLAQUE_THEMES)"
+              :key="th.id"
+              type="button"
+              @click="plaqueThemeKey = th.id"
+              :class="[
+                'px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer',
+                plaqueThemeKey === th.id
+                  ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md scale-105 border border-white/30'
+                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              {{ th.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Vista Previa de la Placa 1:1 (Aspect Ratio Cuadrado Perfecto y Cero Solapamiento) -->
         <div class="flex justify-center">
           <div class="w-full max-w-[340px] aspect-square rounded-3xl overflow-hidden bg-gradient-to-b from-[#040814] via-[#0b1224] to-[#020617] border border-white/15 shadow-2xl p-3 flex flex-col justify-between relative">
             
@@ -838,10 +964,10 @@ const sharePlaqueDirect = async () => {
               </div>
             </template>
 
-            <!-- MODO PRODUCTO ÚNICO (CON LOGO SOBRE LA IMAGEN DEL PRODUCTO) -->
+            <!-- MODO PRODUCTO ÚNICO (CON ENCAJE PERFECTO DE TEXTO) -->
             <template v-else>
-              <!-- Marco superior de Imagen con Logo Superpuesto -->
-              <div class="relative w-full h-[58%] rounded-2xl overflow-hidden bg-slate-950 border border-white/15 flex items-center justify-center">
+              <!-- Marco superior de Imagen con Logo Superpuesto (46% de altura) -->
+              <div class="relative w-full h-[46%] rounded-2xl overflow-hidden bg-slate-950 border border-white/15 flex items-center justify-center">
                 <img
                   v-if="mainItem.image"
                   :src="mainItem.image"
@@ -852,57 +978,72 @@ const sharePlaqueDirect = async () => {
                   v-if="mainItem.image"
                   :src="mainItem.image"
                   :alt="mainItem.title"
-                  class="relative z-10 max-w-full max-h-full object-contain p-3 drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]"
+                  class="relative z-10 max-w-full max-h-full object-contain p-2.5 drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]"
                 >
-                <div v-else-if="mainItem.services?.length" class="relative z-10 flex flex-wrap items-center justify-center gap-2 p-4">
-                  <div v-for="(srv, idx) in mainItem.services.slice(0, 4)" :key="idx" class="bg-slate-900/90 border border-pink-500/40 rounded-xl px-3 py-2 text-center shadow">
-                    <span class="text-xs font-black text-white block">{{ srv.platform }}</span>
-                    <span class="text-[9px] text-pink-300 font-mono">{{ srv.planLabel }}</span>
+                <div v-else-if="mainItem.services?.length" class="relative z-10 flex flex-wrap items-center justify-center gap-2 p-3">
+                  <div v-for="(srv, idx) in mainItem.services.slice(0, 4)" :key="idx" class="bg-slate-900/90 border border-pink-500/40 rounded-xl px-2.5 py-1.5 text-center shadow">
+                    <span class="text-[11px] font-black text-white block">{{ srv.platform }}</span>
+                    <span class="text-[8px] text-pink-300 font-mono">{{ srv.planLabel }}</span>
                   </div>
                 </div>
                 <div v-else class="relative z-10 text-2xl font-black text-sky-300 tracking-tight">{{ storeName }}</div>
 
                 <!-- LOGO SOBRE LA IMAGEN DEL PRODUCTO -->
-                <div class="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-400/60 rounded-full pl-1 pr-2.5 py-1 shadow-lg">
-                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[9px] font-black text-white shrink-0 border border-white/40">
+                <div class="absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-400/60 rounded-full pl-1 pr-2 py-0.5 shadow-lg">
+                  <div class="w-5 h-5 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-[8px] font-black text-white shrink-0 border border-white/40">
                     SP
                   </div>
                   <div class="leading-none">
-                    <span class="text-[9px] font-black text-white tracking-wide uppercase block max-w-[125px] truncate">{{ storeName }}</span>
-                    <span class="text-[7px] font-mono font-bold text-cyan-300 block">✓ OFICIAL</span>
+                    <span class="text-[8px] font-black text-white tracking-wide uppercase block max-w-[110px] truncate">{{ storeName }}</span>
+                    <span class="text-[6px] font-mono font-bold text-cyan-300 block">✓ OFICIAL</span>
                   </div>
                 </div>
 
-                <!-- Tag Consola / Categoría Top-Right -->
-                <div v-if="mainItem.tag" :class="['absolute top-2.5 right-2.5 z-20 text-[9px] font-black px-2.5 py-1 rounded-full border shadow uppercase font-mono', accentTheme.cssPill]">
-                  {{ mainItem.tag }}
+                <!-- Tag Calidad / Entrega Top-Right -->
+                <div class="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
+                  <span :class="['text-[8px] font-black px-2 py-0.5 rounded-full border shadow uppercase font-mono', accentTheme.cssPill]">
+                    {{ isNetflixItem ? '4K HDR10' : mainItem.tag }}
+                  </span>
+                  <span class="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono">
+                    🟢 10-15m
+                  </span>
                 </div>
               </div>
 
-              <!-- Título y Precio Limpios -->
-              <div class="flex-1 flex flex-col justify-center items-center text-center px-2 space-y-1">
-                <h4 class="text-sm font-black text-white line-clamp-2 leading-tight">{{ mainItem.title }}</h4>
-                <p :class="['text-[10px] font-semibold line-clamp-1', accentTheme.cssPrice]">{{ plaqueSubline }}</p>
-                <div class="pt-0.5 flex items-baseline justify-center gap-2">
-                  <span v-if="mainItem.originalPrice > mainItem.price && mainItem.price > 0" class="text-[10px] text-slate-400 line-through font-mono">
-                    ${{ mainItem.originalPrice.toLocaleString() }}
-                  </span>
-                  <span class="text-xl font-black font-mono text-white drop-shadow">
+              <!-- Título, Subtítulo y Precios con Espaciado Fluido (54% de altura) -->
+              <div class="flex-1 flex flex-col justify-between items-center text-center px-1 pt-1.5 pb-0.5">
+                <div class="space-y-0.5 w-full">
+                  <h4 class="text-xs sm:text-sm font-black text-white line-clamp-2 leading-snug">{{ mainItem.title }}</h4>
+                  <p :class="['text-[9px] font-bold line-clamp-1 truncate', accentTheme.cssPrice]">
+                    {{ plaqueSubline }}
+                  </p>
+                </div>
+
+                <div class="py-0.5 w-full">
+                  <div v-if="mainItem.originalPrice > mainItem.price && mainItem.price > 0" class="text-[9px] text-slate-400 line-through font-mono">
+                    Antes: ${{ mainItem.originalPrice.toLocaleString() }} ARS
+                  </div>
+                  <div class="text-lg sm:text-xl font-black font-mono text-white drop-shadow">
                     {{ mainItem.price > 0 ? `$${mainItem.price.toLocaleString()} ARS` : 'Consultar' }}
-                  </span>
+                  </div>
+                  <div class="text-[8px] text-emerald-400 font-bold tracking-wider font-mono uppercase">
+                    {{ isNetflixItem ? '🛡️ Sin bloqueo Argentina · PIN 4 dígitos' : '🛡️ Garantía Oficial · Reemplazo Inmediato' }}
+                  </div>
                 </div>
-              </div>
 
-              <!-- Pie con Link Directo + Badge Promo -->
-              <div v-if="activePromoCode" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[10px] px-3 py-1 rounded-full text-center shadow mb-1 truncate">
-                🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
-              </div>
-              <div class="mt-2 py-1.5 px-3 rounded-full bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-teal-950/90 border border-emerald-500/50 flex items-center justify-between text-[10px] font-mono shadow-md text-emerald-200">
-                <div class="flex items-center gap-1.5 truncate">
-                  <span class="text-xs">💬</span>
-                  <span class="font-bold truncate">WhatsApp: {{ effectiveDistributorPhone || 'Oficial' }}</span>
+                <!-- Cupón si aplica -->
+                <div v-if="activePromoCode" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-mono font-black text-[9px] py-0.5 rounded-full text-center shadow truncate">
+                  🎟️ CUPÓN {{ activePromoCode }} · {{ activePromoLabel }}
                 </div>
-                <span class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-black border border-emerald-400/30">24/7</span>
+
+                <!-- Cápsula WhatsApp del Distribuidor -->
+                <div class="w-full py-1 px-2.5 rounded-full bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-teal-950/90 border border-emerald-500/50 flex items-center justify-between text-[9px] font-mono shadow-md text-emerald-200">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <span class="text-[11px]">💬</span>
+                    <span class="font-bold truncate">WhatsApp: {{ effectiveDistributorPhone || 'Oficial' }}</span>
+                  </div>
+                  <span class="text-[7px] bg-emerald-500/20 text-emerald-300 px-1 py-0.2 rounded font-black border border-emerald-400/30">24/7</span>
+                </div>
               </div>
             </template>
           </div>

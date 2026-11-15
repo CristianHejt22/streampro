@@ -467,6 +467,25 @@ export function generateAttractiveShareCopy({
     ].filter(Boolean).join('\n')
   }
 
+  // Netflix Especial
+  const isNetflix = (title || platform).toLowerCase().includes('netflix')
+  if (isNetflix) {
+    return [
+      `🎬🍿 *${title.toUpperCase()}* 🍿🎬`,
+      '📺 *Calidad:* 4K ULTRA HD • HDR10',
+      '⚡ *Entrega Inmediata:* 🟢 10-15m',
+      '🔒 *PIN Privado de 4 dígitos*',
+      '🏠 *Sin bloqueo de hogar en Argentina (Pide actualizar hogar)*',
+      '🔄 *Renovación mes a mes misma cuenta (Modificación de cuenta)*',
+      `🏷️ *Precio Promo:* *${priceFormatted}* / mes${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🛡️ *Garantía Oficial ${storeName}*`,
+      promoLine,
+      phone ? `💬 WhatsApp: ${phone}` : '',
+      `📲 *Activá tu cuenta oficial acá:*`,
+      url
+    ].filter(Boolean).join('\n')
+  }
+
   // Default: Streaming
   return [
     `🎬🍿 *${title.toUpperCase()}* 🍿🎬`,

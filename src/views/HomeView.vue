@@ -81,13 +81,19 @@ const getMinStreamingPrice = (prod) => {
 const STREAMING_BRAND_METADATA = {
   Netflix: {
     badge: '4K ULTRA HD • HDR10',
+    deliveryBadge: '🟢 10-15m',
     badgeClass: 'bg-red-500/15 text-red-400 border-red-500/30',
     accentGlow: 'hover:shadow-[0_0_30px_rgba(229,9,20,0.22)]',
     borderClass: 'border-white/[0.08] hover:border-red-500/50',
     gradientBg: 'from-red-950/25 via-slate-900/90 to-slate-950',
     accentColor: 'text-red-400',
     iconSvg: `<svg class="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h4.5l7.5 13.5V2H20v20h-4.5L8 8.5V22H4V2z"/></svg>`,
-    highlights: ['PIN Privado de 4 dígitos', 'Sin bloqueo de hogar en Argentina', 'Renovación mes a mes misma cuenta']
+    highlights: [
+      '4K ULTRA HD • HDR10',
+      'PIN Privado de 4 dígitos',
+      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+    ]
   },
   'Disney+': {
     badge: '4K UHD • IMAX ENHANCED',
@@ -406,8 +412,45 @@ const products = ref([
     name: 'Netflix Premium Ultra HD', 
     category: 'Streaming', 
     platform: 'Netflix',
-    description: 'Calidad 4K HDR con audio espacial y descargas offline.',
+    badge: '4K ULTRA HD • HDR10',
+    deliveryTime: '🟢 10-15m',
+    specs: '4K ULTRA HD • HDR10',
+    description: 'Calidad 4K ULTRA HD • HDR10 con PIN privado de 4 dígitos y sin bloqueo de hogar en Argentina.',
+    features: [
+      '4K ULTRA HD • HDR10',
+      'Entrega inmediata: 🟢 10-15m',
+      'PIN Privado de 4 dígitos',
+      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+    ],
     plans: PLATFORM_PLANS.Netflix.plans
+  },
+  { 
+    id: 101, 
+    name: 'Netflix Perfil Extra', 
+    category: 'Streaming', 
+    platform: 'Netflix',
+    badge: '⭐ SIN BLOQUEO',
+    deliveryTime: '🟢 10-15m',
+    specs: '4K ULTRA HD • HDR10',
+    description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado de 4 dígitos y renovación mes a mes en la misma cuenta.',
+    features: [
+      '4K ULTRA HD • HDR10',
+      'Entrega inmediata: 🟢 10-15m',
+      'PIN Privado de 4 dígitos',
+      'Sin bloqueo de hogar en Argentina (Pide actualizar hogar)',
+      'Renovación mes a mes misma cuenta (Modificación de cuenta)'
+    ],
+    plans: {
+      'perfil_extra': {
+        label: '1 Perfil Extra (1 Dispositivo)',
+        units: 1,
+        type: 'perfil_extra',
+        providerCost: 4500,
+        resellerProfit: 2000,
+        clientPrice: 6500
+      }
+    }
   },
   { 
     id: 2, 
@@ -5686,13 +5729,43 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Desglose de Servicio Oficial StreamePro -->
-        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs text-slate-300">
-          <div class="flex items-center gap-2 font-bold text-white text-xs">
-            <span>🛡️</span>
-            <span>Garantía Oficial de Servicio StreamePro</span>
+        <!-- Desglose de Servicio Oficial StreamePro con Verificación Netflix -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 text-xs text-slate-300">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 font-black text-white text-xs">
+              <span>🛡️</span>
+              <span>{{ selectedProduct?.platform === 'Netflix' ? 'Garantía Oficial Netflix Argentina' : 'Garantía Oficial StreamePro' }}</span>
+            </div>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              🟢 Entrega 10-15m
+            </span>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
+
+          <!-- Si es Netflix, mostramos los puntos oficiales exactos -->
+          <div v-if="selectedProduct?.platform === 'Netflix'" class="space-y-1.5 pt-1 text-[11px]">
+            <div class="flex items-center gap-2 bg-red-950/20 border border-red-500/30 rounded-xl px-2.5 py-1.5">
+              <span class="text-xs">📺</span>
+              <span class="font-black text-red-300">Calidad: 4K ULTRA HD • HDR10</span>
+              <span class="ml-auto text-[10px] text-emerald-400 font-mono font-bold">🟢 10-15m</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-300">
+              <div class="flex items-center gap-1.5 bg-slate-900/80 p-2 rounded-xl border border-slate-800">
+                <span class="text-emerald-400 font-black">✓</span>
+                <span><strong>PIN Privado:</strong> 4 dígitos exclusivo.</span>
+              </div>
+              <div class="flex items-center gap-1.5 bg-slate-900/80 p-2 rounded-xl border border-slate-800">
+                <span class="text-emerald-400 font-black">✓</span>
+                <span><strong>Sin bloqueo hogar:</strong> En Argentina (actualizar hogar).</span>
+              </div>
+              <div class="flex items-center gap-1.5 bg-slate-900/80 p-2 rounded-xl border border-slate-800 col-span-1 sm:col-span-2">
+                <span class="text-emerald-400 font-black">✓</span>
+                <span><strong>Renovación mensual:</strong> Misma cuenta mes a mes (Modificación de cuenta).</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resto de plataformas -->
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
             <div class="flex items-start gap-1.5">
               <span class="text-emerald-400 font-bold">✓</span>
               <span><strong>PIN Privado Exclusivo:</strong> Nadie altera tus perfiles ni tu historial.</span>
