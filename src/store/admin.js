@@ -704,8 +704,10 @@ function getInitialProviderBankSetup() {
 
 // Función para garantizar que todos los precios base de 1 pantalla coincidan exactamente con lo establecido
 export function sanitizePricingCatalog(catalog = {}) {
+  if (!catalog || typeof catalog !== 'object') return catalog
   const sanitized = { ...catalog }
 
+  // 1. Asegurar contenedor independiente de 'Netflix Perfil Extra'
   if (!sanitized['Netflix Perfil Extra']) {
     sanitized['Netflix Perfil Extra'] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra']))
   }
@@ -713,85 +715,45 @@ export function sanitizePricingCatalog(catalog = {}) {
     delete sanitized.Netflix.plans.perfil_extra
   }
 
-  // Netflix 1 Perfil 4K
+  // 2. Migrar ÚNICAMENTE precios por defecto obsoletos (ej. 7700 -> 8500, 6300 -> 7200) si NO fueron editados por el admin
   if (sanitized.Netflix?.plans?.['1_perfil']) {
     const p = sanitized.Netflix.plans['1_perfil']
-    p.clientPrice = 8500
-    p.providerCost = 4300
-    p.resellerProfit = 4200
-    p.label = '1 Perfil Ultra HD 4K (1 Dispositivo)'
+    if (!p.isCustomPrice && (p.clientPrice === 7700 || !p.clientPrice)) {
+      p.clientPrice = 8500
+      p.providerCost = 4300
+      p.resellerProfit = 4200
+      p.label = p.label || '1 Perfil Ultra HD 4K (1 Dispositivo)'
+    }
   }
 
-  // Netflix Perfil Extra
   if (sanitized['Netflix Perfil Extra']?.plans?.['perfil_extra']) {
     const p = sanitized['Netflix Perfil Extra'].plans['perfil_extra']
-    p.clientPrice = 6500
-    p.providerCost = 4500
-    p.resellerProfit = 2000
-    p.label = '1 Perfil Extra (Sin Bloqueo de Hogar)'
+    if (!p.isCustomPrice && (!p.clientPrice || p.clientPrice === 5500)) {
+      p.clientPrice = 6500
+      p.providerCost = 4500
+      p.resellerProfit = 2000
+      p.label = p.label || '1 Perfil Extra (Sin Bloqueo de Hogar)'
+    }
   }
 
-  // Disney+ 1 Perfil individual con ESPN
   if (sanitized['Disney+']?.plans?.['1_perfil']) {
     const p = sanitized['Disney+'].plans['1_perfil']
-    p.clientPrice = 7200
-    p.providerCost = 2000
-    p.resellerProfit = 5200
-    p.label = '1 Perfil individual (Premium con ESPN)'
+    if (!p.isCustomPrice && (p.clientPrice === 6300 || !p.clientPrice)) {
+      p.clientPrice = 7200
+      p.providerCost = 2000
+      p.resellerProfit = 5200
+      p.label = p.label || '1 Perfil individual (Premium con ESPN)'
+    }
   }
 
-  // Prime Video 1 Perfil
   if (sanitized['Prime Video']?.plans?.['1_perfil']) {
     const p = sanitized['Prime Video'].plans['1_perfil']
-    p.clientPrice = 4200
-    p.providerCost = 1500
-    p.resellerProfit = 2700
-    p.label = '1 Perfil 4K (1 Pantalla HD)'
-  }
-
-  // Max 1 Perfil
-  if (sanitized.Max?.plans?.['1_perfil']) {
-    const p = sanitized.Max.plans['1_perfil']
-    p.clientPrice = 6000
-    p.providerCost = 2000
-    p.resellerProfit = 4000
-    p.label = '1 Perfil individual'
-  }
-
-  // Spotify 1 Slot
-  if (sanitized.Spotify?.plans?.['1_perfil']) {
-    const p = sanitized.Spotify.plans['1_perfil']
-    p.clientPrice = 3800
-    p.providerCost = 1500
-    p.resellerProfit = 2300
-    p.label = '1 Slot / Perfil individual'
-  }
-
-  // IPTV 1 Dispositivo
-  if (sanitized.IPTV?.plans?.['1_perfil']) {
-    const p = sanitized.IPTV.plans['1_perfil']
-    p.clientPrice = 5500
-    p.providerCost = 2000
-    p.resellerProfit = 3500
-    p.label = '1 Dispositivo / Pantalla'
-  }
-
-  // YouTube Premium 1 Slot
-  if (sanitized['YouTube Premium']?.plans?.['1_perfil']) {
-    const p = sanitized['YouTube Premium'].plans['1_perfil']
-    p.clientPrice = 4400
-    p.providerCost = 1500
-    p.resellerProfit = 2900
-    p.label = '1 Slot Familiar Individual'
-  }
-
-  // Canva Pro 1 Año
-  if (sanitized['Canva Pro']?.plans?.['1_perfil']) {
-    const p = sanitized['Canva Pro'].plans['1_perfil']
-    p.clientPrice = 4500
-    p.providerCost = 2000
-    p.resellerProfit = 2500
-    p.label = 'Activación a tu Correo Personal (1 Año)'
+    if (!p.isCustomPrice && (!p.clientPrice || p.providerCost === 2800)) {
+      p.clientPrice = p.clientPrice || 4200
+      p.providerCost = 1500
+      p.resellerProfit = 2700
+      p.label = p.label || '1 Perfil 4K (1 Pantalla HD)'
+    }
   }
 
   return sanitized
@@ -2058,9 +2020,20 @@ export const useAdminStore = defineStore('admin', {
         gamingProviderSites: this.gamingProviderSites,
         gamingOverrides: overrides
       }
+      // 1. Guardar localmente de forma síncrona inmediata (0 ms de demora para la UI)
       saveDb(DB_KEYS.STORE_SETTINGS, settings)
-      // Sincronización en la nube Firebase Firestore para todos los clientes en tiempo real
-      saveStoreSettingsToFirebase(settings).catch(() => {})
+
+      // 2. Sincronización en la nube Firebase Firestore con debounce para evitar saturación de red
+      if (typeof window !== 'undefined') {
+        if (window._streamepro_store_settings_timer) {
+          clearTimeout(window._streamepro_store_settings_timer)
+        }
+        window._streamepro_store_settings_timer = setTimeout(() => {
+          saveStoreSettingsToFirebase(settings).catch(() => {})
+        }, 150)
+      } else {
+        saveStoreSettingsToFirebase(settings).catch(() => {})
+      }
     },
 
     updateGamingMargins({ storeMargin, resellerCommission, minResellerProfit }) {
@@ -2109,25 +2082,28 @@ export const useAdminStore = defineStore('admin', {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
           marginChanged = true
         }
-        let pricesUpdated = false
         if (cloudSettings.pricingCatalog && typeof cloudSettings.pricingCatalog === 'object' && Object.keys(cloudSettings.pricingCatalog).length > 0) {
           const merged = sanitizePricingCatalog({ ...this.pricingCatalog, ...cloudSettings.pricingCatalog })
           if (JSON.stringify(this.pricingCatalog) !== JSON.stringify(merged)) {
             this.pricingCatalog = merged
             saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
-            pricesUpdated = true
           }
         }
         if (Array.isArray(cloudSettings.packages) && cloudSettings.packages.length > 0) {
-          const synced = cloudSettings.packages.map(p => calculatePackageFromCatalog(p, this.pricingCatalog))
-          if (JSON.stringify(this.packages) !== JSON.stringify(synced)) {
-            this.packages = synced
+          const updatedPackages = cloudSettings.packages.map(cloudPkg => {
+            const localPkg = (this.packages || []).find(p => p.id === cloudPkg.id)
+            if (localPkg && localPkg.isManualPrice) {
+              return localPkg
+            }
+            if (cloudPkg.isManualPrice) {
+              return cloudPkg
+            }
+            return calculatePackageFromCatalog(cloudPkg, this.pricingCatalog)
+          })
+          if (JSON.stringify(this.packages) !== JSON.stringify(updatedPackages)) {
+            this.packages = updatedPackages
             saveDb(DB_KEYS.PACKAGES, this.packages)
-            pricesUpdated = true
           }
-        }
-        if (pricesUpdated) {
-          this.persistStoreSettings()
         }
         if (Array.isArray(cloudSettings.gamingProviderSites) && cloudSettings.gamingProviderSites.length > 0) {
           this.gamingProviderSites = cloudSettings.gamingProviderSites
@@ -2427,7 +2403,12 @@ export const useAdminStore = defineStore('admin', {
       if (!this.pricingCatalog[platform].plans?.[planKey]) return { error: 'Plan no encontrado' }
       
       const currentPlan = this.pricingCatalog[platform].plans[planKey]
-      const updatedPlan = { ...currentPlan, ...planData }
+      const updatedPlan = { 
+        ...currentPlan, 
+        ...planData, 
+        isCustomPrice: true,
+        updatedAt: Date.now()
+      }
 
       this.pricingCatalog = {
         ...this.pricingCatalog,
@@ -2460,13 +2441,14 @@ export const useAdminStore = defineStore('admin', {
       if (!this.pricingCatalog[platform]) return { error: 'Plataforma no encontrada' }
       const plat = this.pricingCatalog[platform]
       const currentPlans = plat.plans || {}
+      const newPlan = { ...planData, isCustomPrice: true, updatedAt: Date.now() }
       this.pricingCatalog = {
         ...this.pricingCatalog,
         [platform]: {
           ...plat,
           plans: {
             ...currentPlans,
-            [planKey]: planData
+            [planKey]: newPlan
           }
         }
       }
@@ -4343,7 +4325,12 @@ export const useAdminStore = defineStore('admin', {
       const idx = this.packages.findIndex(p => p.id === pkgId)
       if (idx === -1) return { error: 'Paquete no encontrado' }
       const p = this.packages[idx]
-      const updated = { ...p, ...patch }
+      const updated = { 
+        ...p, 
+        ...patch, 
+        isManualPrice: true,
+        isManualDevices: true
+      }
       if (patch.devices !== undefined) {
         updated.isManualDevices = true
         updated.devices = String(patch.devices)

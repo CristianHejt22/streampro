@@ -554,6 +554,10 @@ export function listenToStoreSettings(callback) {
 
   try {
     return onSnapshot(doc(dbInstance, 'settings', 'store_settings'), (snap) => {
+      // Ignorar escrituras locales pendientes para no revertir ediciones inmediatas del admin
+      if (snap.metadata && snap.metadata.hasPendingWrites) {
+        return
+      }
       if (snap.exists()) {
         callback(snap.data())
       }

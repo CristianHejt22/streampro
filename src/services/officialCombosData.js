@@ -1752,10 +1752,14 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
   if (!platformProfit || platformProfit === 0 || !pkg.isManualPrice) {
     platformProfit = Math.round((grossMargin * 0.63) / 50) * 50 || Math.round(grossMargin * 0.6)
   }
-  const resellerCost = providerCost + platformProfit
+  const resellerCost = pkg.isManualPrice && Number(pkg.resellerCost) > 0
+    ? Number(pkg.resellerCost)
+    : (providerCost + platformProfit)
 
   // 3. GANA REVENDEDOR (promoPrice - resellerCost)
-  const resellerProfit = Math.max(0, promoPrice - resellerCost)
+  const resellerProfit = pkg.isManualPrice && Number(pkg.resellerProfit) > 0
+    ? Number(pkg.resellerProfit)
+    : Math.max(0, promoPrice - resellerCost)
 
   // Ahorro
   const savingsAmount = Math.max(0, originalPrice - promoPrice)
