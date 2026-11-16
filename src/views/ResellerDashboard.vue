@@ -40,11 +40,28 @@ const shopForm = ref({
   showCombos: true,
   showGaming: true,
   showPhysical: false,
-  enabledStreamingPlatforms: ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
-  enabledGamingPlatforms: ['PS5', 'PS4']
+  catalogMode: 'all',
+  enabledStreamingPlatforms: ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro'],
+  enabledGamingPlatforms: ['PS5', 'PS4'],
+  enabledCombos: [],
+  enabledPhysicalCategories: []
 })
 
-const availableStreamingOptions = ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
+const availableStreamingOptions = computed(() => {
+  const catalog = adminStore.pricingCatalog || {}
+  const list = Object.keys(catalog)
+  return list.length > 0 ? list : ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
+})
+
+const availablePhysicalCategories = computed(() => {
+  const prods = adminStore.physicalProducts || []
+  const cats = new Set(prods.map(p => p.category || p.categoryName).filter(Boolean))
+  return Array.from(cats)
+})
+
+const availableCombosList = computed(() => {
+  return (adminStore.computedPackages || adminStore.packages || []).filter(p => p.active)
+})
 
 const toggleStreamingPlatformOption = (plat) => {
   const list = shopForm.value.enabledStreamingPlatforms
@@ -57,14 +74,89 @@ const toggleStreamingPlatformOption = (plat) => {
   }
 }
 
-const toggleGamingPlatformOption = (plat) => {
+const selectAllStreamingPlatforms = () => {
+  shopForm.value.enabledStreamingPlatforms = [...availableStreamingOptions.value]
+  toast.add('Todas las plataformas de streaming habilitadas', 'info')
+}
+
+const clearStreamingPlatforms = () => {
+  if (availableStreamingOptions.value.length > 0) {
+    shopForm.value.enabledStreamingPlatforms = [availableStreamingOptions.value[0]]
+    toast.add('Se mantuvo al menos 1 plataforma activa', 'info')
+  }
+}
+
+const toggleGamingPlatformOption = (cons) => {
   const list = shopForm.value.enabledGamingPlatforms
-  const idx = list.indexOf(plat)
+  const idx = list.indexOf(cons)
   if (idx !== -1) {
     if (list.length > 1) list.splice(idx, 1)
     else toast.add('Debes dejar al menos una consola habilitada', 'warning')
   } else {
-    list.push(plat)
+    list.push(cons)
+  }
+}
+
+const toggleComboOption = (comboId) => {
+  if (!Array.isArray(shopForm.value.enabledCombos)) {
+    shopForm.value.enabledCombos = []
+  }
+  const list = shopForm.value.enabledCombos
+  const idx = list.indexOf(comboId)
+  if (idx !== -1) {
+    list.splice(idx, 1)
+  } else {
+    list.push(comboId)
+  }
+}
+
+const selectAllCombos = () => {
+  shopForm.value.enabledCombos = []
+  toast.add('Todos los combos promocionales habilitados en tu tienda', 'info')
+}
+
+const togglePhysicalCategoryOption = (cat) => {
+  if (!Array.isArray(shopForm.value.enabledPhysicalCategories)) {
+    shopForm.value.enabledPhysicalCategories = []
+  }
+  const list = shopForm.value.enabledPhysicalCategories
+  const idx = list.indexOf(cat)
+  if (idx !== -1) {
+    list.splice(idx, 1)
+  } else {
+    list.push(cat)
+  }
+}
+
+const selectAllPhysicalCategories = () => {
+  shopForm.value.enabledPhysicalCategories = []
+  toast.add('Todas las categorías físicas habilitadas en tu tienda', 'info')
+}
+
+const setPresetCatalogMode = (mode) => {
+  shopForm.value.catalogMode = mode
+  if (mode === 'all') {
+    shopForm.value.showStreaming = true
+    shopForm.value.showCombos = true
+    shopForm.value.showGaming = true
+    shopForm.value.showPhysical = true
+    shopForm.value.enabledStreamingPlatforms = [...availableStreamingOptions.value]
+    shopForm.value.enabledGamingPlatforms = ['PS5', 'PS4']
+    shopForm.value.enabledCombos = []
+    shopForm.value.enabledPhysicalCategories = []
+    toast.add('🌟 Modo activado: Vender TODO el catálogo (Streaming, Combos, Gaming y Físicos)', 'success')
+  } else if (mode === 'digital') {
+    shopForm.value.showStreaming = true
+    shopForm.value.showCombos = true
+    shopForm.value.showGaming = true
+    shopForm.value.showPhysical = false
+    toast.add('⚡ Modo activado: Solo Digital (Físicos Deshabilitados/Ocultos)', 'info')
+  } else if (mode === 'streaming') {
+    shopForm.value.showStreaming = true
+    shopForm.value.showCombos = true
+    shopForm.value.showGaming = false
+    shopForm.value.showPhysical = false
+    toast.add('🎬 Modo activado: Solo Streaming & Combos (Juegos y Físicos Ocultos)', 'info')
   }
 }
 
@@ -82,12 +174,15 @@ const initShopForm = () => {
     cbuNumber: cur.cbuNumber || cfg.cbuNumber || '',
     bankName: cur.bankName || cfg.bankName || 'Mercado Pago / Banco',
     holderName: cur.holderName || cfg.holderName || cur.name || '',
+    catalogMode: cfg.catalogMode || 'all',
     showStreaming: cfg.showStreaming !== false,
     showCombos: cfg.showCombos !== false,
     showGaming: cfg.showGaming !== false,
-    showPhysical: cfg.showPhysical === true,
-    enabledStreamingPlatforms: cfg.enabledStreamingPlatforms || ['Netflix', 'Max', 'Disney+', 'Spotify', 'IPTV'],
-    enabledGamingPlatforms: cfg.enabledGamingPlatforms || ['PS5', 'PS4']
+    showPhysical: Boolean(cfg.showPhysical),
+    enabledStreamingPlatforms: cfg.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro'],
+    enabledGamingPlatforms: cfg.enabledGamingPlatforms || ['PS5', 'PS4'],
+    enabledCombos: cfg.enabledCombos || [],
+    enabledPhysicalCategories: cfg.enabledPhysicalCategories || []
   }
 }
 
@@ -108,7 +203,8 @@ const saveMyShopConfig = async () => {
     slug: cleanSlug
   })
   if (res.success) {
-    toast.add(`✓ ¡Tienda guardada con éxito! Link activo: streamepro.me/${cleanSlug}`, 'success')
+    const physicalText = shopForm.value.showPhysical ? 'con Catálogo Físico HABILITADO' : 'con Catálogo Físico DESHABILITADO (Oculto)'
+    toast.add(`✓ ¡Tienda guardada con éxito! Link activo: streamepro.me/${cleanSlug} (${physicalText})`, 'success')
   } else {
     toast.add(res.error || 'Error al guardar la tienda', 'error')
   }
@@ -4056,13 +4152,62 @@ const submitResellerGameInquiry = () => {
         <!-- COLUMNA DERECHA: SELECCIÓN DE PRODUCTOS QUE QUIERES OFRECER (5 COLS) -->
         <div class="lg:col-span-5 space-y-6">
           <div class="bg-slate-900/80 border border-amber-500/25 p-6 rounded-3xl shadow-xl space-y-5">
-            <h4 class="text-base font-black text-amber-300 flex items-center gap-2 border-b border-slate-800 pb-3">
-              <span>🎯</span>
-              <span>Productos que Quieres Ofrecer</span>
-            </h4>
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h4 class="text-base font-black text-amber-300 flex items-center gap-2">
+                <span>🎯</span>
+                <span>Catálogo de tu Tienda Online</span>
+              </h4>
+              <span class="text-[11px] font-mono text-slate-400 font-bold">
+                /{{ shopForm.slug }}
+              </span>
+            </div>
+
             <p class="text-xs text-slate-300 leading-relaxed">
-              Elige qué rubros y plataformas aparecerán en tu tienda corta. Solo se mostrarán los ítems que actives aquí:
+              Elige con total libertad qué rubros y productos mostrarás en tu tienda personalizada:
             </p>
+
+            <!-- Modos Rápidos de Catálogo -->
+            <div class="bg-slate-950 p-3 rounded-2xl border border-white/[0.06] space-y-2">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Modos Rápidos de Catálogo:</span>
+              <div class="grid grid-cols-3 gap-1.5 text-center">
+                <button 
+                  type="button" 
+                  @click="setPresetCatalogMode('all')" 
+                  :class="[
+                    'px-2 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border',
+                    shopForm.showPhysical && shopForm.showStreaming && shopForm.showGaming && shopForm.showCombos 
+                      ? 'bg-amber-400 text-slate-950 border-amber-400 shadow' 
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ]"
+                >
+                  🌟 Todo
+                </button>
+                <button 
+                  type="button" 
+                  @click="setPresetCatalogMode('digital')" 
+                  :class="[
+                    'px-2 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border',
+                    !shopForm.showPhysical && shopForm.showStreaming && shopForm.showGaming 
+                      ? 'bg-sky-500 text-slate-950 border-sky-400 shadow' 
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ]"
+                >
+                  ⚡ Solo Digital
+                </button>
+                <button 
+                  type="button" 
+                  @click="setPresetCatalogMode('streaming')" 
+                  :class="[
+                    'px-2 py-1.5 rounded-xl text-[10px] font-black transition cursor-pointer border',
+                    !shopForm.showPhysical && !shopForm.showGaming && shopForm.showStreaming 
+                      ? 'bg-pink-500 text-white border-pink-400 shadow' 
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                  ]"
+                >
+                  🎬 Streaming
+                </button>
+              </div>
+            </div>
 
             <div class="space-y-4 text-xs">
               
@@ -4073,15 +4218,27 @@ const submitResellerGameInquiry = () => {
                     <span>🎬</span>
                     <span>Suscripciones Streaming & Pantallas 4K</span>
                   </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" v-model="shopForm.showStreaming" class="sr-only peer">
-                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
-                  </label>
+                  <div class="flex items-center gap-2">
+                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', shopForm.showStreaming ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-slate-800 text-slate-500 border-slate-700']">
+                      {{ shopForm.showStreaming ? '🟢 ACTIVO' : '🚫 OCULTO' }}
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="shopForm.showStreaming" class="sr-only peer">
+                      <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                    </label>
+                  </div>
                 </div>
 
                 <!-- Selector de Plataformas Específicas -->
                 <div v-if="shopForm.showStreaming" class="pt-2 border-t border-slate-800/80 space-y-2">
-                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Plataformas Activas en tu Tienda:</span>
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Plataformas Activas en tu Tienda:</span>
+                    <div class="flex gap-2 text-[10px]">
+                      <button type="button" @click="selectAllStreamingPlatforms" class="text-sky-400 hover:underline font-bold">Todas</button>
+                      <span class="text-slate-600">|</span>
+                      <button type="button" @click="clearStreamingPlatforms" class="text-slate-400 hover:underline">Mínimo</button>
+                    </div>
+                  </div>
                   <div class="flex flex-wrap gap-1.5">
                     <button 
                       v-for="plat in availableStreamingOptions" 
@@ -4102,15 +4259,49 @@ const submitResellerGameInquiry = () => {
               </div>
 
               <!-- Toggle 2: Super Combos -->
-              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] flex items-center justify-between">
-                <div class="flex items-center gap-2 font-bold text-white text-xs">
-                  <span>🎁</span>
-                  <span>Super Combos Promocionales</span>
+              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 font-bold text-white text-xs">
+                    <span>🎁</span>
+                    <span>Super Combos Promocionales</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', shopForm.showCombos ? 'bg-pink-500/15 text-pink-300 border-pink-500/30' : 'bg-slate-800 text-slate-500 border-slate-700']">
+                      {{ shopForm.showCombos ? '🟢 ACTIVO' : '🚫 OCULTO' }}
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="shopForm.showCombos" class="sr-only peer">
+                      <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                    </label>
+                  </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" v-model="shopForm.showCombos" class="sr-only peer">
-                  <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
-                </label>
+
+                <div v-if="shopForm.showCombos" class="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Combos Disponibles:</span>
+                    <button type="button" @click="selectAllCombos" class="text-pink-400 hover:underline font-bold text-[10px]">
+                      {{ shopForm.enabledCombos?.length > 0 ? 'Habilitar Todos' : '✓ Todos Habilitados' }}
+                    </button>
+                  </div>
+                  <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                    <div 
+                      v-for="pkg in availableCombosList" 
+                      :key="pkg.id"
+                      @click="toggleComboOption(pkg.id)"
+                      :class="[
+                        'p-2 rounded-xl border flex items-center justify-between cursor-pointer transition text-[11px]',
+                        (!shopForm.enabledCombos?.length || shopForm.enabledCombos.includes(pkg.id))
+                          ? 'bg-pink-950/20 border-pink-500/30 text-white font-bold'
+                          : 'bg-slate-900 border-slate-800 text-slate-500'
+                      ]"
+                    >
+                      <span class="truncate">{{ pkg.title || pkg.name }}</span>
+                      <span class="text-[10px] font-mono ml-2 font-black shrink-0">
+                        {{ (!shopForm.enabledCombos?.length || shopForm.enabledCombos.includes(pkg.id)) ? '✓ Visible' : '+ Oculto' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Toggle 3: Videojuegos Digitales -->
@@ -4120,10 +4311,15 @@ const submitResellerGameInquiry = () => {
                     <span>🎮</span>
                     <span>Videojuegos Digitales PlayStation</span>
                   </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" v-model="shopForm.showGaming" class="sr-only peer">
-                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
+                  <div class="flex items-center gap-2">
+                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full border', shopForm.showGaming ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-slate-800 text-slate-500 border-slate-700']">
+                      {{ shopForm.showGaming ? '🟢 ACTIVO' : '🚫 OCULTO' }}
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="shopForm.showGaming" class="sr-only peer">
+                      <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
                 </div>
 
                 <div v-if="shopForm.showGaming" class="pt-2 border-t border-slate-800/80 flex items-center gap-2">
@@ -4144,16 +4340,87 @@ const submitResellerGameInquiry = () => {
                 </div>
               </div>
 
-              <!-- Toggle 4: Catálogo Físico -->
-              <div class="p-3.5 bg-slate-950 rounded-2xl border border-white/[0.06] flex items-center justify-between">
-                <div class="flex items-center gap-2 font-bold text-white text-xs">
-                  <span>📦</span>
-                  <span>Catálogo Físico & Tecnología</span>
+              <!-- Toggle 4: CATÁLOGO FÍSICO (HABILITADO O DESHABILITADO / MOSTRAR O NO MOSTRAR) -->
+              <div 
+                :class="[
+                  'p-4 rounded-2xl border transition-all space-y-3.5',
+                  shopForm.showPhysical 
+                    ? 'bg-amber-950/20 border-amber-500/40 shadow-lg' 
+                    : 'bg-slate-950 border-slate-800/80'
+                ]"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 font-bold text-white text-xs">
+                    <span class="text-base">📦</span>
+                    <div>
+                      <span class="block text-white font-black">Catálogo Físico & Tecnología</span>
+                      <span class="text-[10px] text-slate-400 font-normal">
+                        Tienda Habilitada o Deshabilitada (Mostrar o No Mostrar)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <span 
+                      :class="[
+                        'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border',
+                        shopForm.showPhysical 
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
+                          : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      ]"
+                    >
+                      {{ shopForm.showPhysical ? '🟢 HABILITADA (MOSTRAR)' : '🚫 DESHABILITADA (OCULTAR)' }}
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="shopForm.showPhysical" class="sr-only peer">
+                      <div class="w-10 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" v-model="shopForm.showPhysical" class="sr-only peer">
-                  <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
-                </label>
+
+                <!-- Banner Informativo del Estado Físico -->
+                <div 
+                  :class="[
+                    'p-2.5 rounded-xl border text-[11px] leading-relaxed',
+                    shopForm.showPhysical 
+                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-200' 
+                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                  ]"
+                >
+                  <p v-if="shopForm.showPhysical">
+                    ✓ <strong>Tienda Física Habilitada:</strong> Tus clientes podrán explorar y pedir productos físicos ({{ adminStore.physicalProducts?.length || 0 }} ítems de bazar, tecnología y audio) directamente en tu tienda con tus comisiones.
+                  </p>
+                  <p v-else>
+                    🚫 <strong>Tienda Física Deshabilitada:</strong> Los productos físicos están 100% ocultos en tu tienda pública (streamepro.me/{{ shopForm.slug }}). Solo se mostrarán suscripciones digitales y streaming.
+                  </p>
+                </div>
+
+                <!-- Selección Granular de Categorías Físicas (si está habilitado) -->
+                <div v-if="shopForm.showPhysical && availablePhysicalCategories.length > 0" class="pt-2 border-t border-amber-500/20 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] uppercase font-bold text-amber-300 block">Categorías Físicas que Eliges Vender:</span>
+                    <button type="button" @click="selectAllPhysicalCategories" class="text-amber-400 hover:underline font-bold text-[10px]">
+                      {{ shopForm.enabledPhysicalCategories?.length > 0 ? 'Habilitar Todas' : '✓ Todas Habilitadas' }}
+                    </button>
+                  </div>
+
+                  <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    <button 
+                      v-for="cat in availablePhysicalCategories" 
+                      :key="cat" 
+                      type="button" 
+                      @click="togglePhysicalCategoryOption(cat)" 
+                      :class="[
+                        'px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border',
+                        (!shopForm.enabledPhysicalCategories?.length || shopForm.enabledPhysicalCategories.includes(cat))
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-400/40 font-black' 
+                          : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
+                      ]"
+                    >
+                      <span>{{ (!shopForm.enabledPhysicalCategories?.length || shopForm.enabledPhysicalCategories.includes(cat)) ? '✓' : '+' }}</span> {{ cat }}
+                    </button>
+                  </div>
+                </div>
               </div>
 
             </div>
@@ -4165,7 +4432,7 @@ const submitResellerGameInquiry = () => {
                 class="w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 <span>💾</span>
-                <span>Guardar Tienda y Cuenta Bancaria de Cobro</span>
+                <span>Guardar Tienda y Catálogo Seleccionado</span>
               </button>
             </div>
           </div>

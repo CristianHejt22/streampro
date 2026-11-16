@@ -21,6 +21,7 @@ import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { getFreshOfficialCombos, calculatePackageFromCatalog } from '../services/officialCombosData'
 import { INITIAL_CUSTOMER_REVIEWS, TRUST_METRICS, getFreshCustomerReviews } from '../services/customerReviewsData'
+import { STREAMING_BRAND_METADATA, getStreamingBrandMeta } from '../services/streamingBrandMeta'
 import { 
   initFirebase, 
   saveStreamingOrderToFirebase, 
@@ -1204,6 +1205,33 @@ export const useAdminStore = defineStore('admin', {
     approvedResellerApplications: (state) => (state.resellerApplications || []).filter(a => a.status === 'approved'),
     directOrders: (state) => (state.orders || []).filter(o => o.resellerId === 'DIRECT' || !o.resellerId),
     resellerOrders: (state) => (state.orders || []).filter(o => o.resellerId && o.resellerId !== 'DIRECT'),
+    streamingBrandMeta: () => STREAMING_BRAND_METADATA,
+    streamingProducts: (state) => {
+      const catalog = state.pricingCatalog || {}
+      const list = []
+      let nextId = 1
+      Object.keys(catalog).forEach(platKey => {
+        const platData = catalog[platKey] || {}
+        const meta = getStreamingBrandMeta(platKey) || {}
+        list.push({
+          id: platData.id || nextId++,
+          name: platData.name || platKey,
+          platform: platKey,
+          category: platData.category || 'Streaming',
+          badge: platData.badge || platData.quality || meta.badge || '4K ULTRA HD',
+          deliveryTime: platData.deliveryBadge || platData.deliveryTime || meta.deliveryBadge || '🟢 10-15m',
+          description: platData.description || `Suscripción oficial a ${platKey} con garantía y PIN privado.`,
+          features: (Array.isArray(platData.highlights) && platData.highlights.length) 
+            ? platData.highlights 
+            : ((Array.isArray(platData.features) && platData.features.length) 
+              ? platData.features 
+              : (meta.highlights || ['Entrega rápida garantizada', 'PIN privado de 4 dígitos', 'Garantía oficial'])),
+          plans: platData.plans || {},
+          requiresActivationEmail: Boolean(platData.requiresActivationEmail || platKey === 'Canva Pro' || platKey === 'YouTube Premium')
+        })
+      })
+      return list
+    },
     totalGamingProductsCount: (state) => {
       return state.isGamingCatalogLoaded ? (state.gamingProducts?.length || 15328) : 15328
     },
@@ -3422,6 +3450,29 @@ export const useAdminStore = defineStore('admin', {
         return { success: true, reseller: res }
       }
       return { error: 'Revendedor no encontrado' }
+    },
+
+    updateResellerShopConfig(resellerId, shopConfigUpdates) {
+      const res = this.resellers.find(r => r.id === resellerId)
+      if (!res) return { error: 'Distribuidor no encontrado' }
+      if (!res.shopConfig) res.shopConfig = {}
+      Object.assign(res.shopConfig, shopConfigUpdates)
+      if (shopConfigUpdates.showPhysical !== undefined) {
+        res.shopConfig.showPhysical = Boolean(shopConfigUpdates.showPhysical)
+      }
+      this.persist(DB_KEYS.RESELLERS)
+      saveResellerToFirebase(res).catch(() => {})
+      return { success: true, shopConfig: res.shopConfig, reseller: res }
+    },
+
+    toggleResellerPhysicalStore(resellerId) {
+      const res = this.resellers.find(r => r.id === resellerId)
+      if (!res) return { error: 'Distribuidor no encontrado' }
+      if (!res.shopConfig) res.shopConfig = {}
+      res.shopConfig.showPhysical = !Boolean(res.shopConfig.showPhysical)
+      this.persist(DB_KEYS.RESELLERS)
+      saveResellerToFirebase(res).catch(() => {})
+      return { success: true, showPhysical: res.shopConfig.showPhysical, reseller: res }
     },
 
     deleteReseller(resellerId) {
@@ -6827,6 +6878,33 @@ export const useResellerStore = defineStore('reseller', {
       if (config.holderName !== undefined) {
         res.holderName = String(config.holderName).trim()
         res.shopConfig.holderName = res.holderName
+      }
+      if (config.showPhysical !== undefined) {
+        res.shopConfig.showPhysical = Boolean(config.showPhysical)
+      }
+      if (config.showStreaming !== undefined) {
+        res.shopConfig.showStreaming = Boolean(config.showStreaming)
+      }
+      if (config.showCombos !== undefined) {
+        res.shopConfig.showCombos = Boolean(config.showCombos)
+      }
+      if (config.showGaming !== undefined) {
+        res.shopConfig.showGaming = Boolean(config.showGaming)
+      }
+      if (config.catalogMode) {
+        res.shopConfig.catalogMode = config.catalogMode
+      }
+      if (Array.isArray(config.enabledStreamingPlatforms)) {
+        res.shopConfig.enabledStreamingPlatforms = [...config.enabledStreamingPlatforms]
+      }
+      if (Array.isArray(config.enabledGamingPlatforms)) {
+        res.shopConfig.enabledGamingPlatforms = [...config.enabledGamingPlatforms]
+      }
+      if (Array.isArray(config.enabledCombos)) {
+        res.shopConfig.enabledCombos = [...config.enabledCombos]
+      }
+      if (Array.isArray(config.enabledPhysicalCategories)) {
+        res.shopConfig.enabledPhysicalCategories = [...config.enabledPhysicalCategories]
       }
       adminStore.persist(DB_KEYS.RESELLERS)
       saveResellerToFirebase(res).catch(() => {})

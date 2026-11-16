@@ -38,19 +38,22 @@ const reseller = computed(() => {
 })
 
 const shopConfig = computed(() => {
-  return reseller.value?.shopConfig || {
-    enabled: true,
+  const cfg = reseller.value?.shopConfig || {}
+  return {
+    enabled: cfg.enabled !== false,
     slug: slug.value,
-    storeName: reseller.value?.storeName || reseller.value?.name || 'Tienda Oficial',
-    tagline: 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
-    whatsapp: reseller.value?.contactNumber || '5492915658321',
-    bannerText: '¡Activación rápida en 10-60 minutos con garantía oficial!',
-    showStreaming: true,
-    showCombos: true,
-    showGaming: true,
-    showPhysical: false,
-    enabledStreamingPlatforms: ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV'],
-    enabledGamingPlatforms: ['PS5', 'PS4']
+    storeName: reseller.value?.storeName || cfg.storeName || reseller.value?.name || 'Tienda Oficial',
+    tagline: cfg.tagline || 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
+    whatsapp: cfg.whatsapp || reseller.value?.contactNumber || '5492915658321',
+    bannerText: cfg.bannerText || '¡Activación rápida en 10-60 minutos con garantía oficial!',
+    showStreaming: cfg.showStreaming !== false,
+    showCombos: cfg.showCombos !== false,
+    showGaming: cfg.showGaming !== false,
+    showPhysical: Boolean(cfg.showPhysical),
+    enabledStreamingPlatforms: cfg.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro'],
+    enabledGamingPlatforms: cfg.enabledGamingPlatforms || ['PS5', 'PS4'],
+    enabledCombos: cfg.enabledCombos || [],
+    enabledPhysicalCategories: cfg.enabledPhysicalCategories || []
   }
 })
 
@@ -69,6 +72,9 @@ onMounted(async () => {
   if (!adminStore.gamingCatalogLoaded) {
     adminStore.loadFullGamingCatalog?.().catch(() => {})
   }
+  if (!adminStore.physicalProducts || adminStore.physicalProducts.length === 0) {
+    adminStore.ensurePhysicalProductsLoaded?.()
+  }
 
   // Recordar este referido en la sesión para compras futuras
   if (reseller.value) {
@@ -86,7 +92,7 @@ onMounted(async () => {
 // 1. Streaming
 const filteredStreaming = computed(() => {
   if (shopConfig.value.showStreaming === false) return []
-  const enabledPlats = shopConfig.value.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV']
+  const enabledPlats = shopConfig.value.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']
   const allProds = adminStore.streamingProducts || []
   
   return allProds.filter(prod => {
@@ -99,9 +105,14 @@ const filteredStreaming = computed(() => {
 // 2. Combos
 const filteredCombos = computed(() => {
   if (shopConfig.value.showCombos === false) return []
-  const allCombos = adminStore.packages.filter(p => p.active)
-  if (!searchQuery.value) return allCombos
-  return allCombos.filter(c => c.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  const allCombos = (adminStore.computedPackages || adminStore.packages || []).filter(p => p.active)
+  const selected = shopConfig.value.enabledCombos
+  let list = allCombos
+  if (Array.isArray(selected) && selected.length > 0) {
+    list = list.filter(c => selected.includes(c.id))
+  }
+  if (!searchQuery.value) return list
+  return list.filter(c => (c.title || c.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()))
 })
 
 // 3. Videojuegos Digitales
@@ -117,12 +128,42 @@ const filteredGames = computed(() => {
   }).slice(0, 48) // Primeros 48 juegos optimizados para velocidad
 })
 
-// 4. Catálogo Físico (si el distribuidor lo activó)
-const filteredPhysical = computed(() => {
+// 4. Catálogo Físico (SI EL DISTRIBUIDOR LO HABILITÓ / MOSTRAR O NO MOSTRAR)
+const physicalCategoryFilter = ref('all')
+const visiblePhysicalLimit = ref(48)
+
+const availablePhysicalCategories = computed(() => {
   if (shopConfig.value.showPhysical !== true) return []
   const prods = adminStore.physicalProducts || []
-  if (!searchQuery.value) return prods.slice(0, 24)
-  return prods.filter(p => p.name.toLowerCase().includes(searchQuery.value.toLowerCase())).slice(0, 24)
+  const cats = new Set(prods.map(p => p.category || p.categoryName).filter(Boolean))
+  return Array.from(cats)
+})
+
+const filteredPhysical = computed(() => {
+  // Si la tienda física está deshabilitada, retornar estrictamente vacío
+  if (shopConfig.value.showPhysical !== true) return []
+  const prods = adminStore.physicalProducts || []
+  const allowedCats = shopConfig.value.enabledPhysicalCategories
+  let list = prods
+  if (Array.isArray(allowedCats) && allowedCats.length > 0 && !allowedCats.includes('ALL')) {
+    list = list.filter(p => allowedCats.includes(p.category) || allowedCats.includes(p.categoryId) || allowedCats.includes(p.categoryName))
+  }
+  if (physicalCategoryFilter.value !== 'all') {
+    list = list.filter(p => (p.category || p.categoryName) === physicalCategoryFilter.value)
+  }
+  if (!searchQuery.value) return list
+  const q = searchQuery.value.toLowerCase()
+  return list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+})
+
+const visiblePhysical = computed(() => {
+  return filteredPhysical.value.slice(0, visiblePhysicalLimit.value)
+})
+
+watch(() => shopConfig.value.showPhysical, (isPhysEnabled) => {
+  if (!isPhysEnabled && activeSection.value === 'physical') {
+    activeSection.value = 'all'
+  }
 })
 
 // Helpers de Streaming
@@ -234,6 +275,24 @@ const addGameToCart = (game) => {
     image: game.image || ''
   })
   toast.add(`✓ ${game.title} añadido al pedido`, 'success')
+}
+
+const addPhysicalToCart = (item) => {
+  const priceNum = typeof item.price === 'number'
+    ? item.price
+    : parseInt(String(item.price || '0').replace(/\D/g, ''), 10) || 0
+  cartStore.addItem({
+    id: `phys_${item.id}_${Date.now()}`,
+    productId: item.id,
+    name: item.name,
+    platform: item.category || 'Tecnología & Bazar',
+    price: Number(priceNum),
+    type: 'physical',
+    itemType: 'physical',
+    resellerId: reseller.value?.id || 'DIRECT',
+    image: item.image || ''
+  })
+  toast.add(`✓ ${item.name} añadido a tu pedido`, 'success')
 }
 
 // Finalizar pedido del carrito enviando a WhatsApp del distribuidor
@@ -711,25 +770,54 @@ const shareShopLink = () => {
           </div>
         </div>
 
-        <!-- SECCIÓN 4: CATÁLOGO FÍSICO (Si está habilitado) -->
-        <div v-if="(activeSection === 'all' || activeSection === 'physical') && filteredPhysical.length > 0" class="space-y-4">
-          <div class="flex items-center justify-between border-b border-white/[0.08] pb-2">
+        <!-- SECCIÓN 4: CATÁLOGO FÍSICO (SOLO SI shopConfig.showPhysical === true) -->
+        <div v-if="shopConfig.showPhysical === true && (activeSection === 'all' || activeSection === 'physical') && filteredPhysical.length > 0" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.08] pb-2 gap-2">
             <h3 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
               <span>📦</span>
               <span>Tecnología, Electrónica & Bazar</span>
             </h3>
-            <span class="text-xs font-mono text-amber-400">{{ filteredPhysical.length }} productos</span>
+            <span class="text-xs font-mono text-amber-400 font-bold">{{ filteredPhysical.length }} productos disponibles</span>
+          </div>
+
+          <!-- Filtro por Categorías Físicas si hay más de 1 categoría -->
+          <div v-if="availablePhysicalCategories.length > 1" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <button 
+              type="button" 
+              @click="physicalCategoryFilter = 'all'" 
+              :class="[
+                'px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer shrink-0',
+                physicalCategoryFilter === 'all' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              Todas ({{ filteredPhysical.length }})
+            </button>
+            <button 
+              v-for="cName in availablePhysicalCategories" 
+              :key="cName" 
+              type="button" 
+              @click="physicalCategoryFilter = cName" 
+              :class="[
+                'px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer shrink-0',
+                physicalCategoryFilter === cName ? 'bg-amber-400 text-slate-950 font-black shadow' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              {{ cName }}
+            </button>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
             <div 
-              v-for="item in filteredPhysical" 
+              v-for="item in visiblePhysical" 
               :key="item.id" 
               class="bg-slate-900/80 border border-white/[0.08] rounded-2xl overflow-hidden hover:border-amber-400/40 transition-all flex flex-col justify-between group shadow-md"
             >
               <div>
-                <div class="h-36 sm:h-44 bg-slate-950 p-2 flex items-center justify-center">
+                <div class="h-36 sm:h-44 bg-slate-950 p-2 flex items-center justify-center relative">
                   <img :src="item.image" :alt="item.name" loading="lazy" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform">
+                  <span v-if="item.category" class="absolute top-2 left-2 bg-slate-900/90 text-amber-300 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-amber-500/30">
+                    {{ item.category }}
+                  </span>
                 </div>
                 <div class="p-3 space-y-1">
                   <h4 class="font-bold text-white text-xs sm:text-sm line-clamp-2" :title="item.name">
@@ -741,18 +829,37 @@ const shareShopLink = () => {
                 </div>
               </div>
 
-              <div class="p-3 pt-0">
+              <div class="p-3 pt-0 grid grid-cols-1 gap-1.5">
+                <button 
+                  type="button"
+                  @click="addPhysicalToCart(item)" 
+                  class="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30 font-bold py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                >
+                  <span>🛒</span>
+                  <span>Agregar al Pedido</span>
+                </button>
                 <a 
                   :href="getDistributorWhatsAppUrl(`Hola! Quiero consultar por ${item.name} (${item.price}) en tu tienda StreamePro.`)"
                   target="_blank" 
                   rel="noopener noreferrer"
-                  class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition shadow cursor-pointer"
+                  class="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition shadow cursor-pointer"
                 >
                   <span>💬</span>
                   <span>Pedir por WhatsApp</span>
                 </a>
               </div>
             </div>
+          </div>
+
+          <!-- Botón de cargar más si hay más productos -->
+          <div v-if="filteredPhysical.length > visiblePhysicalLimit" class="text-center pt-2">
+            <button 
+              type="button" 
+              @click="visiblePhysicalLimit += 24" 
+              class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-400/30 font-bold px-6 py-2.5 rounded-2xl text-xs transition cursor-pointer shadow"
+            >
+              Ver más productos físicos (Mostrando {{ visiblePhysical.length }} de {{ filteredPhysical.length }})
+            </button>
           </div>
         </div>
       </main>

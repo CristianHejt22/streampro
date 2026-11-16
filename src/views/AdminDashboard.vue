@@ -337,10 +337,19 @@ const copyResellerCredentials = (reseller) => {
 
 const copyResellerStoreLink = (reseller) => {
   const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://streamepro.me'
-  const url = `${origin}/?ref=${reseller.id}`
+  const slug = reseller.shopSlug || reseller.shopConfig?.slug
+  const url = slug ? `${origin}/${slug}` : `${origin}/?ref=${reseller.id}`
   navigator.clipboard.writeText(url).then(() => {
-    toast.add(`🔗 Enlace de tienda copiado para ${reseller.name} (${reseller.id})`, 'success')
+    toast.add(`🔗 Enlace de tienda copiado para ${reseller.name} (${url})`, 'success')
   })
+}
+
+const handleToggleResellerPhysical = (resellerId) => {
+  const result = adminStore.toggleResellerPhysicalStore(resellerId)
+  if (result.success) {
+    const stateStr = result.showPhysical ? 'HABILITADA (Visible en tienda)' : 'DESHABILITADA (Oculta en tienda)'
+    toast.add(`📦 Tienda física de [${result.reseller.name}] ahora está ${stateStr}`, 'success')
+  }
 }
 
 const openResellerPanelDirect = (reseller) => {
@@ -6016,6 +6025,9 @@ const deletePackageItem = (pkgId) => {
                 <span class="text-[11px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded">
                   @{{ res.username }}
                 </span>
+                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded border', res.shopConfig?.showPhysical ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-slate-800 text-slate-500 border-slate-700']">
+                  {{ res.shopConfig?.showPhysical ? '📦 Físicos: ON' : '📦 Físicos: OFF' }}
+                </span>
               </div>
               <h4 class="font-black text-white text-lg mt-1.5">{{ res.name }}</h4>
               <p class="text-xs text-slate-400">WhatsApp: <span class="text-slate-200">{{ res.contactNumber }}</span></p>
@@ -6104,6 +6116,13 @@ const deletePackageItem = (pkgId) => {
               title="Copiar enlace de tienda con referido de este distribuidor"
             >
               <span>🔗 Link Tienda</span>
+            </button>
+            <button 
+              @click="handleToggleResellerPhysical(res.id)" 
+              :class="['text-xs font-bold px-3 py-2 rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer', res.shopConfig?.showPhysical ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700']"
+              :title="res.shopConfig?.showPhysical ? 'Deshabilitar tienda de productos físicos para este revendedor' : 'Habilitar tienda de productos físicos para este revendedor'"
+            >
+              <span>{{ res.shopConfig?.showPhysical ? '📦 Físicos: ON' : '📦 Físicos: OFF' }}</span>
             </button>
             <button 
               @click="openResellerAuthModal(res)" 
