@@ -71,16 +71,8 @@ const isRecruitmentArea = computed(() => {
 
 const isClientArea = computed(() => {
   if (isRecruitmentArea.value) return false
-  const p = route.path.toLowerCase()
-  return [
-    '/', '/suscripciones', '/streaming', '/digital',
-    '/combos', '/paquetes', '/ofertas', '/combo', '/servicio',
-    '/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j',
-    '/tienda', '/catalogo', '/productos', '/p', '/seleccion',
-    '/sorteos', '/sorteo', '/descuentos', '/embajadores', '/promo',
-    '/portal', '/cliente', '/clientes', '/boveda', '/portal-cliente',
-    '/revendedores', '/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'
-  ].some(allowed => p === allowed || p.startsWith(allowed + '/'))
+  if (isResellerArea.value || isAdminArea.value) return false
+  return true
 })
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
@@ -94,8 +86,64 @@ const isAdminUser = computed(() => {
   return false
 })
 
+const currentResellerShop = computed(() => {
+  const slug = route.params.shopSlug || (typeof localStorage !== 'undefined' ? localStorage.getItem('streamepro_shop_slug') : '')
+  if (slug) {
+    return adminStore.resolveResellerBySlug(slug)
+  }
+  const refId = typeof localStorage !== 'undefined' ? localStorage.getItem('streamepro_referral') : ''
+  if (refId && refId !== 'DIRECT') {
+    return adminStore.resellers?.find(r => r.id === refId) || null
+  }
+  return null
+})
+
+const resellerShopConfig = computed(() => {
+  return currentResellerShop.value?.shopConfig || null
+})
+
+const homeLink = computed(() => {
+  if (route.params.shopSlug) {
+    return `/${route.params.shopSlug}`
+  }
+  return '/'
+})
+
+const getAppSectionLink = (sec) => {
+  if (route.params.shopSlug) {
+    return `/${route.params.shopSlug}/${sec}`
+  }
+  return `/${sec}`
+}
+
+const isStreamingNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showStreaming !== false
+  }
+  return true
+})
+
+const isCombosNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showCombos !== false
+  }
+  return true
+})
+
+const isGamingNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showGaming !== false
+  }
+  return true
+})
+
 const isPhysicalNavVisible = computed(() => {
-  return Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
+  const base = Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
+  if (!base) return false
+  if (resellerShopConfig.value) {
+    return Boolean(resellerShopConfig.value.showPhysical)
+  }
+  return true
 })
 
 const publicPhysicalCount = computed(() => {
@@ -127,7 +175,7 @@ const handleOpenCart = () => {
         <!-- Fila Principal: Logo + Status + Acciones / Navegación -->
         <div class="flex items-center justify-between gap-3">
           <!-- 1. Logo & Identidad de Marca -->
-          <RouterLink to="/" class="flex items-center gap-2.5 sm:gap-3 group shrink-0">
+          <RouterLink :to="homeLink" class="flex items-center gap-2.5 sm:gap-3 group shrink-0">
             <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.4)] border border-white/20 group-hover:scale-105 transition-transform">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
@@ -153,27 +201,29 @@ const handleOpenCart = () => {
           <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
           <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/60 backdrop-blur-xl p-1 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
             <RouterLink 
-              to="/" 
+              :to="homeLink" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="$route.path === '/' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🌟</span>
               <span>Inicio</span>
             </RouterLink>
             
             <RouterLink 
-              to="/suscripciones" 
+              v-if="isStreamingNavVisible"
+              :to="getAppSectionLink('suscripciones')" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎬</span>
               <span>Suscripciones</span>
             </RouterLink>
 
             <RouterLink 
-              to="/combos" 
+              v-if="isCombosNavVisible"
+              :to="getAppSectionLink('combos')" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎁</span>
               <span>Combos</span>
@@ -183,9 +233,10 @@ const handleOpenCart = () => {
             </RouterLink>
 
             <RouterLink 
-              to="/juegos" 
+              v-if="isGamingNavVisible"
+              :to="getAppSectionLink('juegos')" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎮</span>
               <span>Juegos</span>
@@ -196,9 +247,9 @@ const handleOpenCart = () => {
             
             <RouterLink 
               v-if="isPhysicalNavVisible"
-              to="/tienda" 
+              :to="getAppSectionLink('tienda')" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="(['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) || $route.params.section === 'tienda') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>📦</span>
               <span>Físicos</span>
@@ -208,9 +259,9 @@ const handleOpenCart = () => {
             </RouterLink>
 
             <RouterLink 
-              to="/sorteos" 
+              :to="getAppSectionLink('sorteos')" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-              :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
+              :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'"
             >
               <span>🎉</span>
               <span>Sorteos</span>
@@ -313,27 +364,29 @@ const handleOpenCart = () => {
         <!-- Tier 2 para Móviles y Tablets (< lg): Barra de Pestañas con Desplazamiento Horizontal Suave -->
         <div v-if="isClientArea" class="lg:hidden mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-1">
           <RouterLink 
-            to="/" 
+            :to="homeLink" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="$route.path === '/' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🌟</span>
             <span>Inicio</span>
           </RouterLink>
           
           <RouterLink 
-            to="/suscripciones" 
+            v-if="isStreamingNavVisible"
+            :to="getAppSectionLink('suscripciones')" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/suscripciones', '/streaming', '/digital'].includes($route.path) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎬</span>
             <span>Suscripciones</span>
           </RouterLink>
 
           <RouterLink 
-            to="/combos" 
+            v-if="isCombosNavVisible"
+            :to="getAppSectionLink('combos')" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/combos', '/paquetes', '/ofertas'].includes($route.path) ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎁</span>
             <span>Combos</span>
@@ -343,9 +396,10 @@ const handleOpenCart = () => {
           </RouterLink>
 
           <RouterLink 
-            to="/juegos" 
+            v-if="isGamingNavVisible"
+            :to="getAppSectionLink('juegos')" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎮</span>
             <span>Juegos</span>
@@ -356,9 +410,9 @@ const handleOpenCart = () => {
           
           <RouterLink 
             v-if="isPhysicalNavVisible"
-            to="/tienda" 
+            :to="getAppSectionLink('tienda')" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="(['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) || $route.params.section === 'tienda') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>📦</span>
             <span>Físicos</span>
@@ -368,33 +422,15 @@ const handleOpenCart = () => {
           </RouterLink>
 
           <RouterLink 
-            to="/sorteos" 
+            :to="getAppSectionLink('sorteos')" 
             class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
+            :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
           >
             <span>🎉</span>
             <span>Sorteos</span>
             <span v-if="activeGiveawaysCount > 0" class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
               {{ activeGiveawaysCount }}
             </span>
-          </RouterLink>
-
-          <RouterLink 
-            to="/portal" 
-            class="px-3 py-1.5 rounded-xl bg-slate-900/80 text-slate-300 border border-white/[0.06] hover:bg-slate-800 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap" 
-            active-class="!bg-sky-500/15 !text-sky-300 !border-sky-500/40 font-bold"
-          >
-            <span>🔐</span>
-            <span>Mi Bóveda</span>
-          </RouterLink>
-
-          <RouterLink 
-            to="/revendedores" 
-            class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap font-bold" 
-            active-class="!bg-amber-500/25 !text-amber-200 !border-amber-500/40"
-          >
-            <span>🚀</span>
-            <span>Revendedores</span>
           </RouterLink>
         </div>
       </div>

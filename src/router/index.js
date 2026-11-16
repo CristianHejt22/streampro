@@ -162,12 +162,37 @@ const router = createRouter({
       path: '/tienda/:shopSlug',
       alias: ['/shop/:shopSlug', '/t/:shopSlug'],
       name: 'reseller-shop-alias',
-      component: ResellerShopView
+      component: HomeView
+    },
+    {
+      path: '/tienda/:shopSlug/:section',
+      alias: ['/shop/:shopSlug/:section', '/t/:shopSlug/:section'],
+      name: 'reseller-shop-alias-section',
+      component: HomeView
     },
     {
       path: '/:shopSlug',
       name: 'reseller-shop',
-      component: ResellerShopView,
+      component: HomeView,
+      beforeEnter: (to, from, next) => {
+        const reserved = [
+          'suscripciones', 'combos', 'juegos', 'tienda', 'sorteos', 'seleccion',
+          'portal', 'crm', 'myprove', 'revendedores', 'catalogo', 'productos',
+          'gaming', 'videojuegos', 'streaming', 'digital', 'paquetes', 'ofertas',
+          'ref', 'promo', 'p', 'j', 'api', 'admin', 'sw.js', 'favicon.svg'
+        ]
+        const s = String(to.params.shopSlug || '').toLowerCase()
+        if (reserved.includes(s)) {
+          next('/')
+        } else {
+          next()
+        }
+      }
+    },
+    {
+      path: '/:shopSlug/:section',
+      name: 'reseller-shop-section',
+      component: HomeView,
       beforeEnter: (to, from, next) => {
         const reserved = [
           'suscripciones', 'combos', 'juegos', 'tienda', 'sorteos', 'seleccion',
@@ -193,7 +218,11 @@ const router = createRouter({
 // Precarga inteligente del catálogo masivo gaming al ingresar a rutas relevantes
 router.beforeEach((to) => {
   const gamingRoutes = ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/myprove', '/crm']
-  const isGamingRoute = gamingRoutes.some(p => to.path === p || to.path.startsWith(p)) || Boolean(to.query.game || to.query.g)
+  const isGamingRoute = gamingRoutes.some(p => to.path === p || to.path.startsWith(p)) || 
+    Boolean(to.query.game || to.query.g) || 
+    to.params.section === 'juegos' || 
+    to.params.section === 'gaming' ||
+    to.params.section === 'videojuegos'
   if (isGamingRoute) {
     try {
       const store = useAdminStore()

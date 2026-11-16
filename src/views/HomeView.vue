@@ -36,9 +36,47 @@ const isAdminUser = computed(() => {
   return false
 })
 
-// Control de visibilidad pública de la Tienda de Productos Físicos en la navegación y catálogo
+// Configuración de Tienda de Revendedor Activo y visibilidad categórica
+const currentReseller = computed(() => {
+  if (isDirectSale.value) return null
+  return adminStore.resellers.find(r => r.id === clientForm.value.selectedResellerId) || null
+})
+
+const resellerShopConfig = computed(() => {
+  return currentReseller.value?.shopConfig || null
+})
+
+// Control de visibilidad pública de cada rubro según tienda central y preferencias del distribuidor
+const isStreamingNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showStreaming !== false
+  }
+  return true
+})
+
+const isCombosNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showCombos !== false
+  }
+  return true
+})
+
+const isGamingNavVisible = computed(() => {
+  if (resellerShopConfig.value) {
+    return resellerShopConfig.value.showGaming !== false
+  }
+  return true
+})
+
+const isGiveawaysNavVisible = computed(() => true)
+
 const isPhysicalNavVisible = computed(() => {
-  return Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
+  const baseVisible = Boolean(adminStore.isStoreVisible && adminStore.isPhysicalStoreVisible)
+  if (!baseVisible) return false
+  if (resellerShopConfig.value) {
+    return Boolean(resellerShopConfig.value.showPhysical)
+  }
+  return true
 })
 
 // Mapeo dinámico y enriquecido de íconos para categorías del catálogo físico
@@ -619,18 +657,46 @@ const openConfigFromInfo = () => {
   }
 }
 
+// Enlace dinámico a subsecciones para preservar el slug del distribuidor en la barra de URL
+const getSectionLink = (sec) => {
+  const slug = route.params.shopSlug || currentReseller.value?.shopConfig?.slug
+  if (slug) {
+    if (sec === 'home' || sec === '/' || !sec) return `/${slug}`
+    if (sec === 'digital' || sec === 'streaming' || sec === 'suscripciones') return `/${slug}/suscripciones`
+    if (sec === 'packages' || sec === 'combos') return `/${slug}/combos`
+    if (sec === 'gaming' || sec === 'juegos') return `/${slug}/juegos`
+    if (sec === 'physical' || sec === 'tienda') return `/${slug}/tienda`
+    if (sec === 'sorteos') return `/${slug}/sorteos`
+    return `/${slug}/${sec}`
+  }
+  if (sec === 'home' || sec === '/' || !sec) return '/'
+  if (sec === 'digital' || sec === 'streaming' || sec === 'suscripciones') return '/suscripciones'
+  if (sec === 'packages' || sec === 'combos') return '/combos'
+  if (sec === 'gaming' || sec === 'juegos') return '/juegos'
+  if (sec === 'physical' || sec === 'tienda') return '/tienda'
+  if (sec === 'sorteos') return '/sorteos'
+  return `/${sec}`
+}
+
 // Detección de Sección Activa según Ruta y Parámetros
 const currentPageSection = computed(() => {
   const p = route.path.toLowerCase()
+  const sectionParam = String(route.params.section || '').toLowerCase()
+  if (['suscripciones', 'streaming', 'digital'].includes(sectionParam)) return 'digital'
+  if (['combos', 'paquetes', 'ofertas'].includes(sectionParam)) return 'packages'
+  if (['juegos', 'gaming', 'videojuegos', 'ps5', 'ps4', 'ps3', 'playstation'].includes(sectionParam)) return 'gaming'
+  if (['tienda', 'catalogo', 'productos', 'p', 'fisico', 'fisicos'].includes(sectionParam)) return 'physical'
+  if (['sorteos', 'sorteo', 'descuentos', 'embajadores'].includes(sectionParam)) return 'sorteos'
+
   if (['/suscripciones', '/streaming', '/digital'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'digital'
   if (['/combos', '/paquetes', '/ofertas'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'packages'
   if (['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'gaming'
   if (['/tienda', '/catalogo', '/productos', '/p'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'physical'
   if (['/sorteos', '/sorteo', '/descuentos', '/embajadores'].some(prefix => p === prefix || p.startsWith(prefix + '/'))) return 'sorteos'
-  if (route.query.sec === 'digital') return 'digital'
-  if (route.query.sec === 'packages') return 'packages'
-  if (route.query.sec === 'gaming') return 'gaming'
-  if (route.query.sec === 'physical') return 'physical'
+  if (route.query.sec === 'digital' || route.query.sec === 'suscripciones') return 'digital'
+  if (route.query.sec === 'packages' || route.query.sec === 'combos') return 'packages'
+  if (route.query.sec === 'gaming' || route.query.sec === 'juegos') return 'gaming'
+  if (route.query.sec === 'physical' || route.query.sec === 'tienda') return 'physical'
   if (route.query.sec === 'sorteos' || route.query.sorteo) return 'sorteos'
   return 'home'
 })
@@ -832,13 +898,16 @@ const availableGamingSubcategories = computed(() => {
 })
 
 const filteredGamingProducts = computed(() => {
+  if (!isGamingNavVisible.value) return []
   const list = adminStore.processedGamingProducts || []
+  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms || []
   const ceiling = gamingPriceCeiling.value !== 'ALL' ? Number(gamingPriceCeiling.value) : 0
   const onlyFavs = onlyGamingFavorites.value
   const favSet = onlyFavs ? new Set(gamingWishlistIds.value) : null
   const q = gamingSearch.value.toLowerCase().trim()
 
   const filtered = list.filter(game => {
+    if (allowedPlatforms.length > 0 && !allowedPlatforms.some(plat => game.platform && game.platform.includes(plat))) return false
     if (sharedSelectionGameIds.value.length > 0 && !sharedSelectionGameIds.value.includes(game.id)) return false
     if (favSet && !favSet.has(game.id)) return false
 
@@ -1208,11 +1277,7 @@ const isDirectSale = computed(() => {
   return !clientForm.value.selectedResellerId || clientForm.value.selectedResellerId === 'DIRECT'
 })
 
-// Datos del Revendedor Seleccionado (si es venta referida)
-const currentReseller = computed(() => {
-  if (isDirectSale.value) return null
-  return adminStore.resellers.find(r => r.id === clientForm.value.selectedResellerId) || null
-})
+// Datos del Revendedor Seleccionado ya computados en la cabecera del store
 
 // Nombre comercial limpio de la tienda para los clientes
 const resellerStoreName = computed(() => {
@@ -1302,28 +1367,33 @@ const getBaseOrigin = () => {
   return 'https://streamepro.me'
 }
 
-// Resolver revendedor con máxima flexibilidad (ID, username, tienda o número correlativo)
+// Resolver revendedor con máxima flexibilidad (Slug, ID, username, tienda o número correlativo)
 const resolveReseller = (param) => {
   if (!param) return null
   const q = String(param).trim().toLowerCase()
   if (!q || q === 'direct' || q === 'oficial' || q === 'null' || q === 'undefined') return null
 
-  // 1. Coincidencia exacta de ID (RES-01, res-01)
+  // 1. Coincidencia por resolver central de adminStore (shopSlug, shopConfig.slug, id, username, storeName)
+  const fromStore = adminStore.resolveResellerBySlug(q)
+  if (fromStore) return fromStore
+
+  // 2. Coincidencia exacta de ID (RES-01, res-01)
   let found = adminStore.resellers.find(r => r.id?.toLowerCase() === q)
   if (found) return found
 
-  // 2. Coincidencia por username (distribuidor, carlos)
+  // 3. Coincidencia por username (distribuidor, carlos)
   found = adminStore.resellers.find(r => r.username?.toLowerCase() === q)
   if (found) return found
 
-  // 3. Coincidencia por storeName o nombre
+  // 4. Coincidencia por storeName o nombre
   found = adminStore.resellers.find(r => 
     r.storeName?.toLowerCase() === q || 
-    r.name?.toLowerCase() === q
+    r.name?.toLowerCase() === q ||
+    r.shopConfig?.storeName?.toLowerCase() === q
   )
   if (found) return found
 
-  // 4. Coincidencia por número correlativo (ej: ?ref=1 o ?ref=01 -> RES-01)
+  // 5. Coincidencia por número correlativo (ej: ?ref=1 o ?ref=01 -> RES-01)
   const digits = q.replace(/\D/g, '')
   if (digits.length > 0) {
     found = adminStore.resellers.find(r => {
@@ -1336,15 +1406,17 @@ const resolveReseller = (param) => {
   return null
 }
 
-// Detección de Parámetros de URL: Afiliado (?ref=RES-01) y Producto compartido (?prod=962)
+// Detección de Parámetros de URL: Slug de Tienda (/:shopSlug), Afiliado (?ref=RES-01) y Producto compartido (?prod=962)
 const applyRouteParams = () => {
-  const refParam = route.query.ref
+  const slugParam = route.params.shopSlug || route.query.shop
+  const refParam = route.query.ref || slugParam
   if (refParam) {
     const cleanRef = String(refParam).trim().toLowerCase()
     if (cleanRef === 'direct' || cleanRef === 'oficial') {
       clientForm.value.selectedResellerId = 'DIRECT'
       try {
         localStorage.removeItem('streamepro_referral')
+        localStorage.removeItem('streamepro_shop_slug')
       } catch (e) {}
     } else {
       const matchedRes = resolveReseller(cleanRef)
@@ -1352,8 +1424,12 @@ const applyRouteParams = () => {
         clientForm.value.selectedResellerId = matchedRes.id
         try {
           localStorage.setItem('streamepro_referral', matchedRes.id)
+          if (matchedRes.shopConfig?.slug || matchedRes.shopSlug || slugParam) {
+            localStorage.setItem('streamepro_shop_slug', matchedRes.shopConfig?.slug || matchedRes.shopSlug || slugParam)
+          }
         } catch (e) {}
-        toast.add(`Atendido por distribuidor oficial: ${matchedRes.name}`, 'info')
+        const storeDisplayName = matchedRes.shopConfig?.storeName || matchedRes.storeName || matchedRes.name
+        toast.add(`Atendido por distribuidor oficial: ${storeDisplayName}`, 'info')
       }
     }
   } else {
@@ -1830,12 +1906,17 @@ const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 // ==================== COLECCIONES DE OFERTAS MÚLTIPLES PARA PÁGINA PRINCIPAL ====================
 // 1. Teaser Curado de Rubros Destacados
 const homeFeaturedCategories = computed(() => {
-  const list = [
-    { id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
-    { id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
-    { id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 45% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' },
-    { id: 'giftcards', name: 'Tarjetas de Regalo', icon: '💳', count: 'Hasta 20% OFF', action: 'open_giftcards', desc: 'Saldo canjeable desde $20.000', badge: 'Beneficio VIP', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
-  ]
+  const list = []
+  if (isStreamingNavVisible.value) {
+    list.push({ id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' })
+  }
+  if (isGamingNavVisible.value) {
+    list.push({ id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' })
+  }
+  if (isCombosNavVisible.value) {
+    list.push({ id: 'packages', name: 'Combos & Packs', icon: '🎁', count: `${adminStore.packages.filter(p => p.active).length} Combos`, path: '/combos', desc: 'Paquetes combinados hasta 45% OFF', badge: 'Super Ahorro', badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-500/30' })
+  }
+  list.push({ id: 'giftcards', name: 'Tarjetas de Regalo', icon: '💳', count: 'Hasta 20% OFF', action: 'open_giftcards', desc: 'Saldo canjeable desde $20.000', badge: 'Beneficio VIP', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' })
 
   if (isPhysicalNavVisible.value) {
     const phys = adminStore.physicalProducts || []
@@ -1846,33 +1927,64 @@ const homeFeaturedCategories = computed(() => {
       { id: 'virales', name: 'Virales TikTok', icon: '🔥', count: `${countVirales} Items`, path: '/tienda', query: { cat: 'virales' }, desc: 'Tendencias más pedidas del momento', badge: 'Tendencia', badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
       { id: 'celulares', name: 'Celulares & Tech', icon: '📱', count: `${countCelulares} Accesorios`, path: '/tienda', query: { cat: 'celulares' }, desc: 'Audio, cables, cargadores y soportes', badge: 'Tech', badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
     )
-  } else {
-    list.push(
-      { id: 'iptv', name: 'IPTV MagisTV Pro', icon: '📺', count: '+1200 Canales', path: '/suscripciones', desc: 'Fútbol en vivo y eventos deportivos', badge: 'FHD 24/7', badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-      { id: 'musica', name: 'Spotify Familiar', icon: '🎧', count: 'Sin Anuncios', path: '/suscripciones', desc: 'Música ilimitada y reproducción offline', badge: 'Audio HD', badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/30' }
-    )
   }
 
   return list
 })
 
-// 2. Selección de Ofertas 1: Top 4 Plataformas Digitales
+// 2. Selección de Ofertas 1: Top Plataformas Digitales Filtradas
 const homeFeaturedDigital = computed(() => {
+  if (!isStreamingNavVisible.value) return []
+  const allowedPlatforms = resellerShopConfig.value?.enabledStreamingPlatforms || []
   const topPlatforms = ['Netflix', 'Netflix Perfil Extra', 'Disney+', 'Max', 'Spotify', 'IPTV', 'Prime Video']
-  return products.value.filter(p => topPlatforms.includes(p.platform))
+  return products.value.filter(p => {
+    if (allowedPlatforms.length > 0 && !allowedPlatforms.includes(p.platform) && !allowedPlatforms.includes(p.name)) {
+      return false
+    }
+    return topPlatforms.includes(p.platform)
+  })
 })
 
-// 3. Selección de Ofertas 2: Top 3 Paquetes & Combos con Máximo Ahorro
+// 3. Selección de Ofertas 2: Top Paquetes & Combos con Máximo Ahorro
 const homeFeaturedPackages = computed(() => {
+  if (!isCombosNavVisible.value) return []
   const list = adminStore.computedPackages || adminStore.packages || []
-  return list.filter(p => p.active).slice(0, 3)
+  const allowedCombos = resellerShopConfig.value?.enabledCombos || []
+  return list.filter(p => {
+    if (!p.active) return false
+    if (allowedCombos.length > 0 && !allowedCombos.includes(p.id)) return false
+    return true
+  }).slice(0, 3)
+})
+
+// 3.5 Selección de Ofertas Gamer para Inicio
+const homeFeaturedGaming = computed(() => {
+  if (!isGamingNavVisible.value) return []
+  const list = adminStore.processedGamingProducts || []
+  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms || []
+  if (allowedPlatforms.length > 0) {
+    return list.filter(g => allowedPlatforms.some(plat => g.platform && g.platform.includes(plat))).slice(0, 4)
+  }
+  return list.slice(0, 4)
 })
 
 // 4. Selección de Ofertas 3: Top 8 Productos Físicos con Descuento / Envío Gratis
 const homeFeaturedPhysicalDeals = computed(() => {
   if (!isPhysicalNavVisible.value) return []
   const list = adminStore.physicalProducts || []
-  const deals = list.filter(p => !p.adminOnly && p.categoryId !== 'paginas' && (p.hasDiscount || (Number(p.priceNumeric) || 0) >= 40000))
+  const allowedCats = resellerShopConfig.value?.enabledPhysicalCategories || []
+  const deals = list.filter(p => {
+    if (p.adminOnly || p.categoryId !== 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) return false
+    if (allowedCats.length > 0) {
+      const pCatName = p.category || p.categoryName || p.categoryId || ''
+      const inCats = allowedCats.some(c => 
+        pCatName.toLowerCase().includes(c.toLowerCase()) || 
+        (Array.isArray(p.categoryIds) && p.categoryIds.some(cid => cid.toLowerCase().includes(c.toLowerCase())))
+      )
+      if (!inCats) return false
+    }
+    return p.hasDiscount || (Number(p.priceNumeric) || 0) >= 40000
+  })
   return deals.sort((a, b) => {
     const discA = Number(a.discountPercentage) || 0
     const discB = Number(b.discountPercentage) || 0
@@ -1890,7 +2002,8 @@ const goToCategory = (item) => {
   if (item.query?.cat) {
     physicalCategoryFilter.value = item.query.cat
   }
-  router.push({ path: item.path, query: item.query || {} })
+  const targetPath = getSectionLink(item.path.replace(/^\//, ''))
+  router.push({ path: targetPath, query: item.query || {} })
 }
 
 // Métricas computadas de filtros rápidos del catálogo físico
@@ -2005,7 +2118,12 @@ const getWhatsAppContactUrl = (customMsg = '') => {
 
 // ----------------- SECCIÓN 1: SUSCRIPCIONES DIGITALES -----------------
 const filteredProducts = computed(() => {
+  if (!isStreamingNavVisible.value) return []
+  const allowedPlatforms = resellerShopConfig.value?.enabledStreamingPlatforms || []
   return products.value.filter(p => {
+    if (allowedPlatforms.length > 0 && !allowedPlatforms.includes(p.platform) && !allowedPlatforms.includes(p.name)) {
+      return false
+    }
     const matchCat = selectedCategory.value === 'All' || p.category === selectedCategory.value
     const matchPlatform = digitalPlatformFilter.value === 'All' || 
       p.platform.toLowerCase() === digitalPlatformFilter.value.toLowerCase() ||
@@ -2055,9 +2173,12 @@ const packageCategoryCounts = computed(() => {
 })
 
 const filteredPackages = computed(() => {
+  if (!isCombosNavVisible.value) return []
   const list = adminStore.computedPackages || adminStore.packages || []
+  const allowedCombos = resellerShopConfig.value?.enabledCombos || []
   return list.filter(p => {
     if (!p.active) return false
+    if (allowedCombos.length > 0 && !allowedCombos.includes(p.id)) return false
     if (packageCategoryFilter.value !== 'all') {
       const cat = p.category || 'streaming'
       if (packageCategoryFilter.value === 'streaming' && cat !== 'streaming') return false
@@ -2108,6 +2229,16 @@ const filteredPhysicalProducts = computed(() => {
     // Excluir contenido o páginas marcadas como visibles solo en admin
     if (p.adminOnly || p.categoryId === 'paginas' || (p.categoryIds && p.categoryIds.includes('paginas'))) {
       return false
+    }
+
+    const allowedCats = resellerShopConfig.value?.enabledPhysicalCategories || []
+    if (allowedCats.length > 0) {
+      const pCatName = p.category || p.categoryName || p.categoryId || ''
+      const inCats = allowedCats.some(c => 
+        pCatName.toLowerCase().includes(c.toLowerCase()) || 
+        (Array.isArray(p.categoryIds) && p.categoryIds.some(cid => cid.toLowerCase().includes(c.toLowerCase())))
+      )
+      if (!inCats) return false
     }
 
     // Filtro Categoría
@@ -3086,23 +3217,36 @@ const submitOrder = async () => {
     <!-- BANNER DE CANAL ACTIVO: DISTRIBUIDOR OFICIAL vs TIENDA DIRECTA -->
     <div v-if="!isDirectSale && currentReseller" class="bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center font-bold text-sm shrink-0">
+        <div class="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center font-bold text-base shrink-0 shadow">
           🏪
         </div>
         <div>
           <div class="flex items-center gap-2">
             <span class="font-black text-white text-sm tracking-tight">{{ resellerStoreName }}</span>
             <span class="text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded">
-              Distribuidor Autorizado ({{ currentReseller.id }})
+              Distribuidor Oficial ({{ currentReseller.id }})
             </span>
           </div>
-          <p class="text-[11px] text-slate-300">
-            Estás realizando tu compra a través de este canal oficial con garantía directa y soporte garantizado.
+          <p class="text-[11px] text-slate-300 mt-0.5">
+            {{ resellerShopConfig?.tagline || 'Estás realizando tu compra a través de este canal oficial con garantía directa y soporte garantizado.' }}
+          </p>
+          <p v-if="resellerShopConfig?.bannerText" class="text-[11px] text-amber-300 font-semibold mt-0.5">
+            ⚡ {{ resellerShopConfig.bannerText }}
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 font-bold text-[11px] shrink-0 self-end sm:self-auto">
-        <span>✓</span> Canal Oficial Verificado
+      <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+        <a 
+          :href="getWhatsAppContactUrl()" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-300 font-bold text-[11px] flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+        >
+          <span>💬</span> Asesoría WhatsApp
+        </a>
+        <div class="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 font-bold text-[11px]">
+          <span>✓</span> Verificado
+        </div>
       </div>
     </div>
 
@@ -3110,7 +3254,7 @@ const submitOrder = async () => {
     <div id="secciones-catalogo" class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3 pt-1">
       <div class="flex items-center gap-1 p-1 bg-slate-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg overflow-x-auto no-scrollbar max-w-full">
         <RouterLink 
-          to="/"
+          :to="getSectionLink('home')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'home' 
@@ -3123,7 +3267,8 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
-          to="/suscripciones"
+          v-if="isStreamingNavVisible"
+          :to="getSectionLink('suscripciones')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'digital' 
@@ -3136,7 +3281,8 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
-          to="/combos"
+          v-if="isCombosNavVisible"
+          :to="getSectionLink('combos')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'packages' 
@@ -3152,7 +3298,8 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
-          to="/juegos"
+          v-if="isGamingNavVisible"
+          :to="getSectionLink('juegos')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'gaming' 
@@ -3169,7 +3316,7 @@ const submitOrder = async () => {
 
         <RouterLink 
           v-if="isPhysicalNavVisible"
-          to="/tienda"
+          :to="getSectionLink('tienda')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'physical' 
@@ -3185,7 +3332,7 @@ const submitOrder = async () => {
         </RouterLink>
 
         <RouterLink 
-          to="/sorteos"
+          :to="getSectionLink('sorteos')"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'sorteos' 
@@ -3204,33 +3351,13 @@ const submitOrder = async () => {
         <button 
           type="button"
           @click="giftCardModalTab = 'create'; showGiftCardModal = true"
-          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 hover:border-emerald-400"
+          class="px-3.5 sm:px-4 py-2 rounded-xl text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 font-black text-xs transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
         >
           <span>💳</span>
           <span>Gift Cards</span>
-          <span class="bg-emerald-500/30 text-emerald-200 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+          <span class="bg-emerald-400/20 text-emerald-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-emerald-400/30">
             20% OFF
           </span>
-        </button>
-
-        <!-- Pastilla de Acceso Rápido: Bóveda de Cliente & Mis Pedidos -->
-        <RouterLink 
-          to="/portal"
-          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400"
-        >
-          <span>🔐</span>
-          <span>Mi Bóveda &amp; Pedidos</span>
-        </RouterLink>
-
-        <!-- Pastilla de Acceso Rápido: Opciones de Cliente & Perfil -->
-        <button 
-          type="button"
-          @click="openUserProfileModal"
-          class="px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 hover:border-sky-400"
-          title="Mis opciones de cliente, billetera y datos guardados"
-        >
-          <span>⚙️</span>
-          <span>Opciones de Cliente</span>
         </button>
       </div>
 
@@ -3292,7 +3419,7 @@ const submitOrder = async () => {
         <!-- Pastillas de Acceso Directo por Rubro -->
         <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
           <RouterLink 
-            to="/suscripciones" 
+            :to="getSectionLink('suscripciones')" 
             class="px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/20 transition-all flex items-center gap-1.5"
           >
             <span>🎬</span>
@@ -3300,7 +3427,7 @@ const submitOrder = async () => {
           </RouterLink>
 
           <RouterLink 
-            to="/juegos" 
+            :to="getSectionLink('juegos')" 
             class="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/20 transition-all flex items-center gap-1.5"
           >
             <span>🎮</span>
@@ -3308,7 +3435,7 @@ const submitOrder = async () => {
           </RouterLink>
 
           <RouterLink 
-            to="/combos" 
+            :to="getSectionLink('combos')" 
             class="px-3 py-1.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 text-xs font-bold border border-pink-500/20 transition-all flex items-center gap-1.5"
           >
             <span>🎁</span>
@@ -3326,7 +3453,7 @@ const submitOrder = async () => {
 
           <RouterLink 
             v-if="isPhysicalNavVisible"
-            to="/tienda" 
+            :to="getSectionLink('tienda')" 
             class="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/20 transition-all flex items-center gap-1.5"
           >
             <span>📦</span>
@@ -3365,7 +3492,7 @@ const submitOrder = async () => {
       </div>
 
       <!-- 2. Selección de Ofertas 1: 🔥 Streaming Premium 4K Destacado -->
-      <div class="space-y-4">
+      <div v-if="isStreamingNavVisible" class="space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-sky-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-500/30 shadow-lg">
           <div class="flex items-center gap-3">
             <span class="text-3xl">🎬</span>
@@ -3641,7 +3768,7 @@ const submitOrder = async () => {
       </div>
 
       <!-- 3.5 Selección de Ofertas: 🎮 Videojuegos Digitales Oficiales PS5, PS4 & PS3 -->
-      <div v-if="(adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
+      <div v-if="isGamingNavVisible && (adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 shadow-lg">
           <div class="flex items-center gap-3">
             <span class="text-3xl">🎮</span>
@@ -3656,7 +3783,7 @@ const submitOrder = async () => {
             </div>
           </div>
           <RouterLink
-            to="/juegos"
+            :to="getSectionLink('juegos')"
             class="px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white font-black text-xs border border-indigo-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
           >
             <span>Explorar {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }} Juegos</span>
@@ -3666,7 +3793,7 @@ const submitOrder = async () => {
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div
-            v-for="game in (adminStore.processedGamingProducts || []).slice(0, 4)"
+            v-for="game in homeFeaturedGaming"
             :key="game.id"
             @click="openGamingDetail(game)"
             class="glass-panel glass-panel-hover rounded-2xl overflow-hidden transition-all cursor-pointer group flex flex-col justify-between shadow-lg"
@@ -4091,7 +4218,7 @@ const submitOrder = async () => {
         </div>
 
         <RouterLink 
-          to="/combos" 
+          :to="getSectionLink('combos')" 
           class="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/25 text-xs font-bold transition shrink-0"
         >
           <span>🎁</span>
