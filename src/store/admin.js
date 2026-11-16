@@ -323,16 +323,16 @@ export const DEFAULT_PLATFORM_PLANS = {
     badge: '4K ULTRA HD • HDR10',
     deliveryBadge: '🟢 10-15m',
     description: 'Cuentas y perfiles oficiales 4K Ultra HD con PIN privado de 4 dígitos y renovación mes a mes.',
-    warranty: 'Garantía oficial y soporte directo.',
+    warranty: 'Garantía Oficial Netflix Argentina',
     features: [
-      '4K ULTRA HD • HDR10',
-      'PIN Privado de 4 dígitos',
-      'Renovación mes a mes misma cuenta'
+      'PIN Privado: 4 dígitos exclusivo.',
+      'Sin bloqueo hogar: En Argentina (actualizar hogar).',
+      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
     ],
     highlights: [
-      '4K ULTRA HD • HDR10',
-      'PIN Privado de 4 dígitos',
-      'Renovación mes a mes misma cuenta'
+      'PIN Privado: 4 dígitos exclusivo.',
+      'Sin bloqueo hogar: En Argentina (actualizar hogar).',
+      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
     ],
     plans: {
       '1_perfil': {
@@ -383,18 +383,16 @@ export const DEFAULT_PLATFORM_PLANS = {
     badge: '⭐ SIN BLOQUEO DE HOGAR',
     deliveryBadge: '🟢 10-15m',
     description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado de 4 dígitos y renovación mes a mes en la misma cuenta.',
-    warranty: 'Garantía total de 30 días y soporte inmediato.',
+    warranty: 'Garantía Oficial Netflix Argentina',
     features: [
-      'Sin bloqueo de hogar en Argentina (Smart TV directa)',
-      'PIN Privado de 4 dígitos exclusivo',
-      'Calidad 4K ULTRA HD • HDR10',
-      'Renovación mes a mes en la misma cuenta'
+      'PIN Privado: 4 dígitos exclusivo.',
+      'Sin bloqueo hogar: En Argentina (Smart TV directa).',
+      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
     ],
     highlights: [
-      'Sin bloqueo de hogar en Smart TV',
-      'PIN Privado de 4 dígitos exclusivo',
-      'Calidad 4K Ultra HD • HDR10',
-      'Renovación mes a mes misma cuenta'
+      'PIN Privado: 4 dígitos exclusivo.',
+      'Sin bloqueo hogar: En Argentina (Smart TV directa).',
+      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
     ],
     plans: {
       'perfil_extra': {
@@ -777,6 +775,26 @@ export const useAdminStore = defineStore('admin', {
         // Desacoplar 'perfil_extra' del contenedor general de Netflix si venía en el guardado previo
         if (loaded.Netflix?.plans?.perfil_extra) {
           delete loaded.Netflix.plans.perfil_extra
+          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
+        }
+        // Migrar/garantizar textos solicitados en Netflix
+        if (loaded.Netflix) {
+          if (!loaded.Netflix.warranty || loaded.Netflix.warranty === 'Garantía oficial y soporte directo.') {
+            loaded.Netflix.warranty = 'Garantía Oficial Netflix Argentina'
+          }
+          if (!loaded.Netflix.badge) {
+            loaded.Netflix.badge = '4K ULTRA HD • HDR10'
+          }
+          if (!loaded.Netflix.deliveryBadge) {
+            loaded.Netflix.deliveryBadge = '🟢 10-15m'
+          }
+          if (!loaded.Netflix.highlights || loaded.Netflix.highlights.length === 0 || loaded.Netflix.highlights[0] === '4K ULTRA HD • HDR10') {
+            loaded.Netflix.highlights = [
+              'PIN Privado: 4 dígitos exclusivo.',
+              'Sin bloqueo hogar: En Argentina (actualizar hogar).',
+              'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
+            ]
+          }
           saveDb(DB_KEYS.PRICING_CATALOG, loaded)
         }
         return loaded
@@ -2315,21 +2333,76 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [] }) {
+    addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [], warranty = '' }) {
       if (this.pricingCatalog[key]) return { error: 'La plataforma ya existe' }
       this.pricingCatalog = {
         ...this.pricingCatalog,
         [key]: {
           name: name || key,
           description,
-          badge,
-          deliveryBadge,
-          highlights,
+          badge: badge || '4K ULTRA HD • HDR10',
+          deliveryBadge: deliveryBadge || '🟢 10-15m',
+          highlights: Array.isArray(highlights) ? highlights : [],
+          warranty: warranty || 'Garantía oficial y soporte directo.',
           plans: plans || {}
         }
       }
       this.persist(DB_KEYS.PRICING_CATALOG)
       return { success: true }
+    },
+
+    duplicatePlatform(platformKey) {
+      const original = this.pricingCatalog[platformKey]
+      if (!original) return { error: 'Plataforma original no encontrada' }
+
+      let baseKey = `${platformKey} (Copia)`
+      let newKey = baseKey
+      let counter = 2
+      while (this.pricingCatalog[newKey]) {
+        newKey = `${platformKey} (Copia ${counter})`
+        counter++
+      }
+
+      const cloned = JSON.parse(JSON.stringify(original))
+      cloned.name = `${cloned.name || platformKey} (Copia)`
+
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [newKey]: cloned
+      }
+      this.persist(DB_KEYS.PRICING_CATALOG)
+      return { success: true, newKey }
+    },
+
+    duplicatePricingPlan({ platform, planKey }) {
+      const plat = this.pricingCatalog[platform]
+      if (!plat) return { error: 'Plataforma no encontrada' }
+      const plan = plat.plans?.[planKey]
+      if (!plan) return { error: 'Plan no encontrado' }
+
+      let baseKey = `${planKey}_copia`
+      let newPlanKey = baseKey
+      let counter = 2
+      while (plat.plans?.[newPlanKey]) {
+        newPlanKey = `${planKey}_copia_${counter}`
+        counter++
+      }
+
+      const clonedPlan = JSON.parse(JSON.stringify(plan))
+      clonedPlan.label = `${plan.label || planKey} (Copia)`
+
+      this.pricingCatalog = {
+        ...this.pricingCatalog,
+        [platform]: {
+          ...plat,
+          plans: {
+            ...(plat.plans || {}),
+            [newPlanKey]: clonedPlan
+          }
+        }
+      }
+      this.persist(DB_KEYS.PRICING_CATALOG)
+      return { success: true, newPlanKey }
     },
 
     deletePlatform(key) {

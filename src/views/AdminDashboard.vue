@@ -4271,9 +4271,11 @@ const newPlatformForm = ref({
   key: '',
   name: '',
   description: '',
-  badge: '4K ULTRA HD',
+  badge: '4K ULTRA HD • HDR10',
   deliveryBadge: '🟢 10-15m',
-  planLabel: '1 Pantalla / Perfil',
+  warranty: 'Garantía oficial y soporte directo.',
+  highlights: 'PIN Privado: 4 dígitos exclusivo.\nSin bloqueo de hogar en Argentina.\nRenovación mensual: Misma cuenta mes a mes.',
+  planLabel: '1 Perfil Premium 4K',
   providerCost: 3500,
   resellerProfit: 1500,
   clientPrice: 5000
@@ -4284,25 +4286,61 @@ const submitAddPlatform = () => {
     toast.add('El código y nombre de la plataforma son requeridos', 'error')
     return
   }
-  adminStore.addPlatform({
+  const hList = newPlatformForm.value.highlights
+    ? newPlatformForm.value.highlights.split('\n').map(h => h.trim()).filter(Boolean)
+    : []
+
+  const res = adminStore.addPlatform({
     key: newPlatformForm.value.key.trim(),
     name: newPlatformForm.value.name.trim(),
     description: newPlatformForm.value.description.trim(),
-    badge: newPlatformForm.value.badge.trim(),
-    deliveryBadge: newPlatformForm.value.deliveryBadge.trim(),
+    badge: newPlatformForm.value.badge.trim() || '4K ULTRA HD • HDR10',
+    deliveryBadge: newPlatformForm.value.deliveryBadge.trim() || '🟢 10-15m',
+    warranty: newPlatformForm.value.warranty.trim() || 'Garantía oficial y soporte directo.',
+    highlights: hList,
     plans: {
       '1_perfil': {
-        label: newPlatformForm.value.planLabel.trim(),
+        label: newPlatformForm.value.planLabel.trim() || '1 Perfil Premium',
         units: 1,
         type: 'perfil',
-        providerCost: Number(newPlatformForm.value.providerCost),
-        resellerProfit: Number(newPlatformForm.value.resellerProfit),
-        clientPrice: Number(newPlatformForm.value.clientPrice)
+        providerCost: Number(newPlatformForm.value.providerCost || 0),
+        resellerProfit: Number(newPlatformForm.value.resellerProfit || 0),
+        clientPrice: Number(newPlatformForm.value.clientPrice || 0)
       }
     }
   })
+  if (res?.error) {
+    toast.add(res.error, 'error')
+    return
+  }
   toast.add(`Plataforma ${newPlatformForm.value.name} guardada en el catálogo virtual`, 'success')
   showAddPlatformModal.value = false
+}
+
+const handleDuplicatePlatform = (platKey) => {
+  const res = adminStore.duplicatePlatform(platKey)
+  if (res?.success) {
+    toast.add(`Plataforma duplicada exitosamente como "${res.newKey}". Ya podés editar sus datos.`, 'success')
+    const newPlat = adminStore.pricingCatalog[res.newKey]
+    if (newPlat) {
+      openEditPlatformModal(res.newKey, newPlat)
+    }
+  } else {
+    toast.add(res?.error || 'Error al duplicar plataforma', 'error')
+  }
+}
+
+const handleDuplicatePlan = (platKey, pKey) => {
+  const res = adminStore.duplicatePricingPlan({ platform: platKey, planKey: pKey })
+  if (res?.success) {
+    toast.add(`Plan duplicado como "${res.newPlanKey}". Ya podés editar sus precios.`, 'success')
+    const newPlan = adminStore.pricingCatalog[platKey]?.plans?.[res.newPlanKey]
+    if (newPlan) {
+      openPlanEdit(platKey, res.newPlanKey, newPlan)
+    }
+  } else {
+    toast.add(res?.error || 'Error al duplicar plan', 'error')
+  }
 }
 
 // GESTIÓN Y ARMADO DE PAQUETES & OFERTAS (PROVEEDOR)
@@ -7080,6 +7118,14 @@ const deletePackageItem = (pkgId) => {
                 <span>Editar Info</span>
               </button>
               <button 
+                @click="handleDuplicatePlatform(platKey)"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-bold border border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                title="Duplicar esta plataforma con todos sus planes"
+              >
+                <span>📋</span>
+                <span>Duplicar</span>
+              </button>
+              <button 
                 @click="openAddPlanModal(platKey)"
                 class="bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer"
                 title="Agregar nuevo plan a esta plataforma"
@@ -7108,12 +7154,20 @@ const deletePackageItem = (pkgId) => {
                 <span class="text-[11px] text-slate-400 font-mono">Tipo: {{ plan.type || 'perfil' }} • Unidades: {{ plan.units || 1 }}</span>
                 <span v-if="plan.description" class="text-[10px] text-slate-500 block mt-0.5">{{ plan.description }}</span>
               </div>
-              <div class="flex flex-wrap items-center gap-3">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div class="text-right font-mono">
                   <div class="text-slate-400 text-[10px]">Costo: <strong class="text-slate-200">${{ plan.providerCost?.toLocaleString() }}</strong></div>
                   <div class="text-emerald-400 text-[10px]">Ganancia Rev.: <strong>+${{ plan.resellerProfit?.toLocaleString() }}</strong></div>
                   <div class="text-amber-400 font-bold text-xs">P. Venta: ${{ plan.clientPrice?.toLocaleString() }} ARS</div>
                 </div>
+                <button 
+                  @click="handleDuplicatePlan(platKey, pKey)"
+                  class="bg-slate-800/90 hover:bg-slate-700 text-sky-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-700/80 transition-colors cursor-pointer flex items-center gap-1"
+                  title="Duplicar este plan para configurar otra modalidad"
+                >
+                  <span>📋</span>
+                  <span>Duplicar</span>
+                </button>
                 <button 
                   @click="openPlanEdit(platKey, pKey, plan)"
                   class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
@@ -14192,13 +14246,24 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
 
           <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
-            <button 
-              type="button" 
-              @click="deletePlanFromCatalog(editingPlatformKey, editingPlanKey)" 
-              class="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
-            >
-              🗑️ Eliminar Plan
-            </button>
+            <div class="flex items-center gap-2">
+              <button 
+                type="button" 
+                @click="deletePlanFromCatalog(editingPlatformKey, editingPlanKey)" 
+                class="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                🗑️ Eliminar Plan
+              </button>
+              <button 
+                type="button" 
+                @click="handleDuplicatePlan(editingPlatformKey, editingPlanKey); editingPlanModal = false" 
+                class="text-sky-400 hover:text-sky-300 hover:bg-sky-950/40 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                title="Duplicar este plan para configurar otra modalidad"
+              >
+                <span>📋</span>
+                <span>Duplicar</span>
+              </button>
+            </div>
             <div class="flex items-center gap-2">
               <button type="button" @click="editingPlanModal = false" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2.5 rounded-xl cursor-pointer">
                 Cancelar
@@ -14375,22 +14440,51 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
 
           <div>
-            <label class="block font-bold uppercase text-slate-400 mb-1">Plan Inicial (Etiqueta)</label>
-            <input v-model="newPlatformForm.planLabel" type="text" placeholder="1 Pantalla / Perfil Fan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Descripción / Subtítulo</label>
+            <textarea v-model="newPlatformForm.description" rows="2" placeholder="Ej: Catálogo oficial de anime en calidad Full HD / 4K con acceso simultáneo." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none resize-none"></textarea>
           </div>
 
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Costo Prov.</label>
-              <input v-model="newPlatformForm.providerCost" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Badge de Calidad / Promo</label>
+              <input v-model="newPlatformForm.badge" type="text" placeholder="Ej: 4K ULTRA HD • HDR10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-red-400 font-bold outline-none">
             </div>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Ganancia Rev.</label>
-              <input v-model="newPlatformForm.resellerProfit" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Badge de Entrega</label>
+              <input v-model="newPlatformForm.deliveryBadge" type="text" placeholder="Ej: 🟢 10-15m" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-emerald-400 font-bold outline-none">
             </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Garantía / Términos</label>
+            <input v-model="newPlatformForm.warranty" type="text" placeholder="Ej: Garantía Oficial StreamePro con reposición activa 30 días" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-300 outline-none">
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">Beneficios / Puntos Clave (1 por línea)</label>
+            <textarea v-model="newPlatformForm.highlights" rows="2" placeholder="PIN Privado: 4 dígitos exclusivo.&#10;Sin bloqueo hogar: En Argentina.&#10;Renovación mensual: Misma cuenta mes a mes." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono text-[11px] outline-none resize-none"></textarea>
+          </div>
+
+          <div class="border-t border-slate-800 pt-2 space-y-2.5">
+            <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider block">Plan Inicial</span>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">P. Cliente</label>
-              <input v-model="newPlatformForm.clientPrice" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-amber-400 font-mono font-bold" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre / Etiqueta del Plan</label>
+              <input v-model="newPlatformForm.planLabel" type="text" placeholder="1 Pantalla / Perfil Fan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1">Costo Prov.</label>
+                <input v-model.number="newPlatformForm.providerCost" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white font-mono" required>
+              </div>
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1">Ganancia Rev.</label>
+                <input v-model.number="newPlatformForm.resellerProfit" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-emerald-400 font-mono" required>
+              </div>
+              <div>
+                <label class="block font-bold uppercase text-slate-400 mb-1">P. Cliente</label>
+                <input v-model.number="newPlatformForm.clientPrice" type="number" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-amber-400 font-mono font-bold" required>
+              </div>
             </div>
           </div>
 
