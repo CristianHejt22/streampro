@@ -1582,6 +1582,49 @@ export const OFFICIAL_COMBOS_CATALOG = [
   }
 ]
 
+/**
+ * Extrae la cantidad de dispositivos de un combo a partir del texto o de su configuración manual.
+ * Ejemplo: "Netflix Premium, Disney+ (7 ESPN), Prime Video · 1 Dispositivo · 30 Días" -> 1
+ *          "Línea Personal (Android) · 2 Dispositivos · 90 Días" -> 2
+ * Si fue configurado manualmente por el admin, respeta el valor manual.
+ */
+export function parseComboDevices(pkg) {
+  if (!pkg) return 1
+
+  // 1. Si se configuró manualmente de forma explícita
+  if (pkg.isManualDevices || pkg.devicesManual) {
+    const manualVal = parseInt(pkg.devices, 10)
+    if (!isNaN(manualVal) && manualVal > 0) return manualVal
+  }
+
+  // 2. Extraer automáticamente si se menciona en descripción, título o notas:
+  // Coincide con ej: "1 Dispositivo", "2 Dispositivos", "3 Disp", "5 Pantallas", etc.
+  const text = `${pkg.title || ''} ${pkg.description || ''} ${pkg.notes || ''}`
+  const match = text.match(/(\d+)\s*(?:dispositivos?|disp\.?|pantallas?)/i)
+  if (match && match[1]) {
+    const num = parseInt(match[1], 10)
+    if (!isNaN(num) && num > 0) return num
+  }
+
+  // 3. Fallback al valor de pkg.devices si ya existe
+  if (pkg.devices !== undefined && pkg.devices !== null && pkg.devices !== '') {
+    const parsed = parseInt(pkg.devices, 10)
+    if (!isNaN(parsed) && parsed > 0) return parsed
+  }
+
+  return 1
+}
+
+/**
+ * Formatea la etiqueta de dispositivos de un combo
+ * 1 -> "1 Dispositivo"
+ * 2 -> "2 Dispositivos"
+ */
+export function formatComboDevicesLabel(devicesCount) {
+  const count = Number(devicesCount) || 1
+  return count === 1 ? '1 Dispositivo' : `${count} Dispositivos`
+}
+
 export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
   if (!pkg) return pkg
 
@@ -1670,6 +1713,9 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
   const savingsAmount = Math.max(0, originalPrice - promoPrice)
   const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : discountPercent
 
+  const resolvedDevices = parseComboDevices(pkg)
+  const devicesLabel = formatComboDevicesLabel(resolvedDevices)
+
   return {
     ...pkg,
     services,
@@ -1682,6 +1728,9 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
     discountPercent: savingsPercent,
     savingsAmount,
     savingsPercent,
+    devices: String(resolvedDevices),
+    devicesNumber: resolvedDevices,
+    devicesLabel: devicesLabel,
     badge: pkg.badge || `🔥 ${savingsPercent}% OFF`
   }
 }

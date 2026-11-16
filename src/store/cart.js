@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { parseArgentinePrice } from '../utils/pricing'
 import { computePromoDiscountBreakdown } from '../utils/marketing'
+import { parseComboDevices, formatComboDevicesLabel } from '../services/officialCombosData'
 
 const CART_STORAGE_KEY = 'streamepro_cart_v1'
 
@@ -242,7 +243,8 @@ export const useCartStore = defineStore('cart', {
       if (existing) {
         existing.quantity++
       } else {
-        const totalUnits = pkg.services.reduce((acc, s) => acc + (s.units || 1), 0)
+        const deviceCount = parseComboDevices(pkg)
+        const devicesLabel = formatComboDevicesLabel(deviceCount)
         const allProfiles = pkg.services.flatMap(s => 
           Array.from({ length: s.units || 1 }, (_, idx) => ({
             name: `PERFIL ${idx + 1} - ${s.platform}`
@@ -255,8 +257,10 @@ export const useCartStore = defineStore('cart', {
           platform: pkg.services.map(s => s.platform).join(' + '),
           category: 'Combo Especial',
           planKey: 'combo_bundle',
-          planLabel: pkg.services.map(s => `${s.platform} (${s.planLabel})`).join(' + '),
-          units: totalUnits,
+          planLabel: `${pkg.services.map(s => s.platform).join(' + ')} · ${devicesLabel}`,
+          devices: deviceCount,
+          devicesLabel: devicesLabel,
+          units: deviceCount,
           clientPrice: pkg.promoPrice,
           providerCost: pkg.providerCost,
           resellerProfit: pkg.resellerProfit,

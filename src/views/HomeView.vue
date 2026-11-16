@@ -9,6 +9,7 @@ import { saveReceipt, processReceiptFile } from '../services/receiptCloudStorage
 import { getRememberedSession } from '../services/biometrics'
 import { TRUST_METRICS } from '../services/customerReviewsData'
 import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/marketing'
+import { parseComboDevices, formatComboDevicesLabel } from '../services/officialCombosData'
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
@@ -25,6 +26,14 @@ const router = useRouter()
 const cartStore = useCartStore()
 const adminStore = useAdminStore()
 const toast = useToastStore()
+
+// Formateo del badge de dispositivos de combos según mención en texto o valor manual
+const formatDevicesBadge = (pkg) => {
+  if (!pkg) return '1 Dispositivo'
+  if (pkg.devicesLabel) return pkg.devicesLabel
+  const count = parseComboDevices(pkg)
+  return formatComboDevicesLabel(count)
+}
 
 // Detección de sesión activa de Administrador para previsualización cuando la tienda está oculta
 const isAdminUser = computed(() => {
@@ -3663,6 +3672,9 @@ const submitOrder = async () => {
                   <span v-if="pkg.durationDays" class="text-[10px] font-bold text-emerald-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-500/40 shadow">
                     ⏱️ {{ pkg.durationDays }} Días
                   </span>
+                  <span class="text-[10px] font-bold text-sky-300 bg-slate-950/90 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-sky-500/40 shadow font-mono">
+                    📱 {{ formatDevicesBadge(pkg) }}
+                  </span>
                 </div>
               </div>
 
@@ -3670,9 +3682,17 @@ const submitOrder = async () => {
                 <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-sm">
                   {{ pkg.badge || '🔥 OFERTA' }}
                 </span>
-                <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                  {{ pkg.services.length }} Plataformas
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span v-if="pkg.durationDays" class="text-[10px] font-mono text-emerald-300 bg-slate-900 px-2 py-0.5 rounded border border-emerald-500/30">
+                    ⏱️ {{ pkg.durationDays }} Días
+                  </span>
+                  <span class="text-[10px] font-mono text-sky-300 bg-slate-900 px-2 py-0.5 rounded border border-sky-500/30 font-bold">
+                    📱 {{ formatDevicesBadge(pkg) }}
+                  </span>
+                  <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    {{ pkg.services.length }} Plataformas
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -4548,8 +4568,8 @@ const submitOrder = async () => {
                 <span v-if="pkg.durationDays" class="text-[10px] font-bold text-emerald-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-500/40 shadow">
                   ⏱️ {{ pkg.durationDays }} Días
                 </span>
-                <span v-if="pkg.devices" class="text-[10px] font-bold text-sky-300 bg-slate-950/90 backdrop-blur-md px-2 py-0.5 rounded-full border border-sky-500/40 shadow">
-                  📱 {{ pkg.devices }} Disp
+                <span class="text-[10px] font-bold text-sky-300 bg-slate-950/90 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-sky-500/40 shadow font-mono">
+                  📱 {{ formatDevicesBadge(pkg) }}
                 </span>
               </div>
             </div>
@@ -4562,6 +4582,9 @@ const submitOrder = async () => {
               <div class="flex items-center gap-1.5">
                 <span v-if="pkg.durationDays" class="text-[10px] font-mono text-emerald-300 bg-slate-900 px-2 py-0.5 rounded border border-emerald-500/30">
                   ⏱️ {{ pkg.durationDays }} Días
+                </span>
+                <span class="text-[10px] font-mono text-sky-300 bg-slate-900 px-2 py-0.5 rounded border border-sky-500/30 font-bold">
+                  📱 {{ formatDevicesBadge(pkg) }}
                 </span>
                 <span class="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                   {{ pkg.services.length }} {{ pkg.category === 'internet' ? 'Vías' : 'Plataformas' }}

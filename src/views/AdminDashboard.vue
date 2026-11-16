@@ -7,6 +7,7 @@ import { loadDb, DB_KEYS, generateSecurePassword, exportDatabaseBackup, importDa
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { testFirebaseConnection } from '../services/firebase'
 import { parseGamingTextList, matchGamingListWithCatalog, smartSearchGamingMatch, resolveOfficialGameImage } from '../services/gamingListParser'
+import { parseComboDevices, formatComboDevicesLabel } from '../services/officialCombosData'
 const FlyerGeneratorModal = defineAsyncComponent(() => import('../components/FlyerGeneratorModal.vue'))
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const ReceiptViewerModal = defineAsyncComponent(() => import('../components/ReceiptViewerModal.vue'))
@@ -28,6 +29,14 @@ const adminStore = useAdminStore()
 const resellerStore = useResellerStore()
 const toast = useToastStore()
 const router = useRouter()
+
+// Formateo de etiqueta de dispositivos para combos oficiales o personalizados
+const formatDevicesBadge = (pkg) => {
+  if (!pkg) return '1 Dispositivo'
+  if (pkg.devicesLabel) return pkg.devicesLabel
+  const count = parseComboDevices(pkg)
+  return formatComboDevicesLabel(count)
+}
 
 // MODAL DE COMPROBANTE EN MINI NUBE (JPG, PNG, PDF)
 const showReceiptModal = ref(false)
@@ -4382,6 +4391,15 @@ const handleDuplicatePlan = (platKey, pKey) => {
 }
 
 // GESTIÓN Y ARMADO DE PAQUETES & OFERTAS (PROVEEDOR)
+// Sincronización automática de cantidad de dispositivos mencionados en la descripción (salvo override manual)
+watch(() => newPackageForm.value.description, (newDesc) => {
+  if (!newDesc) return
+  const match = newDesc.match(/(\d+)\s*(?:dispositivos?|disp\.?|pantallas?)/i)
+  if (match && match[1]) {
+    newPackageForm.value.devices = match[1]
+  }
+})
+
 const newPackageForm = ref({
   title: '',
   category: 'streaming',
@@ -4524,7 +4542,8 @@ const submitUpdatePackage = () => {
     description: editingPackageForm.value.description.trim(),
     badge: badgeVal,
     durationDays: editingPackageForm.value.durationDays,
-    devices: editingPackageForm.value.devices,
+    devices: String(editingPackageForm.value.devices || '1'),
+    isManualDevices: true,
     promoPrice: promo,
     originalPrice: orig,
     providerCost: cost,
@@ -4777,7 +4796,8 @@ const submitCreatePackage = () => {
     description: newPackageForm.value.description.trim() || 'Combo exclusivo de entretenimiento con múltiples plataformas combinadas.',
     badge: newPackageForm.value.badge.trim() || `🔥 ${packageCalculation.value.discount}% OFF`,
     durationDays: newPackageForm.value.durationDays || '30',
-    devices: newPackageForm.value.devices || '1',
+    devices: String(newPackageForm.value.devices || '1'),
+    isManualDevices: true,
     image: newPackageForm.value.image.trim(),
     services: servicesFormatted,
     providerCost: packageCalculation.value.totalCost,
@@ -8572,10 +8592,11 @@ const deletePackageItem = (pkgId) => {
                 v-model="newPackageForm.devices"
                 class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-xs font-semibold cursor-pointer"
               >
-                <option value="1">1 Disp</option>
-                <option value="2">2 Disp</option>
-                <option value="3">3 Disp</option>
-                <option value="5">5 Disp</option>
+                <option value="1">1 Dispositivo</option>
+                <option value="2">2 Dispositivos</option>
+                <option value="3">3 Dispositivos</option>
+                <option value="4">4 Dispositivos</option>
+                <option value="5">5 Dispositivos</option>
               </select>
             </div>
           </div>
@@ -8924,8 +8945,8 @@ const deletePackageItem = (pkgId) => {
                 <span class="bg-black/80 backdrop-blur-md text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
                   ⏱️ {{ pkg.durationDays || 30 }} Días
                 </span>
-                <span class="bg-black/80 backdrop-blur-md text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/30">
-                  📱 {{ pkg.devices || 1 }} Disp
+                <span class="bg-black/80 backdrop-blur-md text-cyan-300 px-2.5 py-0.5 rounded border border-cyan-500/30 font-bold font-mono">
+                  📱 {{ formatDevicesBadge(pkg) }}
                 </span>
               </div>
             </div>
@@ -8940,8 +8961,8 @@ const deletePackageItem = (pkgId) => {
                     <span class="bg-slate-900 text-amber-300 px-2 py-0.5 rounded border border-slate-800">
                       ⏱️ {{ pkg.durationDays || 30 }}d
                     </span>
-                    <span class="bg-slate-900 text-cyan-300 px-2 py-0.5 rounded border border-slate-800">
-                      📱 {{ pkg.devices || 1 }} disp
+                    <span class="bg-slate-900 text-cyan-300 px-2.5 py-0.5 rounded border border-slate-800 font-bold font-mono">
+                      📱 {{ formatDevicesBadge(pkg) }}
                     </span>
                   </div>
                 </div>
@@ -14783,10 +14804,11 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                 v-model="editingPackageForm.devices"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold outline-none cursor-pointer"
               >
-                <option value="1">1 Disp</option>
-                <option value="2">2 Disp</option>
-                <option value="3">3 Disp</option>
-                <option value="5">5 Disp</option>
+                <option value="1">1 Dispositivo</option>
+                <option value="2">2 Dispositivos</option>
+                <option value="3">3 Dispositivos</option>
+                <option value="4">4 Dispositivos</option>
+                <option value="5">5 Dispositivos</option>
               </select>
             </div>
           </div>

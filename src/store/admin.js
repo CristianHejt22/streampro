@@ -4245,6 +4245,8 @@ export const useAdminStore = defineStore('admin', {
         badge: badge || (discountPct > 0 ? `🔥 ${discountPct}% OFF` : '⭐ COMBO VIP'),
         durationDays: String(durationDays || '30'),
         devices: String(devices || '1'),
+        isManualDevices: true,
+        devicesLabel: Number(devices) === 1 ? '1 Dispositivo' : `${devices || 1} Dispositivos`,
         services: services.map(s => ({
           platform: s.platform,
           planKey: s.planKey || '1_perfil',
@@ -4291,6 +4293,11 @@ export const useAdminStore = defineStore('admin', {
       if (idx === -1) return { error: 'Paquete no encontrado' }
       const p = this.packages[idx]
       const updated = { ...p, ...patch }
+      if (patch.devices !== undefined) {
+        updated.isManualDevices = true
+        updated.devices = String(patch.devices)
+        updated.devicesLabel = Number(patch.devices) === 1 ? '1 Dispositivo' : `${patch.devices} Dispositivos`
+      }
       if (patch.promoPrice !== undefined || patch.originalPrice !== undefined || patch.providerCost !== undefined || patch.resellerCost !== undefined || patch.platformProfit !== undefined || patch.resellerProfit !== undefined) {
         const orig = Number(updated.originalPrice || 0)
         const promo = Number(updated.promoPrice || 0)
