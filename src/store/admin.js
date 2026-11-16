@@ -44,6 +44,8 @@ import {
   fetchResellersFromFirebase,
   listenToResellers,
   deleteResellerFromFirebase,
+  deleteOrderFromFirebase,
+  deletePhysicalOrderFromFirebase,
   saveSupportTicketToFirebase,
   listenToSupportTickets,
   saveMarketingHubPatchToFirebase,
@@ -4111,6 +4113,7 @@ export const useAdminStore = defineStore('admin', {
       if (removed.hasReceipt || removed.receiptStatus) {
         deleteReceipt(removed.id).catch(() => {})
       }
+      deleteOrderFromFirebase(removed.id).catch(() => {})
       return { success: true }
     },
 
@@ -4122,7 +4125,97 @@ export const useAdminStore = defineStore('admin', {
       if (removed.hasReceipt || removed.receiptStatus) {
         deleteReceipt(removed.id).catch(() => {})
       }
+      deletePhysicalOrderFromFirebase(removed.id).catch(() => {})
       return { success: true }
+    },
+
+    clearStreamingOrders() {
+      const toRemove = this.orders.filter(o => 
+        o.orderType !== 'gaming' && 
+        o.category !== 'Videojuegos Digitales' && 
+        o.category !== 'gaming' && 
+        !o.gameTitle
+      )
+      toRemove.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deleteOrderFromFirebase(o.id).catch(() => {})
+      })
+      this.orders = this.orders.filter(o => 
+        o.orderType === 'gaming' || 
+        o.category === 'Videojuegos Digitales' || 
+        o.category === 'gaming' || 
+        Boolean(o.gameTitle)
+      )
+      this.persist(DB_KEYS.ORDERS)
+      return { success: true, count: toRemove.length }
+    },
+
+    clearGamingOrders() {
+      const toRemove = this.orders.filter(o => 
+        o.orderType === 'gaming' || 
+        o.category === 'Videojuegos Digitales' || 
+        o.category === 'gaming' || 
+        Boolean(o.gameTitle)
+      )
+      toRemove.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deleteOrderFromFirebase(o.id).catch(() => {})
+      })
+      this.orders = this.orders.filter(o => 
+        o.orderType !== 'gaming' && 
+        o.category !== 'Videojuegos Digitales' && 
+        o.category !== 'gaming' && 
+        !o.gameTitle
+      )
+      this.persist(DB_KEYS.ORDERS)
+      return { success: true, count: toRemove.length }
+    },
+
+    clearPhysicalOrders() {
+      const count = this.physicalOrders.length
+      this.physicalOrders.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deletePhysicalOrderFromFirebase(o.id).catch(() => {})
+      })
+      this.physicalOrders = []
+      this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      return { success: true, count }
+    },
+
+    clearAllIncomingOrdersForProduction() {
+      const streamingCount = this.orders.length
+      const physicalCount = this.physicalOrders.length
+      const renewalCount = this.renewalRequests.length
+
+      this.orders.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deleteOrderFromFirebase(o.id).catch(() => {})
+      })
+      this.physicalOrders.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deletePhysicalOrderFromFirebase(o.id).catch(() => {})
+      })
+
+      this.orders = []
+      this.physicalOrders = []
+      this.renewalRequests = []
+
+      this.persist(DB_KEYS.ORDERS)
+      this.persist(DB_KEYS.PHYSICAL_ORDERS)
+      this.persist(DB_KEYS.RENEWAL_REQUESTS)
+
+      const resellerStore = useResellerStore()
+      if (resellerStore) {
+        resellerStore.clients = []
+        resellerStore.persist()
+      }
+
+      return {
+        success: true,
+        clearedStreaming: streamingCount,
+        clearedPhysical: physicalCount,
+        clearedRenewals: renewalCount
+      }
     },
 
     createPackage({ title, category = 'streaming', description, badge, durationDays = '30', devices = '1', services = [], logos = [], image = '', promoPrice, originalPrice, providerCost, platformProfit, resellerCost, resellerProfit, discountPercent, createdBy = 'provider', resellerId = 'ALL' }) {
@@ -4504,7 +4597,7 @@ export const useAdminStore = defineStore('admin', {
         username: 'admin',
         password: 'StreamPro2026*Admin',
         name: 'Administrador Principal',
-        whatsapp: '+54 9 11 0000-0000'
+        whatsapp: OFFICIAL_PROVIDER_WHATSAPP
       }
       this.providerBankInfo = {
         holderName: 'StreamePro Mayorista Central',
@@ -4512,7 +4605,7 @@ export const useAdminStore = defineStore('admin', {
         cuit: '20-00000000-0',
         cbuAlias: 'STREAMEPRO.MAYORISTA',
         cbuNumber: '0000000000000000000000',
-        whatsapp: '+54 9 11 0000-0000',
+        whatsapp: OFFICIAL_PROVIDER_WHATSAPP,
         email: 'pagos@streampro.com'
       }
       
@@ -6846,6 +6939,19 @@ export const useResellerStore = defineStore('reseller', {
     clearAllAlerts() {
       const adminStore = useAdminStore()
       return adminStore.clearResellerAlerts(this.activeResellerId)
+    },
+    clearMyIncomingStreamingOrders() {
+      const adminStore = useAdminStore()
+      const resId = this.activeResellerId
+      if (!resId) return { error: 'Sin sesión activa' }
+      const toRemove = adminStore.orders.filter(o => o.resellerId === resId)
+      toRemove.forEach(o => {
+        if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
+        deleteOrderFromFirebase(o.id).catch(() => {})
+      })
+      adminStore.orders = adminStore.orders.filter(o => o.resellerId !== resId)
+      adminStore.persist(DB_KEYS.ORDERS)
+      return { success: true, count: toRemove.length }
     },
     updateShopConfig(config) {
       const adminStore = useAdminStore()

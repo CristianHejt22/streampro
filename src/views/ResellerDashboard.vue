@@ -825,6 +825,13 @@ const myPendingStreamingOrders = computed(() => {
   return myIncomingStreamingOrders.value.filter(o => o.status === 'Waiting Provider')
 })
 
+const handleClearMyIncomingOrders = () => {
+  if (confirm('¿Estás seguro de que deseas vaciar los pedidos web entrantes para dejar la bandeja limpia para producción real?')) {
+    const res = resellerStore.clearMyIncomingStreamingOrders()
+    toast.add(`✓ Bandeja de pedidos web vaciada (${res.count || 0} pedidos eliminados). Lista para producción real.`, 'success')
+  }
+}
+
 // Dominio oficial de producción para enlaces de revendedor
 const getBaseOrigin = () => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -1993,10 +2000,27 @@ const submitResellerGameInquiry = () => {
               </p>
             </div>
           </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              v-if="myIncomingStreamingOrders.length > 0"
+              type="button"
+              @click="handleClearMyIncomingOrders"
+              class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow"
+              title="Vaciar pedidos web entrantes para dejar limpio el panel en producción real"
+            >
+              <span>🗑️</span>
+              <span>Vaciar para Producción</span>
+            </button>
+          </div>
         </div>
 
-        <div v-if="myIncomingStreamingOrders.length === 0" class="text-center py-8 text-slate-500 text-xs italic bg-slate-950/80 rounded-2xl border border-slate-800">
-          No hay pedidos web de streaming registrados para este revendedor aún. Cuando tus clientes compren con tu link único, ingresarán directamente aquí y al panel del proveedor.
+        <div v-if="myIncomingStreamingOrders.length === 0" class="text-center py-8 text-slate-400 text-xs bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+          <div class="text-2xl">✨</div>
+          <p class="font-bold text-white text-sm">Bandeja de Pedidos Web Limpia (0 pedidos pendientes)</p>
+          <p class="text-slate-500 max-w-md mx-auto text-xs">
+            Tu tienda está lista para producción real. Cuando tus clientes compren desde tu enlace oficial o catálogo web, sus pedidos y comprobantes ingresarán aquí automáticamente.
+          </p>
         </div>
 
         <div v-else class="space-y-3">

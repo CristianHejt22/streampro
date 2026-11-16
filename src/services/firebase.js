@@ -491,6 +491,38 @@ export async function deleteResellerFromFirebase(resellerId) {
 }
 
 /**
+ * Elimina una orden de streaming o gaming de Firestore
+ */
+export async function deleteOrderFromFirebase(orderId) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return { success: false }
+  try {
+    const docRef = doc(dbInstance, 'orders', String(orderId))
+    await deleteDoc(docRef)
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error eliminando orden de Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Elimina una orden de productos físicos de Firestore
+ */
+export async function deletePhysicalOrderFromFirebase(orderId) {
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return { success: false }
+  try {
+    const docRef = doc(dbInstance, 'physical_orders', String(orderId))
+    await deleteDoc(docRef)
+    return { success: true }
+  } catch (error) {
+    console.warn('[Firebase] Error eliminando orden física de Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Consulta la configuración de la tienda en Firestore
  */
 export async function fetchStoreSettingsFromFirebase() {

@@ -4125,6 +4125,27 @@ const handleResetCleanProduction = () => {
   }
 }
 
+const handleClearStreamingOrders = () => {
+  if (confirm('¿Estás seguro de que deseas vaciar todos los pedidos web de streaming para dejar el despacho limpio para producción real?')) {
+    const res = adminStore.clearStreamingOrders()
+    toast.add(`✓ Pedidos de streaming vaciados (${res.count || 0} eliminados). Bandeja limpia para producción real.`, 'success')
+  }
+}
+
+const handleClearGamingOrders = () => {
+  if (confirm('¿Estás seguro de que deseas vaciar todos los pedidos de videojuegos digitales para dejar el despacho gamer limpio para producción real?')) {
+    const res = adminStore.clearGamingOrders()
+    toast.add(`✓ Pedidos gamer vaciados (${res.count || 0} eliminados). Despacho gamer limpio para producción real.`, 'success')
+  }
+}
+
+const handleClearAllOrdersForProduction = () => {
+  if (confirm('⚠️ ¿Estás seguro de vaciar TODOS los pedidos (Streaming, Videojuegos, Físicos y Renovaciones) para producción real?')) {
+    const res = adminStore.clearAllIncomingOrdersForProduction()
+    toast.add(`✓ Todos los pedidos han sido vaciados (${res.clearedStreaming} streaming/juegos, ${res.clearedPhysical} físicos, ${res.clearedRenewals} renovaciones). Listo para producción real.`, 'success')
+  }
+}
+
 // EDITOR DE PRODUCTOS VIRTUALES Y PRECIOS DEL CATÁLOGO
 const editingPlanModal = ref(false)
 const editingPlatformKey = ref('')
@@ -4980,6 +5001,13 @@ const deletePackageItem = (pkgId) => {
           <span>💾 Backup DB</span>
         </button>
         <button 
+          @click="handleClearAllOrdersForProduction"
+          class="bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow"
+          title="Vaciar todos los pedidos entrantes (Streaming, Juegos y Físicos) para producción real"
+        >
+          <span>🗑️ Vaciar Pedidos (Producción)</span>
+        </button>
+        <button 
           @click="handleResetCleanProduction"
           class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
           title="Reiniciar a base de datos limpia de producción"
@@ -5367,7 +5395,16 @@ const deletePackageItem = (pkgId) => {
           </p>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <button 
+            type="button"
+            @click="handleClearStreamingOrders"
+            class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+            title="Vaciar pedidos de streaming para dejar limpio el despacho en producción real"
+          >
+            <span>🗑️</span>
+            <span>Vaciar Pedidos Streaming</span>
+          </button>
           <button 
             @click="manualCloudSync" 
             :disabled="isSyncingCloud"
@@ -11358,7 +11395,16 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             </p>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button"
+              @click="handleClearGamingOrders"
+              class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
+              title="Vaciar pedidos de videojuegos para dejar limpio el despacho gamer en producción real"
+            >
+              <span>🗑️</span>
+              <span>Vaciar Pedidos Gamer</span>
+            </button>
             <button 
               type="button"
               @click="manualCloudSync"
