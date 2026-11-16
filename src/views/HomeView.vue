@@ -953,7 +953,7 @@ const buyGamingViaWhatsApp = (game, licenseType = null) => {
   const lic = licenseType || getGameSelectedLicense(game.id)
   const isPrim = lic === 'primary'
   const price = isPrim ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
-  const cleanPhone = (adminStore.providerBankInfo.whatsapp || '5492915659321').replace(/\D/g, '')
+  const cleanPhone = (adminStore.providerBankInfo.whatsapp || '5492915658321').replace(/\D/g, '')
 
   let networkName = 'PlayStation Store'
   if (game.platform && game.platform.includes('Switch')) networkName = 'Nintendo eShop'
@@ -1864,7 +1864,8 @@ const homeFeaturedDigital = computed(() => {
 
 // 3. Selección de Ofertas 2: Top 3 Paquetes & Combos con Máximo Ahorro
 const homeFeaturedPackages = computed(() => {
-  return adminStore.packages.filter(p => p.active).slice(0, 3)
+  const list = adminStore.computedPackages || adminStore.packages || []
+  return list.filter(p => p.active).slice(0, 3)
 })
 
 // 4. Selección de Ofertas 3: Top 8 Productos Físicos con Descuento / Envío Gratis
@@ -1990,7 +1991,7 @@ const toggleFreeShipping = () => {
 const getWhatsAppContactUrl = (customMsg = '') => {
   const targetPhone = (!isDirectSale.value && currentReseller.value?.contactNumber)
     ? currentReseller.value.contactNumber
-    : (adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321')
+    : (adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321')
   
   let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
@@ -2043,7 +2044,8 @@ watch([searchQuery, selectedCategory, digitalPlatformFilter, digitalItemsPerPage
 
 // ----------------- SECCIÓN 2: PAQUETES & COMBOS -----------------
 const packageCategoryCounts = computed(() => {
-  const active = adminStore.packages.filter(p => p.active)
+  const list = adminStore.computedPackages || adminStore.packages || []
+  const active = list.filter(p => p.active)
   return {
     all: active.length,
     streaming: active.filter(p => !p.category || p.category === 'streaming').length,
@@ -2053,7 +2055,8 @@ const packageCategoryCounts = computed(() => {
 })
 
 const filteredPackages = computed(() => {
-  return adminStore.packages.filter(p => {
+  const list = adminStore.computedPackages || adminStore.packages || []
+  return list.filter(p => {
     if (!p.active) return false
     if (packageCategoryFilter.value !== 'all') {
       const cat = p.category || 'streaming'
@@ -2313,8 +2316,8 @@ const sendOrderToWhatsApp = () => {
   if (!lastPlacedOrder.value) return
   const ord = lastPlacedOrder.value
   const targetPhone = ord.isDirect
-    ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321')
-    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 291 565-9321')
+    ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321')
+    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 291 565-8321')
 
   let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) {
@@ -3554,17 +3557,23 @@ const submitOrder = async () => {
                 </p>
               </div>
 
-              <!-- Servicios incluidos en pastillas compactas -->
-              <div class="flex flex-wrap items-center gap-1.5 py-1">
-                <span 
+              <!-- Cuentas Incluidas -->
+              <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 space-y-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Cuentas Incluidas:</span>
+                <div 
                   v-for="(srv, sIdx) in pkg.services" 
                   :key="sIdx"
-                  class="bg-slate-950/90 border border-pink-500/25 px-2.5 py-1 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-sm"
+                  class="flex items-center justify-between text-xs bg-slate-900/60 px-2.5 py-1.5 rounded-xl border border-slate-800/60"
                 >
-                  <span>{{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Netflix Perfil Extra' ? '⭐' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}</span>
-                  <span>{{ srv.platform }}</span>
-                  <span class="text-[10px] text-pink-300 font-mono">({{ srv.planLabel }})</span>
-                </span>
+                  <div class="flex items-center gap-2">
+                    <span>{{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Netflix Perfil Extra' ? '⭐' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}</span>
+                    <strong class="text-white">{{ srv.platform }}</strong>
+                    <span class="text-[10px] text-pink-300 font-mono">({{ srv.planLabel }})</span>
+                  </div>
+                  <span class="text-xs font-mono font-bold text-slate-300">
+                    ${{ Number(srv.regularPrice || 0).toLocaleString('es-AR') }}
+                  </span>
+                </div>
               </div>
 
               <!-- Beneficios / Highlights si están definidos -->
@@ -3588,16 +3597,17 @@ const submitOrder = async () => {
               <!-- Precio y Descuento -->
               <div class="bg-gradient-to-r from-slate-950 to-pink-950/30 p-3 rounded-2xl border border-pink-500/25 flex justify-between items-center">
                 <div>
-                  <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block">
-                    Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS
-                  </span>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Precio Promo Venta</span>
                   <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
-                    ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-bold text-slate-400">ARS</span>
+                    ${{ Number(pkg.promoPrice || 0).toLocaleString('es-AR') }} <span class="text-xs font-bold text-slate-400">ARS</span>
                   </div>
+                  <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block font-mono">
+                    Precio Lista (Antes): ${{ Number(pkg.originalPrice || 0).toLocaleString('es-AR') }} ARS
+                  </span>
                 </div>
-                <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1 rounded-xl text-center">
-                  <span class="text-[8px] uppercase font-bold block text-emerald-400">Ahorro</span>
-                  <span>${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</span>
+                <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1.5 rounded-xl text-center">
+                  <span class="text-[9px] uppercase font-bold block text-emerald-400">Ahorro</span>
+                  <span class="text-sm font-black">-{{ pkg.discountPercent || Math.round(((pkg.originalPrice - pkg.promoPrice) / pkg.originalPrice) * 100) }}%</span>
                 </div>
               </div>
             </div>
@@ -4442,9 +4452,9 @@ const submitOrder = async () => {
               </p>
             </div>
 
-            <!-- Servicios Incluidos -->
+            <!-- Cuentas Incluidas -->
             <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80 space-y-2">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Servicios Incluidos en el Combo:</span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Cuentas Incluidas:</span>
               <div class="space-y-1.5">
                 <div 
                   v-for="(srv, sIdx) in pkg.services" 
@@ -4455,10 +4465,14 @@ const submitOrder = async () => {
                     <span class="text-base">
                       {{ srv.platform === 'Netflix' ? '🍿' : srv.platform === 'Netflix Perfil Extra' ? '⭐' : srv.platform === 'Spotify' ? '🎧' : srv.platform === 'Max' ? '🎬' : srv.platform === 'Disney+' ? '✨' : srv.platform === 'IPTV' ? '📺' : '🎬' }}
                     </span>
-                    <strong class="text-white">{{ srv.platform }}</strong>
-                    <span class="text-[11px] text-slate-400">({{ srv.planLabel }})</span>
+                    <div>
+                      <strong class="text-white">{{ srv.platform }}</strong>
+                      <span class="text-[11px] text-slate-400 block sm:inline sm:ml-1 font-mono">({{ srv.planLabel }})</span>
+                    </div>
                   </div>
-                  <span class="text-[10px] text-slate-400 font-mono">1 mes</span>
+                  <span class="text-xs font-mono font-bold text-slate-200">
+                    ${{ Number(srv.regularPrice || 0).toLocaleString('es-AR') }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -4484,16 +4498,17 @@ const submitOrder = async () => {
             <!-- Precio y Descuento -->
             <div class="bg-gradient-to-r from-slate-950 to-pink-950/30 p-3 rounded-2xl border border-pink-500/25 flex justify-between items-center">
               <div>
-                <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block">
-                  Antes: ${{ pkg.originalPrice.toLocaleString() }} ARS
-                </span>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Precio Promo Venta</span>
                 <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 font-mono">
-                  ${{ pkg.promoPrice.toLocaleString() }} <span class="text-xs font-bold text-slate-400">ARS</span>
+                  ${{ Number(pkg.promoPrice || 0).toLocaleString('es-AR') }} <span class="text-xs font-bold text-slate-400">ARS</span>
                 </div>
+                <span v-if="pkg.originalPrice > pkg.promoPrice" class="text-[10px] text-slate-400 line-through block font-mono">
+                  Precio Lista (Antes): ${{ Number(pkg.originalPrice || 0).toLocaleString('es-AR') }} ARS
+                </span>
               </div>
-              <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1 rounded-xl text-center">
-                <span class="text-[8px] uppercase font-bold block text-emerald-400">Ahorro</span>
-                <span>${{ (pkg.originalPrice - pkg.promoPrice).toLocaleString() }}</span>
+              <div v-if="pkg.originalPrice > pkg.promoPrice" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-black px-2.5 py-1.5 rounded-xl text-center">
+                <span class="text-[9px] uppercase font-bold block text-emerald-400">Ahorro</span>
+                <span class="text-sm font-black">-{{ pkg.discountPercent || Math.round(((pkg.originalPrice - pkg.promoPrice) / pkg.originalPrice) * 100) }}%</span>
               </div>
             </div>
           </div>
@@ -6580,7 +6595,7 @@ const submitOrder = async () => {
               <p>CUIT/CUIL: <span class="text-slate-300">{{ adminStore.providerBankInfo?.cuit || '20-00000000-0' }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
                 <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA' }}</span>
-                <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321' }}</span>
+                <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321' }}</span>
               </div>
             </div>
 
@@ -7318,7 +7333,7 @@ const submitOrder = async () => {
           >
             <span class="text-base">💬</span>
             <span>Enviar comprobante o consultar por WhatsApp (Opcional)</span>
-            <span class="text-[10px] bg-slate-950/40 px-2 py-0.5 rounded-full font-mono text-emerald-400 font-bold">+54 9 291 565-9321</span>
+            <span class="text-[10px] bg-slate-950/40 px-2 py-0.5 rounded-full font-mono text-emerald-400 font-bold">+54 9 291 565-8321</span>
           </button>
 
           <div class="flex justify-center pt-1">

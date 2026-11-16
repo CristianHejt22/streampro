@@ -15,7 +15,7 @@ const isPhysicalStoreActive = computed(() => {
 
 // WhatsApp de contacto con el proveedor oficial
 const providerWhatsApp = computed(() => {
-  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
+  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321'
 })
 
 // Scroll suave a cualquier sección

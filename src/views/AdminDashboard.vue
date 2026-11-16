@@ -867,6 +867,14 @@ const exportRegisteredUsers = () => {
   toast.add('Directorio de usuarios exportado en JSON', 'success')
 }
 
+const handleResetRegisteredUsers = () => {
+  if (!confirm('¿Estás seguro de reiniciar el Directorio de Clientes & PINs? Se restablecerá al usuario Administrador oficial con teléfono +54 9 291 565-8321.')) {
+    return
+  }
+  adminStore.resetRegisteredUsersDirectory()
+  toast.add('📇 Directorio de Clientes & PINs reiniciado con éxito', 'success')
+}
+
 const showUserVaultModal = ref(false)
 const selectedUserForVault = ref(null)
 
@@ -4050,7 +4058,7 @@ const openAdminAuthModal = () => {
     username: adminStore.adminAuth?.username || 'admin',
     password: adminStore.adminAuth?.password || '',
     name: adminStore.adminAuth?.name || 'Administrador Principal',
-    whatsapp: adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
+    whatsapp: adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321'
   }
   showAdminAuthModal.value = true
 }
@@ -4368,7 +4376,7 @@ const packageSearchQuery = ref('')
 const packageSortOrder = ref('default')
 
 const filteredAdminPackages = computed(() => {
-  let list = adminStore.packages || []
+  let list = adminStore.computedPackages || adminStore.packages || []
   if (packageCategoryFilter.value !== 'all') {
     list = list.filter(p => (p.category || 'streaming') === packageCategoryFilter.value)
   }
@@ -4598,11 +4606,11 @@ const removeServiceFromPackage = (index) => {
 // Precios de unidad en tienda streaming por nombre de plataforma para el PRECIO REAL
 // y costo mayorista de referencia tomado de la lista subida
 const COMBO_STREAMING_REFERENCE = {
-  'Netflix': { cost: 4300, regular: 7700 },
+  'Netflix': { cost: 4300, regular: 8500 },
   'Netflix Perfil Extra': { cost: 4500, regular: 6500 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
-  'Disney+': { cost: 2000, regular: 6300 },
+  'Disney+': { cost: 2000, regular: 7200 },
   'Max': { cost: 2000, regular: 6000 },
   'IPTV': { cost: 2000, regular: 5500 },
   'YouTube': { cost: 1500, regular: 4400 },
@@ -4650,15 +4658,20 @@ const packageCalculation = computed(() => {
   let totalRegular = 0
 
   newPackageForm.value.selectedServices.forEach(s => {
-    const ref = COMBO_STREAMING_REFERENCE[s.platform]
-    if (ref) {
-      totalCost += ref.cost
-      totalRegular += ref.regular
+    const platData = adminStore.pricingCatalog[s.platform]
+    const plan = platData?.plans?.[s.planKey]
+    if (plan) {
+      totalCost += plan.providerCost || 1500
+      totalRegular += plan.clientPrice || 4000
     } else {
-      const platData = adminStore.pricingCatalog[s.platform]
-      const plan = platData?.plans[s.planKey]
-      totalCost += plan?.providerCost || 1500
-      totalRegular += plan?.clientPrice || 4000
+      const ref = COMBO_STREAMING_REFERENCE[s.platform]
+      if (ref) {
+        totalCost += ref.cost
+        totalRegular += ref.regular
+      } else {
+        totalCost += 1500
+        totalRegular += 4000
+      }
     }
   })
 
@@ -4716,14 +4729,15 @@ const submitCreatePackage = () => {
 
   const servicesFormatted = newPackageForm.value.selectedServices.map(s => {
     const platData = adminStore.pricingCatalog[s.platform]
-    const plan = platData?.plans[s.planKey]
+    const plan = platData?.plans?.[s.planKey]
+    const ref = COMBO_STREAMING_REFERENCE[s.platform]
     return {
       platform: s.platform,
       planKey: s.planKey,
       planLabel: plan?.label || s.planKey,
       units: plan?.units || 1,
-      regularPrice: plan?.clientPrice || 0,
-      cost: plan?.providerCost || 0
+      regularPrice: plan?.clientPrice || (ref ? ref.regular : 4000),
+      cost: plan?.providerCost || (ref ? ref.cost : 1500)
     }
   })
 
@@ -6387,17 +6401,25 @@ const deletePackageItem = (pkgId) => {
         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button 
             @click="showAddUserModal = true" 
-            class="flex-1 sm:flex-none bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-none bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>+</span>
             <span>Registrar Usuario</span>
           </button>
           <button 
             @click="exportRegisteredUsers" 
-            class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+            class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             title="Exportar base de datos de usuarios en formato JSON"
           >
             <span>📥 Exportar</span>
+          </button>
+          <button 
+            @click="handleResetRegisteredUsers" 
+            class="flex-1 sm:flex-none bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs px-3.5 py-2.5 rounded-xl border border-rose-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Reiniciar Directorio de Clientes & PINs a estado limpio oficial"
+          >
+            <span>🔄</span>
+            <span>Reiniciar Directorio</span>
           </button>
         </div>
       </div>
@@ -14607,7 +14629,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Soporte</label>
-              <input v-model="newAccountForm.whatsapp" type="text" placeholder="+54 9 291 565-9321" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
+              <input v-model="newAccountForm.whatsapp" type="text" placeholder="+54 9 291 565-8321" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent">
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Correo de Notificaciones</label>

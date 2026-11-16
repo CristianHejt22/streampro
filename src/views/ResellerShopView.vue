@@ -43,7 +43,7 @@ const shopConfig = computed(() => {
     slug: slug.value,
     storeName: reseller.value?.storeName || reseller.value?.name || 'Tienda Oficial',
     tagline: 'Videojuegos Digitales, Tecnología & Streaming Garantizado',
-    whatsapp: reseller.value?.contactNumber || '5492915659321',
+    whatsapp: reseller.value?.contactNumber || '5492915658321',
     bannerText: '¡Activación rápida en 10-60 minutos con garantía oficial!',
     showStreaming: true,
     showCombos: true,
@@ -55,7 +55,7 @@ const shopConfig = computed(() => {
 })
 
 const contactPhone = computed(() => {
-  const p = shopConfig.value.whatsapp || reseller.value?.contactNumber || '5492915659321'
+  const p = shopConfig.value.whatsapp || reseller.value?.contactNumber || '5492915658321'
   return sanitizePhone(p).replace(/\D/g, '')
 })
 

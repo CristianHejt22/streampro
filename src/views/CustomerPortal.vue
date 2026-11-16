@@ -749,14 +749,14 @@ const resolveSupportPhone = (record = null) => {
     const resObj = (adminStore.resellers || []).find(r => r.id === record.resellerId)
     if (resObj?.contactNumber) return resObj.contactNumber
   }
-  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-9321'
+  return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321'
 }
 
 const formatWaDigits = (rawPhone) => {
   let cleanPhone = String(rawPhone || '').replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
   if (cleanPhone.length === 10) cleanPhone = `549${cleanPhone}`
-  return cleanPhone || '5492915659321'
+  return cleanPhone || '5492915658321'
 }
 
 // Gestión de Actualización de Hogar con Netflix

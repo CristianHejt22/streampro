@@ -10,7 +10,7 @@
 export const STORE_STREAMING_UNIT_PRICES = {
   "Netflix": {
     "name": "Netflix Premium Ultra HD 4K",
-    "unitPrice": 7700,
+    "unitPrice": 8500,
     "cost": 4300
   },
   "Netflix Perfil Extra": {
@@ -20,7 +20,7 @@ export const STORE_STREAMING_UNIT_PRICES = {
   },
   "Disney+": {
     "name": "Disney+ Premium con ESPN",
-    "unitPrice": 6300,
+    "unitPrice": 7200,
     "cost": 2000
   },
   "Prime Video": {
@@ -140,14 +140,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Ultra HD 4K",
         "units": 1,
-        "regularPrice": 7700,
+        "regularPrice": 8500,
         "cost": 4300
       },
       {
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -164,12 +164,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "/flyers/combos/promo-pantallas-total.png",
-    "originalPrice": 18200,
-    "promoPrice": 10000,
+    "originalPrice": 19900,
+    "promoPrice": 10950,
     "providerCost": 4300,
-    "platformProfit": 1700,
-    "resellerCost": 6000,
-    "resellerProfit": 4000,
+    "platformProfit": 4200,
+    "resellerCost": 8500,
+    "resellerProfit": 2450,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1582,6 +1582,114 @@ export const OFFICIAL_COMBOS_CATALOG = [
   }
 ]
 
-export function getFreshOfficialCombos() {
-  return JSON.parse(JSON.stringify(OFFICIAL_COMBOS_CATALOG));
+export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
+  if (!pkg) return pkg
+
+  const services = (pkg.services || []).map(srv => {
+    const rawPlat = (srv.platform || '').trim()
+    const catalogKeys = Object.keys(pricingCatalog || {})
+    const matchedKey = catalogKeys.find(k => k.toLowerCase() === rawPlat.toLowerCase()) || rawPlat
+    const platData = pricingCatalog?.[matchedKey]
+
+    let unitRegular = Number(srv.regularPrice || 0)
+    let unitCost = Number(srv.cost || srv.providerCost || 0)
+
+    if (platData && platData.plans) {
+      let matchedPlan = null
+      if (srv.planKey && platData.plans[srv.planKey]) {
+        matchedPlan = platData.plans[srv.planKey]
+      } else {
+        const planEntries = Object.entries(platData.plans)
+        if (srv.planLabel) {
+          const sLabel = srv.planLabel.toLowerCase()
+          matchedPlan = planEntries.find(([_, p]) => {
+            const pLabel = (p.label || '').toLowerCase()
+            return pLabel.includes(sLabel) || sLabel.includes(pLabel)
+          })?.[1]
+        }
+        if (!matchedPlan && planEntries.length > 0) {
+          matchedPlan = planEntries[0][1]
+        }
+      }
+
+      if (matchedPlan) {
+        if (Number(matchedPlan.clientPrice) > 0) {
+          unitRegular = Number(matchedPlan.clientPrice)
+        }
+        if (Number(matchedPlan.providerCost) > 0) {
+          unitCost = Number(matchedPlan.providerCost)
+        }
+      }
+    } else if (STORE_STREAMING_UNIT_PRICES[rawPlat]) {
+      const ref = STORE_STREAMING_UNIT_PRICES[rawPlat]
+      unitRegular = unitRegular || ref.unitPrice
+      unitCost = unitCost || ref.cost
+    }
+
+    const units = Number(srv.units || 1)
+    return {
+      ...srv,
+      regularPrice: unitRegular,
+      cost: unitCost,
+      totalRegular: unitRegular * units,
+      totalCost: unitCost * units
+    }
+  })
+
+  // 1. PRECIO LISTA (ANTES): Suma de precios individuales de las cuentas de streaming
+  const totalRegular = services.reduce((acc, s) => acc + (s.totalRegular || s.regularPrice || 0), 0)
+  const originalPrice = totalRegular > 0 ? totalRegular : Number(pkg.originalPrice || 0)
+
+  // Descuento ofrecido (-15% al -45%)
+  const discountPercent = Number(
+    pkg.discountPercent || (originalPrice > pkg.promoPrice && originalPrice > 0 ? Math.round(((originalPrice - pkg.promoPrice) / originalPrice) * 100) : 45)
+  )
+
+  // PRECIO PROMO VENTA: Redondeado a los 50 pesos
+  const promoPrice = originalPrice > 0 
+    ? (Math.round((originalPrice * (1 - discountPercent / 100)) / 50) * 50)
+    : Number(pkg.promoPrice || 0)
+
+  // 1. PROVEEDOR (Costo Base)
+  const providerCost = Number(pkg.providerCost) > 0 ? Number(pkg.providerCost) : services.reduce((acc, s) => acc + (s.totalCost || s.cost || 0), 0)
+
+  // MARGEN BRUTO PARA EQUILIBRIO
+  const grossMargin = Math.max(0, promoPrice - providerCost)
+
+  // 2. CON GANANCIA PROPIA (StreamePro) ~63% del margen para equilibrio justo (ej: $4,200 en $6,650)
+  let platformProfit = Number(pkg.platformProfit || 0)
+  if (!platformProfit || platformProfit === 0) {
+    platformProfit = Math.round((grossMargin * 0.63) / 50) * 50 || Math.round(grossMargin * 0.6)
+  }
+  const resellerCost = providerCost + platformProfit
+
+  // 3. GANA REVENDEDOR (promoPrice - resellerCost) (ej: $2,450 en $6,650)
+  const resellerProfit = Math.max(0, promoPrice - resellerCost)
+
+  // Ahorro
+  const savingsAmount = Math.max(0, originalPrice - promoPrice)
+  const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : discountPercent
+
+  return {
+    ...pkg,
+    services,
+    originalPrice,
+    promoPrice,
+    providerCost,
+    platformProfit,
+    resellerCost,
+    resellerProfit,
+    discountPercent: savingsPercent,
+    savingsAmount,
+    savingsPercent,
+    badge: pkg.badge || `🔥 ${savingsPercent}% OFF`
+  }
+}
+
+export function getFreshOfficialCombos(pricingCatalog = null) {
+  const catalog = JSON.parse(JSON.stringify(OFFICIAL_COMBOS_CATALOG));
+  if (pricingCatalog && Object.keys(pricingCatalog).length > 0) {
+    return catalog.map(pkg => calculatePackageFromCatalog(pkg, pricingCatalog));
+  }
+  return catalog;
 }

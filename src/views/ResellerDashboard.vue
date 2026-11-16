@@ -311,6 +311,8 @@ const showProviderBankModal = ref(false)
 // Modal y formulario para Solicitar Compras Manuales desde el Panel Revendedor
 const showManualPurchaseModal = ref(false)
 const manualPurchaseForm = ref({
+  orderType: 'single', // 'single' | 'package'
+  packageId: '',
   platform: 'Netflix',
   planKey: '1_perfil',
   customerName: '',
@@ -319,6 +321,13 @@ const manualPurchaseForm = ref({
   payWithWallet: false,
   profiles: [{ name: 'PERFIL 1' }]
 })
+
+const openManualPurchaseForPackage = (pkg) => {
+  manualPurchaseForm.value.orderType = 'package'
+  manualPurchaseForm.value.packageId = pkg.id
+  manualPurchaseForm.value.payWithWallet = Number(resellerStore.wallet || 0) >= Number(pkg.resellerCost || pkg.providerCost || 0)
+  showManualPurchaseModal.value = true
+}
 
 const onManualPlatformChange = () => {
   const catalog = adminStore.pricingCatalog[manualPurchaseForm.value.platform]
@@ -344,21 +353,68 @@ const selectedManualPlanDetails = computed(() => {
   return catalog?.plans[manualPurchaseForm.value.planKey] || null
 })
 
+const selectedManualPackageDetails = computed(() => {
+  if (manualPurchaseForm.value.orderType !== 'package') return null
+  const list = resellerStore.myPackages || []
+  return list.find(p => p.id === manualPurchaseForm.value.packageId) || list[0] || null
+})
+
+const manualOrderPricing = computed(() => {
+  if (manualPurchaseForm.value.orderType === 'package') {
+    const pkg = selectedManualPackageDetails.value
+    if (!pkg) return { cost: 0, price: 0, profit: 0, walletAdj: resellerStore.getAdjustedWalletPrice(0) }
+    const cost = Number(pkg.resellerCost || pkg.providerCost || 0)
+    const price = Number(pkg.promoPrice || 0)
+    const profit = Number(pkg.resellerProfit || 0)
+    return {
+      cost,
+      price,
+      profit,
+      walletAdj: resellerStore.getAdjustedWalletPrice(cost)
+    }
+  } else {
+    const plan = selectedManualPlanDetails.value
+    if (!plan) return { cost: 0, price: 0, profit: 0, walletAdj: resellerStore.getAdjustedWalletPrice(0) }
+    const cost = Number(plan.providerCost || 0)
+    const price = Number(plan.clientPrice || 0)
+    const profit = Number(plan.resellerProfit || 0)
+    return {
+      cost,
+      price,
+      profit,
+      walletAdj: resellerStore.getAdjustedWalletPrice(cost)
+    }
+  }
+})
+
 const submitManualPurchase = () => {
   if (!manualPurchaseForm.value.customerName.trim()) {
     toast.add('Ingresa el nombre del cliente para la orden', 'error')
     return
   }
 
+  const isPkg = manualPurchaseForm.value.orderType === 'package'
+  if (isPkg && !manualPurchaseForm.value.packageId) {
+    if (resellerStore.myPackages.length > 0) {
+      manualPurchaseForm.value.packageId = resellerStore.myPackages[0].id
+    } else {
+      toast.add('No hay combos disponibles para seleccionar', 'error')
+      return
+    }
+  }
+
   const result = resellerStore.requestManualPurchase({
+    orderType: manualPurchaseForm.value.orderType,
+    packageId: manualPurchaseForm.value.packageId,
     platform: manualPurchaseForm.value.platform,
     planKey: manualPurchaseForm.value.planKey,
-    units: selectedManualPlanDetails.value?.units || 1,
+    units: isPkg ? (selectedManualPackageDetails.value?.devices || 1) : (selectedManualPlanDetails.value?.units || 1),
     customerName: manualPurchaseForm.value.customerName.trim(),
     customerPhone: manualPurchaseForm.value.customerPhone.trim(),
     pinPreference: manualPurchaseForm.value.pinPreference,
     profiles: manualPurchaseForm.value.profiles,
-    payWithWallet: manualPurchaseForm.value.payWithWallet
+    payWithWallet: manualPurchaseForm.value.payWithWallet,
+    usePartialWallet: !manualPurchaseForm.value.payWithWallet && manualOrderPricing.value.walletAdj.isPartiallyCovered
   })
 
   if (result.success) {
@@ -782,11 +838,11 @@ const removeServiceFromResellerPackage = (index) => {
 // Precios de unidad en tienda streaming por nombre de plataforma para el PRECIO REAL
 // y costo mayorista de referencia tomado de la lista subida ($4.300 Netflix, etc.)
 const COMBO_STREAMING_REFERENCE = {
-  'Netflix': { cost: 4300, regular: 7700 },
+  'Netflix': { cost: 4300, regular: 8500 },
   'Netflix Perfil Extra': { cost: 4500, regular: 6500 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
-  'Disney+': { cost: 2000, regular: 6300 },
+  'Disney+': { cost: 2000, regular: 7200 },
   'Max': { cost: 2000, regular: 6000 },
   'IPTV': { cost: 2000, regular: 5500 },
   'YouTube': { cost: 1500, regular: 4400 },
@@ -821,15 +877,20 @@ const resellerPackageCalc = computed(() => {
   let regular = 0
 
   resellerPackageForm.value.selectedServices.forEach(s => {
-    const ref = COMBO_STREAMING_REFERENCE[s.platform]
-    if (ref) {
-      cost += ref.cost
-      regular += ref.regular
+    const platData = adminStore.pricingCatalog[s.platform]
+    const plan = platData?.plans?.[s.planKey]
+    if (plan) {
+      cost += plan.providerCost || 1500
+      regular += plan.clientPrice || 4000
     } else {
-      const platData = adminStore.pricingCatalog[s.platform]
-      const plan = platData?.plans[s.planKey]
-      cost += plan?.providerCost || 1500
-      regular += plan?.clientPrice || 4000
+      const ref = COMBO_STREAMING_REFERENCE[s.platform]
+      if (ref) {
+        cost += ref.cost
+        regular += ref.regular
+      } else {
+        cost += 1500
+        regular += 4000
+      }
     }
   })
 
@@ -858,16 +919,16 @@ const submitCreateResellerPackage = () => {
   }
 
   const formatted = resellerPackageForm.value.selectedServices.map(s => {
-    const ref = COMBO_STREAMING_REFERENCE[s.platform]
     const platData = adminStore.pricingCatalog[s.platform]
-    const plan = platData?.plans[s.planKey]
+    const plan = platData?.plans?.[s.planKey]
+    const ref = COMBO_STREAMING_REFERENCE[s.platform]
     return {
       platform: s.platform,
       planKey: s.planKey,
       planLabel: plan?.label || s.planKey,
       units: plan?.units || 1,
-      regularPrice: ref ? ref.regular : (plan?.clientPrice || 4000),
-      cost: ref ? ref.cost : (plan?.providerCost || 1500)
+      regularPrice: plan?.clientPrice || (ref ? ref.regular : 4000),
+      cost: plan?.providerCost || (ref ? ref.cost : 1500)
     }
   })
 
@@ -2420,33 +2481,69 @@ const submitResellerGameInquiry = () => {
                 <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ pkg.description }}</p>
               </div>
 
-              <!-- Cuentas incluidas -->
+              <!-- Cuentas Incluidas -->
               <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Cuentas que incluye:</span>
+                <span class="text-[10px] uppercase font-bold text-slate-400 block">Cuentas Incluidas:</span>
                 <div v-for="(s, sIdx) in pkg.services" :key="sIdx" class="flex justify-between items-center text-xs">
                   <span class="text-slate-200 font-semibold">{{ s.platform }} ({{ s.planLabel }})</span>
-                  <span class="text-[10px] text-slate-400 font-mono">${{ s.regularPrice.toLocaleString() }}</span>
+                  <span class="text-xs text-slate-300 font-mono font-bold">${{ Number(s.regularPrice || 0).toLocaleString('es-AR') }}</span>
                 </div>
               </div>
 
               <!-- Resumen Financiero para el Revendedor -->
-              <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2 text-xs">
-                <div class="flex justify-between items-center">
+              <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 space-y-2 text-xs">
+                <div class="flex justify-between items-start">
                   <div>
-                    <span class="text-[10px] text-slate-400 uppercase block">Precio Cliente:</span>
-                    <span class="text-base font-black text-white font-mono">${{ Number(pkg.promoPrice || 0).toLocaleString() }} ARS</span>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">PVP Sugerido Venta:</span>
+                    <span class="text-base font-black text-white font-mono">${{ Number(pkg.promoPrice || 0).toLocaleString('es-AR') }} ARS</span>
                     <span v-if="Number(pkg.originalPrice) > Number(pkg.promoPrice)" class="text-[10px] text-slate-400 line-through block font-mono">
-                      Antes: ${{ Number(pkg.originalPrice).toLocaleString() }} ARS ({{ pkg.discountPercent || 25 }}% OFF)
+                      Precio Lista (Antes): ${{ Number(pkg.originalPrice).toLocaleString('es-AR') }} ARS
+                    </span>
+                    <span v-if="Number(pkg.originalPrice) > Number(pkg.promoPrice)" class="text-[9px] text-emerald-400 font-bold block font-mono">
+                      -{{ pkg.discountPercent || Math.round(((pkg.originalPrice - pkg.promoPrice) / pkg.originalPrice) * 100) }}% Ahorro
                     </span>
                   </div>
                   <div class="text-right bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
-                    <span class="text-[10px] text-emerald-400 uppercase font-bold block">Tu Ganancia:</span>
-                    <span class="text-sm font-black text-emerald-400 font-mono">+${{ Number(pkg.resellerProfit || 0).toLocaleString() }} ARS</span>
+                    <span class="text-[10px] text-emerald-400 uppercase font-bold block">Gana Revendedor:</span>
+                    <span class="text-sm font-black text-emerald-400 font-mono">+${{ Number(pkg.resellerProfit || 0).toLocaleString('es-AR') }} ARS</span>
                   </div>
                 </div>
-                <div class="flex justify-between items-center pt-1.5 border-t border-slate-800/60 text-[10px] font-mono">
-                  <span class="text-purple-300 font-bold">Tu Costo Mayorista: ${{ Number(pkg.resellerCost || pkg.providerCost || 0).toLocaleString() }} ARS</span>
+
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800/60 text-[10px] font-mono">
+                  <span class="text-purple-300 font-bold">Tu Costo Mayorista: ${{ Number(pkg.resellerCost || pkg.providerCost || 0).toLocaleString('es-AR') }} ARS</span>
                   <span class="text-pink-300 font-semibold">⏱️ {{ pkg.durationDays || 30 }} Días</span>
+                </div>
+
+                <!-- 💰 Ajuste por Dinero Disponible en Billetera para DISTRIBUIDORES -->
+                <div class="p-2.5 rounded-xl border text-[11px] space-y-1.5 font-mono" :class="[
+                  Number(resellerStore.wallet || 0) >= Number(pkg.resellerCost || pkg.providerCost || 0)
+                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                    : Number(resellerStore.wallet || 0) > 0
+                      ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400'
+                ]">
+                  <div class="flex justify-between items-center">
+                    <span class="text-[9px] uppercase font-bold tracking-wider">
+                      💰 Dinero en Billetera:
+                    </span>
+                    <span class="font-black">${{ Number(resellerStore.wallet || 0).toLocaleString('es-AR') }} ARS</span>
+                  </div>
+
+                  <div class="flex justify-between items-center pt-1 border-t border-current/20">
+                    <span>A pagar con Billetera:</span>
+                    <span class="font-black text-xs">
+                      <template v-if="Number(resellerStore.wallet || 0) >= Number(pkg.resellerCost || pkg.providerCost || 0)">
+                        $0 ARS <span class="text-[9px] uppercase font-black bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded ml-1">100% Cubierto</span>
+                      </template>
+                      <template v-else-if="Number(resellerStore.wallet || 0) > 0">
+                        ${{ (Number(pkg.resellerCost || pkg.providerCost || 0) - Number(resellerStore.wallet || 0)).toLocaleString('es-AR') }} ARS
+                        <span class="text-[8px] uppercase font-black bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded ml-1">Aplicas ${{ Number(resellerStore.wallet).toLocaleString('es-AR') }}</span>
+                      </template>
+                      <template v-else>
+                        ${{ Number(pkg.resellerCost || pkg.providerCost || 0).toLocaleString('es-AR') }} ARS
+                      </template>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2454,8 +2551,19 @@ const submitResellerGameInquiry = () => {
             <!-- Botones de Acción -->
             <div class="space-y-2 pt-2 border-t border-slate-800">
               <button 
+                type="button"
+                @click="openManualPurchaseForPackage(pkg)"
+                class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <span>⚡</span>
+                <span v-if="Number(resellerStore.wallet || 0) >= Number(pkg.resellerCost || pkg.providerCost || 0)">Despachar con Billetera (100% Cubierto)</span>
+                <span v-else-if="Number(resellerStore.wallet || 0) > 0">Despachar (Aplicar Saldo Billetera)</span>
+                <span v-else>Pedir Combo al Proveedor (${{ Number(pkg.resellerCost || pkg.providerCost || 0).toLocaleString('es-AR') }})</span>
+              </button>
+
+              <button 
                 @click="loadPackageToMarketing(pkg)"
-                class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-black text-xs py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-black text-xs py-2 px-4 rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>🎨 Generar Flyer & Copy en Marketing</span>
               </button>
@@ -4217,10 +4325,37 @@ const submitResellerGameInquiry = () => {
         </div>
 
         <form @submit.prevent="submitManualPurchase" class="space-y-4">
-          <div class="grid grid-cols-2 gap-3">
+          <!-- Selector de Tipo de Pedido: Suscripción Streaming vs Combo Promocional -->
+          <div class="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+            <button
+              type="button"
+              @click="manualPurchaseForm.orderType = 'single'"
+              :class="[
+                'flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                manualPurchaseForm.orderType === 'single' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              ]"
+            >
+              <span>🍿</span>
+              <span>Suscripción Individual</span>
+            </button>
+            <button
+              type="button"
+              @click="manualPurchaseForm.orderType = 'package'"
+              :class="[
+                'flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                manualPurchaseForm.orderType === 'package' ? 'bg-pink-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              ]"
+            >
+              <span>🎁</span>
+              <span>Combo Promocional</span>
+            </button>
+          </div>
+
+          <!-- Campos para Suscripción Individual -->
+          <div v-if="manualPurchaseForm.orderType === 'single'" class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Plataforma</label>
-              <select v-model="manualPurchaseForm.platform" @change="onManualPlatformChange" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none">
+              <select v-model="manualPurchaseForm.platform" @change="onManualPlatformChange" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none cursor-pointer">
                 <option v-for="(cat, pKey) in adminStore.pricingCatalog" :key="pKey" :value="pKey">
                   {{ pKey }}
                 </option>
@@ -4229,11 +4364,32 @@ const submitResellerGameInquiry = () => {
 
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Plan / Capacidad</label>
-              <select v-model="manualPurchaseForm.planKey" @change="onManualPlanChange" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none">
+              <select v-model="manualPurchaseForm.planKey" @change="onManualPlanChange" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none cursor-pointer">
                 <option v-for="(pVal, pKey) in adminStore.pricingCatalog[manualPurchaseForm.platform]?.plans" :key="pKey" :value="pKey">
                   {{ pVal.label }}
                 </option>
               </select>
+            </div>
+          </div>
+
+          <!-- Campos para Combo Promocional -->
+          <div v-else class="space-y-3">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Seleccionar Combo Promocional</label>
+              <select v-model="manualPurchaseForm.packageId" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-semibold outline-none cursor-pointer">
+                <option v-for="p in resellerStore.myPackages" :key="p.id" :value="p.id">
+                  {{ p.title }} • Costo: ${{ Number(p.resellerCost || p.providerCost || 0).toLocaleString('es-AR') }} ARS
+                </option>
+              </select>
+            </div>
+
+            <!-- Cuentas Incluidas en el Combo -->
+            <div v-if="selectedManualPackageDetails" class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+              <span class="text-[10px] font-bold uppercase text-slate-400 block">Cuentas Incluidas en este Combo:</span>
+              <div v-for="(s, sIdx) in selectedManualPackageDetails.services" :key="sIdx" class="flex justify-between items-center text-xs">
+                <span class="text-slate-200">{{ s.platform }} ({{ s.planLabel }})</span>
+                <span class="text-xs font-mono font-bold text-slate-300">${{ Number(s.regularPrice || 0).toLocaleString('es-AR') }}</span>
+              </div>
             </div>
           </div>
 
@@ -4248,8 +4404,8 @@ const submitResellerGameInquiry = () => {
             </div>
           </div>
 
-          <!-- Nombres de Perfiles Requeridos -->
-          <div>
+          <!-- Nombres de Perfiles Requeridos (solo para suscripción individual) -->
+          <div v-if="manualPurchaseForm.orderType === 'single'">
             <label class="block font-bold uppercase text-slate-400 mb-1.5">Nombres de Perfiles Solicitados</label>
             <div class="space-y-2 max-h-[130px] overflow-y-auto pr-1">
               <div v-for="(prof, idx) in manualPurchaseForm.profiles" :key="idx" class="flex gap-2 items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
@@ -4260,35 +4416,74 @@ const submitResellerGameInquiry = () => {
           </div>
 
           <!-- Resumen de Costos y Ganancia -->
-          <div v-if="selectedManualPlanDetails" class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 grid grid-cols-3 gap-2 text-center">
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 grid grid-cols-3 gap-2 text-center font-mono">
             <div>
-              <span class="text-[10px] uppercase font-bold text-slate-500 block">Costo Proveedor</span>
-              <span class="text-sm font-black text-amber-400">${{ selectedManualPlanDetails.providerCost }} ARS</span>
+              <span class="text-[10px] uppercase font-bold text-slate-500 block">Tu Costo Mayorista</span>
+              <span class="text-sm font-black text-amber-400">${{ manualOrderPricing.cost.toLocaleString('es-AR') }} ARS</span>
             </div>
             <div>
               <span class="text-[10px] uppercase font-bold text-slate-500 block">Tu Ganancia</span>
-              <span class="text-sm font-black text-emerald-400">+${{ selectedManualPlanDetails.resellerProfit }} ARS</span>
+              <span class="text-sm font-black text-emerald-400">+${{ manualOrderPricing.profit.toLocaleString('es-AR') }} ARS</span>
             </div>
             <div>
-              <span class="text-[10px] uppercase font-bold text-slate-500 block">Cobro al Cliente</span>
-              <span class="text-sm font-black text-brand-accent">${{ selectedManualPlanDetails.clientPrice }} ARS</span>
+              <span class="text-[10px] uppercase font-bold text-slate-500 block">PVP Sugerido</span>
+              <span class="text-sm font-black text-brand-accent">${{ manualOrderPricing.price.toLocaleString('es-AR') }} ARS</span>
             </div>
           </div>
 
-          <!-- Opción de Pago con Billetera -->
-          <label class="flex items-center gap-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer">
-            <input v-model="manualPurchaseForm.payWithWallet" type="checkbox" class="rounded border-slate-700 text-brand-accent focus:ring-0">
-            <div class="text-xs">
-              <span class="font-bold text-white block">Debitar directamente de mi Billetera Revendedor</span>
-              <span class="text-slate-400 text-[11px]">Saldo actual disponible: ${{ resellerStore.wallet }} ARS</span>
+          <!-- 💰 AJUSTE POR DINERO DISPONIBLE EN BILLETERA PARA DISTRIBUIDORES -->
+          <div class="p-3.5 rounded-2xl border space-y-2 font-mono" :class="[
+            manualOrderPricing.walletAdj.isFullyCovered
+              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+              : manualOrderPricing.walletAdj.isPartiallyCovered
+                ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                : 'bg-slate-950 border-slate-800 text-slate-300'
+          ]">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold flex items-center gap-1.5">
+                <span>💳</span>
+                <span>Saldo en Billetera Distribuidor:</span>
+              </span>
+              <strong class="text-sm font-black">${{ manualOrderPricing.walletAdj.availableWallet.toLocaleString('es-AR') }} ARS</strong>
             </div>
-          </label>
+
+            <div class="flex justify-between items-center text-xs pt-1.5 border-t border-current/20">
+              <span class="text-[11px]">A pagar con tu saldo:</span>
+              <span class="text-sm font-black">
+                <template v-if="manualOrderPricing.walletAdj.isFullyCovered">
+                  $0 ARS <span class="text-[9px] uppercase font-black bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded ml-1">100% Cubierto</span>
+                </template>
+                <template v-else-if="manualOrderPricing.walletAdj.isPartiallyCovered">
+                  ${{ manualOrderPricing.walletAdj.remainingToPay.toLocaleString('es-AR') }} ARS
+                  <span class="text-[9px] uppercase font-black bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded ml-1">Aplicas ${{ manualOrderPricing.walletAdj.walletCover.toLocaleString('es-AR') }}</span>
+                </template>
+                <template v-else>
+                  ${{ manualOrderPricing.cost.toLocaleString('es-AR') }} ARS
+                </template>
+              </span>
+            </div>
+
+            <label class="flex items-center gap-2 pt-1 cursor-pointer">
+              <input v-model="manualPurchaseForm.payWithWallet" type="checkbox" class="rounded border-slate-700 text-brand-accent focus:ring-0">
+              <span class="text-[11px] font-sans font-bold">
+                <template v-if="manualOrderPricing.walletAdj.isFullyCovered">
+                  Pagar 100% con saldo de mi Billetera Virtual ($0 a transferir)
+                </template>
+                <template v-else-if="manualOrderPricing.walletAdj.isPartiallyCovered">
+                  Aplicar ${{ manualOrderPricing.walletAdj.walletCover.toLocaleString('es-AR') }} de mi Billetera y transferir el resto (${{ manualOrderPricing.walletAdj.remainingToPay.toLocaleString('es-AR') }})
+                </template>
+                <template v-else>
+                  Debitar de Billetera (Sin saldo disponible, requerirá transferencia bancaria)
+                </template>
+              </span>
+            </label>
+          </div>
 
           <div class="flex gap-3 pt-2">
-            <button type="button" @click="showManualPurchaseModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl">
+            <button type="button" @click="showManualPurchaseModal = false" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl cursor-pointer">
               Cancelar
             </button>
-            <button type="submit" class="w-2/3 bg-brand-accent text-slate-950 font-black py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow">
+            <button type="submit" class="w-2/3 bg-brand-accent text-slate-950 font-black py-2.5 rounded-xl hover:bg-sky-400 transition-all shadow cursor-pointer">
               Enviar Solicitud al Proveedor
             </button>
           </div>

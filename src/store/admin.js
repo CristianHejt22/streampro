@@ -19,7 +19,7 @@ import {
 import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
-import { getFreshOfficialCombos } from '../services/officialCombosData'
+import { getFreshOfficialCombos, calculatePackageFromCatalog } from '../services/officialCombosData'
 import { INITIAL_CUSTOMER_REVIEWS, TRUST_METRICS, getFreshCustomerReviews } from '../services/customerReviewsData'
 import { 
   initFirebase, 
@@ -305,10 +305,10 @@ function buildMergedGamingCatalog(baseList) {
   return merged
 }
 
-export const OFFICIAL_PROVIDER_WHATSAPP = '+54 9 291 565-9321'
+export const OFFICIAL_PROVIDER_WHATSAPP = '+54 9 291 565-8321'
 
 function sanitizePhone(phone) {
-  if (!phone || phone.includes('0000-0000') || phone.includes('0000000') || phone.trim() === '') {
+  if (!phone || phone.includes('0000-0000') || phone.includes('0000000') || phone.trim() === '' || phone.includes('5659321') || phone.includes('565-9321')) {
     return OFFICIAL_PROVIDER_WHATSAPP
   }
   return phone
@@ -336,12 +336,12 @@ export const DEFAULT_PLATFORM_PLANS = {
     ],
     plans: {
       '1_perfil': {
-        label: '1 Perfil Premium 4K (1 Dispositivo)',
+        label: '1 Perfil Ultra HD 4K (1 Dispositivo)',
         units: 1,
         type: 'perfil',
-        providerCost: 5500,
-        resellerProfit: 2200,
-        clientPrice: 7700,
+        providerCost: 4300,
+        resellerProfit: 4200,
+        clientPrice: 8500,
         quality: '4K ULTRA HD • HDR10',
         deliveryTime: '🟢 10-15m',
         features: [
@@ -499,12 +499,12 @@ export const DEFAULT_PLATFORM_PLANS = {
     name: 'Disney+ / Star+ Combo',
     plans: {
       '1_perfil': {
-        label: '1 Perfil individual',
+        label: '1 Perfil individual (Premium con ESPN)',
         units: 1,
         type: 'perfil',
-        providerCost: 4500,
-        resellerProfit: 1800,
-        clientPrice: 6300
+        providerCost: 2000,
+        resellerProfit: 5200,
+        clientPrice: 7200
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -557,11 +557,11 @@ export const DEFAULT_PLATFORM_PLANS = {
     name: 'Amazon Prime Video 4K',
     plans: {
       '1_perfil': {
-        label: '1 Perfil 4K',
+        label: '1 Perfil 4K (1 Pantalla HD)',
         units: 1,
         type: 'perfil',
-        providerCost: 2800,
-        resellerProfit: 1400,
+        providerCost: 1500,
+        resellerProfit: 2700,
         clientPrice: 4200
       },
       '3_dispositivos': {
@@ -795,6 +795,26 @@ export const useAdminStore = defineStore('admin', {
               'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
             ]
           }
+          if (loaded.Netflix.plans?.['1_perfil'] && (loaded.Netflix.plans['1_perfil'].clientPrice === 7700 || !loaded.Netflix.plans['1_perfil'].clientPrice)) {
+            loaded.Netflix.plans['1_perfil'].clientPrice = 8500
+            loaded.Netflix.plans['1_perfil'].providerCost = 4300
+            loaded.Netflix.plans['1_perfil'].resellerProfit = 4200
+            loaded.Netflix.plans['1_perfil'].label = '1 Perfil Ultra HD 4K (1 Dispositivo)'
+          }
+          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
+        }
+        if (loaded['Disney+']?.plans?.['1_perfil'] && (loaded['Disney+'].plans['1_perfil'].clientPrice === 6300 || !loaded['Disney+'].plans['1_perfil'].clientPrice)) {
+          loaded['Disney+'].plans['1_perfil'].clientPrice = 7200
+          loaded['Disney+'].plans['1_perfil'].providerCost = 2000
+          loaded['Disney+'].plans['1_perfil'].resellerProfit = 5200
+          loaded['Disney+'].plans['1_perfil'].label = '1 Perfil individual (Premium con ESPN)'
+          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
+        }
+        if (loaded['Prime Video']?.plans?.['1_perfil'] && (!loaded['Prime Video'].plans['1_perfil'].clientPrice || loaded['Prime Video'].plans['1_perfil'].providerCost === 2800)) {
+          loaded['Prime Video'].plans['1_perfil'].clientPrice = 4200
+          loaded['Prime Video'].plans['1_perfil'].providerCost = 1500
+          loaded['Prime Video'].plans['1_perfil'].resellerProfit = 2700
+          loaded['Prime Video'].plans['1_perfil'].label = '1 Perfil 4K (1 Pantalla HD)'
           saveDb(DB_KEYS.PRICING_CATALOG, loaded)
         }
         return loaded
@@ -890,8 +910,9 @@ export const useAdminStore = defineStore('admin', {
     physicalOrders: loadDb(DB_KEYS.PHYSICAL_ORDERS, []),
 
     // DIRECTORIO CENTRAL DE USUARIOS REGISTRADOS (Clientes y Distribuidores)
-    registeredUsers: loadDb(DB_KEYS.REGISTERED_USERS, [
-      {
+    registeredUsers: (() => {
+      const stored = loadDb(DB_KEYS.REGISTERED_USERS, null)
+      const defaultAdmin = {
         id: 'USR-PROV-01',
         clientNumber: 'ADM-001',
         name: 'Administrador StreamePro',
@@ -903,10 +924,23 @@ export const useAdminStore = defineStore('admin', {
         ordersCount: 0,
         totalSpent: 0,
         registeredAt: '2026-10-01',
-        lastActive: '2026-10-26',
+        lastActive: '2026-11-16',
         resellerId: 'DIRECT'
       }
-    ]),
+      if (Array.isArray(stored) && stored.length > 0) {
+        let modified = false
+        stored.forEach(u => {
+          if (u.phone && (u.phone.includes('5659321') || u.phone.includes('565-9321'))) {
+            u.phone = u.phone.replace(/565-?9321/, '565-8321')
+            modified = true
+          }
+        })
+        if (modified) saveDb(DB_KEYS.REGISTERED_USERS, stored)
+        return stored
+      }
+      saveDb(DB_KEYS.REGISTERED_USERS, [defaultAdmin])
+      return [defaultAdmin]
+    })(),
 
     // SOLICITUDES DE POSTULACIÓN DE NUEVOS REVENDEDORES DESDE EL LANDING PAGE
     resellerApplications: loadDb(DB_KEYS.RESELLER_APPLICATIONS, []),
@@ -915,6 +949,23 @@ export const useAdminStore = defineStore('admin', {
     packages: (() => {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
       if (stored && Array.isArray(stored) && stored.length > 0) {
+        // Asegurar que C001 (Promo Imperdible 1) tenga los precios ajustados oficiales
+        const c001 = stored.find(p => p.id === 'C001')
+        if (c001 && (c001.originalPrice === 18200 || c001.promoPrice === 10000 || !c001.resellerCost)) {
+          c001.originalPrice = 19900
+          c001.promoPrice = 10950
+          c001.providerCost = 4300
+          c001.platformProfit = 4200
+          c001.resellerCost = 8500
+          c001.resellerProfit = 2450
+          c001.discountPercent = 45
+          c001.services = [
+            { platform: "Netflix", planLabel: "Ultra HD 4K", units: 1, regularPrice: 8500, cost: 4300 },
+            { platform: "Disney+", planLabel: "Premium con ESPN", units: 1, regularPrice: 7200, cost: 2000 },
+            { platform: "Prime Video", planLabel: "1 Pantalla HD", units: 1, regularPrice: 4200, cost: 1500 }
+          ]
+          saveDb(DB_KEYS.PACKAGES, stored)
+        }
         return stored
       }
       const fresh = getFreshOfficialCombos()
@@ -1002,9 +1053,28 @@ export const useAdminStore = defineStore('admin', {
     })(),
     promoCodes: (() => {
       const stored = loadDb(DB_KEYS.PROMO_CODES, null)
-      if (Array.isArray(stored) && stored.length > 0) return stored
+      const officialWelcome = { code: 'BIENVENIDO', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 500, uses: 0, active: true, description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)' }
+      const officialWelcome10 = { code: 'BIENVENIDO10', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 500, uses: 0, active: true, description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)' }
+      if (Array.isArray(stored) && stored.length > 0) {
+        // Garantizar que cupón BIENVENIDO 10% esté activo para nuevos usuarios
+        const hasBienvenido = stored.some(c => c.code === 'BIENVENIDO')
+        if (!hasBienvenido) {
+          stored.unshift(officialWelcome)
+          saveDb(DB_KEYS.PROMO_CODES, stored)
+        } else {
+          const b = stored.find(c => c.code === 'BIENVENIDO')
+          if (b) {
+            b.active = true
+            b.value = 10
+            b.description = '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)'
+            saveDb(DB_KEYS.PROMO_CODES, stored)
+          }
+        }
+        return stored
+      }
       const defaults = [
-        { code: 'BIENVENIDO10', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 150, uses: 0, active: true, description: '10% OFF bienvenida en toda la tienda' },
+        officialWelcome,
+        officialWelcome10,
         { code: 'GAMER5', type: 'percent', value: 5, scope: 'gaming', minAmount: 10000, maxUses: 300, uses: 0, active: true, description: '5% OFF extra en Videojuegos PS5/PS4/PS3' }
       ]
       saveDb(DB_KEYS.PROMO_CODES, defaults)
@@ -1462,6 +1532,12 @@ export const useAdminStore = defineStore('admin', {
         missingSecondaryList: missingSecondaryList.slice(0, 25),
         customPvpList: customPvpList.slice(0, 25)
       }
+    },
+
+    // Combos y paquetes oficiales con precios ajustados dinámicamente por el catálogo de streaming
+    computedPackages: (state) => {
+      const catalog = state.pricingCatalog
+      return (state.packages || []).map(p => calculatePackageFromCatalog(p, catalog))
     }
   },
   actions: {
@@ -2857,6 +2933,27 @@ export const useAdminStore = defineStore('admin', {
         return { success: true }
       }
       return { error: 'Usuario no encontrado' }
+    },
+
+    resetRegisteredUsersDirectory() {
+      const defaultAdmin = {
+        id: 'USR-PROV-01',
+        clientNumber: 'ADM-001',
+        name: 'Administrador StreamePro',
+        phone: OFFICIAL_PROVIDER_WHATSAPP,
+        email: 'soporte@streamepro.me',
+        role: 'provider',
+        status: 'Verificado',
+        pin: '2026',
+        ordersCount: 0,
+        totalSpent: 0,
+        registeredAt: new Date().toISOString().slice(0, 10),
+        lastActive: new Date().toISOString().slice(0, 10),
+        resellerId: 'DIRECT'
+      }
+      this.registeredUsers = [defaultAdmin]
+      this.persist(DB_KEYS.REGISTERED_USERS)
+      return { success: true, count: 1 }
     },
 
     // Carga de Inventario Mayorista Real
@@ -5118,6 +5215,34 @@ export const useAdminStore = defineStore('admin', {
       return true
     },
 
+    resetPromoCodes() {
+      const defaults = [
+        { code: 'BIENVENIDO', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 500, uses: 0, active: true, description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)' },
+        { code: 'BIENVENIDO10', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 500, uses: 0, active: true, description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)' },
+        { code: 'GAMER5', type: 'percent', value: 5, scope: 'gaming', minAmount: 10000, maxUses: 300, uses: 0, active: true, description: '5% OFF extra en Videojuegos PS5/PS4/PS3' }
+      ]
+      this.promoCodes = defaults
+      this.persist(DB_KEYS.PROMO_CODES)
+      this.persistStoreSettings()
+      return { success: true, promoCodes: defaults }
+    },
+
+    resetDiscountUsersAndCredits() {
+      this.discountCreditsLog = []
+      this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+
+      if (Array.isArray(this.discountUsers)) {
+        this.discountUsers.forEach(u => {
+          u.creditBalance = 0
+          u.pendingCredit = 0
+          u.totalSalesCount = 0
+          u.totalSalesAmount = 0
+        })
+        this.persist(DB_KEYS.DISCOUNT_USERS)
+      }
+      return { success: true }
+    },
+
     incrementPromoUse(code) {
       const clean = normalizePromoCode(code)
       const target = (this.promoCodes || []).find(c => normalizePromoCode(c.code) === clean)
@@ -6385,11 +6510,13 @@ export const useResellerStore = defineStore('reseller', {
     },
     myPackages: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.packages.filter(p => (p.resellerId === 'ALL' || p.resellerId === state.activeResellerId) && p.active)
+      const list = adminStore.computedPackages || adminStore.packages || []
+      return list.filter(p => (p.resellerId === 'ALL' || p.resellerId === state.activeResellerId) && p.active)
     },
     myCustomPackages: (state) => {
       const adminStore = useAdminStore()
-      return adminStore.packages.filter(p => p.resellerId === state.activeResellerId && p.resellerId !== 'DIRECT')
+      const list = adminStore.computedPackages || adminStore.packages || []
+      return list.filter(p => p.resellerId === state.activeResellerId && p.resellerId !== 'DIRECT')
     },
     myStreamingOrders: (state) => {
       const adminStore = useAdminStore()
@@ -6516,19 +6643,83 @@ export const useResellerStore = defineStore('reseller', {
       return { error: 'Cliente no encontrado' }
     },
 
-    requestManualPurchase({ platform, planKey, units, customerName, customerPhone, pinPreference = 'same', profiles = [], payWithWallet = false }) {
-      const adminStore = useAdminStore()
-      const catalog = adminStore.pricingCatalog[platform]
-      if (!catalog) return { error: 'Plataforma no válida' }
+    getAdjustedWalletPrice(cost) {
+      const c = Math.max(0, Number(cost || 0))
+      const availableWallet = Math.max(0, Number(this.wallet || 0))
+      const walletCover = Math.min(availableWallet, c)
+      const remainingToPay = Math.max(0, c - walletCover)
+      const isFullyCovered = remainingToPay === 0 && c > 0
+      const isPartiallyCovered = walletCover > 0 && remainingToPay > 0
+      return {
+        originalCost: c,
+        availableWallet,
+        walletCover,
+        remainingToPay,
+        isFullyCovered,
+        isPartiallyCovered
+      }
+    },
 
-      const plan = catalog.plans[planKey]
-      if (!plan) return { error: 'Plan no válido' }
+    requestManualPurchase({
+      orderType = 'single',
+      packageId = null,
+      platform,
+      planKey,
+      units,
+      customerName,
+      customerPhone,
+      pinPreference = 'same',
+      profiles = [],
+      payWithWallet = false,
+      usePartialWallet = false
+    }) {
+      const adminStore = useAdminStore()
+      let orderCost = 0
+      let orderPrice = 0
+      let orderProfit = 0
+      let orderPlatform = platform
+      let orderPlanLabel = ''
+      let pkgRef = null
+
+      if (orderType === 'package' && packageId) {
+        const computedPackages = adminStore.computedPackages || adminStore.packages || []
+        pkgRef = computedPackages.find(p => p.id === packageId) || (adminStore.packages || []).find(p => p.id === packageId)
+        if (!pkgRef) return { error: 'Paquete o combo no encontrado' }
+        orderCost = Number(pkgRef.resellerCost || pkgRef.providerCost || 0)
+        orderPrice = Number(pkgRef.promoPrice || 0)
+        orderProfit = Number(pkgRef.resellerProfit || 0)
+        orderPlatform = 'Combo Promocional'
+        orderPlanLabel = pkgRef.title || pkgRef.name || 'Combo Promocional'
+      } else {
+        const catalog = adminStore.pricingCatalog[platform]
+        if (!catalog) return { error: 'Plataforma no válida' }
+        const plan = catalog.plans[planKey]
+        if (!plan) return { error: 'Plan no válido' }
+        orderCost = Number(plan.providerCost || 0)
+        orderPrice = Number(plan.clientPrice || 0)
+        orderProfit = Number(plan.resellerProfit || 0)
+        orderPlanLabel = plan.label
+      }
+
+      let walletDeducted = 0
+      let remainingToPay = orderCost
 
       if (payWithWallet) {
-        if (this.wallet < plan.providerCost) {
-          return { error: `Saldo insuficiente en Billetera ($${this.wallet} ARS). Costo mayorista: $${plan.providerCost} ARS` }
+        if (this.wallet < orderCost) {
+          return { error: `Saldo insuficiente en Billetera ($${this.wallet.toLocaleString('es-AR')} ARS). Costo mayorista: $${orderCost.toLocaleString('es-AR')} ARS` }
         }
-        this.wallet -= plan.providerCost
+        walletDeducted = orderCost
+        this.wallet -= orderCost
+        remainingToPay = 0
+        const curRes = adminStore.resellers.find(r => r.id === this.activeResellerId)
+        if (curRes) {
+          curRes.balance = this.wallet
+          adminStore.persist(DB_KEYS.RESELLERS)
+        }
+      } else if (usePartialWallet && this.wallet > 0) {
+        walletDeducted = Math.min(this.wallet, orderCost)
+        this.wallet -= walletDeducted
+        remainingToPay = orderCost - walletDeducted
         const curRes = adminStore.resellers.find(r => r.id === this.activeResellerId)
         if (curRes) {
           curRes.balance = this.wallet
@@ -6539,24 +6730,42 @@ export const useResellerStore = defineStore('reseller', {
       const customerNumber = `CLI-${Math.floor(1000 + Math.random() * 9000)}`
       const orderId = `ORD-MAN-${Date.now().toString().slice(-4)}`
 
+      const paymentMethod = walletDeducted === orderCost 
+        ? 'Saldo Billetera Revendedor (100% Cubierto)' 
+        : (walletDeducted > 0 
+          ? `Billetera ($${walletDeducted.toLocaleString('es-AR')}) + Transferencia ($${remainingToPay.toLocaleString('es-AR')})` 
+          : 'Transferencia Bancaria a Proveedor')
+
+      const voucher = walletDeducted === orderCost 
+        ? 'Debitado de Billetera Virtual (100% Cubierto)' 
+        : (walletDeducted > 0 
+          ? `Anticipo Billetera $${walletDeducted.toLocaleString('es-AR')} • Resto $${remainingToPay.toLocaleString('es-AR')} Pendiente` 
+          : 'Pendiente Verificación Proveedor')
+
+      const devicesCount = Number(units || (pkgRef ? (pkgRef.devices || pkgRef.services?.length || 1) : 1))
+
       const newOrder = {
         id: orderId,
         customerNumber,
         customerName: customerName || `Cliente de ${this.activeResellerId}`,
         customerPhone: customerPhone || OFFICIAL_PROVIDER_WHATSAPP,
-        platform,
-        devices: Number(units || plan.units),
+        orderType: orderType || 'single',
+        packageId: packageId || null,
+        platform: orderPlatform,
+        devices: devicesCount,
         pinPreference,
-        planKey,
-        planLabel: plan.label,
-        providerCost: plan.providerCost,
-        resellerProfit: plan.resellerProfit,
-        clientPrice: plan.clientPrice,
+        planKey: planKey || packageId,
+        planLabel: orderPlanLabel,
+        providerCost: orderCost,
+        resellerProfit: orderProfit,
+        clientPrice: orderPrice,
+        walletDeducted,
+        remainingToPay,
         resellerId: this.activeResellerId,
         resellerName: adminStore.resellers.find(r => r.id === this.activeResellerId)?.name || 'Revendedor Autorizado',
-        paymentMethod: payWithWallet ? 'Saldo Billetera Revendedor' : 'Transferencia Bancaria a Proveedor',
-        voucher: payWithWallet ? 'Debitado de Billetera Virtual' : 'Pendiente Verificación Proveedor',
-        profileSelections: profiles.length > 0 ? profiles : Array.from({ length: Number(units || plan.units) }, (_, i) => ({
+        paymentMethod,
+        voucher,
+        profileSelections: profiles.length > 0 ? profiles : Array.from({ length: devicesCount }, (_, i) => ({
           name: `PERFIL ${i + 1}`
         })),
         status: 'Waiting Provider',
@@ -6565,6 +6774,7 @@ export const useResellerStore = defineStore('reseller', {
 
       adminStore.orders.unshift(newOrder)
       adminStore.persist(DB_KEYS.ORDERS)
+      this.persist()
       return { success: true, order: newOrder }
     },
 

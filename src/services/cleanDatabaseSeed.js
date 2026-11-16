@@ -289,7 +289,7 @@ export function getCleanDatabaseSeed() {
       cuit: '20-00000000-0',
       cbuAlias: 'STREAMEPRO.MAYORISTA',
       cbuNumber: '0000000000000000000000',
-      whatsapp: '+54 9 291 565-9321',
+      whatsapp: '+54 9 291 565-8321',
       email: 'pagos@streampro.com',
       notifyEmail: 'cobros.streampro@gmail.com'
     },
@@ -302,7 +302,7 @@ export function getCleanDatabaseSeed() {
       cuit: '20-00000000-0',
       cbuAlias: 'STREAMEPRO.GALICIA',
       cbuNumber: '0070000000000000000000',
-      whatsapp: '+54 9 291 565-9321',
+      whatsapp: '+54 9 291 565-8321',
       email: 'pagos@streampro.com',
       notifyEmail: 'cobros.streampro@gmail.com'
     }
@@ -316,7 +316,7 @@ export function getCleanDatabaseSeed() {
       username: 'dist_oficial',
       password: 'StreamPro2026*Dist',
       isActive: true,
-      contactNumber: '+54 9 291 565-9321',
+      contactNumber: '+54 9 291 565-8321',
       cbuAlias: 'STREAMEPRO.DIST.MP',
       bankName: 'Mercado Pago',
       holderName: 'Distribuidor Central Oficial',
@@ -380,7 +380,7 @@ export function getCleanDatabaseSeed() {
       username: 'admin',
       password: 'StreamPro2026*Admin',
       name: 'Administrador Principal',
-      whatsapp: '+54 9 291 565-9321',
+      whatsapp: '+54 9 291 565-8321',
       email: 'admin@streampro.com'
     },
     [DB_KEYS.PRICING_CATALOG]: CLEAN_PRICING_CATALOG,

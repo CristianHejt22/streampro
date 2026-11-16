@@ -403,6 +403,100 @@ const createGlobalCoupon = () => {
 }
 
 const programFormalitiesList = computed(() => buildDiscountProgramFormalities(adminStore.marketingCampaign))
+
+const ensureBienvenidoCoupon = () => {
+  const existing = (adminStore.promoCodes || []).find(c => c.code === 'BIENVENIDO')
+  if (existing) {
+    existing.active = true
+    existing.value = 10
+    existing.description = '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)'
+    adminStore.persist('promo_codes')
+    toast.add('🎟️ Cupón BIENVENIDO 10% activado para nuevos usuarios', 'success')
+  } else {
+    adminStore.addPromoCode({
+      code: 'BIENVENIDO',
+      type: 'percent',
+      value: 10,
+      scope: 'all',
+      minAmount: 0,
+      maxUses: 500,
+      description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)'
+    })
+    toast.add('🎟️ Cupón BIENVENIDO 10% creado y activado', 'success')
+  }
+}
+
+const resetCouponsToDefault = () => {
+  if (!confirm('¿Restablecer cupones globales a los valores oficiales por defecto (incluyendo BIENVENIDO 10%)?')) return
+  adminStore.resetPromoCodes()
+  toast.add('🎟️ Cupones globales reiniciados con éxito', 'success')
+}
+
+// Búsqueda y Ajuste de Créditos por Nombre de Usuario Registrado
+const creditsSearchQuery = ref('')
+const creditAdjustForm = ref({
+  userId: '',
+  amount: 1000,
+  type: 'add',
+  note: 'Ajuste manual de créditos'
+})
+
+const filteredCreditsLog = computed(() => {
+  const log = adminStore.discountCreditsLog || []
+  const q = creditsSearchQuery.value.toLowerCase().trim()
+  if (!q) return log
+  return log.filter(l => 
+    (l.userName && l.userName.toLowerCase().includes(q)) ||
+    (l.code && l.code.toLowerCase().includes(q)) ||
+    (l.note && l.note.toLowerCase().includes(q))
+  )
+})
+
+const applyCreditAdjustmentByRegisteredUser = () => {
+  const u = (adminStore.registeredUsers || []).find(x => (x.id || x.clientNumber) === creditAdjustForm.value.userId)
+  if (!u) {
+    toast.add('Selecciona un usuario registrado del directorio', 'error')
+    return
+  }
+  const amt = Number(creditAdjustForm.value.amount) || 0
+  if (amt <= 0) {
+    toast.add('El monto debe ser mayor a 0', 'error')
+    return
+  }
+  const delta = creditAdjustForm.value.type === 'subtract' ? -amt : amt
+
+  let dUser = (adminStore.discountUsers || []).find(x => x.name?.toLowerCase() === u.name?.toLowerCase() || x.phone === u.phone)
+  if (dUser) {
+    dUser.creditBalance = Math.max(0, Number(dUser.creditBalance || 0) + delta)
+    adminStore.persist('discount_users')
+  }
+
+  const newLog = {
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    code: dUser ? dUser.code : 'MANUAL',
+    userName: u.name,
+    userPhone: u.phone,
+    amount: delta,
+    note: creditAdjustForm.value.note.trim() || 'Ajuste por nombre de usuario registrado',
+    status: 'Completado',
+    createdAt: new Date().toLocaleString()
+  }
+
+  if (!Array.isArray(adminStore.discountCreditsLog)) adminStore.discountCreditsLog = []
+  adminStore.discountCreditsLog.unshift(newLog)
+  adminStore.persist('discount_credits_log')
+
+  toast.add(`Crédito de $${Math.abs(delta).toLocaleString()} ${delta >= 0 ? 'acreditado' : 'debitado'} a ${u.name}`, 'success')
+  creditAdjustForm.value.amount = 1000
+}
+
+const handleResetCreditsAndMetrics = () => {
+  if (!confirm('¿Estás seguro de reiniciar las métricas y el historial de créditos? Se limpiará el registro de movimientos y los saldos se restablecerán a 0.')) {
+    return
+  }
+  adminStore.resetDiscountUsersAndCredits()
+  toast.add('📊 Métricas & Créditos reiniciados con éxito', 'success')
+}
 </script>
 
 <template>
@@ -958,7 +1052,52 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
     <!-- SUB-TAB 4: CUPONES PROMOCIONALES GLOBALES                      -->
     <!-- ============================================================== -->
     <div v-else-if="subTab === 'coupons'" class="bg-[#020617] border border-indigo-500/30 rounded-3xl p-5 space-y-4 text-xs">
-      <h3 class="text-base font-black text-white">🎟️ Cupones Globales de Campaña</h3>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-black text-white">🎟️ Cupones Globales de Campaña</h3>
+          <p class="text-[11px] text-slate-400">Cupones de campaña para clientes y promociones activas.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="ensureBienvenidoCoupon"
+            class="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 font-bold text-xs transition cursor-pointer"
+          >
+            ⚡ Activar BIENVENIDO 10%
+          </button>
+          <button
+            type="button"
+            @click="resetCouponsToDefault"
+            class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition cursor-pointer"
+            title="Reiniciar cupones a los oficiales por defecto"
+          >
+            🔄 Reiniciar Cupones
+          </button>
+        </div>
+      </div>
+
+      <!-- Pastilla destacada cupón oficial BIENVENIDO 10% -->
+      <div class="bg-indigo-950/40 p-3 rounded-2xl border border-indigo-500/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div class="flex items-center gap-2.5">
+          <span class="text-lg">🎟️</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <strong class="font-mono text-amber-300 font-black text-sm">BIENVENIDO</strong>
+              <span class="text-[9px] uppercase font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                ACTIVO PARA NUEVOS USUARIOS
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-0.5">10% OFF en toda la tienda (Aplica en Streaming, Videojuegos y Combos para nuevos clientes).</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          @click="ensureBienvenidoCoupon"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl cursor-pointer shrink-0"
+        >
+          Garantizar Activo
+        </button>
+      </div>
       <form @submit.prevent="createGlobalCoupon" class="grid grid-cols-2 sm:grid-cols-6 gap-2">
         <input v-model="globalCouponForm.code" type="text" required placeholder="CÓDIGO" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-amber-300 font-mono uppercase">
         <select v-model="globalCouponForm.type" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white">
@@ -996,6 +1135,28 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
     <!-- SUB-TAB 5: MÉTRICAS Y LOG DE CRÉDITOS                          -->
     <!-- ============================================================== -->
     <div v-else-if="subTab === 'analytics'" class="bg-[#020617] border border-emerald-500/30 rounded-3xl p-5 space-y-4 text-xs">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-black text-white">📊 Métricas &amp; Créditos ({{ (adminStore.discountCreditsLog || []).length }})</h3>
+          <p class="text-xs text-slate-400">Atribución, ventas con descuento y saldo de créditos de embajadores.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input 
+            v-model="creditsSearchQuery"
+            type="text" 
+            placeholder="🔍 Filtrar por nombre o código..."
+            class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none w-52 sm:w-60"
+          />
+          <button
+            type="button"
+            @click="handleResetCreditsAndMetrics"
+            class="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 font-bold text-xs transition cursor-pointer"
+            title="Reiniciar historial de movimientos y créditos"
+          >
+            🔄 Reiniciar Métricas &amp; Créditos
+          </button>
+        </div>
+      </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
         <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800">
           <span class="text-[10px] text-slate-400 block">Órdenes c/ Promo</span>
@@ -1016,9 +1177,50 @@ const programFormalitiesList = computed(() => buildDiscountProgramFormalities(ad
       </div>
 
       <h4 class="font-black text-white">📜 Movimientos de Atribución y Créditos de Usuarios Descuento</h4>
-      <div v-if="!adminStore.discountCreditsLog?.length" class="text-center py-8 text-slate-500">Sin movimientos registrados aún.</div>
+      <!-- AJUSTE DIRECTO POR NOMBRE DE USUARIO REGISTRADO -->
+      <div class="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <strong class="text-white text-xs flex items-center gap-1.5">
+            <span>⚡</span>
+            <span>Ajustar Crédito por Nombre de Usuario Registrado:</span>
+          </strong>
+          <span class="text-[11px] text-slate-400">Aplica bonificaciones o deducciones de saldo directo</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <select v-model="creditAdjustForm.userId" class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-xl p-2 text-sky-300 outline-none">
+            <option value="">-- Seleccionar Usuario Registrado del Directorio --</option>
+            <option v-for="u in adminStore.registeredUsers" :key="u.id || u.clientNumber" :value="u.id || u.clientNumber">
+              {{ u.name }} ({{ u.phone }})
+            </option>
+          </select>
+
+          <div class="flex gap-1.5">
+            <select v-model="creditAdjustForm.type" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white outline-none w-24">
+              <option value="add">+ Sumar</option>
+              <option value="subtract">- Restar</option>
+            </select>
+            <input v-model.number="creditAdjustForm.amount" type="number" min="1" step="100" placeholder="$ ARS" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-mono outline-none">
+          </div>
+
+          <button
+            type="button"
+            @click="applyCreditAdjustmentByRegisteredUser"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl px-3 py-2 cursor-pointer transition flex items-center justify-center gap-1"
+          >
+            <span>💾</span>
+            <span>Aplicar Crédito</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <span class="text-slate-400 font-mono text-[11px]">{{ filteredCreditsLog.length }} registros filtrados</span>
+      </div>
+
+      <div v-if="!filteredCreditsLog.length" class="text-center py-8 text-slate-500">Sin movimientos registrados aún.</div>
       <div v-else class="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
-        <div v-for="l in adminStore.discountCreditsLog" :key="l.id" class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+        <div v-for="l in filteredCreditsLog" :key="l.id" class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
           <div>
             <strong class="text-amber-300 font-mono">{{ l.code }}</strong>
             <span class="text-white font-bold ml-2">{{ l.userName }}</span>
