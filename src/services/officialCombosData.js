@@ -59,67 +59,92 @@ export const STORE_STREAMING_UNIT_PRICES = {
     "cost": 1500
   },
   "Canva Pro": {
-    "name": "Canva Pro Activación",
+    "name": "Canva Pro Diseño & Productividad",
     "unitPrice": 4500,
-    "cost": 1200
-  },
-  "CapCut Pro": {
-    "name": "CapCut Pro Edición",
-    "unitPrice": 3500,
-    "cost": 1200
-  },
-  "Paramount+": {
-    "name": "Paramount+ Premium",
-    "unitPrice": 3800,
-    "cost": 1500
+    "cost": 2000
   },
   "Crunchyroll": {
     "name": "Crunchyroll Mega Fan",
     "unitPrice": 3800,
     "cost": 1500
   },
-  "ViX": {
-    "name": "ViX Premium",
+  "Paramount+": {
+    "name": "Paramount+ Plan Estándar",
     "unitPrice": 3800,
     "cost": 1500
   },
-  "Viki Rakuten": {
-    "name": "Viki Rakuten Pass",
+  "Apple TV+": {
+    "name": "Apple TV+ 4K Original",
+    "unitPrice": 4900,
+    "cost": 2000
+  },
+  "Vix Premium": {
+    "name": "VIX Premium Deportes & Novelas",
     "unitPrice": 3800,
+    "cost": 1500
+  },
+  "ViX": {
+    "name": "VIX Premium Deportes & Novelas",
+    "unitPrice": 3800,
+    "cost": 1500
+  },
+  "Plex": {
+    "name": "Plex Servidor Multimedia VIP",
+    "unitPrice": 4500,
+    "cost": 1800
+  },
+  "Tidal": {
+    "name": "Tidal HiFi Plus Audio Master",
+    "unitPrice": 3500,
+    "cost": 1500
+  },
+  "Deezer": {
+    "name": "Deezer Premium Sin Límites",
+    "unitPrice": 3500,
+    "cost": 1500
+  },
+  "Duolingo": {
+    "name": "Duolingo Super Idiomas",
+    "unitPrice": 4000,
+    "cost": 1800
+  },
+  "CapCut Pro": {
+    "name": "CapCut Pro Edición Video",
+    "unitPrice": 3500,
+    "cost": 1500
+  },
+  "Pornhub": {
+    "name": "Pornhub Premium VIP",
+    "unitPrice": 4000,
     "cost": 1500
   },
   "DramaBox": {
-    "name": "DramaBox VIP",
+    "name": "DramaBox VIP Short Series",
     "unitPrice": 3800,
     "cost": 1500
   },
   "FreeReels": {
-    "name": "FreeReels VIP",
+    "name": "FreeReels VIP Drama",
     "unitPrice": 3800,
     "cost": 1500
   },
   "NetShort": {
-    "name": "NetShort VIP",
+    "name": "NetShort VIP Mini Series",
     "unitPrice": 3800,
     "cost": 1500
   },
   "ReelShort": {
-    "name": "ReelShort VIP",
+    "name": "ReelShort VIP Series",
     "unitPrice": 3800,
     "cost": 1500
   },
-  "Pornhub": {
-    "name": "Pornhub Premium",
-    "unitPrice": 4000,
+  "Viki Rakuten": {
+    "name": "Viki Pass Standard",
+    "unitPrice": 3800,
     "cost": 1500
   },
-  "Claro": {
-    "name": "Claro Internet Ilimitado",
-    "unitPrice": 4800,
-    "cost": 2000
-  },
   "Personal": {
-    "name": "Personal Internet Ilimitado",
+    "name": "Línea Móvil Internet Ilimitado",
     "unitPrice": 5400,
     "cost": 2500
   }
@@ -166,10 +191,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "/flyers/combos/promo-pantallas-total.png",
     "originalPrice": 19900,
     "promoPrice": 10950,
-    "providerCost": 4300,
-    "platformProfit": 4200,
-    "resellerCost": 8500,
-    "resellerProfit": 2450,
+    "providerCost": 7800,
+    "platformProfit": 2000,
+    "resellerCost": 9800,
+    "resellerProfit": 1150,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -190,15 +215,15 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 7700,
-        "cost": 4300
+        "regularPrice": 6500,
+        "cost": 4500
       }
     ],
     "logos": [
@@ -206,12 +231,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "netflix.png"
     ],
     "image": "/flyers/combos/promo-pantallas-total.png",
-    "originalPrice": 14000,
-    "promoPrice": 9100,
-    "providerCost": 4700,
-    "platformProfit": 1800,
-    "resellerCost": 6500,
-    "resellerProfit": 2600,
+    "originalPrice": 13700,
+    "promoPrice": 8900,
+    "providerCost": 6500,
+    "platformProfit": 1500,
+    "resellerCost": 8000,
+    "resellerProfit": 900,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -232,7 +257,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Ultra HD 4K",
         "units": 1,
-        "regularPrice": 7700,
+        "regularPrice": 8500,
         "cost": 4300
       },
       {
@@ -256,12 +281,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 18400,
-    "promoPrice": 10100,
-    "providerCost": 4000,
-    "platformProfit": 1500,
-    "resellerCost": 5500,
-    "resellerProfit": 4600,
+    "originalPrice": 19200,
+    "promoPrice": 10550,
+    "providerCost": 8800,
+    "platformProfit": 1100,
+    "resellerCost": 9900,
+    "resellerProfit": 650,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -289,7 +314,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -306,12 +331,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "chatgpt.png"
     ],
     "image": "",
-    "originalPrice": 18800,
-    "promoPrice": 12200,
-    "providerCost": 2200,
-    "platformProfit": 800,
-    "resellerCost": 3000,
-    "resellerProfit": 9200,
+    "originalPrice": 19700,
+    "promoPrice": 12800,
+    "providerCost": 7000,
+    "platformProfit": 3650,
+    "resellerCost": 10650,
+    "resellerProfit": 2150,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -332,7 +357,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -356,12 +381,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 16500,
-    "promoPrice": 10750,
-    "providerCost": 1300,
-    "platformProfit": 550,
-    "resellerCost": 1850,
-    "resellerProfit": 8900,
+    "originalPrice": 17400,
+    "promoPrice": 11300,
+    "providerCost": 5500,
+    "platformProfit": 3650,
+    "resellerCost": 9150,
+    "resellerProfit": 2150,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -408,10 +433,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 13800,
     "promoPrice": 9650,
-    "providerCost": 1400,
-    "platformProfit": 500,
-    "resellerCost": 1900,
-    "resellerProfit": 7750,
+    "providerCost": 5000,
+    "platformProfit": 2950,
+    "resellerCost": 7950,
+    "resellerProfit": 1700,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -439,8 +464,8 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 7700,
-        "cost": 4300
+        "regularPrice": 6500,
+        "cost": 4500
       },
       {
         "platform": "Max",
@@ -464,12 +489,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "personal.png"
     ],
     "image": "",
-    "originalPrice": 23300,
-    "promoPrice": 12800,
-    "providerCost": 4300,
-    "platformProfit": 1650,
-    "resellerCost": 5950,
-    "resellerProfit": 6850,
+    "originalPrice": 22100,
+    "promoPrice": 12150,
+    "providerCost": 10500,
+    "platformProfit": 1050,
+    "resellerCost": 11550,
+    "resellerProfit": 600,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -516,10 +541,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 11800,
     "promoPrice": 8250,
-    "providerCost": 2200,
-    "platformProfit": 800,
-    "resellerCost": 3000,
-    "resellerProfit": 5250,
+    "providerCost": 4500,
+    "platformProfit": 2350,
+    "resellerCost": 6850,
+    "resellerProfit": 1400,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -566,10 +591,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 13600,
     "promoPrice": 8850,
-    "providerCost": 1600,
-    "platformProfit": 650,
-    "resellerCost": 2250,
-    "resellerProfit": 6600,
+    "providerCost": 5000,
+    "platformProfit": 2450,
+    "resellerCost": 7450,
+    "resellerProfit": 1400,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -608,10 +633,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 10200,
     "promoPrice": 7150,
-    "providerCost": 900,
-    "platformProfit": 350,
-    "resellerCost": 1250,
-    "resellerProfit": 5900,
+    "providerCost": 3500,
+    "platformProfit": 2300,
+    "resellerCost": 5800,
+    "resellerProfit": 1350,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -705,7 +730,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "planLabel": "Pro Activación",
         "units": 1,
         "regularPrice": 4500,
-        "cost": 1200
+        "cost": 2000
       }
     ],
     "logos": [
@@ -716,10 +741,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 14800,
     "promoPrice": 10350,
-    "providerCost": 3200,
-    "platformProfit": 1300,
-    "resellerCost": 4500,
-    "resellerProfit": 5850,
+    "providerCost": 6500,
+    "platformProfit": 2450,
+    "resellerCost": 8950,
+    "resellerProfit": 1400,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -740,7 +765,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Premium con ESPN",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -764,12 +789,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 16500,
-    "promoPrice": 10750,
-    "providerCost": 2600,
-    "platformProfit": 950,
-    "resellerCost": 3550,
-    "resellerProfit": 7200,
+    "originalPrice": 17400,
+    "promoPrice": 11300,
+    "providerCost": 5500,
+    "platformProfit": 3650,
+    "resellerCost": 9150,
+    "resellerProfit": 2150,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -791,14 +816,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "planLabel": "Pro 6 Meses",
         "units": 1,
         "regularPrice": 4500,
-        "cost": 1200
+        "cost": 2000
       },
       {
         "platform": "CapCut Pro",
         "planLabel": "Pro 1 Mes",
         "units": 1,
         "regularPrice": 3500,
-        "cost": 1200
+        "cost": 1500
       }
     ],
     "logos": [
@@ -808,10 +833,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 8000,
     "promoPrice": 6000,
-    "providerCost": 1900,
-    "platformProfit": 750,
-    "resellerCost": 2650,
-    "resellerProfit": 3350,
+    "providerCost": 3500,
+    "platformProfit": 1600,
+    "resellerCost": 5100,
+    "resellerProfit": 900,
     "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -840,14 +865,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "planLabel": "Pro Activación",
         "units": 1,
         "regularPrice": 4500,
-        "cost": 1200
+        "cost": 2000
       },
       {
         "platform": "CapCut Pro",
         "planLabel": "Pro Edición",
         "units": 1,
         "regularPrice": 3500,
-        "cost": 1200
+        "cost": 1500
       }
     ],
     "logos": [
@@ -858,10 +883,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 14500,
     "promoPrice": 10150,
-    "providerCost": 2500,
-    "platformProfit": 1000,
-    "resellerCost": 3500,
-    "resellerProfit": 6650,
+    "providerCost": 6500,
+    "platformProfit": 2300,
+    "resellerCost": 8800,
+    "resellerProfit": 1350,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -908,10 +933,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 13600,
     "promoPrice": 9500,
-    "providerCost": 1300,
-    "platformProfit": 550,
-    "resellerCost": 1850,
-    "resellerProfit": 7650,
+    "providerCost": 5000,
+    "platformProfit": 2850,
+    "resellerCost": 7850,
+    "resellerProfit": 1650,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -932,7 +957,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -964,12 +989,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png"
     ],
     "image": "",
-    "originalPrice": 18100,
-    "promoPrice": 11750,
-    "providerCost": 2600,
-    "platformProfit": 950,
-    "resellerCost": 3550,
-    "resellerProfit": 8200,
+    "originalPrice": 19000,
+    "promoPrice": 12350,
+    "providerCost": 6500,
+    "platformProfit": 3700,
+    "resellerCost": 10200,
+    "resellerProfit": 2150,
     "discountPercent": 35,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -990,7 +1015,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Disney+",
         "planLabel": "Estándar",
         "units": 1,
-        "regularPrice": 6300,
+        "regularPrice": 7200,
         "cost": 2000
       },
       {
@@ -1006,12 +1031,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "spotify.png"
     ],
     "image": "",
-    "originalPrice": 10100,
-    "promoPrice": 7600,
-    "providerCost": 2200,
-    "platformProfit": 800,
-    "resellerCost": 3000,
-    "resellerProfit": 4600,
+    "originalPrice": 11000,
+    "promoPrice": 8250,
+    "providerCost": 3500,
+    "platformProfit": 3000,
+    "resellerCost": 6500,
+    "resellerProfit": 1750,
     "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1058,10 +1083,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 13600,
     "promoPrice": 7500,
-    "providerCost": 1300,
-    "platformProfit": 550,
-    "resellerCost": 1850,
-    "resellerProfit": 5650,
+    "providerCost": 5000,
+    "platformProfit": 1600,
+    "resellerCost": 6600,
+    "resellerProfit": 900,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1100,10 +1125,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 8600,
     "promoPrice": 6000,
-    "providerCost": 700,
-    "platformProfit": 300,
-    "resellerCost": 1000,
-    "resellerProfit": 5000,
+    "providerCost": 3000,
+    "platformProfit": 1900,
+    "resellerCost": 4900,
+    "resellerProfit": 1100,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1150,10 +1175,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 11400,
     "promoPrice": 8000,
-    "providerCost": 1300,
-    "platformProfit": 550,
-    "resellerCost": 1850,
-    "resellerProfit": 6150,
+    "providerCost": 4500,
+    "platformProfit": 2200,
+    "resellerCost": 6700,
+    "resellerProfit": 1300,
     "discountPercent": 30,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1192,10 +1217,10 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "image": "",
     "originalPrice": 10300,
     "promoPrice": 7750,
-    "providerCost": 2200,
-    "platformProfit": 800,
-    "resellerCost": 3000,
-    "resellerProfit": 4750,
+    "providerCost": 4500,
+    "platformProfit": 2050,
+    "resellerCost": 6550,
+    "resellerProfit": 1200,
     "discountPercent": 25,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1216,8 +1241,8 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "platform": "Netflix",
         "planLabel": "Perfil Extra",
         "units": 1,
-        "regularPrice": 7700,
-        "cost": 4300
+        "regularPrice": 6500,
+        "cost": 4500
       },
       {
         "platform": "Prime Video",
@@ -1240,12 +1265,12 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png"
     ],
     "image": "",
-    "originalPrice": 17900,
-    "promoPrice": 9850,
-    "providerCost": 4200,
-    "platformProfit": 1650,
-    "resellerCost": 5850,
-    "resellerProfit": 4000,
+    "originalPrice": 16700,
+    "promoPrice": 9200,
+    "providerCost": 8000,
+    "platformProfit": 750,
+    "resellerCost": 8750,
+    "resellerProfit": 450,
     "discountPercent": 45,
     "createdBy": "provider",
     "resellerId": "ALL",
@@ -1628,29 +1653,51 @@ export function formatComboDevicesLabel(devicesCount) {
 export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
   if (!pkg) return pkg
 
+  const resolvedDevices = parseComboDevices(pkg)
+  const isOneDevice = resolvedDevices === 1
+
   const services = (pkg.services || []).map(srv => {
-    const rawPlat = (srv.platform || '').trim()
+    let rawPlat = (srv.platform || '').trim()
+    const planLabel = (srv.planLabel || '').toLowerCase()
+
+    // Si es Netflix pero especifica Perfil Extra, mapear al contenedor independiente de Perfil Extra
+    if (rawPlat.toLowerCase() === 'netflix' && (planLabel.includes('extra') || srv.platform?.toLowerCase().includes('extra'))) {
+      rawPlat = 'Netflix Perfil Extra'
+    }
+
     const catalogKeys = Object.keys(pricingCatalog || {})
     const matchedKey = catalogKeys.find(k => k.toLowerCase() === rawPlat.toLowerCase()) || rawPlat
     const platData = pricingCatalog?.[matchedKey]
+    const storeRef = STORE_STREAMING_UNIT_PRICES[matchedKey] || STORE_STREAMING_UNIT_PRICES[rawPlat]
 
-    let unitRegular = Number(srv.regularPrice || 0)
-    let unitCost = Number(srv.cost || srv.providerCost || 0)
+    let unitRegular = storeRef ? storeRef.unitPrice : Number(srv.regularPrice || 0)
+    let unitCost = storeRef ? storeRef.cost : Number(srv.cost || srv.providerCost || 0)
 
     if (platData && platData.plans) {
       let matchedPlan = null
+
       if (srv.planKey && platData.plans[srv.planKey]) {
         matchedPlan = platData.plans[srv.planKey]
-      } else {
+      } else if (isOneDevice) {
+        // En combos de 1 pantalla, buscar explícitamente el plan de 1 pantalla / 1 perfil
         const planEntries = Object.entries(platData.plans)
-        if (srv.planLabel) {
-          const sLabel = srv.planLabel.toLowerCase()
-          matchedPlan = planEntries.find(([_, p]) => {
-            const pLabel = (p.label || '').toLowerCase()
-            return pLabel.includes(sLabel) || sLabel.includes(pLabel)
-          })?.[1]
-        }
-        if (!matchedPlan && planEntries.length > 0) {
+        matchedPlan = planEntries.find(([k, p]) => 
+          k === '1_perfil' || k === 'perfil_extra' || k === '1_dispositivo' || k === '1_pantalla' || k === '1_cuenta' || p.units === 1
+        )?.[1]
+      }
+
+      if (!matchedPlan && srv.planLabel) {
+        const sLabel = srv.planLabel.toLowerCase()
+        const planEntries = Object.entries(platData.plans)
+        matchedPlan = planEntries.find(([_, p]) => {
+          const pLabel = (p.label || '').toLowerCase()
+          return pLabel.includes(sLabel) || sLabel.includes(pLabel)
+        })?.[1]
+      }
+
+      if (!matchedPlan) {
+        const planEntries = Object.entries(platData.plans)
+        if (planEntries.length > 0) {
           matchedPlan = planEntries[0][1]
         }
       }
@@ -1663,15 +1710,12 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
           unitCost = Number(matchedPlan.providerCost)
         }
       }
-    } else if (STORE_STREAMING_UNIT_PRICES[rawPlat]) {
-      const ref = STORE_STREAMING_UNIT_PRICES[rawPlat]
-      unitRegular = unitRegular || ref.unitPrice
-      unitCost = unitCost || ref.cost
     }
 
-    const units = Number(srv.units || 1)
+    const units = isOneDevice ? 1 : Number(srv.units || 1)
     return {
       ...srv,
+      units,
       regularPrice: unitRegular,
       cost: unitCost,
       totalRegular: unitRegular * units,
@@ -1681,39 +1725,42 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
 
   // 1. PRECIO LISTA (ANTES): Suma de precios individuales de las cuentas de streaming
   const totalRegular = services.reduce((acc, s) => acc + (s.totalRegular || s.regularPrice || 0), 0)
-  const originalPrice = totalRegular > 0 ? totalRegular : Number(pkg.originalPrice || 0)
+  const originalPrice = pkg.isManualPrice && Number(pkg.originalPrice) > 0
+    ? Number(pkg.originalPrice)
+    : (totalRegular > 0 ? totalRegular : Number(pkg.originalPrice || 0))
 
   // Descuento ofrecido (-15% al -45%)
   const discountPercent = Number(
-    pkg.discountPercent || (originalPrice > pkg.promoPrice && originalPrice > 0 ? Math.round(((originalPrice - pkg.promoPrice) / originalPrice) * 100) : 45)
+    pkg.discountPercent || (originalPrice > pkg.promoPrice && originalPrice > 0 ? Math.round(((originalPrice - pkg.promoPrice) / originalPrice) * 100) : 35)
   )
 
   // PRECIO PROMO VENTA: Redondeado a los 50 pesos
-  const promoPrice = originalPrice > 0 
-    ? (Math.round((originalPrice * (1 - discountPercent / 100)) / 50) * 50)
-    : Number(pkg.promoPrice || 0)
+  const promoPrice = pkg.isManualPrice && Number(pkg.promoPrice) > 0
+    ? Number(pkg.promoPrice)
+    : (originalPrice > 0 ? (Math.round((originalPrice * (1 - discountPercent / 100)) / 50) * 50) : Number(pkg.promoPrice || 0))
 
   // 1. PROVEEDOR (Costo Base)
-  const providerCost = Number(pkg.providerCost) > 0 ? Number(pkg.providerCost) : services.reduce((acc, s) => acc + (s.totalCost || s.cost || 0), 0)
+  const providerCost = Number(pkg.providerCost) > 0 && pkg.isManualPrice
+    ? Number(pkg.providerCost)
+    : services.reduce((acc, s) => acc + (s.totalCost || s.cost || 0), 0)
 
   // MARGEN BRUTO PARA EQUILIBRIO
   const grossMargin = Math.max(0, promoPrice - providerCost)
 
   // 2. CON GANANCIA PROPIA (StreamePro) ~63% del margen para equilibrio justo (ej: $4,200 en $6,650)
   let platformProfit = Number(pkg.platformProfit || 0)
-  if (!platformProfit || platformProfit === 0) {
+  if (!platformProfit || platformProfit === 0 || !pkg.isManualPrice) {
     platformProfit = Math.round((grossMargin * 0.63) / 50) * 50 || Math.round(grossMargin * 0.6)
   }
   const resellerCost = providerCost + platformProfit
 
-  // 3. GANA REVENDEDOR (promoPrice - resellerCost) (ej: $2,450 en $6,650)
+  // 3. GANA REVENDEDOR (promoPrice - resellerCost)
   const resellerProfit = Math.max(0, promoPrice - resellerCost)
 
   // Ahorro
   const savingsAmount = Math.max(0, originalPrice - promoPrice)
   const savingsPercent = originalPrice > 0 ? Math.round((savingsAmount / originalPrice) * 100) : discountPercent
 
-  const resolvedDevices = parseComboDevices(pkg)
   const devicesLabel = formatComboDevicesLabel(resolvedDevices)
 
   return {
@@ -1731,7 +1778,7 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
     devices: String(resolvedDevices),
     devicesNumber: resolvedDevices,
     devicesLabel: devicesLabel,
-    badge: pkg.badge || `🔥 ${savingsPercent}% OFF`
+    badge: (pkg.badge && pkg.badge.includes('ESPECIAL')) ? `🔥 ${savingsPercent}% OFF ESPECIAL` : `🔥 ${savingsPercent}% OFF`
   }
 }
 

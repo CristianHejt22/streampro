@@ -12,12 +12,12 @@ export const CLEAN_PRICING_CATALOG = {
     name: 'Netflix Premium Ultra HD 4K',
     plans: {
       '1_perfil': {
-        label: '1 Perfil (1 Dispositivo)',
+        label: '1 Perfil Ultra HD 4K (1 Dispositivo)',
         units: 1,
         type: 'perfil',
-        providerCost: 5500,
-        resellerProfit: 2200,
-        clientPrice: 7700
+        providerCost: 4300,
+        resellerProfit: 4200,
+        clientPrice: 8500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -73,8 +73,8 @@ export const CLEAN_PRICING_CATALOG = {
         label: '1 Perfil individual',
         units: 1,
         type: 'perfil',
-        providerCost: 4200,
-        resellerProfit: 1800,
+        providerCost: 2000,
+        resellerProfit: 4000,
         clientPrice: 6000
       },
       '2_dispositivos': {
@@ -110,8 +110,8 @@ export const CLEAN_PRICING_CATALOG = {
         label: '1 Slot / Perfil individual',
         units: 1,
         type: 'perfil',
-        providerCost: 2500,
-        resellerProfit: 1300,
+        providerCost: 1500,
+        resellerProfit: 2300,
         clientPrice: 3800
       },
       '2_dispositivos': {
@@ -136,12 +136,12 @@ export const CLEAN_PRICING_CATALOG = {
     name: 'Disney+ / Star+ Combo',
     plans: {
       '1_perfil': {
-        label: '1 Perfil individual',
+        label: '1 Perfil individual (Premium con ESPN)',
         units: 1,
         type: 'perfil',
-        providerCost: 4500,
-        resellerProfit: 1800,
-        clientPrice: 6300
+        providerCost: 2000,
+        resellerProfit: 5200,
+        clientPrice: 7200
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -168,8 +168,8 @@ export const CLEAN_PRICING_CATALOG = {
         label: '1 Dispositivo / Pantalla',
         units: 1,
         type: 'dispositivo',
-        providerCost: 3500,
-        resellerProfit: 2000,
+        providerCost: 2000,
+        resellerProfit: 3500,
         clientPrice: 5500
       },
       '2_dispositivos': {
@@ -194,11 +194,11 @@ export const CLEAN_PRICING_CATALOG = {
     name: 'Amazon Prime Video 4K',
     plans: {
       '1_perfil': {
-        label: '1 Perfil 4K',
+        label: '1 Perfil 4K (1 Pantalla HD)',
         units: 1,
         type: 'perfil',
-        providerCost: 2800,
-        resellerProfit: 1400,
+        providerCost: 1500,
+        resellerProfit: 2700,
         clientPrice: 4200
       },
       '3_dispositivos': {
@@ -218,13 +218,26 @@ export const CLEAN_PRICING_CATALOG = {
         label: '1 Slot Familiar Individual',
         units: 1,
         type: 'perfil',
-        providerCost: 2900,
-        resellerProfit: 1500,
+        providerCost: 1500,
+        resellerProfit: 2900,
         clientPrice: 4400
       }
     }
+  },
+  'Canva Pro': {
+    name: 'Canva Pro Diseño & Productividad',
+    plans: {
+      '1_perfil': {
+        label: 'Activación a tu Correo Personal (1 Año)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 2000,
+        resellerProfit: 2500,
+        clientPrice: 4500
+      }
+    }
   }
-}
+};
 
 // Generador de 1 Cuenta Maestra Inicial por Plataforma para Stock Inmediato
 export function createStarterAccountForPlatform(platform, index = 1) {
@@ -342,14 +355,14 @@ export function getCleanDatabaseSeed() {
       description: 'Las 3 plataformas líderes de series, cine y estrenos en calidad Ultra HD.',
       badge: '🔥 25% OFF - RECOMENDADO',
       services: [
-        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 7700, cost: 5500 },
-        { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 4200 },
-        { platform: 'Disney+', planKey: '1_perfil', planLabel: '1 Pantalla VIP', units: 1, regularPrice: 6500, cost: 4500 }
+        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 8500, cost: 4300 },
+        { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 2000 },
+        { platform: 'Disney+', planKey: '1_perfil', planLabel: '1 Pantalla VIP', units: 1, regularPrice: 7200, cost: 2000 }
       ],
-      originalPrice: 20200,
-      promoPrice: 15900,
-      providerCost: 14200,
-      resellerProfit: 1700,
+      originalPrice: 21700,
+      promoPrice: 16250,
+      providerCost: 8300,
+      resellerProfit: 2950,
       createdBy: 'provider',
       resellerId: 'ALL',
       active: true,
@@ -361,13 +374,13 @@ export function getCleanDatabaseSeed() {
       description: 'Tus series favoritas en Ultra HD y toda la música del mundo sin publicidad.',
       badge: '⚡ COMBO POPULAR',
       services: [
-        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 7700, cost: 5500 },
-        { platform: 'Spotify', planKey: '1_perfil', planLabel: '1 Slot Familiar', units: 1, regularPrice: 3800, cost: 2500 }
+        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 8500, cost: 4300 },
+        { platform: 'Spotify', planKey: '1_perfil', planLabel: '1 Slot Familiar', units: 1, regularPrice: 3800, cost: 1500 }
       ],
-      originalPrice: 11500,
-      promoPrice: 9400,
-      providerCost: 8000,
-      resellerProfit: 1400,
+      originalPrice: 12300,
+      promoPrice: 9850,
+      providerCost: 5800,
+      resellerProfit: 2050,
       createdBy: 'provider',
       resellerId: 'ALL',
       active: true,

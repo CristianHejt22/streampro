@@ -124,7 +124,7 @@ export const useCartStore = defineStore('cart', {
             changed = true
           }
         } else if (item.itemType === 'package') {
-          const pkg = (adminStore.packages || []).find(p => p.id === item.id)
+          const pkg = (adminStore.computedPackages || adminStore.packages || []).find(p => p.id === item.id)
           if (pkg && pkg.promoPrice && pkg.promoPrice !== item.clientPrice) {
             item.clientPrice = pkg.promoPrice
             item.providerCost = pkg.providerCost

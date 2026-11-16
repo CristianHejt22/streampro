@@ -439,8 +439,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '1 Perfil individual',
         units: 1,
         type: 'perfil',
-        providerCost: 4200,
-        resellerProfit: 1800,
+        providerCost: 2000,
+        resellerProfit: 4000,
         clientPrice: 6000
       },
       '2_dispositivos': {
@@ -476,8 +476,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '1 Slot / Perfil individual',
         units: 1,
         type: 'perfil',
-        providerCost: 2500,
-        resellerProfit: 1300,
+        providerCost: 1500,
+        resellerProfit: 2300,
         clientPrice: 3800
       },
       '2_dispositivos': {
@@ -534,8 +534,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '1 Dispositivo / Pantalla',
         units: 1,
         type: 'dispositivo',
-        providerCost: 3500,
-        resellerProfit: 2000,
+        providerCost: 2000,
+        resellerProfit: 3500,
         clientPrice: 5500
       },
       '2_dispositivos': {
@@ -584,8 +584,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '1 Slot Familiar Individual',
         units: 1,
         type: 'perfil',
-        providerCost: 2900,
-        resellerProfit: 1500,
+        providerCost: 1500,
+        resellerProfit: 2900,
         clientPrice: 4400
       }
     }
@@ -597,8 +597,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: 'Activación a tu Correo Personal (1 Año)',
         units: 1,
         type: 'perfil',
-        providerCost: 2800,
-        resellerProfit: 1700,
+        providerCost: 2000,
+        resellerProfit: 2500,
         clientPrice: 4500
       }
     }
@@ -702,6 +702,101 @@ function getInitialProviderBankSetup() {
   return { accounts: savedAccounts, info: synchronizedBankInfo }
 }
 
+// Función para garantizar que todos los precios base de 1 pantalla coincidan exactamente con lo establecido
+export function sanitizePricingCatalog(catalog = {}) {
+  const sanitized = { ...catalog }
+
+  if (!sanitized['Netflix Perfil Extra']) {
+    sanitized['Netflix Perfil Extra'] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra']))
+  }
+  if (sanitized.Netflix?.plans?.perfil_extra) {
+    delete sanitized.Netflix.plans.perfil_extra
+  }
+
+  // Netflix 1 Perfil 4K
+  if (sanitized.Netflix?.plans?.['1_perfil']) {
+    const p = sanitized.Netflix.plans['1_perfil']
+    p.clientPrice = 8500
+    p.providerCost = 4300
+    p.resellerProfit = 4200
+    p.label = '1 Perfil Ultra HD 4K (1 Dispositivo)'
+  }
+
+  // Netflix Perfil Extra
+  if (sanitized['Netflix Perfil Extra']?.plans?.['perfil_extra']) {
+    const p = sanitized['Netflix Perfil Extra'].plans['perfil_extra']
+    p.clientPrice = 6500
+    p.providerCost = 4500
+    p.resellerProfit = 2000
+    p.label = '1 Perfil Extra (Sin Bloqueo de Hogar)'
+  }
+
+  // Disney+ 1 Perfil individual con ESPN
+  if (sanitized['Disney+']?.plans?.['1_perfil']) {
+    const p = sanitized['Disney+'].plans['1_perfil']
+    p.clientPrice = 7200
+    p.providerCost = 2000
+    p.resellerProfit = 5200
+    p.label = '1 Perfil individual (Premium con ESPN)'
+  }
+
+  // Prime Video 1 Perfil
+  if (sanitized['Prime Video']?.plans?.['1_perfil']) {
+    const p = sanitized['Prime Video'].plans['1_perfil']
+    p.clientPrice = 4200
+    p.providerCost = 1500
+    p.resellerProfit = 2700
+    p.label = '1 Perfil 4K (1 Pantalla HD)'
+  }
+
+  // Max 1 Perfil
+  if (sanitized.Max?.plans?.['1_perfil']) {
+    const p = sanitized.Max.plans['1_perfil']
+    p.clientPrice = 6000
+    p.providerCost = 2000
+    p.resellerProfit = 4000
+    p.label = '1 Perfil individual'
+  }
+
+  // Spotify 1 Slot
+  if (sanitized.Spotify?.plans?.['1_perfil']) {
+    const p = sanitized.Spotify.plans['1_perfil']
+    p.clientPrice = 3800
+    p.providerCost = 1500
+    p.resellerProfit = 2300
+    p.label = '1 Slot / Perfil individual'
+  }
+
+  // IPTV 1 Dispositivo
+  if (sanitized.IPTV?.plans?.['1_perfil']) {
+    const p = sanitized.IPTV.plans['1_perfil']
+    p.clientPrice = 5500
+    p.providerCost = 2000
+    p.resellerProfit = 3500
+    p.label = '1 Dispositivo / Pantalla'
+  }
+
+  // YouTube Premium 1 Slot
+  if (sanitized['YouTube Premium']?.plans?.['1_perfil']) {
+    const p = sanitized['YouTube Premium'].plans['1_perfil']
+    p.clientPrice = 4400
+    p.providerCost = 1500
+    p.resellerProfit = 2900
+    p.label = '1 Slot Familiar Individual'
+  }
+
+  // Canva Pro 1 Año
+  if (sanitized['Canva Pro']?.plans?.['1_perfil']) {
+    const p = sanitized['Canva Pro'].plans['1_perfil']
+    p.clientPrice = 4500
+    p.providerCost = 2000
+    p.resellerProfit = 2500
+    p.label = 'Activación a tu Correo Personal (1 Año)'
+  }
+
+  return sanitized
+}
+
 export const useAdminStore = defineStore('admin', {
   state: () => {
     const initialBank = getInitialProviderBankSetup()
@@ -770,57 +865,9 @@ export const useAdminStore = defineStore('admin', {
       // Catálogo de Productos Virtuales y Precios persistente
       pricingCatalog: (() => {
         const loaded = loadDb(DB_KEYS.PRICING_CATALOG, DEFAULT_PLATFORM_PLANS) || {}
-        // Asegurar que 'Netflix Perfil Extra' exista como contenedor independiente en la base de datos
-        if (!loaded['Netflix Perfil Extra']) {
-          loaded['Netflix Perfil Extra'] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra']))
-          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
-        }
-        // Desacoplar 'perfil_extra' del contenedor general de Netflix si venía en el guardado previo
-        if (loaded.Netflix?.plans?.perfil_extra) {
-          delete loaded.Netflix.plans.perfil_extra
-          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
-        }
-        // Migrar/garantizar textos solicitados en Netflix
-        if (loaded.Netflix) {
-          if (!loaded.Netflix.warranty || loaded.Netflix.warranty === 'Garantía oficial y soporte directo.') {
-            loaded.Netflix.warranty = 'Garantía Oficial Netflix Argentina'
-          }
-          if (!loaded.Netflix.badge) {
-            loaded.Netflix.badge = '4K ULTRA HD • HDR10'
-          }
-          if (!loaded.Netflix.deliveryBadge) {
-            loaded.Netflix.deliveryBadge = '🟢 10-15m'
-          }
-          if (!loaded.Netflix.highlights || loaded.Netflix.highlights.length === 0 || loaded.Netflix.highlights[0] === '4K ULTRA HD • HDR10') {
-            loaded.Netflix.highlights = [
-              'PIN Privado: 4 dígitos exclusivo.',
-              'Sin bloqueo hogar: En Argentina (actualizar hogar).',
-              'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
-            ]
-          }
-          if (loaded.Netflix.plans?.['1_perfil'] && (loaded.Netflix.plans['1_perfil'].clientPrice === 7700 || !loaded.Netflix.plans['1_perfil'].clientPrice)) {
-            loaded.Netflix.plans['1_perfil'].clientPrice = 8500
-            loaded.Netflix.plans['1_perfil'].providerCost = 4300
-            loaded.Netflix.plans['1_perfil'].resellerProfit = 4200
-            loaded.Netflix.plans['1_perfil'].label = '1 Perfil Ultra HD 4K (1 Dispositivo)'
-          }
-          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
-        }
-        if (loaded['Disney+']?.plans?.['1_perfil'] && (loaded['Disney+'].plans['1_perfil'].clientPrice === 6300 || !loaded['Disney+'].plans['1_perfil'].clientPrice)) {
-          loaded['Disney+'].plans['1_perfil'].clientPrice = 7200
-          loaded['Disney+'].plans['1_perfil'].providerCost = 2000
-          loaded['Disney+'].plans['1_perfil'].resellerProfit = 5200
-          loaded['Disney+'].plans['1_perfil'].label = '1 Perfil individual (Premium con ESPN)'
-          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
-        }
-        if (loaded['Prime Video']?.plans?.['1_perfil'] && (!loaded['Prime Video'].plans['1_perfil'].clientPrice || loaded['Prime Video'].plans['1_perfil'].providerCost === 2800)) {
-          loaded['Prime Video'].plans['1_perfil'].clientPrice = 4200
-          loaded['Prime Video'].plans['1_perfil'].providerCost = 1500
-          loaded['Prime Video'].plans['1_perfil'].resellerProfit = 2700
-          loaded['Prime Video'].plans['1_perfil'].label = '1 Perfil 4K (1 Pantalla HD)'
-          saveDb(DB_KEYS.PRICING_CATALOG, loaded)
-        }
-        return loaded
+        const sanitized = sanitizePricingCatalog(loaded)
+        saveDb(DB_KEYS.PRICING_CATALOG, sanitized)
+        return sanitized
       })(),
 
       // Revendedores reales generados desde el panel con usuario, contraseña y datos bancarios
@@ -951,29 +998,21 @@ export const useAdminStore = defineStore('admin', {
     // PAQUETES Y COMBOS VIRTUALES OFICIALES (32 COMBOS DE STREAMING, INTERNET Y PANELES)
     packages: (() => {
       const stored = loadDb(DB_KEYS.PACKAGES, null)
+      const freshOfficial = getFreshOfficialCombos()
       if (stored && Array.isArray(stored) && stored.length > 0) {
-        // Asegurar que C001 (Promo Imperdible 1) tenga los precios ajustados oficiales
-        const c001 = stored.find(p => p.id === 'C001')
-        if (c001 && (c001.originalPrice === 18200 || c001.promoPrice === 10000 || !c001.resellerCost)) {
-          c001.originalPrice = 19900
-          c001.promoPrice = 10950
-          c001.providerCost = 4300
-          c001.platformProfit = 4200
-          c001.resellerCost = 8500
-          c001.resellerProfit = 2450
-          c001.discountPercent = 45
-          c001.services = [
-            { platform: "Netflix", planLabel: "Ultra HD 4K", units: 1, regularPrice: 8500, cost: 4300 },
-            { platform: "Disney+", planLabel: "Premium con ESPN", units: 1, regularPrice: 7200, cost: 2000 },
-            { platform: "Prime Video", planLabel: "1 Pantalla HD", units: 1, regularPrice: 4200, cost: 1500 }
-          ]
-          saveDb(DB_KEYS.PACKAGES, stored)
-        }
-        return stored
+        // Combinar asegurando que los 32 combos oficiales tengan los precios de 1 pantalla actualizados
+        const merged = stored.map(p => {
+          const officialMatch = freshOfficial.find(f => f.id === p.id || f.sku === p.sku)
+          if (officialMatch && !p.isManualPrice) {
+            return { ...officialMatch, active: p.active !== false }
+          }
+          return p
+        })
+        saveDb(DB_KEYS.PACKAGES, merged)
+        return merged
       }
-      const fresh = getFreshOfficialCombos()
-      saveDb(DB_KEYS.PACKAGES, fresh)
-      return fresh
+      saveDb(DB_KEYS.PACKAGES, freshOfficial)
+      return freshOfficial
     })(),
 
     // Visibilidad de la tienda pública y del catálogo físico (Mostrar u Ocultar tienda desde el Panel Admin)
@@ -2070,13 +2109,25 @@ export const useAdminStore = defineStore('admin', {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
           marginChanged = true
         }
+        let pricesUpdated = false
         if (cloudSettings.pricingCatalog && typeof cloudSettings.pricingCatalog === 'object' && Object.keys(cloudSettings.pricingCatalog).length > 0) {
-          this.pricingCatalog = { ...this.pricingCatalog, ...cloudSettings.pricingCatalog }
-          saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
+          const merged = sanitizePricingCatalog({ ...this.pricingCatalog, ...cloudSettings.pricingCatalog })
+          if (JSON.stringify(this.pricingCatalog) !== JSON.stringify(merged)) {
+            this.pricingCatalog = merged
+            saveDb(DB_KEYS.PRICING_CATALOG, this.pricingCatalog)
+            pricesUpdated = true
+          }
         }
         if (Array.isArray(cloudSettings.packages) && cloudSettings.packages.length > 0) {
-          this.packages = cloudSettings.packages
-          saveDb(DB_KEYS.PACKAGES, this.packages)
+          const synced = cloudSettings.packages.map(p => calculatePackageFromCatalog(p, this.pricingCatalog))
+          if (JSON.stringify(this.packages) !== JSON.stringify(synced)) {
+            this.packages = synced
+            saveDb(DB_KEYS.PACKAGES, this.packages)
+            pricesUpdated = true
+          }
+        }
+        if (pricesUpdated) {
+          this.persistStoreSettings()
         }
         if (Array.isArray(cloudSettings.gamingProviderSites) && cloudSettings.gamingProviderSites.length > 0) {
           this.gamingProviderSites = cloudSettings.gamingProviderSites

@@ -2594,7 +2594,7 @@ const marketingDealsPreviewText = computed(() => {
     : (adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || '')
 
   if (cfg.campaignMode === 'combos') {
-    const pkgs = adminStore.packages || []
+    const pkgs = adminStore.computedPackages || adminStore.packages || []
     const header = `🎁 *COMBOS DE STREAMING OFICIALES — ${storeLabel}* 🍿\nPerfiles privados con PIN, calidad 4K y entrega rápida.\n\n`
     const rows = pkgs.map((pkg, idx) => {
       const srvs = (pkg.services || []).map(s => s.platform).join(' + ')
@@ -2646,7 +2646,7 @@ const openAdminMarketingPlaque = () => {
   }
 
   if (cfg.campaignMode === 'combos') {
-    const pkgs = adminStore.packages || []
+    const pkgs = adminStore.computedPackages || adminStore.packages || []
     if (!pkgs.length) {
       toast.add('No hay combos creados todavía.', 'info')
       return
