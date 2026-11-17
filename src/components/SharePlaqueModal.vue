@@ -10,7 +10,8 @@ const props = defineProps({
   resellerRef: { type: String, default: 'DIRECT' },
   contactPhone: { type: String, default: '' },
   promoCode: { type: String, default: '' },
-  promoLabel: { type: String, default: '' }
+  promoLabel: { type: String, default: '' },
+  isReseller: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close', 'openInStudio'])
@@ -872,6 +873,83 @@ const sharePlaqueDirect = async () => {
     isExporting.value = false
   }
 }
+
+// Compartir fluido en todas las plataformas y redes
+const shareToPlatform = async (platform) => {
+  const url = directShareUrl.value
+  const title = plaqueHeadline.value
+  const copy = attractiveCopy.value
+
+  if (platform === 'whatsapp') {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(copy)}`, '_blank')
+    toast.add('💬 Abriendo WhatsApp...', 'info')
+    return
+  }
+
+  if (platform === 'telegram') {
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title + '\n' + plaqueSubline.value)}`, '_blank')
+    toast.add('✈️ Abriendo Telegram...', 'info')
+    return
+  }
+
+  if (platform === 'facebook') {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
+    toast.add('📘 Abriendo Facebook...', 'info')
+    return
+  }
+
+  if (platform === 'twitter') {
+    const tweetText = `${title} · ${plaqueSubline.value}\nEncontralo en StreamePro:`
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(url)}`, '_blank')
+    toast.add('✖️ Abriendo X (Twitter)...', 'info')
+    return
+  }
+
+  if (platform === 'instagram') {
+    // Si el navegador soporta compartir archivos directamente a apps (móvil)
+    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+      try {
+        isExporting.value = true
+        const blob = await renderPlaqueBlob()
+        if (blob) {
+          const file = new File([blob], 'streamepro_instagram.png', { type: 'image/png' })
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title,
+              text: copy,
+              files: [file]
+            })
+            toast.add('📸 ¡Listo para publicar en Instagram!', 'success')
+            return
+          }
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return
+      } finally {
+        isExporting.value = false
+      }
+    }
+    // Fallback escritorio / web: Descarga la imagen y copia el texto al portapapeles
+    await downloadPlaquePng()
+    try {
+      await navigator.clipboard.writeText(copy)
+      toast.add('📸 ¡Placa descargada y texto copiado para pegar en tu historia de Instagram!', 'success')
+    } catch {
+      toast.add('📸 ¡Placa descargada para tu Instagram!', 'success')
+    }
+    return
+  }
+
+  if (platform === 'copy') {
+    await copyPlaqueLink()
+    return
+  }
+
+  if (platform === 'native') {
+    await sharePlaqueDirect()
+    return
+  }
+}
 </script>
 
 <template>
@@ -1049,8 +1127,8 @@ const sharePlaqueDirect = async () => {
           </div>
         </div>
 
-        <!-- NÚMERO DE WHATSAPP DEL DISTRIBUIDOR (EXCLUSIVO EN LA PLACA) -->
-        <div class="bg-slate-950/80 rounded-2xl border border-emerald-500/30 p-3 space-y-1.5 shadow-lg">
+        <!-- NÚMERO DE WHATSAPP DEL DISTRIBUIDOR (EXCLUSIVO EN LA PLACA - SOLO DISTRIBUIDORES) -->
+        <div v-if="isReseller" class="bg-slate-950/80 rounded-2xl border border-emerald-500/30 p-3 space-y-1.5 shadow-lg">
           <div class="flex items-center justify-between">
             <label class="text-[11px] font-black uppercase text-emerald-300 flex items-center gap-1.5">
               <span>📲</span> WhatsApp de Distribuidor (Único Contacto en Placa)
@@ -1068,8 +1146,8 @@ const sharePlaqueDirect = async () => {
           </div>
         </div>
 
-        <!-- CAJA DE TEXTO ATRACTIVO AUTO-GENERADO PARA WHATSAPP / REDES -->
-        <div class="bg-slate-950/80 rounded-2xl border border-slate-800 p-3.5 space-y-2">
+        <!-- CAJA DE TEXTO ATRACTIVO AUTO-GENERADO PARA REDES (SOLO DISTRIBUIDORES) -->
+        <div v-if="isReseller" class="bg-slate-950/80 rounded-2xl border border-slate-800 p-3.5 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
               <span>💬</span>
@@ -1099,18 +1177,90 @@ const sharePlaqueDirect = async () => {
           </div>
         </div>
 
-        <!-- BOTONERA DE ACCIÓN FLUIDA -->
-        <div class="space-y-2 pt-1">
-          <div class="grid grid-cols-2 gap-2">
+        <!-- COMPARTIR EN TODAS LAS PLATAFORMAS -->
+        <div class="bg-slate-950/90 rounded-2xl border border-slate-800/80 p-3.5 space-y-2.5 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-black text-slate-200 uppercase tracking-wide flex items-center gap-1.5">
+              <span class="text-amber-400">🚀</span> Compartir en Todas las Plataformas
+            </span>
+            <span class="text-[9px] text-slate-500 font-mono">1 Clic Directo</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <!-- WhatsApp -->
             <button
               type="button"
-              @click="sharePlaqueDirect"
+              @click="shareToPlatform('whatsapp')"
+              class="p-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow"
+              title="Compartir en WhatsApp"
+            >
+              <span>💬</span>
+              <span>WhatsApp</span>
+            </button>
+
+            <!-- Telegram -->
+            <button
+              type="button"
+              @click="shareToPlatform('telegram')"
+              class="p-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow"
+              title="Compartir en Telegram"
+            >
+              <span>✈️</span>
+              <span>Telegram</span>
+            </button>
+
+            <!-- Facebook -->
+            <button
+              type="button"
+              @click="shareToPlatform('facebook')"
+              class="p-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow"
+              title="Compartir en Facebook"
+            >
+              <span>📘</span>
+              <span>Facebook</span>
+            </button>
+
+            <!-- Twitter / X -->
+            <button
+              type="button"
+              @click="shareToPlatform('twitter')"
+              class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow"
+              title="Compartir en X (Twitter)"
+            >
+              <span>✖️</span>
+              <span>X / Twitter</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-0.5">
+            <!-- Instagram (Descarga HD + Copia texto o Share Nativo) -->
+            <button
+              type="button"
+              @click="shareToPlatform('instagram')"
+              class="p-2.5 rounded-xl bg-gradient-to-r from-purple-600/25 via-pink-600/25 to-amber-500/25 hover:from-purple-600/35 hover:via-pink-600/35 hover:to-amber-500/35 border border-pink-500/40 text-pink-200 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow"
+              title="Descargar y preparar para publicar en Instagram"
+            >
+              <span>📸</span>
+              <span>Instagram (Historia/Post)</span>
+            </button>
+
+            <!-- Compartir Nativo Móvil / Sistema -->
+            <button
+              type="button"
+              @click="shareToPlatform('native')"
               :disabled="isExporting"
-              class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs py-3 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 disabled:opacity-50"
+              class="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              title="Abrir menú nativo de compartir del teléfono o navegador"
             >
               <span>📲</span>
-              <span>{{ isExporting ? 'Generando...' : 'Compartir Placa' }}</span>
+              <span>{{ isExporting ? 'Generando...' : 'Más Opciones' }}</span>
             </button>
+          </div>
+        </div>
+
+        <!-- BOTONERA DE ACCIÓN Y DESCARGA -->
+        <div class="space-y-2 pt-1">
+          <div class="grid grid-cols-2 gap-2">
             <button
               type="button"
               @click="downloadPlaquePng"
@@ -1118,24 +1268,27 @@ const sharePlaqueDirect = async () => {
               class="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-xs py-3 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 disabled:opacity-50"
             >
               <span>⬇️</span>
-              <span>Descargar PNG</span>
+              <span>{{ isExporting ? 'Generando...' : 'Descargar Placa PNG' }}</span>
             </button>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
               @click="copyPlaqueLink"
-              class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-2.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-3 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95"
             >
-              <span>🔗 Copiar Enlace Directo</span>
+              <span>🔗</span>
+              <span>Copiar Enlace Directo</span>
             </button>
+          </div>
+
+          <!-- BOTÓN ESTUDIO: SOLO VISIBLE PARA DISTRIBUIDORES / RESELLERS -->
+          <div v-if="isReseller" class="pt-0.5">
             <button
               type="button"
               @click="handleOpenInStudio"
-              class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow"
+              class="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:via-pink-500 hover:to-indigo-500 text-white font-bold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow"
             >
-              <span>🎨 Abrir en Estudio (Flyer / Reel)</span>
+              <span>🎨</span>
+              <span>Abrir en Estudio (Flyer / Reel Avanzado)</span>
             </button>
           </div>
         </div>

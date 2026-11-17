@@ -1031,7 +1031,7 @@ const buyGamingViaWhatsApp = (game, licenseType = null) => {
   const lic = licenseType || getGameSelectedLicense(game.id)
   const isPrim = lic === 'primary'
   const price = isPrim ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
-  const cleanPhone = (adminStore.providerBankInfo.whatsapp || '5492915658321').replace(/\D/g, '')
+  const cleanPhone = effectiveDistributorPhone.value.replace(/\D/g, '') || '5492915658321'
 
   let networkName = 'PlayStation Store'
   if (game.platform && game.platform.includes('Switch')) networkName = 'Nintendo eShop'
@@ -1299,6 +1299,141 @@ const resellerStoreName = computed(() => {
   return r.name.replace(/\s*\(Distribuidor\s*#?\d+\)/gi, '').replace(/^\[.*?\]\s*/, '').trim()
 })
 
+// Teléfono de WhatsApp de contacto efectivo (distribuidor asignado o proveedor oficial central)
+const effectiveDistributorPhone = computed(() => {
+  if (isDirectSale.value || !currentReseller.value) {
+    return adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321'
+  }
+  const r = currentReseller.value
+  return (
+    r.shopConfig?.whatsapp ||
+    r.contactNumber ||
+    r.whatsapp ||
+    r.phone ||
+    adminStore.providerBankInfo?.whatsapp ||
+    adminStore.adminAuth?.whatsapp ||
+    '+54 9 291 565-8321'
+  )
+})
+
+// Control de disponibilidad de Mercado Pago para clientes según tienda y distribuidor
+const isMercadoPagoAvailable = computed(() => {
+  if (isDirectSale.value) {
+    return Boolean(adminStore.mercadoPagoConfig?.accessToken)
+  }
+  const cfg = resellerShopConfig.value
+  if (!cfg) return true
+  if (cfg.mercadoPagoEnabled === false) return false
+  return Boolean(cfg.mercadoPagoAccessToken || adminStore.mercadoPagoConfig?.accessToken)
+})
+
+watch(isMercadoPagoAvailable, (avail) => {
+  if (!avail && clientForm.value.paymentMethod === 'mercadopago') {
+    clientForm.value.paymentMethod = 'transfer'
+  }
+}, { immediate: true })
+
+// ==========================================
+// CARTEL INTERACTIVO POPUP DE JUEGOS (1 O 2 AL DÍA)
+// ==========================================
+const showGamingAttentionPopup = ref(false)
+const gamingPopupImpressionKey = 'streamepro_gaming_popup_impressions'
+
+const popupFeaturedGames = computed(() => {
+  if (homeFeaturedGaming.value && homeFeaturedGaming.value.length > 0) {
+    return homeFeaturedGaming.value.slice(0, 3)
+  }
+  return [
+    {
+      id: 'fc-25',
+      title: 'EA SPORTS FC 25',
+      platform: 'PS5 / PS4',
+      image: 'https://image.api.playstation.com/vulcan/ap/rnd/202407/0417/38aa052df25f05a960b77da1be9f9845347fa6f11c75c87a.png',
+      badge: 'TOP'
+    },
+    {
+      id: 'gta-v',
+      title: 'Grand Theft Auto V',
+      platform: 'PS5 / PS4',
+      image: 'https://image.api.playstation.com/vulcan/ap/rnd/202202/2816/mYn2ETBTXD28pmtBDDxZ9mVC.png',
+      badge: 'POPULAR'
+    },
+    {
+      id: 'spiderman-2',
+      title: "Marvel's Spider-Man 2",
+      platform: 'PS5',
+      image: 'https://image.api.playstation.com/vulcan/ap/rnd/202306/1219/1c7b75d8b4343b170438cf17f54c30c8ff3aa0a75fe135ee.png',
+      badge: 'EXCLUSIVO'
+    }
+  ]
+})
+
+const checkAndTriggerGamingPopup = () => {
+  try {
+    if (!isGamingNavVisible.value) return
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const raw = localStorage.getItem(gamingPopupImpressionKey)
+    let data = { date: todayStr, count: 0, lastShown: 0 }
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.date === todayStr) {
+          data = parsed
+        }
+      } catch (_) {}
+    }
+
+    if (data.count >= 2) return
+
+    const now = Date.now()
+    if (data.count === 1 && (now - (data.lastShown || 0)) < 2 * 60 * 60 * 1000) {
+      return
+    }
+
+    setTimeout(() => {
+      if (
+        showCartModal.value ||
+        showClientGameInquiry.value ||
+        showGamingDetailModal.value ||
+        showSharePlaqueModal.value ||
+        showOrderSuccessModal.value
+      ) {
+        return
+      }
+      showGamingAttentionPopup.value = true
+      data.count += 1
+      data.lastShown = Date.now()
+      localStorage.setItem(gamingPopupImpressionKey, JSON.stringify(data))
+    }, 7500)
+  } catch (_) {}
+}
+
+const dismissGamingPopupForToday = () => {
+  showGamingAttentionPopup.value = false
+  try {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    localStorage.setItem(gamingPopupImpressionKey, JSON.stringify({
+      date: todayStr,
+      count: 2,
+      lastShown: Date.now()
+    }))
+    toast.add('Pop-up de juegos silenciado por hoy. ¡Disfruta la tienda!', 'info')
+  } catch (_) {}
+}
+
+const handleGamingPopupExplore = () => {
+  showGamingAttentionPopup.value = false
+  navigateToSection('gaming')
+}
+
+const handleGamingPopupWhatsApp = (gameTitle = '') => {
+  showGamingAttentionPopup.value = false
+  const gameMention = gameTitle ? ` por el juego *${gameTitle}*` : ' por el catálogo de juegos de PS5 / PS4'
+  const msg = `¡Hola ${resellerStoreName.value}! Vi el cartel de juegos en la web y me gustaría consultar disponibilidad y precio${gameMention} 🎮🔥`
+  const cleanPhone = effectiveDistributorPhone.value.replace(/[^0-9]/g, '') || '5492915658321'
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 // ==========================================
 // CONSULTA / PEDIDO MANUAL DE JUEGO AL ADMIN (CLIENTE)
 // ==========================================
@@ -1356,7 +1491,7 @@ const submitClientGameInquiry = (alsoWhatsApp = false) => {
     submittedClientInquiry.value = res.ticket
     toast.add(`📩 Solicitud #${res.ticket.id} enviada al Administrador. Te responderemos pronto.`, 'success')
     if (alsoWhatsApp) {
-      const targetPhone = (currentReseller.value?.contactNumber || currentReseller.value?.whatsapp || adminStore.providerBankInfo?.whatsapp || '').replace(/\D/g, '')
+      const targetPhone = effectiveDistributorPhone.value.replace(/\D/g, '')
       const msg = `¡Hola ${resellerStoreName.value}! 🎮 Quiero consultar / pedir manualmente el siguiente juego:\n\n• *Juego:* ${title}\n• *Consola:* ${clientGameInquiryForm.value.platform}\n• *Licencia:* ${clientGameInquiryForm.value.licenseType}\n• *Detalle:* ${clientGameInquiryForm.value.notes.trim() || 'Consulta de precio y disponibilidad'}\n• *Mi Nombre:* ${cName}${cPhone ? ` (${cPhone})` : ''}\n• *Ref Ticket:* #${res.ticket.id}`
       const waUrl = targetPhone
         ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`
@@ -1636,6 +1771,7 @@ onMounted(() => {
   }
   adminStore.initStoreSettingsSync().catch(() => {})
   applyRouteParams()
+  checkAndTriggerGamingPopup()
 })
 
 watch([() => route.path, () => route.query], () => {
@@ -2111,9 +2247,7 @@ const toggleFreeShipping = () => {
 }
 
 const getWhatsAppContactUrl = (customMsg = '') => {
-  const targetPhone = (!isDirectSale.value && currentReseller.value?.contactNumber)
-    ? currentReseller.value.contactNumber
-    : (adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321')
+  const targetPhone = effectiveDistributorPhone.value
   
   let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
@@ -2457,7 +2591,7 @@ const sendOrderToWhatsApp = () => {
   const ord = lastPlacedOrder.value
   const targetPhone = ord.isDirect
     ? (ord.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321')
-    : (ord.reseller?.contactNumber || ord.providerBankInfo?.whatsapp || '+54 9 291 565-8321')
+    : (ord.reseller?.shopConfig?.whatsapp || ord.reseller?.contactNumber || ord.reseller?.whatsapp || ord.reseller?.phone || ord.providerBankInfo?.whatsapp || '+54 9 291 565-8321')
 
   let cleanPhone = targetPhone.replace(/[^0-9]/g, '')
   if (cleanPhone.startsWith('0')) {
@@ -2839,7 +2973,9 @@ const submitOrder = async () => {
           payerEmail: clientForm.value.email || '',
           payerPhone: clientForm.value.whatsapp,
           origin: window.location.origin,
-          customAccessToken: (adminStore.mercadoPagoConfig?.accessToken || '').trim()
+          customAccessToken: ((!isDirectSale.value && (resellerShopConfig.value?.mercadoPagoAccessToken || currentReseller.value?.mercadoPagoAccessToken))
+            ? (resellerShopConfig.value?.mercadoPagoAccessToken || currentReseller.value?.mercadoPagoAccessToken)
+            : (adminStore.mercadoPagoConfig?.accessToken || '')).trim()
         })
       })
 
@@ -6678,9 +6814,10 @@ const submitOrder = async () => {
             <label class="block font-bold uppercase text-slate-300 text-xs">
               Elige tu Medio de Pago
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div :class="['grid gap-2.5', isMercadoPagoAvailable ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1']">
               <!-- OPCIÓN 1: MERCADO PAGO -->
               <button 
+                v-if="isMercadoPagoAvailable"
                 type="button" 
                 @click="clientForm.paymentMethod = 'mercadopago'"
                 :class="[
@@ -6780,7 +6917,7 @@ const submitOrder = async () => {
               <p v-if="currentReseller?.cuit">CUIT/CUIL: <span class="text-slate-300">{{ currentReseller.cuit }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
                 <span class="text-amber-300 font-bold select-all">Alias/CBU: {{ currentReseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR' }}</span>
-                <span class="text-[11px] text-slate-300 font-sans">WhatsApp: {{ currentReseller?.contactNumber }}</span>
+                <span class="text-[11px] text-slate-300 font-sans">WhatsApp: {{ effectiveDistributorPhone }}</span>
               </div>
               <p v-if="currentReseller?.cbuNumber" class="text-[11px] text-slate-400 font-mono pt-0.5">
                 CBU/CVU N°: <span class="text-slate-200 select-all">{{ currentReseller.cbuNumber }}</span>
@@ -7727,11 +7864,155 @@ const submitOrder = async () => {
       :payload="sharePlaquePayload"
       :store-name="resellerStoreName"
       :reseller-ref="clientForm.selectedResellerId || 'DIRECT'"
-      :contact-phone="currentReseller?.contactNumber || adminStore.providerBankInfo?.whatsapp || ''"
+      :contact-phone="effectiveDistributorPhone"
       :promo-code="sharePlaquePayload?.promoCode || cartStore.appliedCoupon?.code || activePromoBanner?.code || ''"
       :promo-label="sharePlaquePayload?.promoLabel || activePromoPlaqueLabel"
+      :is-reseller="false"
       @close="showSharePlaqueModal = false" 
     />
+
+    <!-- POPUP INTERACTIVO GAMING PARA CLIENTES (1 O 2 AL DÍA) -->
+    <div 
+      v-if="showGamingAttentionPopup && isGamingNavVisible" 
+      class="fixed inset-0 z-[88] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
+    >
+      <div class="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-indigo-950/60 to-slate-950 border border-indigo-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_0_60px_rgba(99,102,241,0.35)] overflow-hidden my-auto text-white space-y-4">
+        
+        <!-- Efecto de resplandor decorativo de fondo -->
+        <div class="absolute -top-24 -right-24 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-56 h-56 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Botón cerrar X -->
+        <button 
+          @click="showGamingAttentionPopup = false" 
+          type="button" 
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition cursor-pointer z-10"
+          title="Cerrar cartel"
+        >
+          ✕
+        </button>
+
+        <!-- Cabecera llamativa tipo cartel gamer -->
+        <div class="space-y-2 pr-8">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-[10px] font-mono font-black tracking-wider uppercase shadow animate-pulse">
+            <span>🔥</span>
+            <span>Atención Gamer · Entrega 60/90 min</span>
+          </div>
+
+          <h3 class="text-lg sm:text-2xl font-black text-white leading-tight tracking-tight">
+            ¿Buscás Juegos para <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-300 to-pink-400">PS5 o PS4</span>?
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            ¡Activá tus títulos favoritos hoy mismo con <strong class="text-white">licencias digitales 100% originales</strong>, garantía oficial y asistencia paso a paso!
+          </p>
+        </div>
+
+        <!-- Fila de Beneficios Rápidos -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono text-center">
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/20 text-indigo-200">
+            <span class="block text-sm mb-0.5">⚡</span>
+            <span class="font-bold block">60/90 Min</span>
+            <span class="text-[9px] text-slate-400">Entrega rápida</span>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-emerald-500/20 text-emerald-200">
+            <span class="block text-sm mb-0.5">🛡️</span>
+            <span class="font-bold block">Garantía</span>
+            <span class="text-[9px] text-slate-400">100% Oficial</span>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-amber-500/20 text-amber-200">
+            <span class="block text-sm mb-0.5">🎮</span>
+            <span class="font-bold block">Primarias</span>
+            <span class="text-[9px] text-slate-400">&amp; Secundarias</span>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-sky-500/20 text-sky-200">
+            <span class="block text-sm mb-0.5">💬</span>
+            <span class="font-bold block">Asesoría</span>
+            <span class="text-[9px] text-slate-400">WhatsApp 24/7</span>
+          </div>
+        </div>
+
+        <!-- Muestra interactiva de 3 juegos destacados -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
+            <span>🔥 Títulos Más Solicitados de la Semana:</span>
+            <span class="text-sky-400 font-mono text-[10px]">Stock Disponible</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div 
+              v-for="(game, idx) in popupFeaturedGames" 
+              :key="idx"
+              @click="handleGamingPopupWhatsApp(game.title)"
+              class="group relative bg-slate-950/90 border border-slate-800 hover:border-indigo-400/60 rounded-2xl p-2 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-[1.02] shadow"
+              :title="`Consultar ${game.title} por WhatsApp`"
+            >
+              <div class="w-full aspect-[3/4] rounded-xl overflow-hidden bg-slate-900 mb-1.5 relative">
+                <img 
+                  v-if="game.image" 
+                  :src="game.image" 
+                  :alt="game.title"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                >
+                <div v-else class="w-full h-full flex items-center justify-center text-xl bg-indigo-950/50">🎮</div>
+                <span class="absolute top-1 left-1 text-[7px] font-mono font-black px-1 rounded bg-black/70 text-indigo-300 border border-indigo-500/30">
+                  {{ game.platform || 'PS5/PS4' }}
+                </span>
+              </div>
+              <span class="text-[10px] font-black text-white line-clamp-1 group-hover:text-indigo-300 transition-colors">
+                {{ game.title }}
+              </span>
+              <span class="text-[9px] text-emerald-400 font-mono font-bold mt-0.5">
+                Consultar 💬
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botonera de Acción Principal -->
+        <div class="space-y-2 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <!-- Botón 1: Explorar Catálogo Gamer -->
+            <button 
+              type="button" 
+              @click="handleGamingPopupExplore"
+              class="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
+            >
+              <span>🎮</span>
+              <span>Ver Catálogo de Juegos</span>
+            </button>
+
+            <!-- Botón 2: Pedir por WhatsApp Directo -->
+            <button 
+              type="button" 
+              @click="handleGamingPopupWhatsApp('')"
+              class="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/30 transition active:scale-95 cursor-pointer"
+            >
+              <span>💬</span>
+              <span>Pedir Juego por WhatsApp</span>
+            </button>
+          </div>
+
+          <!-- Enlaces para cerrar / no mostrar más hoy -->
+          <div class="flex items-center justify-between pt-1 px-1 text-[11px] text-slate-400">
+            <button 
+              type="button" 
+              @click="showGamingAttentionPopup = false" 
+              class="hover:text-slate-200 transition underline cursor-pointer"
+            >
+              Cerrar por ahora
+            </button>
+            <button 
+              type="button" 
+              @click="dismissGamingPopupForToday" 
+              class="hover:text-slate-200 transition underline cursor-pointer text-slate-400"
+            >
+              No mostrar más por hoy
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
 
     <!-- MODAL: DEJAR RESEÑA DE CLIENTE -->
     <div v-if="showAddReviewModal" class="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">

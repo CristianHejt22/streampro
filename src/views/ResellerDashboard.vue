@@ -182,7 +182,10 @@ const initShopForm = () => {
     enabledStreamingPlatforms: cfg.enabledStreamingPlatforms || ['Netflix', 'Netflix Perfil Extra', 'Max', 'Disney+', 'Spotify', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro'],
     enabledGamingPlatforms: cfg.enabledGamingPlatforms || ['PS5', 'PS4'],
     enabledCombos: cfg.enabledCombos || [],
-    enabledPhysicalCategories: cfg.enabledPhysicalCategories || []
+    enabledPhysicalCategories: cfg.enabledPhysicalCategories || [],
+    mercadoPagoEnabled: cfg.mercadoPagoEnabled !== false,
+    mercadoPagoAccessToken: cfg.mercadoPagoAccessToken || cur.mercadoPagoAccessToken || '',
+    mercadoPagoPublicKey: cfg.mercadoPagoPublicKey || cur.mercadoPagoPublicKey || ''
   }
 }
 
@@ -4171,6 +4174,70 @@ const submitResellerGameInquiry = () => {
               </div>
             </div>
           </div>
+
+          <!-- PASARELA DE COBRO CON MERCADO PAGO PROPIA (OPCIONAL) -->
+          <div class="bg-slate-900/80 border border-sky-500/25 p-6 rounded-3xl shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">💳</span>
+                <div>
+                  <h4 class="text-base font-black text-white">Pasarela Mercado Pago de tu Tienda</h4>
+                  <p class="text-[11px] text-slate-400">Cobra a tus clientes con débito, crédito o saldo en cuenta.</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="shopForm.mercadoPagoEnabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+              </label>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Si activas Mercado Pago e ingresas tu <strong>Access Token</strong> personal, los pagos de tus clientes irán de forma directa e inmediata a tu cuenta de Mercado Pago. Si lo desactivas, tus clientes abonarán exclusivamente mediante <strong>Transferencia Bancaria</strong> con los datos configurados arriba.
+            </p>
+
+            <div v-if="shopForm.mercadoPagoEnabled" class="space-y-3 pt-2">
+              <div>
+                <label class="block font-bold text-sky-300 uppercase text-xs mb-1">Tu Access Token de Mercado Pago (APP_USR-...)</label>
+                <input 
+                  v-model="shopForm.mercadoPagoAccessToken" 
+                  type="password" 
+                  placeholder="APP_USR-0000000000000000-000000-..."
+                  class="w-full bg-slate-950 border border-sky-500/40 focus:border-sky-400 rounded-xl p-2.5 text-white font-mono text-xs outline-none"
+                >
+                <span class="text-[10px] text-slate-400 block mt-1">
+                  Obtén tu Access Token en <a href="https://www.mercadopago.com.ar/developers/panel/app" target="_blank" rel="noopener" class="text-sky-400 hover:underline">Mercado Pago Developers</a> (Credenciales de Producción).
+                </span>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase text-xs mb-1">Public Key (Opcional)</label>
+                <input 
+                  v-model="shopForm.mercadoPagoPublicKey" 
+                  type="text" 
+                  placeholder="APP_USR-..."
+                  class="w-full bg-slate-950 border border-slate-800 focus:border-sky-400 rounded-xl p-2.5 text-slate-300 font-mono text-xs outline-none"
+                >
+              </div>
+
+              <div class="p-3 rounded-2xl bg-sky-950/40 border border-sky-500/20 text-sky-200 text-xs space-y-1">
+                <span class="font-bold flex items-center gap-1.5 text-sky-300">
+                  <span>⚡</span> Cobro Automático Activo
+                </span>
+                <p class="text-[11px] text-slate-300">
+                  Tus clientes verán la opción de Mercado Pago al pagar y las compras se acreditarán directamente a tu saldo.
+                </p>
+              </div>
+            </div>
+
+            <div v-else class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs space-y-1 font-mono">
+              <span class="font-bold flex items-center gap-1.5 text-amber-200 font-sans">
+                <span>⚠️</span> Mercado Pago Desactivado
+              </span>
+              <p class="text-[11px] text-slate-300 font-sans">
+                En tu tienda pública solo estará habilitada la opción de Transferencia Bancaria (CBU / CVU / Alias).
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- COLUMNA DERECHA: SELECCIÓN DE PRODUCTOS QUE QUIERES OFRECER (5 COLS) -->
@@ -5183,6 +5250,7 @@ const submitResellerGameInquiry = () => {
       :store-name="resellerStore.sessionUser?.storeName || resellerStore.sessionUser?.name || 'StreamePro Distribuidor'"
       :reseller-ref="currentResellerId"
       :contact-phone="resellerStore.sessionUser?.contactNumber || resellerStore.sessionUser?.whatsapp || ''"
+      :is-reseller="true"
       @close="showSharePlaqueModal = false; sharePlaquePayload = null"
       @open-in-studio="(p) => { showSharePlaqueModal = false; flyerInitialProduct = p; showFlyerModal = true }"
     />

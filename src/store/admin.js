@@ -3668,6 +3668,17 @@ export const useAdminStore = defineStore('admin', {
       if (shopConfigUpdates.showPhysical !== undefined) {
         res.shopConfig.showPhysical = Boolean(shopConfigUpdates.showPhysical)
       }
+      if (shopConfigUpdates.mercadoPagoEnabled !== undefined) {
+        res.shopConfig.mercadoPagoEnabled = Boolean(shopConfigUpdates.mercadoPagoEnabled)
+      }
+      if (shopConfigUpdates.mercadoPagoAccessToken !== undefined) {
+        res.shopConfig.mercadoPagoAccessToken = String(shopConfigUpdates.mercadoPagoAccessToken).trim()
+        res.mercadoPagoAccessToken = res.shopConfig.mercadoPagoAccessToken
+      }
+      if (shopConfigUpdates.mercadoPagoPublicKey !== undefined) {
+        res.shopConfig.mercadoPagoPublicKey = String(shopConfigUpdates.mercadoPagoPublicKey).trim()
+        res.mercadoPagoPublicKey = res.shopConfig.mercadoPagoPublicKey
+      }
       this.persist(DB_KEYS.RESELLERS)
       saveResellerToFirebase(res).catch(() => {})
       return { success: true, shopConfig: res.shopConfig, reseller: res }
@@ -7229,6 +7240,17 @@ export const useResellerStore = defineStore('reseller', {
       }
       if (Array.isArray(config.enabledPhysicalCategories)) {
         res.shopConfig.enabledPhysicalCategories = [...config.enabledPhysicalCategories]
+      }
+      if (config.mercadoPagoEnabled !== undefined) {
+        res.shopConfig.mercadoPagoEnabled = Boolean(config.mercadoPagoEnabled)
+      }
+      if (config.mercadoPagoAccessToken !== undefined) {
+        res.shopConfig.mercadoPagoAccessToken = String(config.mercadoPagoAccessToken).trim()
+        res.mercadoPagoAccessToken = res.shopConfig.mercadoPagoAccessToken
+      }
+      if (config.mercadoPagoPublicKey !== undefined) {
+        res.shopConfig.mercadoPagoPublicKey = String(config.mercadoPagoPublicKey).trim()
+        res.mercadoPagoPublicKey = res.shopConfig.mercadoPagoPublicKey
       }
       adminStore.persist(DB_KEYS.RESELLERS)
       saveResellerToFirebase(res).catch(() => {})

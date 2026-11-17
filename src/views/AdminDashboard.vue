@@ -418,7 +418,10 @@ const openResellerShopModal = (reseller) => {
       : [],
     enabledPhysicalCategories: Array.isArray(cfg.enabledPhysicalCategories) 
       ? [...cfg.enabledPhysicalCategories] 
-      : []
+      : [],
+    mercadoPagoEnabled: cfg.mercadoPagoEnabled !== false,
+    mercadoPagoAccessToken: cfg.mercadoPagoAccessToken || reseller.mercadoPagoAccessToken || '',
+    mercadoPagoPublicKey: cfg.mercadoPagoPublicKey || reseller.mercadoPagoPublicKey || ''
   }
   showResellerShopModal.value = true
 }
@@ -521,7 +524,10 @@ const saveResellerShopConfigFromAdmin = () => {
     enabledStreamingPlatforms: resellerShopForm.value.enabledStreamingPlatforms,
     enabledGamingPlatforms: resellerShopForm.value.enabledGamingPlatforms,
     enabledCombos: resellerShopForm.value.enabledCombos,
-    enabledPhysicalCategories: resellerShopForm.value.enabledPhysicalCategories
+    enabledPhysicalCategories: resellerShopForm.value.enabledPhysicalCategories,
+    mercadoPagoEnabled: Boolean(resellerShopForm.value.mercadoPagoEnabled),
+    mercadoPagoAccessToken: String(resellerShopForm.value.mercadoPagoAccessToken || '').trim(),
+    mercadoPagoPublicKey: String(resellerShopForm.value.mercadoPagoPublicKey || '').trim()
   }
 
   const res = adminStore.updateResellerShopConfig(editingResellerShop.value.id, patch)
@@ -14576,6 +14582,56 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
             </div>
           </div>
 
+          <!-- Pasarela Mercado Pago del Distribuidor -->
+          <div class="p-4 bg-slate-950 rounded-2xl border border-sky-500/30 space-y-3 shadow-md">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-base">💳</span>
+                <div>
+                  <span class="font-bold text-white text-xs block">Pasarela Mercado Pago Propia</span>
+                  <span class="text-[10px] text-slate-400">Permite cobrar con Mercado Pago directamente a la cuenta del distribuidor</span>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="resellerShopForm.mercadoPagoEnabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+              </label>
+            </div>
+
+            <div v-if="resellerShopForm.mercadoPagoEnabled" class="space-y-3 pt-2 border-t border-slate-800/80">
+              <div>
+                <label class="block font-bold text-slate-300 uppercase text-[10px] mb-1">
+                  Access Token del Distribuidor (APP_USR-...)
+                </label>
+                <input 
+                  v-model="resellerShopForm.mercadoPagoAccessToken" 
+                  type="password" 
+                  placeholder="APP_USR-0000000000000000-000000-..."
+                  class="w-full bg-slate-900 border border-slate-800 focus:border-sky-400 rounded-xl p-2.5 text-white font-mono text-xs outline-none"
+                >
+                <span class="text-[10px] text-slate-400 block mt-1">
+                  Los pagos de sus clientes ingresarán directamente a esta cuenta de Mercado Pago. Si se deja vacío, utilizará las credenciales maestras del sistema.
+                </span>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-300 uppercase text-[10px] mb-1">
+                  Public Key (Opcional)
+                </label>
+                <input 
+                  v-model="resellerShopForm.mercadoPagoPublicKey" 
+                  type="text" 
+                  placeholder="APP_USR-..."
+                  class="w-full bg-slate-900 border border-slate-800 focus:border-sky-400 rounded-xl p-2.5 text-slate-300 font-mono text-xs outline-none"
+                >
+              </div>
+            </div>
+
+            <div v-else class="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl font-mono">
+              ⚠️ <strong>Mercado Pago Desactivado:</strong> En la tienda de este distribuidor solo se ofrecerá pago por Transferencia Bancaria a su CBU/Alias.
+            </div>
+          </div>
+
           <!-- Botones de Acción -->
           <div class="flex gap-3 pt-3 border-t border-slate-800">
             <button 
@@ -15529,6 +15585,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
       :contact-phone="adminPlaqueContext.contactPhone || adminStore.providerBankInfo.whatsapp || adminStore.adminAuth.whatsapp || ''"
       :promo-code="sharePlaquePayload?.promoCode || ''"
       :promo-label="sharePlaquePayload?.promoLabel || ''"
+      :is-reseller="true"
       @close="showSharePlaqueModal = false; sharePlaquePayload = null"
       @open-in-studio="(p) => { showSharePlaqueModal = false; flyerInitialProduct = p; showFlyerModal = true }"
     />

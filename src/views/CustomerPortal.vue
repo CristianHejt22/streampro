@@ -2171,6 +2171,7 @@ const getGameInstallSteps = (order) => {
       :contact-phone="adminStore.providerBankInfo?.whatsapp || ''"
       :promo-code="matchedDiscountUser?.code || ''"
       :promo-label="promoPlaquePayload?.promoLabel || ''"
+      :is-reseller="false"
       @close="showPromoPlaqueModal = false; promoPlaquePayload = null"
     />
 
