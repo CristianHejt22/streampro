@@ -237,7 +237,11 @@ export async function resolvePreviewPayload(query = {}) {
 }
 
 async function resolveBasePreviewPayload(query = {}) {
-  const refCode = String(query.ref || '').trim()
+  const shopSlug = String(query.shop || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+  const shopDisplayName = shopSlug
+    ? (shopSlug.length <= 6 ? shopSlug.toUpperCase() : shopSlug.charAt(0).toUpperCase() + shopSlug.slice(1))
+    : ''
+  const refCode = String(query.ref || (shopSlug ? shopSlug : '')).trim()
   const licParam = String(query.lic || 'primary').toLowerCase() === 'secondary' ? 'secondary' : 'primary'
   const prodId = String(query.prod || query.id || query.p || '').trim()
   const gameId = String(query.game || query.g || '').trim()
@@ -410,54 +414,93 @@ async function resolveBasePreviewPayload(query = {}) {
 
   if (sec === 'physical') {
     featuredItems = pList.slice(0, 4).map(formatPhysicalItem)
-    headline = 'Catálogo Tecnológico & Hogar | StreamePro'
+    headline = shopDisplayName
+      ? `Catálogo Tecnológico & Hogar | Tienda ${shopDisplayName}`
+      : 'Catálogo Tecnológico & Hogar | StreamePro'
     sub = `+${pList.length || 300} productos con stock real y envíos a todo el país.`
-    badge = 'ENVÍOS A TODO EL PAÍS'
-    targetPath = '/tienda'
+    badge = shopDisplayName ? `TIENDA ${shopDisplayName}` : 'ENVÍOS A TODO EL PAÍS'
+    targetPath = shopSlug ? `/${encodeURIComponent(shopSlug)}/tienda` : '/tienda'
   } else if (sec === 'packages') {
     const pkgs = Object.values(DEFAULT_PACKAGES_META)
+    const storeTitle = shopDisplayName ? `Combos & Packs en Oferta | Tienda ${shopDisplayName}` : 'Combos & Packs Streaming 4K StreamePro'
+    const storeBadge = shopDisplayName ? `TIENDA OFICIAL ${shopDisplayName}` : 'HASTA 45% OFF EN COMBOS'
+    const storeSub = shopDisplayName
+      ? `Promociones y combos 4K con perfiles privados en la tienda oficial de ${shopDisplayName}.`
+      : 'Combiná Netflix, Disney+, Max, Prime Video y Spotify con perfiles privados con PIN.'
+    const storeDesc = shopDisplayName
+      ? `🎁 Combos y Paquetes de Entretenimiento 4K en la tienda oficial ${shopDisplayName}. Perfiles privados con PIN y garantía oficial StreamePro.`
+      : '🎁 Combos Streaming Oficiales StreamePro: Netflix + Disney+ + Max y Dúo Series & Música con ahorro inmediato.'
+    const canonical = shopSlug
+      ? `https://streamepro.me/${encodeURIComponent(shopSlug)}/combos`
+      : `https://streamepro.me/combos${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`
+    const redirect = shopSlug
+      ? `/${encodeURIComponent(shopSlug)}/combos`
+      : `/?sec=packages${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}`
+
     return {
       mode: 'single',
       type: 'package',
       id: pkgs[0].id,
       refCode,
-      title: 'Combos & Packs Streaming 4K StreamePro',
-      badge: 'HASTA 25% OFF EN COMBOS',
+      shopSlug,
+      title: storeTitle,
+      badge: storeBadge,
       priceNumeric: pkgs[0].promoPrice,
-      priceStr: `Desde $${pkgs[1].promoPrice.toLocaleString('es-AR')} ARS`,
+      priceStr: `Desde $${pkgs[1]?.promoPrice ? pkgs[1].promoPrice.toLocaleString('es-AR') : '9.400'} ARS`,
       services: pkgs[0].services,
-      subtitle: 'Combiná Netflix, Disney+, Max y Spotify con perfiles privados con PIN.',
-      description: '🎁 Combos Streaming Oficiales StreamePro: Netflix + Disney+ + Max y Dúo Series & Música con ahorro inmediato.',
-      canonicalUrl: `https://streamepro.me/combos${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`,
-      redirectUrl: `/?sec=packages${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}`
+      subtitle: storeSub,
+      description: storeDesc,
+      canonicalUrl: canonical,
+      redirectUrl: redirect
     }
+  } else if (sec === 'digital' || sec === 'streaming' || sec === 'suscripciones') {
+    featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
+    headline = shopDisplayName
+      ? `Suscripciones Digitales 4K | Tienda ${shopDisplayName}`
+      : 'Suscripciones Digitales 4K & Streaming Oficial'
+    sub = 'Netflix, Disney+, Max, Prime Video, Spotify y más con activación 24/7.'
+    badge = shopDisplayName ? `TIENDA ${shopDisplayName} · STREAMING` : 'ACTIVACIÓN INMEDIATA 24/7'
+    targetPath = shopSlug ? `/${encodeURIComponent(shopSlug)}/suscripciones` : '/suscripciones'
+  } else if (sec === 'gaming') {
+    featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
+    headline = shopDisplayName
+      ? `Catálogo Gamer PS5 & PS4 | Tienda ${shopDisplayName}`
+      : `Catálogo Gamer PS5 & PS4 (+${gList.length} Juegos)`
+    sub = 'Entrega garantizada 60/90 min · Cuentas Primarias y Secundarias Oficiales.'
+    badge = shopDisplayName ? `TIENDA ${shopDisplayName} · GAMING` : 'PLAYSTATION STORE OFICIAL'
+    targetPath = shopSlug ? `/${encodeURIComponent(shopSlug)}/juegos` : '/juegos'
   } else if (sec === 'sorteos') {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
     headline = 'Sorteos Oficiales & Descuentos'
     sub = 'Participa gratis por premios gamer/streaming o activa tu código de embajador con porcentajes por rubro.'
     badge = 'SORTEOS OFICIALES STREAMEPRO'
-    targetPath = '/sorteos'
+    targetPath = shopSlug ? `/${encodeURIComponent(shopSlug)}/sorteos` : '/sorteos'
+  } else if (shopSlug) {
+    featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
+    headline = `StreamePro | Tienda Oficial ${shopDisplayName}`
+    sub = `Combos 4K, Videojuegos PS5/PS4 y Tecnología en la tienda oficial de ${shopDisplayName}.`
+    badge = `DISTRIBUIDOR OFICIAL ${shopDisplayName}`
+    targetPath = `/${encodeURIComponent(shopSlug)}`
   } else {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
-    headline = sec === 'gaming'
-      ? `Catálogo Gamer PS5 & PS4 (+${gList.length} Juegos)`
-      : 'StreamePro | Juegos Digitales, Streaming & Tienda Oficial'
+    headline = 'StreamePro | Juegos Digitales, Streaming & Tienda Oficial'
     sub = 'Entrega garantizada 60/90 min · Cuentas Primarias y Secundarias Oficiales.'
     badge = 'PLAYSTATION STORE OFICIAL'
-    targetPath = sec === 'gaming' ? '/juegos' : '/'
+    targetPath = '/'
   }
 
-  const refQs = refCode ? `?ref=${encodeURIComponent(refCode)}` : ''
+  const refQs = (!shopSlug && refCode) ? `?ref=${encodeURIComponent(refCode)}` : ''
   return {
     mode: featuredItems.length > 1 ? 'multi' : 'catalog',
     type: sec === 'physical' ? 'physical' : 'gaming',
     refCode,
+    shopSlug,
     headline,
     subtitle: sub,
     badge,
     items: featuredItems,
     canonicalUrl: `https://streamepro.me${targetPath}${refQs}`,
-    redirectUrl: `/${sec && sec !== 'all' ? `?sec=${encodeURIComponent(sec)}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}` : refQs}`
+    redirectUrl: shopSlug ? targetPath : `/${sec && sec !== 'all' ? `?sec=${encodeURIComponent(sec)}${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}` : refQs}`
   }
 }
 

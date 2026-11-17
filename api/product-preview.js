@@ -16,14 +16,14 @@ function escapeHtml(str) {
 
 function buildOgImageUrl(query = {}) {
   const params = new URLSearchParams()
-  const forwardKeys = ['game', 'g', 'lic', 'prod', 'p', 'id', 'pkg', 'plat', 'games', 'prods', 'multi', 'sec', 'ref', 'promo', 'sorteo', 'title', 'price', 'orig']
+  const forwardKeys = ['shop', 'game', 'g', 'lic', 'prod', 'p', 'id', 'pkg', 'plat', 'games', 'prods', 'multi', 'sec', 'ref', 'promo', 'sorteo', 'title', 'price', 'orig']
   for (const key of forwardKeys) {
     const val = query[key]
     if (val !== undefined && val !== null && String(val).trim() !== '') {
       params.set(key, String(val).trim())
     }
   }
-  params.set('v', '4')
+  params.set('v', '5')
   return `https://streamepro.me/api/og-image?${params.toString()}`
 }
 

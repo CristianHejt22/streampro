@@ -226,7 +226,7 @@ function buildSingleOverlayVNode(payload, hasPhoto) {
           color: '#ffffff',
           textAlign: 'center',
           justifyContent: 'center'
-        }, cleanText(payload.platform || 'STREAMEPRO', 24).toUpperCase()),
+        }, cleanText(payload.platform || (payload.type === 'package' ? (payload.shopSlug ? `TIENDA ${payload.shopSlug.toUpperCase()}` : 'COMBOS & PACKS') : 'STREAMEPRO'), 24).toUpperCase()),
         servicesList.length > 0
           ? el('div', {
               display: 'flex',
@@ -632,10 +632,7 @@ export async function renderOgJpegBuffer(payload) {
   const rawImg = payload.image || ''
   const photoBuf = await fetchImageBuffer(rawImg)
 
-  let baseSharp = sharp({
-    create: { width, height, channels: 4, background: '#060b16' }
-  })
-
+  let baseSharp
   if (photoBuf) {
     const backdrop = await sharp(photoBuf)
       .resize(width, height, { fit: 'cover' })
@@ -643,6 +640,27 @@ export async function renderOgJpegBuffer(payload) {
       .modulate({ brightness: 0.25, saturation: 1.2 })
       .toBuffer()
     baseSharp = sharp(backdrop)
+  } else {
+    try {
+      const bannerUrl = new URL('../public/og-banner.jpg', import.meta.url)
+      if (fs.existsSync(bannerUrl)) {
+        const bannerBuf = fs.readFileSync(bannerUrl)
+        const ambientBackdrop = await sharp(bannerBuf)
+          .resize(width, height, { fit: 'cover' })
+          .blur(32)
+          .modulate({ brightness: 0.32, saturation: 1.2 })
+          .toBuffer()
+        baseSharp = sharp(ambientBackdrop)
+      } else {
+        baseSharp = sharp({
+          create: { width, height, channels: 4, background: '#060b16' }
+        })
+      }
+    } catch {
+      baseSharp = sharp({
+        create: { width, height, channels: 4, background: '#060b16' }
+      })
+    }
   }
 
   const composites = []
@@ -674,6 +692,6 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('OG image render error:', err)
     res.setHeader('X-Og-Error', String(err?.message || err || 'unknown').replace(/[\r\n]/g, ' ').slice(0, 180))
-    return res.redirect(302, 'https://streamepro.me/og-banner.png')
+    return res.redirect(302, 'https://streamepro.me/og-banner.png?v=2')
   }
 }

@@ -218,6 +218,105 @@
       "destination": "/api/product-preview?sec=packages"
     },
     {
+      "source": "/paquetes",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=packages"
+    },
+    {
+      "source": "/ofertas",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=packages"
+    },
+    {
+      "source": "/suscripciones",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=digital"
+    },
+    {
+      "source": "/streaming",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=digital"
+    },
+    {
+      "source": "/digital",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=digital"
+    },
+    {
+      "source": "/gaming",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=gaming"
+    },
+    {
+      "source": "/videojuegos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=gaming"
+    },
+    {
+      "source": "/catalogo",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=physical"
+    },
+    {
+      "source": "/productos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?sec=physical"
+    },
+    {
       "source": "/sorteos",
       "has": [
         {
@@ -238,6 +337,204 @@
         }
       ],
       "destination": "/api/product-preview?promo=:code"
+    },
+    {
+      "source": "/ref/:ref",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?ref=:ref"
+    },
+    {
+      "source": "/r/:ref",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?ref=:ref"
+    },
+    {
+      "source": "/tienda/:shopSlug/:section",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=:section"
+    },
+    {
+      "source": "/tienda/:shopSlug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug"
+    },
+    {
+      "source": "/:shopSlug/combos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=packages"
+    },
+    {
+      "source": "/:shopSlug/paquetes",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=packages"
+    },
+    {
+      "source": "/:shopSlug/ofertas",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=packages"
+    },
+    {
+      "source": "/:shopSlug/juegos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=gaming"
+    },
+    {
+      "source": "/:shopSlug/gaming",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=gaming"
+    },
+    {
+      "source": "/:shopSlug/videojuegos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=gaming"
+    },
+    {
+      "source": "/:shopSlug/tienda",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=physical"
+    },
+    {
+      "source": "/:shopSlug/catalogo",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=physical"
+    },
+    {
+      "source": "/:shopSlug/productos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=physical"
+    },
+    {
+      "source": "/:shopSlug/suscripciones",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=digital"
+    },
+    {
+      "source": "/:shopSlug/streaming",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=digital"
+    },
+    {
+      "source": "/:shopSlug/digital",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=digital"
+    },
+    {
+      "source": "/:shopSlug/sorteos",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug&sec=sorteos"
+    },
+    {
+      "source": "/:shopSlug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(TelegramBot|WhatsApp|facebookexternalhit|Facebot|Twitterbot|Discordbot|Slackbot|LinkedInBot|Applebot|Pinterest|SkypeUriPreview).*"
+        }
+      ],
+      "destination": "/api/product-preview?shop=:shopSlug"
     },
     {
       "source": "/(.*)",
