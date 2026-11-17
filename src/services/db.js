@@ -78,15 +78,33 @@ export function loadDb(key, defaultValue) {
   }
 }
 
+export const appBroadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('streamepro_catalog_sync')
+  : null
+
+export function broadcastDbChange(key, value) {
+  if (appBroadcast) {
+    try {
+      appBroadcast.postMessage({
+        type: 'DB_CHANGED',
+        key,
+        timestamp: Date.now()
+      })
+    } catch (e) {}
+  }
+}
+
 export function saveDb(key, value) {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+    broadcastDbChange(key, value)
     return true
   } catch (e) {
     if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
       try {
         localStorage.removeItem(STORAGE_PREFIX + DB_KEYS.GAMING_PRODUCTS)
         localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+        broadcastDbChange(key, value)
         return true
       } catch {}
     }

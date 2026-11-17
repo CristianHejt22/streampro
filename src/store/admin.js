@@ -3,7 +3,7 @@ import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import gamingCategoriesData from '../assets/gamingCategories.json'
 import gamingSubcategoriesData from '../assets/gamingSubcategories.json'
-import { loadDb, saveDb, DB_KEYS, clearDbAll } from '../services/db'
+import { loadDb, saveDb, DB_KEYS, clearDbAll, broadcastDbChange } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
@@ -1596,8 +1596,10 @@ export const useAdminStore = defineStore('admin', {
         this.persistStoreSettings()
       } else if (key === DB_KEYS.PHYSICAL_PRODUCTS) {
         saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.PHYSICAL_CATEGORIES) {
         saveDb(DB_KEYS.PHYSICAL_CATEGORIES, this.physicalCategories)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.PHYSICAL_ORDERS) {
         saveDb(DB_KEYS.PHYSICAL_ORDERS, this.physicalOrders)
       } else if (key === DB_KEYS.WALLET_TRANSACTIONS) {
@@ -1610,8 +1612,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.REGISTERED_USERS, this.registeredUsers)
       } else if (key === DB_KEYS.PROVIDER_BANK) {
         saveDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.PROVIDER_BANK_ACCOUNTS) {
         saveDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, this.providerBankAccounts)
+        this.persistStoreSettings()
       } else if (key === DB_KEYS.BANK_TRANSFERS) {
         saveDb(DB_KEYS.BANK_TRANSFERS, this.bankTransfers)
       } else if (key && this[key] !== undefined) {
@@ -2008,6 +2012,27 @@ export const useAdminStore = defineStore('admin', {
     },
     persistStoreSettings() {
       const overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
+
+      // Extraer personalizaciones de productos físicos modificados para sincronizar en la nube
+      const physicalOverrides = (Array.isArray(this.physicalProducts) ? this.physicalProducts : [])
+        .filter(p => p.isCustom || p.adminOnly || p.updatedAt || p.source !== 'revende.com.ar')
+        .map(p => ({
+          id: String(p.id),
+          name: p.name || p.title,
+          title: p.title || p.name,
+          price: p.price,
+          priceNumeric: p.priceNumeric,
+          originalPrice: p.originalPrice,
+          originalPriceNumeric: p.originalPriceNumeric,
+          stock: p.stock,
+          image: p.image,
+          category: p.category,
+          categoryId: p.categoryId,
+          adminOnly: Boolean(p.adminOnly),
+          active: p.active !== false,
+          updatedAt: p.updatedAt || new Date().toISOString()
+        }))
+
       const settings = {
         isStoreVisible: this.isStoreVisible,
         isPhysicalStoreVisible: this.isPhysicalStoreVisible,
@@ -2018,7 +2043,11 @@ export const useAdminStore = defineStore('admin', {
         pricingCatalog: this.pricingCatalog,
         packages: this.packages,
         gamingProviderSites: this.gamingProviderSites,
-        gamingOverrides: overrides
+        gamingOverrides: overrides,
+        providerBankInfo: this.providerBankInfo,
+        providerBankAccounts: this.providerBankAccounts,
+        physicalOverrides,
+        updatedAt: Date.now()
       }
       // 1. Guardar localmente de forma síncrona inmediata (0 ms de demora para la UI)
       saveDb(DB_KEYS.STORE_SETTINGS, settings)
@@ -2078,7 +2107,7 @@ export const useAdminStore = defineStore('admin', {
           this.gamingResellerCommissionPercent = cloudSettings.gamingResellerCommissionPercent
           marginChanged = true
         }
-        if (cloudSettings.gamingMinResellerProfit === 'number' && cloudSettings.gamingMinResellerProfit !== this.gamingMinResellerProfit) {
+        if (typeof cloudSettings.gamingMinResellerProfit === 'number' && cloudSettings.gamingMinResellerProfit !== this.gamingMinResellerProfit) {
           this.gamingMinResellerProfit = cloudSettings.gamingMinResellerProfit
           marginChanged = true
         }
@@ -2122,6 +2151,32 @@ export const useAdminStore = defineStore('admin', {
           this.promoCodes = cloudSettings.promoCodes
           saveDb(DB_KEYS.PROMO_CODES, this.promoCodes)
         }
+        if (cloudSettings.providerBankInfo && typeof cloudSettings.providerBankInfo === 'object') {
+          this.providerBankInfo = { ...this.providerBankInfo, ...cloudSettings.providerBankInfo }
+          saveDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+        }
+        if (Array.isArray(cloudSettings.providerBankAccounts) && cloudSettings.providerBankAccounts.length > 0) {
+          this.providerBankAccounts = cloudSettings.providerBankAccounts
+          saveDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, this.providerBankAccounts)
+        }
+        if (Array.isArray(cloudSettings.physicalOverrides) && cloudSettings.physicalOverrides.length > 0) {
+          let physChanged = false
+          const list = [...(this.physicalProducts || [])]
+          cloudSettings.physicalOverrides.forEach(ov => {
+            const idx = list.findIndex(p => String(p.id).trim() === String(ov.id).trim())
+            if (idx !== -1) {
+              list[idx] = { ...list[idx], ...ov }
+              physChanged = true
+            } else {
+              list.unshift(ov)
+              physChanged = true
+            }
+          })
+          if (physChanged) {
+            this.physicalProducts = list
+            saveDb(DB_KEYS.PHYSICAL_PRODUCTS, this.physicalProducts)
+          }
+        }
         saveDb(DB_KEYS.STORE_SETTINGS, {
           isStoreVisible: this.isStoreVisible,
           isPhysicalStoreVisible: this.isPhysicalStoreVisible,
@@ -2142,7 +2197,125 @@ export const useAdminStore = defineStore('admin', {
         applyCloudSettings(cloudSettings)
       })
 
+      // Escucha en tiempo real de Revendedores Oficiales para que cualquier cliente / slug resuelva en vivo
+      listenToResellers((remoteResellers) => {
+        if (!remoteResellers || remoteResellers.length === 0) return
+        let updated = false
+        remoteResellers.forEach(rem => {
+          const idx = this.resellers.findIndex(r => r.id === rem.id)
+          if (idx === -1) {
+            this.resellers.push(rem)
+            updated = true
+          } else {
+            this.resellers[idx] = { ...this.resellers[idx], ...rem }
+            updated = true
+          }
+        })
+        if (updated) {
+          this.persist(DB_KEYS.RESELLERS)
+        }
+      })
+
       this.initMarketingHubSync().catch(() => {})
+    },
+
+    // Recargar claves individuales desde localStorage al recibir evento de broadcast o storage entre pestañas
+    reloadKeyFromStorage(key) {
+      if (!key) return
+      if (key === DB_KEYS.PRICING_CATALOG) {
+        const loaded = loadDb(DB_KEYS.PRICING_CATALOG, null)
+        if (loaded) this.pricingCatalog = loaded
+      } else if (key === DB_KEYS.PACKAGES) {
+        const loaded = loadDb(DB_KEYS.PACKAGES, null)
+        if (Array.isArray(loaded)) this.packages = loaded
+      } else if (key === DB_KEYS.PHYSICAL_PRODUCTS) {
+        const loaded = loadDb(DB_KEYS.PHYSICAL_PRODUCTS, null)
+        if (Array.isArray(loaded)) this.physicalProducts = loaded
+      } else if (key === DB_KEYS.PHYSICAL_CATEGORIES) {
+        const loaded = loadDb(DB_KEYS.PHYSICAL_CATEGORIES, null)
+        if (Array.isArray(loaded)) this.physicalCategories = loaded
+      } else if (key === DB_KEYS.RESELLERS) {
+        const loaded = loadDb(DB_KEYS.RESELLERS, null)
+        if (Array.isArray(loaded)) this.resellers = loaded
+      } else if (key === DB_KEYS.STORE_SETTINGS) {
+        const stored = loadDb(DB_KEYS.STORE_SETTINGS, null)
+        if (stored) {
+          if (typeof stored.isStoreVisible === 'boolean') this.isStoreVisible = stored.isStoreVisible
+          if (typeof stored.isPhysicalStoreVisible === 'boolean') this.isPhysicalStoreVisible = stored.isPhysicalStoreVisible
+          if (typeof stored.gamingStoreMarginPercent === 'number') this.gamingStoreMarginPercent = stored.gamingStoreMarginPercent
+          if (typeof stored.gamingResellerCommissionPercent === 'number') this.gamingResellerCommissionPercent = stored.gamingResellerCommissionPercent
+          if (typeof stored.gamingMinResellerProfit === 'number') this.gamingMinResellerProfit = stored.gamingMinResellerProfit
+          if (stored.pricingCatalog) this.pricingCatalog = stored.pricingCatalog
+          if (Array.isArray(stored.packages)) this.packages = stored.packages
+        }
+      } else if (key === DB_KEYS.GAMING_OVERRIDES || key === DB_KEYS.GAMING_PRODUCTS) {
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        invalidateGamingCache()
+      } else if (key === DB_KEYS.PROMO_CODES) {
+        const loaded = loadDb(DB_KEYS.PROMO_CODES, null)
+        if (Array.isArray(loaded)) this.promoCodes = loaded
+      } else if (key === DB_KEYS.PROVIDER_BANK) {
+        const loaded = loadDb(DB_KEYS.PROVIDER_BANK, null)
+        if (loaded) this.providerBankInfo = loaded
+      } else if (key === DB_KEYS.PROVIDER_BANK_ACCOUNTS) {
+        const loaded = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, null)
+        if (Array.isArray(loaded)) this.providerBankAccounts = loaded
+      } else if (key === 'ALL') {
+        this.reloadAllFromStorage()
+      }
+    },
+
+    reloadAllFromStorage() {
+      const cat = loadDb(DB_KEYS.PRICING_CATALOG, null)
+      if (cat) this.pricingCatalog = cat
+      const pkgs = loadDb(DB_KEYS.PACKAGES, null)
+      if (Array.isArray(pkgs)) this.packages = pkgs
+      const phys = loadDb(DB_KEYS.PHYSICAL_PRODUCTS, null)
+      if (Array.isArray(phys)) this.physicalProducts = phys
+      const res = loadDb(DB_KEYS.RESELLERS, null)
+      if (Array.isArray(res)) this.resellers = res
+      const banks = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, null)
+      if (Array.isArray(banks)) this.providerBankAccounts = banks
+      const bankInfo = loadDb(DB_KEYS.PROVIDER_BANK, null)
+      if (bankInfo) this.providerBankInfo = bankInfo
+      const settings = loadDb(DB_KEYS.STORE_SETTINGS, null)
+      if (settings) {
+        if (typeof settings.isStoreVisible === 'boolean') this.isStoreVisible = settings.isStoreVisible
+        if (typeof settings.isPhysicalStoreVisible === 'boolean') this.isPhysicalStoreVisible = settings.isPhysicalStoreVisible
+      }
+      this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+      invalidateGamingCache()
+    },
+
+    // Forzar sincronización inmediata y refresco de toda la web
+    async forceRefreshEntireWeb() {
+      this.persistStoreSettings()
+      broadcastDbChange('ALL', { timestamp: Date.now() })
+      try {
+        const overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
+        const physicalOverrides = (Array.isArray(this.physicalProducts) ? this.physicalProducts : [])
+          .filter(p => p.isCustom || p.adminOnly || p.updatedAt || p.source !== 'revende.com.ar')
+        
+        await saveStoreSettingsToFirebase({
+          isStoreVisible: this.isStoreVisible,
+          isPhysicalStoreVisible: this.isPhysicalStoreVisible,
+          gamingStoreMarginPercent: Number(this.gamingStoreMarginPercent ?? 20),
+          gamingResellerCommissionPercent: Number(this.gamingResellerCommissionPercent ?? 10),
+          gamingMinResellerProfit: Number(this.gamingMinResellerProfit ?? 1000),
+          promoCodes: Array.isArray(this.promoCodes) ? this.promoCodes : [],
+          pricingCatalog: this.pricingCatalog,
+          packages: this.packages,
+          gamingProviderSites: this.gamingProviderSites,
+          gamingOverrides: overrides,
+          providerBankInfo: this.providerBankInfo,
+          providerBankAccounts: this.providerBankAccounts,
+          physicalOverrides,
+          updatedAt: Date.now()
+        })
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: err.message }
+      }
     },
 
     async initMarketingHubSync() {

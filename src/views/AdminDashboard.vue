@@ -353,6 +353,188 @@ const copyResellerStoreLink = (reseller) => {
   })
 }
 
+const isRefreshingWeb = ref(false)
+const handleForceRefreshEntireWeb = async () => {
+  isRefreshingWeb.value = true
+  try {
+    const res = await adminStore.forceRefreshEntireWeb()
+    if (res.success) {
+      toast.add('🚀 Catálogo, precios y configuración sincronizados y refrescados en toda la web en tiempo real', 'success')
+    } else {
+      toast.add(res.error || 'Error al sincronizar con la nube', 'error')
+    }
+  } catch (e) {
+    toast.add('Error al refrescar la web: ' + e.message, 'error')
+  } finally {
+    isRefreshingWeb.value = false
+  }
+}
+
+// Configuración de Tienda y Catálogo para Distribuidores
+const showResellerShopModal = ref(false)
+const editingResellerShop = ref(null)
+const resellerShopForm = ref({
+  storeName: '',
+  slug: '',
+  whatsapp: '',
+  tagline: '',
+  bannerText: '',
+  catalogMode: 'all',
+  showStreaming: true,
+  showCombos: true,
+  showGaming: true,
+  showPhysical: false,
+  enabledStreamingPlatforms: [],
+  enabledGamingPlatforms: ['PS5', 'PS4'],
+  enabledCombos: [],
+  enabledPhysicalCategories: []
+})
+
+const openResellerShopModal = (reseller) => {
+  if (!reseller) return
+  editingResellerShop.value = reseller
+  const cfg = reseller.shopConfig || {}
+  const allStreaming = Object.keys(adminStore.pricingCatalog || {})
+  
+  resellerShopForm.value = {
+    storeName: reseller.storeName || cfg.storeName || reseller.name || '',
+    slug: reseller.shopSlug || cfg.slug || (reseller.username ? reseller.username.toLowerCase() : reseller.id.toLowerCase()),
+    whatsapp: cfg.whatsapp || reseller.contactNumber || '',
+    tagline: cfg.tagline || 'Distribuidor Oficial StreamePro',
+    bannerText: cfg.bannerText || '¡Activación rápida con garantía oficial!',
+    catalogMode: cfg.catalogMode || 'all',
+    showStreaming: cfg.showStreaming !== false,
+    showCombos: cfg.showCombos !== false,
+    showGaming: cfg.showGaming !== false,
+    showPhysical: Boolean(cfg.showPhysical),
+    enabledStreamingPlatforms: Array.isArray(cfg.enabledStreamingPlatforms) && cfg.enabledStreamingPlatforms.length > 0 
+      ? [...cfg.enabledStreamingPlatforms] 
+      : [...allStreaming],
+    enabledGamingPlatforms: Array.isArray(cfg.enabledGamingPlatforms) && cfg.enabledGamingPlatforms.length > 0 
+      ? [...cfg.enabledGamingPlatforms] 
+      : ['PS5', 'PS4'],
+    enabledCombos: Array.isArray(cfg.enabledCombos) 
+      ? [...cfg.enabledCombos] 
+      : [],
+    enabledPhysicalCategories: Array.isArray(cfg.enabledPhysicalCategories) 
+      ? [...cfg.enabledPhysicalCategories] 
+      : []
+  }
+  showResellerShopModal.value = true
+}
+
+const setAdminResellerMode = (mode) => {
+  resellerShopForm.value.catalogMode = mode
+  const allStreaming = Object.keys(adminStore.pricingCatalog || {})
+  if (mode === 'all') {
+    resellerShopForm.value.showStreaming = true
+    resellerShopForm.value.showCombos = true
+    resellerShopForm.value.showGaming = true
+    resellerShopForm.value.showPhysical = true
+    resellerShopForm.value.enabledStreamingPlatforms = [...allStreaming]
+    resellerShopForm.value.enabledGamingPlatforms = ['PS5', 'PS4']
+    resellerShopForm.value.enabledCombos = []
+    resellerShopForm.value.enabledPhysicalCategories = []
+    toast.add('Modo activado: Vender TODO el catálogo (incluye productos físicos)', 'success')
+  } else if (mode === 'digital') {
+    resellerShopForm.value.showStreaming = true
+    resellerShopForm.value.showCombos = true
+    resellerShopForm.value.showGaming = true
+    resellerShopForm.value.showPhysical = false
+    toast.add('Modo activado: Solo Digital (Streaming, Combos y Gaming)', 'info')
+  } else if (mode === 'streaming') {
+    resellerShopForm.value.showStreaming = true
+    resellerShopForm.value.showCombos = false
+    resellerShopForm.value.showGaming = false
+    resellerShopForm.value.showPhysical = false
+    toast.add('Modo activado: Solo Suscripciones Streaming', 'info')
+  }
+}
+
+const toggleAdminResellerStreamingPlat = (plat) => {
+  const list = resellerShopForm.value.enabledStreamingPlatforms
+  const idx = list.indexOf(plat)
+  if (idx !== -1) {
+    if (list.length > 1) list.splice(idx, 1)
+    else toast.add('Debes dejar al menos una plataforma habilitada', 'warning')
+  } else {
+    list.push(plat)
+  }
+}
+
+const toggleAdminResellerGamingPlat = (plat) => {
+  const list = resellerShopForm.value.enabledGamingPlatforms
+  const idx = list.indexOf(plat)
+  if (idx !== -1) {
+    if (list.length > 1) list.splice(idx, 1)
+  } else {
+    list.push(plat)
+  }
+}
+
+const toggleAdminResellerCombo = (comboId) => {
+  if (!Array.isArray(resellerShopForm.value.enabledCombos)) {
+    resellerShopForm.value.enabledCombos = []
+  }
+  const list = resellerShopForm.value.enabledCombos
+  const idx = list.indexOf(comboId)
+  if (idx !== -1) {
+    list.splice(idx, 1)
+  } else {
+    list.push(comboId)
+  }
+}
+
+const toggleAdminResellerPhysicalCat = (catId) => {
+  if (!Array.isArray(resellerShopForm.value.enabledPhysicalCategories)) {
+    resellerShopForm.value.enabledPhysicalCategories = []
+  }
+  const list = resellerShopForm.value.enabledPhysicalCategories
+  const idx = list.indexOf(catId)
+  if (idx !== -1) {
+    list.splice(idx, 1)
+  } else {
+    list.push(catId)
+  }
+}
+
+const saveResellerShopConfigFromAdmin = () => {
+  if (!editingResellerShop.value) return
+  const cleanSlug = String(resellerShopForm.value.slug || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+  if (!cleanSlug) {
+    toast.add('Ingresa una URL / slug válido (ej: cristiangames)', 'error')
+    return
+  }
+
+  const patch = {
+    enabled: true,
+    slug: cleanSlug,
+    storeName: resellerShopForm.value.storeName.trim() || editingResellerShop.value.name,
+    whatsapp: resellerShopForm.value.whatsapp.trim() || editingResellerShop.value.contactNumber,
+    tagline: resellerShopForm.value.tagline.trim(),
+    bannerText: resellerShopForm.value.bannerText.trim(),
+    catalogMode: resellerShopForm.value.catalogMode,
+    showStreaming: Boolean(resellerShopForm.value.showStreaming),
+    showCombos: Boolean(resellerShopForm.value.showCombos),
+    showGaming: Boolean(resellerShopForm.value.showGaming),
+    showPhysical: Boolean(resellerShopForm.value.showPhysical),
+    enabledStreamingPlatforms: resellerShopForm.value.enabledStreamingPlatforms,
+    enabledGamingPlatforms: resellerShopForm.value.enabledGamingPlatforms,
+    enabledCombos: resellerShopForm.value.enabledCombos,
+    enabledPhysicalCategories: resellerShopForm.value.enabledPhysicalCategories
+  }
+
+  const res = adminStore.updateResellerShopConfig(editingResellerShop.value.id, patch)
+  if (res.success) {
+    editingResellerShop.value.shopSlug = cleanSlug
+    adminStore.persist(DB_KEYS.RESELLERS)
+    toast.add(`🛍️ Tienda y catálogo de [${editingResellerShop.value.name}] guardados y refrescados en toda la web`, 'success')
+    showResellerShopModal.value = false
+  } else {
+    toast.add(res.error || 'Error al guardar configuración de tienda', 'error')
+  }
+}
+
 const handleToggleResellerPhysical = (resellerId) => {
   const result = adminStore.toggleResellerPhysicalStore(resellerId)
   if (result.success) {
@@ -5124,6 +5306,16 @@ const deletePackageItem = (pkgId) => {
         >
           <span>{{ adminStore.isPhysicalStoreVisible ? '📦 Físicos en Catálogo: ACTIVA' : '📦 Físicos en Catálogo: DESACTIVADA' }}</span>
         </button>
+        <button 
+          @click="handleForceRefreshEntireWeb" 
+          :disabled="isRefreshingWeb"
+          type="button"
+          class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-amber-500/40 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          title="Refrescar catálogo, precios y configuración inmediatamente en toda la web y la nube"
+        >
+          <span :class="{'animate-spin inline-block': isRefreshingWeb}">⚡</span>
+          <span>{{ isRefreshingWeb ? 'Refrescando...' : 'Refrescar Toda la Web' }}</span>
+        </button>
         <a 
           href="/" 
           target="_blank" 
@@ -6173,6 +6365,14 @@ const deletePackageItem = (pkgId) => {
               title="Copiar enlace de tienda con referido de este distribuidor"
             >
               <span>🔗 Link Tienda</span>
+            </button>
+            <button 
+              @click="openResellerShopModal(res)" 
+              type="button"
+              class="bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 border border-amber-400/30 text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Ajustar catálogo y rubros que vende este distribuidor"
+            >
+              <span>🛍️ Tienda & Catálogo</span>
             </button>
             <button 
               @click="handleToggleResellerPhysical(res.id)" 
@@ -14204,6 +14404,193 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-black py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
             >
               <span>🚀 Guardar y Abrir Panel en /crm</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: AJUSTAR TIENDA Y CATÁLOGO DEL DISTRIBUIDOR -->
+    <div v-if="showResellerShopModal && editingResellerShop" class="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pt-16 sm:pt-6 pb-6 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-amber-500/30 w-full max-w-2xl max-h-[92vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-3xl p-5 sm:p-7 shadow-2xl relative space-y-6 text-xs">
+        <div class="flex justify-between items-start border-b border-slate-800 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono font-bold bg-amber-500/15 text-amber-400 px-2.5 py-0.5 rounded border border-amber-500/30">
+                [{{ editingResellerShop.id }}]
+              </span>
+              <h3 class="text-lg font-black text-white">Configurar Tienda & Catálogo de Distribuidor</h3>
+            </div>
+            <p class="text-slate-400 mt-1">Personaliza qué productos ofrece y los datos de su tienda oficial: <strong class="text-white">{{ editingResellerShop.name }}</strong></p>
+          </div>
+          <button @click="showResellerShopModal = false" type="button" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 shadow-md flex items-center justify-center text-sm sm:text-base font-bold transition-all shrink-0 cursor-pointer ml-auto" title="Cerrar ventana">✕</button>
+        </div>
+
+        <form @submit.prevent="saveResellerShopConfigFromAdmin" class="space-y-5">
+          <!-- Datos Públicos y Slug -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Comercial de la Tienda</label>
+              <input 
+                v-model="resellerShopForm.storeName" 
+                type="text" 
+                required 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-amber-400 focus:outline-none"
+                placeholder="Ej: Tienda Digital Cristian"
+              />
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Slug / URL Corta (Acceso Directo)</label>
+              <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus-within:border-amber-400">
+                <span class="text-slate-500 select-none text-[11px]">streamepro.me/</span>
+                <input 
+                  v-model="resellerShopForm.slug" 
+                  type="text" 
+                  required 
+                  class="bg-transparent border-none text-amber-300 font-bold focus:outline-none flex-1 ml-1"
+                  placeholder="cristiangames"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">WhatsApp de Atención al Cliente</label>
+              <input 
+                v-model="resellerShopForm.whatsapp" 
+                type="text" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono focus:border-amber-400 focus:outline-none"
+                placeholder="5492915658321"
+              />
+            </div>
+            <div>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Eslogan Corto / Subtítulo</label>
+              <input 
+                v-model="resellerShopForm.tagline" 
+                type="text" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:border-amber-400 focus:outline-none"
+                placeholder="Videojuegos Digitales, Tecnología & Streaming"
+              />
+            </div>
+          </div>
+
+          <!-- Modos Rápidos de Catálogo -->
+          <div class="space-y-2">
+            <label class="block font-bold uppercase text-slate-400">Modo de Catálogo a Ofrecer</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button 
+                type="button" 
+                @click="setAdminResellerMode('all')" 
+                :class="['p-3 rounded-2xl border text-center transition cursor-pointer', resellerShopForm.catalogMode === 'all' ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-black shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="block text-base mb-0.5">🌟</span>
+                <span class="font-bold block text-xs">Todo el Catálogo</span>
+                <span class="text-[10px] text-slate-500 block mt-0.5">Digital + Físicos</span>
+              </button>
+              <button 
+                type="button" 
+                @click="setAdminResellerMode('digital')" 
+                :class="['p-3 rounded-2xl border text-center transition cursor-pointer', resellerShopForm.catalogMode === 'digital' ? 'bg-sky-500/20 border-sky-400 text-sky-300 font-black shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="block text-base mb-0.5">⚡</span>
+                <span class="font-bold block text-xs">Solo Digital</span>
+                <span class="text-[10px] text-slate-500 block mt-0.5">Streaming + Gaming</span>
+              </button>
+              <button 
+                type="button" 
+                @click="setAdminResellerMode('streaming')" 
+                :class="['p-3 rounded-2xl border text-center transition cursor-pointer', resellerShopForm.catalogMode === 'streaming' ? 'bg-purple-500/20 border-purple-400 text-purple-300 font-black shadow' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white']"
+              >
+                <span class="block text-base mb-0.5">📺</span>
+                <span class="font-bold block text-xs">Solo Streaming</span>
+                <span class="text-[10px] text-slate-500 block mt-0.5">Suscripciones</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Módulos de Catálogo Habilitados (Interruptores ON / OFF) -->
+          <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3.5">
+            <span class="font-bold text-white uppercase text-[11px] tracking-wider block">Módulos Habilitados en la Tienda del Distribuidor:</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <label class="flex items-center gap-2 p-2.5 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer select-none">
+                <input type="checkbox" v-model="resellerShopForm.showStreaming" class="accent-sky-500 w-4 h-4 rounded">
+                <span class="text-white font-bold text-xs">📺 Streaming</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer select-none">
+                <input type="checkbox" v-model="resellerShopForm.showCombos" class="accent-pink-500 w-4 h-4 rounded">
+                <span class="text-white font-bold text-xs">🎁 Combos</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 bg-slate-900 rounded-xl border border-slate-800 cursor-pointer select-none">
+                <input type="checkbox" v-model="resellerShopForm.showGaming" class="accent-indigo-500 w-4 h-4 rounded">
+                <span class="text-white font-bold text-xs">🎮 Videojuegos</span>
+              </label>
+              <label :class="['flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition', resellerShopForm.showPhysical ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-400']">
+                <input type="checkbox" v-model="resellerShopForm.showPhysical" class="accent-amber-500 w-4 h-4 rounded">
+                <span class="font-bold text-xs">📦 Físicos {{ resellerShopForm.showPhysical ? '(ON)' : '(OFF)' }}</span>
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-500">
+              * Si "Físicos" está en OFF, el catálogo de productos físicos no se mostrará para los clientes de este distribuidor.
+            </p>
+          </div>
+
+          <!-- Selección Categórica de Streaming -->
+          <div v-if="resellerShopForm.showStreaming" class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-300 uppercase text-[11px]">Plataformas de Streaming Habilitadas:</span>
+              <button 
+                type="button" 
+                @click="resellerShopForm.enabledStreamingPlatforms = Object.keys(adminStore.pricingCatalog || {})" 
+                class="text-sky-400 hover:underline font-bold text-[11px] cursor-pointer"
+              >
+                Habilitar Todas ({{ Object.keys(adminStore.pricingCatalog || {}).length }})
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-950 rounded-xl border border-slate-800">
+              <button 
+                type="button" 
+                v-for="plat in Object.keys(adminStore.pricingCatalog || {})" 
+                :key="plat" 
+                @click="toggleAdminResellerStreamingPlat(plat)"
+                :class="['px-2.5 py-1 rounded-lg text-xs transition cursor-pointer border', resellerShopForm.enabledStreamingPlatforms.includes(plat) ? 'bg-sky-500/20 text-sky-300 border-sky-400/40 font-bold' : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300']"
+              >
+                <span>{{ resellerShopForm.enabledStreamingPlatforms.includes(plat) ? '✓' : '+' }}</span> {{ plat }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Selección de Consolas Gaming -->
+          <div v-if="resellerShopForm.showGaming" class="space-y-2">
+            <span class="font-bold text-slate-300 uppercase text-[11px]">Consolas Gaming Activas:</span>
+            <div class="flex gap-2">
+              <button 
+                type="button" 
+                v-for="plat in ['PS5', 'PS4', 'PS3']" 
+                :key="plat" 
+                @click="toggleAdminResellerGamingPlat(plat)"
+                :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border', resellerShopForm.enabledGamingPlatforms.includes(plat) ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40' : 'bg-slate-950 text-slate-500 border-slate-800']"
+              >
+                <span>{{ resellerShopForm.enabledGamingPlatforms.includes(plat) ? '✓' : '+' }}</span> {{ plat }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="flex gap-3 pt-3 border-t border-slate-800">
+            <button 
+              type="button" 
+              @click="showResellerShopModal = false" 
+              class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="w-2/3 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black py-3 rounded-2xl shadow-lg shadow-amber-500/20 transition active:scale-95 cursor-pointer text-xs sm:text-sm flex items-center justify-center gap-2"
+            >
+              <span>💾</span>
+              <span>Guardar y Refrescar Tienda de Distribuidor</span>
             </button>
           </div>
         </form>

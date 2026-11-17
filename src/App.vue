@@ -40,20 +40,23 @@ onMounted(() => {
   // Sincronización en la nube con Firebase Firestore para todos los clientes en tiempo real
   adminStore.initStoreSettingsSync().catch(() => {})
 
-  // Sincronización en tiempo real entre pestañas para la visibilidad de la tienda
+  // Sincronización en tiempo real entre pestañas y ventanas abiertas
   if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (e) => {
-      if (e.key && e.key.includes('store_settings')) {
-        try {
-          const stored = JSON.parse(e.newValue || '{}')
-          if (typeof stored.isStoreVisible === 'boolean') {
-            adminStore.isStoreVisible = stored.isStoreVisible
-          }
-          if (typeof stored.isPhysicalStoreVisible === 'boolean') {
-            adminStore.isPhysicalStoreVisible = stored.isPhysicalStoreVisible
-          }
-        } catch (err) {}
+    // 1. BroadcastChannel (0 ms entre pestañas para cambios de precios, combos, catálogo y visibilidad)
+    if ('BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('streamepro_catalog_sync')
+      bc.onmessage = (event) => {
+        if (event.data && event.data.type === 'DB_CHANGED') {
+          adminStore.reloadKeyFromStorage(event.data.key)
+        }
       }
+    }
+
+    // 2. Storage event (fallback automático para recarga entre ventanas)
+    window.addEventListener('storage', (e) => {
+      if (!e.key) return
+      const cleanKey = e.key.replace('streampro_prod_v2_', '')
+      adminStore.reloadKeyFromStorage(cleanKey)
     })
   }
 })
