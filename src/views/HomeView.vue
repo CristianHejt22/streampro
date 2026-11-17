@@ -2768,6 +2768,18 @@ const submitOrder = async () => {
       overrideTotalAmount: physEffectiveTotal
     })
 
+    if (hasUploadedReceipt && physRes?.order?.id) {
+      saveReceipt(physRes.order.id, {
+        fileName: receiptMeta.fileName,
+        fileType: receiptMeta.fileType,
+        fileSize: receiptMeta.fileSize,
+        dataUrl: receiptMeta.dataUrl,
+        customerName: clientForm.value.fullName,
+        customerPhone: clientForm.value.whatsapp,
+        amount: physEffectiveTotal
+      }).catch(() => {})
+    }
+
     if (verifiedCoupon?.code && physRes?.order?.id) {
       adminStore.recordOrderPromoAttribution({
         orderId: physRes.order.id,
@@ -2847,6 +2859,12 @@ const submitOrder = async () => {
               paymentMethod: 'Mercado Pago (Checkout Pro - En Proceso)',
               pin: clientForm.value.pin
             },
+            receipt: hasUploadedReceipt ? {
+              fileName: receiptMeta.fileName,
+              fileType: receiptMeta.fileType,
+              fileSize: receiptMeta.fileSize,
+              dataUrl: receiptMeta.dataUrl
+            } : null,
             telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
             telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
           })
@@ -2879,6 +2897,12 @@ const submitOrder = async () => {
           ...orderSnapshot,
           pin: clientForm.value.pin
         },
+        receipt: hasUploadedReceipt ? {
+          fileName: receiptMeta.fileName,
+          fileType: receiptMeta.fileType,
+          fileSize: receiptMeta.fileSize,
+          dataUrl: receiptMeta.dataUrl
+        } : null,
         telegramToken: adminStore.telegramConfig?.botToken || '9120060693:AAFynj7rM0cfElf1PMZ0fox9fZxj3wLqA30',
         telegramChatId: adminStore.telegramConfig?.chatId || '7994226676'
       })

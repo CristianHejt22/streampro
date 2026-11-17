@@ -5910,10 +5910,10 @@ const deletePackageItem = (pkgId) => {
               <!-- Comprobante adjunto -->
               <div class="pt-1 flex flex-wrap items-center gap-2">
                 <button 
-                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification' || (order.voucher && order.voucher.toLowerCase().includes('comprobante'))"
                   @click="openReceiptViewer(order, false)"
                   class="text-[10px] bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
-                  title="Ver comprobante adjunto en mini nube (JPG/PDF)"
+                  title="Ver comprobante adjunto en nube (JPG/PDF)"
                 >
                   <span>☁️</span>
                   <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
@@ -8482,12 +8482,12 @@ const deletePackageItem = (pkgId) => {
 
               <!-- Acciones de Administrador -->
               <div class="flex items-center gap-2">
-                <!-- Botón Ver Comprobante en Mini Nube -->
+                <!-- Botón Ver Comprobante en Nube -->
                 <button 
-                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification'"
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification' || (order.voucher && order.voucher.toLowerCase().includes('comprobante'))"
                   @click="openReceiptViewer(order, true)"
                   class="bg-sky-600/25 hover:bg-sky-600 text-sky-200 hover:text-white border border-sky-500/40 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
-                  title="Ver comprobante en la mini nube (JPG/PDF)"
+                  title="Ver comprobante en la nube (JPG/PDF)"
                 >
                   <span>☁️</span>
                   <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>

@@ -738,6 +738,73 @@ export function listenToGiveawayEntries(callback) {
 }
 
 /**
+ * Guarda un comprobante en la colección 'receipts' de Firestore (Mini Nube en la Nube Real)
+ */
+export async function saveReceiptToFirestore(orderId, receiptData) {
+  if (!orderId || !receiptData) return { success: false, reason: 'Datos incompletos' }
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
+
+  try {
+    const cleanReceipt = {
+      orderId: String(orderId),
+      fileName: receiptData.fileName || 'comprobante.jpg',
+      fileType: receiptData.fileType || 'image/jpeg',
+      fileSize: Number(receiptData.fileSize || 0),
+      dataUrl: String(receiptData.dataUrl || ''),
+      customerName: receiptData.customerName || '',
+      customerPhone: receiptData.customerPhone || '',
+      amount: Number(receiptData.amount || 0),
+      uploadedAt: receiptData.uploadedAt || new Date().toISOString(),
+      updatedAt: serverTimestamp()
+    }
+
+    await setDoc(doc(dbInstance, 'receipts', String(orderId)), cleanReceipt, { merge: true })
+    return { success: true, id: orderId }
+  } catch (error) {
+    console.warn('[Firebase] Error guardando comprobante en Firestore:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Obtiene un comprobante desde la colección 'receipts' de Firestore
+ */
+export async function getReceiptFromFirestore(orderId) {
+  if (!orderId) return null
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return null
+
+  try {
+    const snap = await getDoc(doc(dbInstance, 'receipts', String(orderId)))
+    if (snap.exists()) {
+      return snap.data()
+    }
+    return null
+  } catch (error) {
+    console.warn('[Firebase] Error obteniendo comprobante de Firestore:', error)
+    return null
+  }
+}
+
+/**
+ * Elimina un comprobante de la colección 'receipts' de Firestore
+ */
+export async function deleteReceiptFromFirestore(orderId) {
+  if (!orderId) return false
+  if (!dbInstance) initFirebase()
+  if (!dbInstance) return false
+
+  try {
+    await deleteDoc(doc(dbInstance, 'receipts', String(orderId)))
+    return true
+  } catch (error) {
+    console.warn('[Firebase] Error eliminando comprobante de Firestore:', error)
+    return false
+  }
+}
+
+/**
  * Prueba la conexión con Firebase intentando una lectura básica
  */
 export async function testFirebaseConnection(config = null) {

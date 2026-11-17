@@ -1,7 +1,14 @@
-// Servicio de Mini Nube de Comprobantes de Pago para StreamePro
-// Almacena comprobantes en formato JPG, PNG, WEBP y PDF en almacenamiento de alto volumen (IndexedDB)
+// Servicio de Nube de Comprobantes de Pago para StreamePro
+// Almacena comprobantes en formato JPG, PNG, WEBP y PDF con sincronización en la Nube Real (Firebase Firestore)
+// y aceleración en memoria y almacenamiento local (IndexedDB)
 // Permite que el revendedor y el proveedor verifiquen los comprobantes directamente desde sus paneles
 // Al confirmar el cierre de la orden, el comprobante se elimina definitivamente para no ocupar espacio en disco.
+
+import { 
+  saveReceiptToFirestore, 
+  getReceiptFromFirestore, 
+  deleteReceiptFromFirestore 
+} from './firebase'
 
 const DB_NAME = 'streampro_receipt_cloud_v1'
 const STORE_NAME = 'receipts'
@@ -40,13 +47,13 @@ function openDb() {
 }
 
 /**
- * Guarda un comprobante en la Mini Nube (IndexedDB + Memoria)
+ * Guarda un comprobante en la Nube (Memoria + IndexedDB + Firebase Firestore)
  */
 export async function saveReceipt(orderId, receiptData) {
   if (!orderId || !receiptData) return false
 
   const record = {
-    orderId,
+    orderId: String(orderId),
     fileName: receiptData.fileName || 'comprobante.jpg',
     fileType: receiptData.fileType || 'image/jpeg',
     fileSize: receiptData.fileSize || 0,
@@ -57,31 +64,37 @@ export async function saveReceipt(orderId, receiptData) {
     uploadedAt: receiptData.uploadedAt || new Date().toISOString()
   }
 
-  // Guardar en caché de memoria
+  // 1. Guardar en caché de memoria inmediato
   memoryReceiptCache.set(orderId, record)
 
-  // Guardar en IndexedDB
+  // 2. Guardar en IndexedDB local
   const db = await openDb()
   if (db) {
     try {
-      return new Promise((resolve) => {
+      await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readwrite')
         const store = tx.objectStore(STORE_NAME)
         const req = store.put(record)
         req.onsuccess = () => resolve(true)
-        req.onerror = () => resolve(true) // Si falla la persistencia en disco, al menos queda en memoria
+        req.onerror = () => resolve(true)
       })
     } catch (e) {
       console.warn('[ReceiptCloud] Error al guardar en IndexedDB:', e)
-      return true
     }
+  }
+
+  // 3. Guardar en la Nube Global (Firebase Firestore) para acceso inmediato desde cualquier dispositivo
+  try {
+    await saveReceiptToFirestore(orderId, record)
+  } catch (cloudErr) {
+    console.warn('[ReceiptCloud] Error guardando comprobante en Firebase:', cloudErr)
   }
 
   return true
 }
 
 /**
- * Obtiene el comprobante desde la Mini Nube
+ * Obtiene el comprobante desde la Nube (Memoria -> IndexedDB -> Firebase Firestore)
  */
 export async function getReceipt(orderId) {
   if (!orderId) return null
@@ -91,44 +104,60 @@ export async function getReceipt(orderId) {
     return memoryReceiptCache.get(orderId)
   }
 
-  // 2. Revisar IndexedDB
+  // 2. Revisar IndexedDB local
   const db = await openDb()
   if (db) {
     try {
-      return new Promise((resolve) => {
+      const localResult = await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readonly')
         const store = tx.objectStore(STORE_NAME)
         const req = store.get(orderId)
-        req.onsuccess = () => {
-          const res = req.result || null
-          if (res) memoryReceiptCache.set(orderId, res)
-          resolve(res)
-        }
+        req.onsuccess = () => resolve(req.result || null)
         req.onerror = () => resolve(null)
       })
+      if (localResult && localResult.dataUrl) {
+        memoryReceiptCache.set(orderId, localResult)
+        return localResult
+      }
     } catch (e) {
       console.warn('[ReceiptCloud] Error al leer IndexedDB:', e)
-      return null
     }
+  }
+
+  // 3. Recuperar desde la Nube Global (Firebase Firestore)
+  try {
+    const cloudReceipt = await getReceiptFromFirestore(orderId)
+    if (cloudReceipt && cloudReceipt.dataUrl) {
+      memoryReceiptCache.set(orderId, cloudReceipt)
+      if (db) {
+        try {
+          const tx = db.transaction(STORE_NAME, 'readwrite')
+          tx.objectStore(STORE_NAME).put(cloudReceipt)
+        } catch {}
+      }
+      return cloudReceipt
+    }
+  } catch (cloudErr) {
+    console.warn('[ReceiptCloud] Error recuperando comprobante de Firebase:', cloudErr)
   }
 
   return null
 }
 
 /**
- * Elimina el comprobante definitivamente de la Mini Nube para liberar memoria y espacio
+ * Elimina el comprobante definitivamente de la Nube (Memoria + IndexedDB + Firebase Firestore)
  */
 export async function deleteReceipt(orderId) {
   if (!orderId) return true
 
-  // Limpiar memoria
+  // 1. Limpiar memoria
   memoryReceiptCache.delete(orderId)
 
-  // Limpiar IndexedDB
+  // 2. Limpiar IndexedDB local
   const db = await openDb()
   if (db) {
     try {
-      return new Promise((resolve) => {
+      await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readwrite')
         const store = tx.objectStore(STORE_NAME)
         const req = store.delete(orderId)
@@ -137,8 +166,14 @@ export async function deleteReceipt(orderId) {
       })
     } catch (e) {
       console.warn('[ReceiptCloud] Error al eliminar de IndexedDB:', e)
-      return false
     }
+  }
+
+  // 3. Eliminar de Firebase Firestore
+  try {
+    await deleteReceiptFromFirestore(orderId)
+  } catch (cloudErr) {
+    console.warn('[ReceiptCloud] Error eliminando comprobante de Firebase:', cloudErr)
   }
 
   return true
@@ -204,11 +239,11 @@ export function processReceiptFile(file) {
       return
     }
 
-    // Imagen (JPG/PNG/WEBP): Comprimir proporcionalmente si supera 1400px
+    // Imagen (JPG/PNG/WEBP): Comprimir proporcionalmente si supera 1200px para almacenamiento óptimo en nube
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
-        const maxDim = 1400
+        const maxDim = 1200
         let width = img.width
         let height = img.height
 
@@ -228,7 +263,7 @@ export function processReceiptFile(file) {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78)
         resolve({
           fileName: file.name.replace(/\.[^/.]+$/, '') + '.jpg',
           fileType: 'image/jpeg',

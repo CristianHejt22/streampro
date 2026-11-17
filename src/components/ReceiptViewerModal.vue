@@ -26,20 +26,81 @@ const receiptData = ref(null)
 const isZoomed = ref(false)
 
 const loadReceipt = async () => {
-  if (!props.order?.id) {
+  if (!props.order?.id && !props.order?.customerNumber && !props.order?.clientNumber) {
     receiptData.value = null
     return
   }
   loading.value = true
   isZoomed.value = false
   try {
-    const data = await getReceipt(props.order.id)
+    let data = null
+    if (props.order?.id) {
+      data = await getReceipt(props.order.id)
+    }
+    if (!data && props.order?.customerNumber) {
+      data = await getReceipt(props.order.customerNumber)
+    }
+    if (!data && props.order?.clientNumber) {
+      data = await getReceipt(props.order.clientNumber)
+    }
+    if (!data && props.order?.receiptDataUrl) {
+      data = {
+        orderId: props.order.id,
+        dataUrl: props.order.receiptDataUrl,
+        fileName: props.order.receiptFileName || 'comprobante.jpg',
+        fileType: props.order.receiptFileType || 'image/jpeg',
+        fileSize: props.order.receiptFileSize || 0,
+        customerName: props.order.customerName || '',
+        customerPhone: props.order.customerPhone || '',
+        amount: props.order.clientPrice || props.order.totalAmount || 0,
+        uploadedAt: props.order.createdDate || props.order.createdAt || new Date().toISOString()
+      }
+    }
     receiptData.value = data
   } catch (err) {
     console.warn('Error al cargar comprobante:', err)
     receiptData.value = null
   } finally {
     loading.value = false
+  }
+}
+
+const sendingTelegram = ref(false)
+
+const sendReceiptToTelegram = async () => {
+  if (!receiptData.value?.dataUrl) {
+    toast.add('No hay archivo de comprobante para enviar', 'warning')
+    return
+  }
+  sendingTelegram.value = true
+  try {
+    const res = await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sendReceiptOnly: true,
+        orderId: props.order?.id || receiptData.value.orderId,
+        customerName: props.order?.customerName || receiptData.value.customerName,
+        customerPhone: props.order?.customerPhone || receiptData.value.customerPhone,
+        amount: props.order?.clientPrice || props.order?.totalAmount || receiptData.value.amount || 0,
+        receipt: {
+          fileName: receiptData.value.fileName,
+          fileType: receiptData.value.fileType,
+          dataUrl: receiptData.value.dataUrl
+        }
+      })
+    })
+    const data = await res.json()
+    if (res.ok && data.success) {
+      toast.add('🚀 ¡Comprobante enviado al Bot de Telegram exitosamente!', 'success')
+    } else {
+      throw new Error(data.error || 'Error al conectar con Telegram')
+    }
+  } catch (err) {
+    console.error('Error enviando comprobante a Telegram:', err)
+    toast.add('Error al enviar comprobante a Telegram: ' + (err?.message || err), 'error')
+  } finally {
+    sendingTelegram.value = false
   }
 }
 
@@ -100,13 +161,16 @@ const downloadReceipt = () => {
       <!-- Encabezado con información del pedido -->
       <div class="flex justify-between items-start border-b border-slate-800 pb-3.5 shrink-0">
         <div class="space-y-1">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xl">☁️</span>
             <h3 class="text-base sm:text-lg font-black text-white">
-              Comprobante de Pago en Mini Nube
+              Comprobante de Pago en Nube Oficial
             </h3>
             <span class="text-[10px] font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
-              {{ order?.id }}
+              {{ order?.id || order?.clientNumber }}
+            </span>
+            <span class="text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              Sincronizado
             </span>
           </div>
           <p class="text-xs text-slate-400">
@@ -125,7 +189,7 @@ const downloadReceipt = () => {
       <!-- Estado: Cargando -->
       <div v-if="loading" class="py-16 text-center space-y-3">
         <div class="w-10 h-10 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="text-xs text-slate-400 font-medium">Recuperando comprobante desde la mini nube...</p>
+        <p class="text-xs text-slate-400 font-medium">Recuperando comprobante desde la nube...</p>
       </div>
 
       <!-- Estado: Comprobante encontrado -->
@@ -146,6 +210,15 @@ const downloadReceipt = () => {
           </div>
 
           <div class="flex items-center gap-2">
+            <button 
+              @click="sendReceiptToTelegram" 
+              :disabled="sendingTelegram"
+              class="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 hover:text-white border border-sky-500/40 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Enviar o reenviar este comprobante al Bot de Telegram oficial"
+            >
+              <span>{{ sendingTelegram ? '⏳' : '✈️' }}</span>
+              <span>{{ sendingTelegram ? 'Enviando...' : 'Bot Telegram' }}</span>
+            </button>
             <button 
               @click="downloadReceipt" 
               class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -194,14 +267,14 @@ const downloadReceipt = () => {
           </p>
         </div>
 
-        <!-- Alerta explicativa de Mini Nube -->
+        <!-- Alerta explicativa de Nube Sincronizada -->
         <div class="bg-sky-950/30 border border-sky-500/25 p-3 rounded-xl flex items-start gap-2.5 text-[11px] text-sky-200">
           <span class="text-sm shrink-0">☁️</span>
           <div>
-            <strong class="font-bold text-sky-300 block">Almacenamiento Temporal en Mini Nube:</strong>
+            <strong class="font-bold text-sky-300 block">Almacenamiento Sincronizado en la Nube:</strong>
             <span>
-              Este comprobante permanecerá accesible para el revendedor y el proveedor hasta verificar el pago. 
-              Al confirmar el cierre de la orden, se eliminará automáticamente de la memoria para que no ocupe espacio.
+              Este comprobante está guardado en la nube y accesible desde cualquier dispositivo, y se envía automáticamente al Bot de Telegram. 
+              Al confirmar la entrega o verificar el pago, puedes conservarlo o eliminarlo de la nube con un clic para liberar espacio.
             </span>
           </div>
         </div>
