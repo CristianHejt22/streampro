@@ -1,5 +1,5 @@
 // Servicio Oficial de Sincronización en Tiempo Real con Google Firebase Firestore
-import { initializeApp, getApps, getApp } from 'firebase/app'
+import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app'
 import { 
   getFirestore, 
   collection, 
@@ -44,7 +44,9 @@ export function initFirebase(config = null) {
 
   try {
     const apps = getApps()
-    currentApp = apps.length > 0 ? getApp() : initializeApp(effectiveConfig)
+    // Buscar específicamente la app por defecto '[DEFAULT]', para evitar errores si existen apps de prueba
+    const defaultApp = apps.find(a => a.name === '[DEFAULT]')
+    currentApp = defaultApp || initializeApp(effectiveConfig)
     dbInstance = getFirestore(currentApp)
     return dbInstance
   } catch (error) {
@@ -738,84 +740,191 @@ export function listenToGiveawayEntries(callback) {
 }
 
 /**
- * Guarda un comprobante en la colección 'receipts' de Firestore (Mini Nube en la Nube Real)
+ * Guarda un comprobante directamente en la colección 'receipts' mediante la REST API de Firestore
+ * Garantiza persistencia inmediata incluso si el SDK de Firebase tiene conflictos
  */
-export async function saveReceiptToFirestore(orderId, receiptData) {
-  if (!orderId || !receiptData) return { success: false, reason: 'Datos incompletos' }
-  if (!dbInstance) initFirebase()
-  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
-
+export async function saveReceiptViaFirestoreRest(orderId, cleanReceipt) {
   try {
-    const cleanReceipt = {
-      orderId: String(orderId),
-      fileName: receiptData.fileName || 'comprobante.jpg',
-      fileType: receiptData.fileType || 'image/jpeg',
-      fileSize: Number(receiptData.fileSize || 0),
-      dataUrl: String(receiptData.dataUrl || ''),
-      customerName: receiptData.customerName || '',
-      customerPhone: receiptData.customerPhone || '',
-      amount: Number(receiptData.amount || 0),
-      uploadedAt: receiptData.uploadedAt || new Date().toISOString(),
-      updatedAt: serverTimestamp()
+    const projectId = OFFICIAL_FIREBASE_CONFIG.projectId
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/receipts/${encodeURIComponent(orderId)}`
+    const body = {
+      fields: {
+        orderId: { stringValue: String(cleanReceipt.orderId || orderId) },
+        fileName: { stringValue: String(cleanReceipt.fileName || 'comprobante.jpg') },
+        fileType: { stringValue: String(cleanReceipt.fileType || 'image/jpeg') },
+        fileSize: { integerValue: String(cleanReceipt.fileSize || 0) },
+        dataUrl: { stringValue: String(cleanReceipt.dataUrl || '') },
+        customerName: { stringValue: String(cleanReceipt.customerName || '') },
+        customerPhone: { stringValue: String(cleanReceipt.customerPhone || '') },
+        amount: { doubleValue: Number(cleanReceipt.amount || 0) },
+        uploadedAt: { stringValue: String(cleanReceipt.uploadedAt || new Date().toISOString()) }
+      }
     }
-
-    await setDoc(doc(dbInstance, 'receipts', String(orderId)), cleanReceipt, { merge: true })
-    return { success: true, id: orderId }
-  } catch (error) {
-    console.warn('[Firebase] Error guardando comprobante en Firestore:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
- * Obtiene un comprobante desde la colección 'receipts' de Firestore
- */
-export async function getReceiptFromFirestore(orderId) {
-  if (!orderId) return null
-  if (!dbInstance) initFirebase()
-  if (!dbInstance) return null
-
-  try {
-    const snap = await getDoc(doc(dbInstance, 'receipts', String(orderId)))
-    if (snap.exists()) {
-      return snap.data()
-    }
-    return null
-  } catch (error) {
-    console.warn('[Firebase] Error obteniendo comprobante de Firestore:', error)
-    return null
-  }
-}
-
-/**
- * Elimina un comprobante de la colección 'receipts' de Firestore
- */
-export async function deleteReceiptFromFirestore(orderId) {
-  if (!orderId) return false
-  if (!dbInstance) initFirebase()
-  if (!dbInstance) return false
-
-  try {
-    await deleteDoc(doc(dbInstance, 'receipts', String(orderId)))
-    return true
-  } catch (error) {
-    console.warn('[Firebase] Error eliminando comprobante de Firestore:', error)
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    return res.ok
+  } catch (err) {
+    console.warn('[Firebase REST] Error guardando comprobante vía REST:', err)
     return false
   }
 }
 
 /**
- * Prueba la conexión con Firebase intentando una lectura básica
+ * Lee un comprobante directamente desde Firestore mediante su REST API
+ */
+export async function getReceiptViaFirestoreRest(orderId) {
+  try {
+    const projectId = OFFICIAL_FIREBASE_CONFIG.projectId
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/receipts/${encodeURIComponent(orderId)}`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const json = await res.json()
+    if (!json || !json.fields) return null
+    const f = json.fields
+    return {
+      orderId: f.orderId?.stringValue || orderId,
+      fileName: f.fileName?.stringValue || 'comprobante.jpg',
+      fileType: f.fileType?.stringValue || 'image/jpeg',
+      fileSize: parseInt(f.fileSize?.integerValue || '0', 10),
+      dataUrl: f.dataUrl?.stringValue || '',
+      customerName: f.customerName?.stringValue || '',
+      customerPhone: f.customerPhone?.stringValue || '',
+      amount: f.amount?.doubleValue ?? parseFloat(f.amount?.integerValue || '0'),
+      uploadedAt: f.uploadedAt?.stringValue || ''
+    }
+  } catch (err) {
+    console.warn('[Firebase REST] Error obteniendo comprobante vía REST:', err)
+    return null
+  }
+}
+
+/**
+ * Elimina un comprobante directamente desde Firestore mediante REST API
+ */
+export async function deleteReceiptViaFirestoreRest(orderId) {
+  try {
+    const projectId = OFFICIAL_FIREBASE_CONFIG.projectId
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/receipts/${encodeURIComponent(orderId)}`
+    const res = await fetch(url, { method: 'DELETE' })
+    return res.ok
+  } catch (err) {
+    return false
+  }
+}
+
+/**
+ * Guarda un comprobante en la colección 'receipts' de Firestore (Mini Nube en la Nube Real)
+ * Utiliza SDK nativo con fallback automático y transparente a REST API
+ */
+export async function saveReceiptToFirestore(orderId, receiptData) {
+  if (!orderId || !receiptData) return { success: false, reason: 'Datos incompletos' }
+
+  const cleanReceipt = {
+    orderId: String(orderId),
+    fileName: receiptData.fileName || 'comprobante.jpg',
+    fileType: receiptData.fileType || 'image/jpeg',
+    fileSize: Number(receiptData.fileSize || 0),
+    dataUrl: String(receiptData.dataUrl || ''),
+    customerName: receiptData.customerName || '',
+    customerPhone: receiptData.customerPhone || '',
+    amount: Number(receiptData.amount || 0),
+    uploadedAt: receiptData.uploadedAt || new Date().toISOString()
+  }
+
+  // 1. Intentar con Firestore SDK si está inicializado o se puede inicializar
+  if (!dbInstance) initFirebase()
+  if (dbInstance) {
+    try {
+      await setDoc(doc(dbInstance, 'receipts', String(orderId)), {
+        ...cleanReceipt,
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+      return { success: true, id: orderId }
+    } catch (sdkError) {
+      console.warn('[Firebase SDK] Falló setDoc, usando REST fallback:', sdkError)
+    }
+  }
+
+  // 2. Fallback de alta confiabilidad por REST API de Firestore
+  const restOk = await saveReceiptViaFirestoreRest(orderId, cleanReceipt)
+  if (restOk) {
+    return { success: true, id: orderId }
+  }
+
+  return { success: false, reason: 'No se pudo guardar el comprobante en Firestore' }
+}
+
+/**
+ * Obtiene un comprobante desde la colección 'receipts' de Firestore
+ * Consulta SDK con fallback a REST API
+ */
+export async function getReceiptFromFirestore(orderId) {
+  if (!orderId) return null
+  if (!dbInstance) initFirebase()
+
+  // 1. Intentar con Firestore SDK
+  if (dbInstance) {
+    try {
+      const snap = await getDoc(doc(dbInstance, 'receipts', String(orderId)))
+      if (snap.exists()) {
+        return snap.data()
+      }
+    } catch (sdkError) {
+      console.warn('[Firebase SDK] Error obteniendo comprobante, intentando REST:', sdkError)
+    }
+  }
+
+  // 2. Fallback por REST API directa
+  const restData = await getReceiptViaFirestoreRest(orderId)
+  if (restData) {
+    return restData
+  }
+
+  return null
+}
+
+/**
+ * Elimina un comprobante de la colección 'receipts' de Firestore (SDK + REST)
+ */
+export async function deleteReceiptFromFirestore(orderId) {
+  if (!orderId) return false
+  if (!dbInstance) initFirebase()
+
+  if (dbInstance) {
+    try {
+      await deleteDoc(doc(dbInstance, 'receipts', String(orderId)))
+    } catch (e) {}
+  }
+
+  try {
+    await deleteReceiptViaFirestoreRest(orderId)
+  } catch (e) {}
+
+  return true
+}
+
+/**
+ * Prueba la conexión con Firebase intentando una lectura básica y limpiando apps temporales
  */
 export async function testFirebaseConnection(config = null) {
+  let testApp = null
   try {
     const testConfig = (config && config.apiKey && config.projectId) ? config : OFFICIAL_FIREBASE_CONFIG
-    const testApp = initializeApp(testConfig, 'test-app-' + Date.now())
+    testApp = initializeApp(testConfig, 'test-app-' + Date.now())
     const testDb = getFirestore(testApp)
     const q = query(collection(testDb, 'orders'), limit(1))
     await getDocs(q)
     return { success: true, message: '¡Conexión exitosa con Firebase Firestore!' }
   } catch (error) {
     return { success: false, message: error.message }
+  } finally {
+    if (testApp) {
+      try {
+        await deleteApp(testApp)
+      } catch (_) {}
+    }
   }
 }

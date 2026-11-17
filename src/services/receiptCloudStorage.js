@@ -48,35 +48,50 @@ function openDb() {
 
 /**
  * Guarda un comprobante en la Nube (Memoria + IndexedDB + Firebase Firestore)
+ * Permite guardar bajo múltiples identificadores simultáneamente (ej: ORD-69731-1 y CLI-5810)
  */
-export async function saveReceipt(orderId, receiptData) {
+export async function saveReceipt(orderId, receiptData, additionalOrderIds = []) {
   if (!orderId || !receiptData) return false
 
+  const allKeys = [
+    ...new Set(
+      [orderId, ...(Array.isArray(additionalOrderIds) ? additionalOrderIds : [additionalOrderIds])]
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    )
+  ]
+  if (allKeys.length === 0) return false
+
+  const primaryKey = allKeys[0]
   const record = {
-    orderId: String(orderId),
+    orderId: primaryKey,
     fileName: receiptData.fileName || 'comprobante.jpg',
     fileType: receiptData.fileType || 'image/jpeg',
     fileSize: receiptData.fileSize || 0,
-    dataUrl: receiptData.dataUrl,
+    dataUrl: String(receiptData.dataUrl || ''),
     customerName: receiptData.customerName || '',
     customerPhone: receiptData.customerPhone || '',
     amount: receiptData.amount || 0,
     uploadedAt: receiptData.uploadedAt || new Date().toISOString()
   }
 
-  // 1. Guardar en caché de memoria inmediato
-  memoryReceiptCache.set(orderId, record)
+  // 1. Guardar en caché de memoria inmediato para todas las claves
+  allKeys.forEach(k => {
+    memoryReceiptCache.set(k, { ...record, orderId: k })
+  })
 
-  // 2. Guardar en IndexedDB local
+  // 2. Guardar en IndexedDB local para todas las claves
   const db = await openDb()
   if (db) {
     try {
       await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readwrite')
         const store = tx.objectStore(STORE_NAME)
-        const req = store.put(record)
-        req.onsuccess = () => resolve(true)
-        req.onerror = () => resolve(true)
+        allKeys.forEach(k => {
+          store.put({ ...record, orderId: k })
+        })
+        tx.oncomplete = () => resolve(true)
+        tx.onerror = () => resolve(true)
       })
     } catch (e) {
       console.warn('[ReceiptCloud] Error al guardar en IndexedDB:', e)
@@ -85,7 +100,9 @@ export async function saveReceipt(orderId, receiptData) {
 
   // 3. Guardar en la Nube Global (Firebase Firestore) para acceso inmediato desde cualquier dispositivo
   try {
-    await saveReceiptToFirestore(orderId, record)
+    await Promise.allSettled(
+      allKeys.map(k => saveReceiptToFirestore(k, { ...record, orderId: k }))
+    )
   } catch (cloudErr) {
     console.warn('[ReceiptCloud] Error guardando comprobante en Firebase:', cloudErr)
   }
@@ -95,29 +112,44 @@ export async function saveReceipt(orderId, receiptData) {
 
 /**
  * Obtiene el comprobante desde la Nube (Memoria -> IndexedDB -> Firebase Firestore)
+ * Admite múltiples identificadores de búsqueda / fallbacks
  */
-export async function getReceipt(orderId) {
-  if (!orderId) return null
+export async function getReceipt(orderId, fallbackIds = []) {
+  if (!orderId && (!fallbackIds || fallbackIds.length === 0)) return null
+
+  const candidateKeys = [
+    ...new Set(
+      [orderId, ...(Array.isArray(fallbackIds) ? fallbackIds : [fallbackIds])]
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    )
+  ]
+  if (candidateKeys.length === 0) return null
 
   // 1. Revisar memoria
-  if (memoryReceiptCache.has(orderId)) {
-    return memoryReceiptCache.get(orderId)
+  for (const k of candidateKeys) {
+    if (memoryReceiptCache.has(k)) {
+      const hit = memoryReceiptCache.get(k)
+      if (hit && hit.dataUrl) return hit
+    }
   }
 
   // 2. Revisar IndexedDB local
   const db = await openDb()
   if (db) {
     try {
-      const localResult = await new Promise((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readonly')
-        const store = tx.objectStore(STORE_NAME)
-        const req = store.get(orderId)
-        req.onsuccess = () => resolve(req.result || null)
-        req.onerror = () => resolve(null)
-      })
-      if (localResult && localResult.dataUrl) {
-        memoryReceiptCache.set(orderId, localResult)
-        return localResult
+      for (const k of candidateKeys) {
+        const localResult = await new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readonly')
+          const store = tx.objectStore(STORE_NAME)
+          const req = store.get(k)
+          req.onsuccess = () => resolve(req.result || null)
+          req.onerror = () => resolve(null)
+        })
+        if (localResult && localResult.dataUrl) {
+          candidateKeys.forEach(alias => memoryReceiptCache.set(alias, localResult))
+          return localResult
+        }
       }
     } catch (e) {
       console.warn('[ReceiptCloud] Error al leer IndexedDB:', e)
@@ -125,20 +157,26 @@ export async function getReceipt(orderId) {
   }
 
   // 3. Recuperar desde la Nube Global (Firebase Firestore)
-  try {
-    const cloudReceipt = await getReceiptFromFirestore(orderId)
-    if (cloudReceipt && cloudReceipt.dataUrl) {
-      memoryReceiptCache.set(orderId, cloudReceipt)
-      if (db) {
-        try {
-          const tx = db.transaction(STORE_NAME, 'readwrite')
-          tx.objectStore(STORE_NAME).put(cloudReceipt)
-        } catch {}
+  for (const k of candidateKeys) {
+    try {
+      const cloudReceipt = await getReceiptFromFirestore(k)
+      if (cloudReceipt && cloudReceipt.dataUrl) {
+        // Cachear en memoria y local para todas las claves consultadas
+        candidateKeys.forEach(alias => memoryReceiptCache.set(alias, cloudReceipt))
+        if (db) {
+          try {
+            const tx = db.transaction(STORE_NAME, 'readwrite')
+            const store = tx.objectStore(STORE_NAME)
+            candidateKeys.forEach(alias => {
+              store.put({ ...cloudReceipt, orderId: alias })
+            })
+          } catch {}
+        }
+        return cloudReceipt
       }
-      return cloudReceipt
+    } catch (cloudErr) {
+      console.warn(`[ReceiptCloud] Error recuperando comprobante de Firebase para ${k}:`, cloudErr)
     }
-  } catch (cloudErr) {
-    console.warn('[ReceiptCloud] Error recuperando comprobante de Firebase:', cloudErr)
   }
 
   return null
@@ -147,11 +185,19 @@ export async function getReceipt(orderId) {
 /**
  * Elimina el comprobante definitivamente de la Nube (Memoria + IndexedDB + Firebase Firestore)
  */
-export async function deleteReceipt(orderId) {
+export async function deleteReceipt(orderId, additionalOrderIds = []) {
   if (!orderId) return true
 
+  const candidateKeys = [
+    ...new Set(
+      [orderId, ...(Array.isArray(additionalOrderIds) ? additionalOrderIds : [additionalOrderIds])]
+        .map(id => String(id || '').trim())
+        .filter(Boolean)
+    )
+  ]
+
   // 1. Limpiar memoria
-  memoryReceiptCache.delete(orderId)
+  candidateKeys.forEach(k => memoryReceiptCache.delete(k))
 
   // 2. Limpiar IndexedDB local
   const db = await openDb()
@@ -160,9 +206,9 @@ export async function deleteReceipt(orderId) {
       await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readwrite')
         const store = tx.objectStore(STORE_NAME)
-        const req = store.delete(orderId)
-        req.onsuccess = () => resolve(true)
-        req.onerror = () => resolve(false)
+        candidateKeys.forEach(k => store.delete(k))
+        tx.oncomplete = () => resolve(true)
+        tx.onerror = () => resolve(false)
       })
     } catch (e) {
       console.warn('[ReceiptCloud] Error al eliminar de IndexedDB:', e)
@@ -171,7 +217,9 @@ export async function deleteReceipt(orderId) {
 
   // 3. Eliminar de Firebase Firestore
   try {
-    await deleteReceiptFromFirestore(orderId)
+    await Promise.allSettled(
+      candidateKeys.map(k => deleteReceiptFromFirestore(k))
+    )
   } catch (cloudErr) {
     console.warn('[ReceiptCloud] Error eliminando comprobante de Firebase:', cloudErr)
   }
@@ -239,11 +287,11 @@ export function processReceiptFile(file) {
       return
     }
 
-    // Imagen (JPG/PNG/WEBP): Comprimir proporcionalmente si supera 1200px para almacenamiento óptimo en nube
+    // Imagen (JPG/PNG/WEBP): Comprimir proporcionalmente si supera 1000px para almacenamiento óptimo en nube
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
-        const maxDim = 1200
+        const maxDim = 1000
         let width = img.width
         let height = img.height
 
@@ -263,7 +311,7 @@ export function processReceiptFile(file) {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75)
         resolve({
           fileName: file.name.replace(/\.[^/.]+$/, '') + '.jpg',
           fileType: 'image/jpeg',

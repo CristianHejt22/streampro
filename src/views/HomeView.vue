@@ -2772,11 +2772,13 @@ const submitOrder = async () => {
 
   const netMultiplier = cartSubtotalSnapshot > 0 ? Math.max(0.05, cartStore.total / cartSubtotalSnapshot) : 1
   let countedPromoUse = false
+  const createdDigitalOrderIds = []
 
   // 2. Registrar órdenes digitales de streaming / gaming evitando colisión de IDs en compras múltiples
   for (let idx = 0; idx < digitalItems.length; idx++) {
     const item = digitalItems[idx]
     const streamingOrderId = `ORD-${Date.now().toString().slice(-5)}-${idx + 1}`
+    createdDigitalOrderIds.push(streamingOrderId)
     const qty = Math.max(1, Number(item.quantity) || 1)
     const rawLineAmount = Number(item.clientPrice || 0) * qty
     const effectiveLinePrice = Math.round(rawLineAmount * netMultiplier)
@@ -2790,7 +2792,7 @@ const submitOrder = async () => {
       : 0
     
     if (hasUploadedReceipt) {
-      saveReceipt(streamingOrderId, {
+      await saveReceipt(streamingOrderId, {
         fileName: receiptMeta.fileName,
         fileType: receiptMeta.fileType,
         fileSize: receiptMeta.fileSize,
@@ -2798,7 +2800,9 @@ const submitOrder = async () => {
         customerName: clientForm.value.fullName,
         customerPhone: clientForm.value.whatsapp,
         amount: effectiveLinePrice
-      }).catch(() => {})
+      }, [clientForm.value.clientNumber, prevNum]).catch(err => {
+        console.warn('[HomeView] Error guardando comprobante digital en nube:', err)
+      })
     }
 
     const gameName = item.title || item.baseName || item.name || null
@@ -2903,7 +2907,7 @@ const submitOrder = async () => {
     })
 
     if (hasUploadedReceipt && physRes?.order?.id) {
-      saveReceipt(physRes.order.id, {
+      await saveReceipt(physRes.order.id, {
         fileName: receiptMeta.fileName,
         fileType: receiptMeta.fileType,
         fileSize: receiptMeta.fileSize,
@@ -2911,7 +2915,9 @@ const submitOrder = async () => {
         customerName: clientForm.value.fullName,
         customerPhone: clientForm.value.whatsapp,
         amount: physEffectiveTotal
-      }).catch(() => {})
+      }, [clientForm.value.clientNumber, prevNum]).catch(err => {
+        console.warn('[HomeView] Error guardando comprobante físico en nube:', err)
+      })
     }
 
     if (verifiedCoupon?.code && physRes?.order?.id) {
@@ -2938,6 +2944,21 @@ const submitOrder = async () => {
     clientNumber: prevNum
   })
   orderSnapshot.awardedGiveawayTickets = awardedGiveawayTickets
+
+  // Asegurar persistencia del comprobante bajo el número de pedido general (prevNum) y todos los IDs digitales
+  if (hasUploadedReceipt) {
+    await saveReceipt(prevNum, {
+      fileName: receiptMeta.fileName,
+      fileType: receiptMeta.fileType,
+      fileSize: receiptMeta.fileSize,
+      dataUrl: receiptMeta.dataUrl,
+      customerName: clientForm.value.fullName,
+      customerPhone: clientForm.value.whatsapp,
+      amount: finalOrderTotal
+    }, createdDigitalOrderIds).catch(err => {
+      console.warn('[HomeView] Error guardando comprobante bajo prevNum:', err)
+    })
+  }
 
   // 4. Si el pedido quedó 100% cubierto con saldo de billetera:
   if (finalOrderTotal === 0 && walletAmountApplied > 0) {
@@ -2992,9 +3013,14 @@ const submitOrder = async () => {
           body: JSON.stringify({
             order: {
               ...orderSnapshot,
+              id: prevNum,
+              clientNumber: prevNum,
               paymentMethod: 'Mercado Pago (Checkout Pro - En Proceso)',
               pin: clientForm.value.pin
             },
+            orderId: prevNum,
+            clientNumber: prevNum,
+            digitalOrderIds: createdDigitalOrderIds,
             receipt: hasUploadedReceipt ? {
               fileName: receiptMeta.fileName,
               fileType: receiptMeta.fileType,
@@ -3031,8 +3057,13 @@ const submitOrder = async () => {
       body: JSON.stringify({
         order: {
           ...orderSnapshot,
+          id: prevNum,
+          clientNumber: prevNum,
           pin: clientForm.value.pin
         },
+        orderId: prevNum,
+        clientNumber: prevNum,
+        digitalOrderIds: createdDigitalOrderIds,
         receipt: hasUploadedReceipt ? {
           fileName: receiptMeta.fileName,
           fileType: receiptMeta.fileType,

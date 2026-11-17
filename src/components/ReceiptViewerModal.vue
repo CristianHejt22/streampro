@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
-import { getReceipt, deleteReceipt } from '../services/receiptCloudStorage'
+import { ref, computed, watch } from 'vue'
+import { getReceipt, deleteReceipt, saveReceipt, processReceiptFile } from '../services/receiptCloudStorage'
 import { useToastStore } from '../store/toast'
 
 const props = defineProps({
@@ -24,9 +24,38 @@ const toast = useToastStore()
 const loading = ref(false)
 const receiptData = ref(null)
 const isZoomed = ref(false)
+const manualFileInput = ref(null)
+const isUploadingManualReceipt = ref(false)
+
+const getCandidateIds = () => {
+  const ids = []
+  if (props.order?.id) ids.push(props.order.id)
+  if (props.order?.customerNumber) ids.push(props.order.customerNumber)
+  if (props.order?.clientNumber) ids.push(props.order.clientNumber)
+  if (props.order?.orderId) ids.push(props.order.orderId)
+  if (props.order?.id && String(props.order.id).includes('-')) {
+    const parts = String(props.order.id).split('-')
+    if (parts.length > 2) {
+      ids.push(`${parts[0]}-${parts[1]}`)
+      ids.push(parts[1])
+    }
+  }
+  return [...new Set(ids.map(x => String(x || '').trim()).filter(Boolean))]
+}
+
+const isOrderPending = computed(() => {
+  const status = props.order?.status
+  const receiptStatus = props.order?.receiptStatus
+  if (receiptStatus === 'verified_and_purged') return false
+  if (status === 'Dispatched' || status === 'Confirmado' || status === 'Aprobado' || status === 'Entregado') {
+    return false
+  }
+  return true
+})
 
 const loadReceipt = async () => {
-  if (!props.order?.id && !props.order?.customerNumber && !props.order?.clientNumber) {
+  const candidateIds = getCandidateIds()
+  if (candidateIds.length === 0) {
     receiptData.value = null
     return
   }
@@ -34,18 +63,14 @@ const loadReceipt = async () => {
   isZoomed.value = false
   try {
     let data = null
-    if (props.order?.id) {
-      data = await getReceipt(props.order.id)
+    for (const cid of candidateIds) {
+      data = await getReceipt(cid, candidateIds)
+      if (data && data.dataUrl) break
     }
-    if (!data && props.order?.customerNumber) {
-      data = await getReceipt(props.order.customerNumber)
-    }
-    if (!data && props.order?.clientNumber) {
-      data = await getReceipt(props.order.clientNumber)
-    }
+
     if (!data && props.order?.receiptDataUrl) {
       data = {
-        orderId: props.order.id,
+        orderId: props.order.id || candidateIds[0],
         dataUrl: props.order.receiptDataUrl,
         fileName: props.order.receiptFileName || 'comprobante.jpg',
         fileType: props.order.receiptFileType || 'image/jpeg',
@@ -74,19 +99,28 @@ const sendReceiptToTelegram = async () => {
   }
   sendingTelegram.value = true
   try {
+    const candidateIds = getCandidateIds()
+    const primaryId = props.order?.id || receiptData.value.orderId || candidateIds[0] || 'S/N'
     const res = await fetch('/api/notify-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sendReceiptOnly: true,
-        orderId: props.order?.id || receiptData.value.orderId,
+        orderId: primaryId,
+        clientNumber: props.order?.clientNumber || props.order?.customerNumber || primaryId,
+        digitalOrderIds: candidateIds,
         customerName: props.order?.customerName || receiptData.value.customerName,
         customerPhone: props.order?.customerPhone || receiptData.value.customerPhone,
         amount: props.order?.clientPrice || props.order?.totalAmount || receiptData.value.amount || 0,
         receipt: {
+          orderId: primaryId,
           fileName: receiptData.value.fileName,
           fileType: receiptData.value.fileType,
-          dataUrl: receiptData.value.dataUrl
+          fileSize: receiptData.value.fileSize,
+          dataUrl: receiptData.value.dataUrl,
+          customerName: props.order?.customerName || receiptData.value.customerName,
+          customerPhone: props.order?.customerPhone || receiptData.value.customerPhone,
+          amount: props.order?.clientPrice || props.order?.totalAmount || receiptData.value.amount || 0
         }
       })
     })
@@ -102,6 +136,65 @@ const sendReceiptToTelegram = async () => {
   } finally {
     sendingTelegram.value = false
   }
+}
+
+const triggerManualUpload = () => {
+  manualFileInput.value?.click()
+}
+
+const handleManualReceiptFile = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  isUploadingManualReceipt.value = true
+  try {
+    const processed = await processReceiptFile(file)
+    const candidateIds = getCandidateIds()
+    const primaryId = props.order?.id || candidateIds[0] || `ORD-${Date.now()}`
+    
+    await saveReceipt(primaryId, {
+      ...processed,
+      customerName: props.order?.customerName || '',
+      customerPhone: props.order?.customerPhone || '',
+      amount: props.order?.clientPrice || props.order?.totalAmount || 0
+    }, candidateIds)
+
+    if (props.order) {
+      props.order.hasReceipt = true
+      props.order.receiptFileName = processed.fileName
+      props.order.receiptFileType = processed.fileType
+      props.order.receiptFileSize = processed.fileSize
+      props.order.voucher = `Comprobante en Nube (${processed.fileName})`
+    }
+
+    receiptData.value = {
+      orderId: primaryId,
+      ...processed,
+      customerName: props.order?.customerName || '',
+      customerPhone: props.order?.customerPhone || '',
+      amount: props.order?.clientPrice || props.order?.totalAmount || 0,
+      uploadedAt: new Date().toISOString()
+    }
+
+    toast.add('✅ ¡Comprobante guardado en la nube con éxito!', 'success')
+  } catch (err) {
+    console.error('Error al procesar comprobante manual:', err)
+    toast.add('Error al subir comprobante: ' + (err?.message || err), 'error')
+  } finally {
+    isUploadingManualReceipt.value = false
+    if (e.target) e.target.value = ''
+  }
+}
+
+const requestReceiptViaWhatsApp = () => {
+  const phone = String(props.order?.customerPhone || '').replace(/[^0-9]/g, '')
+  if (!phone) {
+    toast.add('El pedido no tiene registrado número de WhatsApp del cliente', 'warning')
+    return
+  }
+  const orderRef = props.order?.id || props.order?.clientNumber || 'de tu pedido'
+  const customerName = props.order?.customerName ? ` ${props.order.customerName}` : ''
+  const text = `Hola${customerName}, te escribimos desde StreamePro por tu pedido #${orderRef}. ¿Nos podrías reenviar por aquí la captura o foto de tu comprobante de pago para procesar la entrega de tus cuentas de inmediato? ¡Muchas gracias!`
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
 }
 
 watch(() => props.show, (newVal) => {
@@ -124,7 +217,8 @@ const handlePurgeReceiptOnly = async () => {
     return
   }
 
-  const success = await deleteReceipt(props.order.id)
+  const candidateIds = getCandidateIds()
+  const success = await deleteReceipt(props.order.id, candidateIds)
   if (success) {
     receiptData.value = null
     emit('receipt-purged', props.order.id)
@@ -280,10 +374,69 @@ const downloadReceipt = () => {
         </div>
       </div>
 
-      <!-- Estado: No hay comprobante cargado o ya fue depurado -->
-      <div v-else class="py-12 text-center space-y-3 bg-slate-950/50 rounded-2xl border border-slate-800 p-6">
+      <!-- Estado: Comprobante no localizado aún en la nube (pedido pendiente de entrega) -->
+      <div v-else-if="isOrderPending" class="py-8 px-5 sm:px-8 text-center space-y-4 bg-amber-950/20 rounded-2xl border border-amber-500/30">
+        <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto shadow-inner">
+          ⚠️
+        </div>
+        <div class="space-y-1.5 max-w-md mx-auto">
+          <h4 class="font-black text-amber-200 text-base">Comprobante no localizado en la nube</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Este pedido está pendiente de entrega y aún no se detectó el archivo de comprobante en la nube (puede haber ocurrido una desconexión o interrupción al enviar).
+          </p>
+          <div v-if="order?.voucher" class="font-mono text-[11px] text-amber-400/90 pt-1">
+            Referencia registrada: {{ order.voucher }}
+          </div>
+        </div>
+
+        <!-- Acciones de rescate -->
+        <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+          <button 
+            @click="loadReceipt" 
+            :disabled="loading"
+            type="button"
+            class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Reintentar consultar Firestore e IndexedDB"
+          >
+            <span>🔄</span>
+            <span>Reintentar Búsqueda</span>
+          </button>
+
+          <button 
+            v-if="order?.customerPhone"
+            @click="requestReceiptViaWhatsApp" 
+            type="button"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-600/30 flex items-center gap-1.5 cursor-pointer"
+            title="Abrir chat de WhatsApp con mensaje listo para solicitar comprobante"
+          >
+            <span>💬</span>
+            <span>Pedir Comprobante por WhatsApp</span>
+          </button>
+
+          <button 
+            @click="triggerManualUpload" 
+            :disabled="isUploadingManualReceipt"
+            type="button"
+            class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-sky-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Subir JPG, PNG o PDF del comprobante que envió el cliente"
+          >
+            <span>📎</span>
+            <span>{{ isUploadingManualReceipt ? 'Subiendo a la nube...' : 'Adjuntar Comprobante' }}</span>
+          </button>
+          <input 
+            ref="manualFileInput" 
+            type="file" 
+            accept="image/*,application/pdf" 
+            class="hidden" 
+            @change="handleManualReceiptFile" 
+          />
+        </div>
+      </div>
+
+      <!-- Estado: Pedido ya entregado y comprobante depurado -->
+      <div v-else class="py-10 text-center space-y-3 bg-slate-950/50 rounded-2xl border border-slate-800 p-6">
         <span class="text-4xl">🗑️</span>
-        <h4 class="font-bold text-slate-300 text-sm">Comprobante no disponible o ya depurado</h4>
+        <h4 class="font-bold text-slate-300 text-sm">Comprobante verificado y depurado</h4>
         <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
           El comprobante de este pedido ya fue verificado y eliminado de la mini nube al confirmar el cierre de la entrega para optimizar el almacenamiento.
         </p>

@@ -51,9 +51,10 @@ function parseDataUrl(dataUrl) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
   if (!match) return null
   try {
+    const cleanBase64 = match[2].replace(/\s+/g, '')
     return {
       mimeType: match[1],
-      buffer: Buffer.from(match[2], 'base64')
+      buffer: Buffer.from(cleanBase64, 'base64')
     }
   } catch (err) {
     console.error('[Telegram] Error al parsear DataURL base64:', err)
@@ -61,29 +62,90 @@ function parseDataUrl(dataUrl) {
   }
 }
 
-async function sendTelegramMedia(token, chatId, parsedFile, fileName = 'comprobante.jpg', caption = '') {
-  try {
-    const isPdf = parsedFile.mimeType === 'application/pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))
-    const endpoint = isPdf ? 'sendDocument' : 'sendPhoto'
-    const fieldName = isPdf ? 'document' : 'photo'
-    const finalFileName = fileName || (isPdf ? 'comprobante.pdf' : 'comprobante.jpg')
+/**
+ * Guarda el comprobante en Firestore vía REST API directamente desde el servidor
+ * para asegurar disponibilidad inmediata en cualquier dispositivo
+ */
+async function persistReceiptToFirestore(orderIds = [], rawReceipt, customerName = '', customerPhone = '', amount = 0) {
+  if (!rawReceipt || !rawReceipt.dataUrl || !Array.isArray(orderIds) || orderIds.length === 0) return
+  const projectId = 'streamepro-6f5a3'
+  const uniqueIds = [...new Set(orderIds.map(id => String(id || '').trim()).filter(Boolean))]
 
-    const form = new FormData()
-    form.append('chat_id', chatId)
-    const blob = new Blob([parsedFile.buffer], { type: parsedFile.mimeType })
-    form.append(fieldName, blob, finalFileName)
+  for (const orderId of uniqueIds) {
+    try {
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/receipts/${encodeURIComponent(orderId)}`
+      const body = {
+        fields: {
+          orderId: { stringValue: orderId },
+          fileName: { stringValue: String(rawReceipt.fileName || 'comprobante.jpg') },
+          fileType: { stringValue: String(rawReceipt.fileType || 'image/jpeg') },
+          fileSize: { integerValue: String(rawReceipt.fileSize || 0) },
+          dataUrl: { stringValue: String(rawReceipt.dataUrl) },
+          customerName: { stringValue: String(customerName || '') },
+          customerPhone: { stringValue: String(customerPhone || '') },
+          amount: { doubleValue: Number(amount || 0) },
+          uploadedAt: { stringValue: new Date().toISOString() }
+        }
+      }
+      await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+    } catch (e) {
+      console.warn(`[notify-order] Error guardando comprobante en Firestore para ${orderId}:`, e)
+    }
+  }
+}
+
+async function sendTelegramMedia(token, chatId, parsedFile, fileName = 'comprobante.jpg', caption = '') {
+  const isPdf = parsedFile.mimeType === 'application/pdf' || (fileName && fileName.toLowerCase().endsWith('.pdf'))
+  const finalFileName = fileName || (isPdf ? 'comprobante.pdf' : 'comprobante.jpg')
+
+  // 1. Si no es PDF, intentar enviar como foto para previsualización grande en Telegram
+  if (!isPdf) {
+    try {
+      const form = new FormData()
+      form.append('chat_id', chatId)
+      const blob = new Blob([new Uint8Array(parsedFile.buffer)], { type: parsedFile.mimeType || 'image/jpeg' })
+      form.append('photo', blob, finalFileName)
+      if (caption) {
+        form.append('caption', caption.slice(0, 1000))
+        form.append('parse_mode', 'HTML')
+      }
+
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: 'POST',
+        body: form
+      })
+      const data = await res.json()
+      if (data && data.ok) {
+        return data
+      }
+      console.warn(`[Telegram sendPhoto] No se pudo enviar como foto (${data?.description || 'Error'}), reintentando como documento...`)
+    } catch (photoErr) {
+      console.warn('[Telegram sendPhoto] Excepción enviando foto, reintentando como documento:', photoErr)
+    }
+  }
+
+  // 2. Enviar como Documento (sendDocument): Garantizado al 100% para PDFs y cualquier formato de imagen
+  try {
+    const docForm = new FormData()
+    docForm.append('chat_id', chatId)
+    const blob = new Blob([new Uint8Array(parsedFile.buffer)], { type: parsedFile.mimeType || 'application/octet-stream' })
+    docForm.append('document', blob, finalFileName)
     if (caption) {
-      form.append('caption', caption.slice(0, 1000))
-      form.append('parse_mode', 'HTML')
+      docForm.append('caption', caption.slice(0, 1000))
+      docForm.append('parse_mode', 'HTML')
     }
 
-    const res = await fetch(`https://api.telegram.org/bot${token}/${endpoint}`, {
+    const docRes = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
       method: 'POST',
-      body: form
+      body: docForm
     })
-    return await res.json()
+    return await docRes.json()
   } catch (err) {
-    console.error(`[Telegram] Error enviando media (${fileName}):`, err)
+    console.error(`[Telegram sendDocument] Error enviando media (${fileName}):`, err)
     return { ok: false, error: err?.message || String(err) }
   }
 }
@@ -125,11 +187,23 @@ export default async function handler(req, res) {
 
     // Envío directo o reenvío de comprobante desde el panel de administración
     if (body.sendReceiptOnly && body.receipt && body.receipt.dataUrl) {
+      const orderNum = body.orderId || body.receipt.orderId || 'S/N'
+      const custName = body.customerName || body.receipt.customerName || 'Cliente'
+      const custPhone = body.customerPhone || body.receipt.customerPhone || ''
+      const amt = body.amount || body.receipt.amount || 0
+
+      // Asegurar persistencia inmediata en la nube Firestore bajo todos los identificadores conocidos
+      const orderIdsToPersist = [
+        orderNum,
+        body.orderId,
+        body.receipt.orderId,
+        body.clientNumber,
+        ...(Array.isArray(body.digitalOrderIds) ? body.digitalOrderIds : [])
+      ]
+      await persistReceiptToFirestore(orderIdsToPersist, body.receipt, custName, custPhone, amt)
+
       const parsed = parseDataUrl(body.receipt.dataUrl)
       if (parsed) {
-        const orderNum = body.orderId || body.receipt.orderId || 'S/N'
-        const custName = body.customerName || body.receipt.customerName || 'Cliente'
-        const amt = body.amount || body.receipt.amount || 0
         const caption = 
           `🧾 <b>COMPROBANTE DE PAGO REENVIADO</b>\n\n` +
           `📋 <b>N° Pedido:</b> <code>${escapeHtml(orderNum)}</code>\n` +
@@ -137,7 +211,7 @@ export default async function handler(req, res) {
           `💰 <b>Monto:</b> <b>$${Number(amt).toLocaleString()} ARS</b>\n` +
           `☁️ <b>Almacenamiento:</b> Nube StreamePro Verificada`
         const mediaRes = await sendTelegramMedia(token, chatId, parsed, body.receipt.fileName, caption)
-        return res.status(200).json({ success: true, mediaRes })
+        return res.status(200).json({ success: true, mediaRes, persistedToFirestore: true })
       }
       return res.status(400).json({ error: 'Comprobante no válido o corrupto' })
     }
@@ -189,6 +263,25 @@ export default async function handler(req, res) {
 
     const rawReceipt = body.receipt || ord.receipt || (ord.receiptDataUrl ? { dataUrl: ord.receiptDataUrl, fileName: ord.receiptFileName, fileType: ord.receiptFileType } : null)
     const hasReceiptAttached = Boolean(rawReceipt && rawReceipt.dataUrl)
+
+    // Persistir comprobante en la nube Firestore bajo todos los identificadores asociados (orden principal, subórdenes digitales, clientNumber)
+    if (hasReceiptAttached) {
+      const orderIdsToPersist = [
+        ord.id,
+        ord.clientNumber,
+        ord.customerNumber,
+        body.orderId,
+        body.clientNumber,
+        ...(Array.isArray(body.digitalOrderIds) ? body.digitalOrderIds : [])
+      ]
+      await persistReceiptToFirestore(
+        orderIdsToPersist,
+        rawReceipt,
+        ord.customerName,
+        ord.customerPhone,
+        ord.total
+      )
+    }
 
     const message = 
       `🚨 <b>¡NUEVO PEDIDO RECIBIDO EN STREAMEPRO!</b> 🚀\n\n` +
