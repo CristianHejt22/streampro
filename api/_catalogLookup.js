@@ -346,8 +346,9 @@ async function resolveBasePreviewPayload(query = {}) {
       badge: '🎁 COMBO VIP',
       originalPrice: parseArsNum(query.orig) || 0,
       promoPrice: parseArsNum(query.price) || 15900,
+      image: 'https://streamepro.me/flyers/combos/combo-default.jpg',
       services: [
-        { platform: 'Netflix', planLabel: '4K HDR' },
+        { platform: 'Max', planLabel: '4K HDR' },
         { platform: 'Disney+', planLabel: 'VIP' },
         { platform: 'Max', planLabel: 'Platino' }
       ]
@@ -368,6 +369,7 @@ async function resolveBasePreviewPayload(query = {}) {
       originalPriceNumeric: Number(pkgMeta.originalPrice || 0),
       services: pkgMeta.services || [],
       subtitle: pkgMeta.description,
+      image: pkgMeta.image || 'https://streamepro.me/flyers/combos/combo-default.jpg',
       description: `🎁 ${pkgMeta.title} a solo ${priceStr}. Incluye: ${(pkgMeta.services || []).map(s => s.platform).join(' + ')}. Entrega rápida y garantía oficial StreamePro.`,
       canonicalUrl: canonicalPath,
       redirectUrl

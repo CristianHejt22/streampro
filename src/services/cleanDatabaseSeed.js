@@ -373,6 +373,7 @@ export function getCleanDatabaseSeed() {
       title: 'Dúo Series & Música (Max + Spotify)',
       description: 'Tus series favoritas en Ultra HD y toda la música del mundo sin publicidad.',
       badge: '⚡ COMBO POPULAR',
+      image: '/flyers/combos/combo-default.jpg',
       services: [
         { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 2000 },
         { platform: 'Spotify', planKey: '1_perfil', planLabel: '1 Slot Familiar', units: 1, regularPrice: 3800, cost: 1500 }

@@ -4698,7 +4698,7 @@ const openEditPackageModal = (pkg) => {
     resellerCost: resCost,
     resellerProfit: resProfit,
     discountPercent: discount,
-    image: pkg.image || '',
+    image: pkg.image || '/flyers/combos/combo-default.jpg',
     active: pkg.active !== false,
     services: servs,
     highlights: hText,
@@ -4812,7 +4812,7 @@ const openFlyerForPackage = (pkg) => {
     description: pkg.description,
     promoPrice: pkg.promoPrice,
     originalPrice: pkg.originalPrice,
-    image: pkg.image || '',
+    image: pkg.image || '/flyers/combos/combo-default.jpg',
     badge: pkg.badge,
     services: pkg.services || [],
     durationDays: pkg.durationDays,
@@ -4831,7 +4831,7 @@ const openReelForPackage = (pkg) => {
     description: pkg.description,
     promoPrice: pkg.promoPrice,
     originalPrice: pkg.originalPrice,
-    image: pkg.image || '',
+    image: pkg.image || '/flyers/combos/combo-default.jpg',
     badge: pkg.badge,
     services: pkg.services || [],
     durationDays: pkg.durationDays,
@@ -8911,7 +8911,8 @@ const deletePackageItem = (pkgId) => {
                 <span class="text-slate-400">Presets rápidos:</span>
                 <button
                   type="button"
-                  @click="newPackageForm.image = '/flyers/combos/promo-pantallas-total.png'"
+                  @click="newPackageForm.image = '/flyers/combos/combo-default.jpg'" class="px-2.5 py-1 text-[11px] rounded bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 font-bold">🔥 Flyer Oficial Variedades</button>
+                  <button type="button" @click="newPackageForm.image = '/flyers/combos/promo-pantallas-total.png'"
                   class="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300"
                 >
                   Pantallas Total
@@ -9198,7 +9199,7 @@ const deletePackageItem = (pkgId) => {
           >
             <!-- Cabecera de Flyer si tiene imagen asignada -->
             <div v-if="pkg.image" class="w-full h-36 bg-black relative border-b border-white/10 group">
-              <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
               <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"></div>
               <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                 <span class="text-[10px] font-black uppercase tracking-wider bg-purple-600/90 backdrop-blur-md text-white border border-purple-400/40 px-2.5 py-0.5 rounded-full shadow">

@@ -978,9 +978,9 @@ export const useAdminStore = defineStore('admin', {
         const merged = stored.map(p => {
           const officialMatch = freshOfficial.find(f => f.id === p.id || f.sku === p.sku)
           if (officialMatch && !p.isManualPrice) {
-            return { ...officialMatch, active: p.active !== false }
+            return { ...officialMatch, image: p.image || officialMatch.image || '/flyers/combos/combo-default.jpg', active: p.active !== false }
           }
-          return p
+          return { ...p, image: p.image || '/flyers/combos/combo-default.jpg' }
         })
         saveDb(DB_KEYS.PACKAGES, merged)
         return merged

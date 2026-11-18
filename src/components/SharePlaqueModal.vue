@@ -142,7 +142,7 @@ const normalizedItems = computed(() => {
     subtitle: String(p.subtitle || ''),
     price: Number(p.priceNumeric || p.price || 0),
     originalPrice: Number(p.originalPrice || 0),
-    image: p.image || '',
+    image: p.image || (p.productType === 'package' ? '/flyers/combos/combo-default.jpg' : ''),
     tag: String(p.tag || p.platform || 'OFICIAL').slice(0, 24),
     services: Array.isArray(p.services) ? p.services : null,
     discountPct: Number(p.discountPct || 0),

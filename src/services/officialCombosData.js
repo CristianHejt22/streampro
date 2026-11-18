@@ -150,6 +150,8 @@ export const STORE_STREAMING_UNIT_PRICES = {
   }
 }
 
+export const DEFAULT_COMBO_FLYER = '/flyers/combos/combo-default.jpg'
+
 export const OFFICIAL_COMBOS_CATALOG = [
   {
     "id": "C001",
@@ -280,7 +282,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "chatgpt.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 19200,
     "promoPrice": 10550,
     "providerCost": 8800,
@@ -330,7 +332,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "disney_plus.png",
       "chatgpt.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 19700,
     "promoPrice": 12800,
     "providerCost": 7000,
@@ -380,7 +382,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 17400,
     "promoPrice": 11300,
     "providerCost": 5500,
@@ -430,7 +432,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "crunchyroll.png",
       "max.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13800,
     "promoPrice": 9650,
     "providerCost": 5000,
@@ -488,7 +490,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png",
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 22100,
     "promoPrice": 12150,
     "providerCost": 10500,
@@ -538,7 +540,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "crunchyroll.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 11800,
     "promoPrice": 8250,
     "providerCost": 4500,
@@ -588,7 +590,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png",
       "crunchyroll.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13600,
     "promoPrice": 8850,
     "providerCost": 5000,
@@ -630,7 +632,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "max.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 10200,
     "promoPrice": 7150,
     "providerCost": 3500,
@@ -688,7 +690,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "netshort.png",
       "reelshort.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 15200,
     "promoPrice": 8350,
     "providerCost": 4000,
@@ -738,7 +740,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "chatgpt.png",
       "canva.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 14800,
     "promoPrice": 10350,
     "providerCost": 6500,
@@ -788,7 +790,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png",
       "max.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 17400,
     "promoPrice": 11300,
     "providerCost": 5500,
@@ -830,7 +832,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "canva.png",
       "capcut.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 8000,
     "promoPrice": 6000,
     "providerCost": 3500,
@@ -880,7 +882,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "canva.png",
       "capcut.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 14500,
     "promoPrice": 10150,
     "providerCost": 6500,
@@ -930,7 +932,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "viki_rakuten.png",
       "max.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13600,
     "promoPrice": 9500,
     "providerCost": 5000,
@@ -988,7 +990,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "paramount_plus.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 19000,
     "promoPrice": 12350,
     "providerCost": 6500,
@@ -1030,7 +1032,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "disney_plus.png",
       "spotify.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 11000,
     "promoPrice": 8250,
     "providerCost": 3500,
@@ -1080,7 +1082,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "vix.png",
       "crunchyroll.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13600,
     "promoPrice": 7500,
     "providerCost": 5000,
@@ -1122,7 +1124,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "youtube.png",
       "prime_video.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 8600,
     "promoPrice": 6000,
     "providerCost": 3000,
@@ -1172,7 +1174,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "viki_rakuten.png",
       "dramabox.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 11400,
     "promoPrice": 8000,
     "providerCost": 4500,
@@ -1214,7 +1216,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "spotify.png",
       "chatgpt.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 10300,
     "promoPrice": 7750,
     "providerCost": 4500,
@@ -1264,7 +1266,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "prime_video.png",
       "max.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 16700,
     "promoPrice": 9200,
     "providerCost": 8000,
@@ -1306,7 +1308,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       "claro.png",
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 10200,
     "promoPrice": 7650,
     "providerCost": 3500,
@@ -1340,7 +1342,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 14500,
     "promoPrice": 10150,
     "providerCost": 5000,
@@ -1374,7 +1376,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13500,
     "promoPrice": 9450,
     "providerCost": 4900,
@@ -1408,7 +1410,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 8500,
     "promoPrice": 6400,
     "providerCost": 2900,
@@ -1442,7 +1444,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 13500,
     "promoPrice": 9450,
     "providerCost": 4900,
@@ -1476,7 +1478,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 11500,
     "promoPrice": 8650,
     "providerCost": 4300,
@@ -1510,7 +1512,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 11000,
     "promoPrice": 8250,
     "providerCost": 4200,
@@ -1544,7 +1546,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "logos": [
       "personal.png"
     ],
-    "image": "",
+    "image": "/flyers/combos/combo-default.jpg",
     "originalPrice": 9800,
     "promoPrice": 7350,
     "providerCost": 3600,
@@ -1789,7 +1791,7 @@ export function calculatePackageFromCatalog(pkg, pricingCatalog = {}) {
 export function getFreshOfficialCombos(pricingCatalog = null) {
   const catalog = JSON.parse(JSON.stringify(OFFICIAL_COMBOS_CATALOG));
   if (pricingCatalog && Object.keys(pricingCatalog).length > 0) {
-    return catalog.map(pkg => calculatePackageFromCatalog(pkg, pricingCatalog));
+    return catalog.map(pkg => calculatePackageFromCatalog({ ...pkg, image: pkg.image || DEFAULT_COMBO_FLYER }, pricingCatalog));
   }
-  return catalog;
+  return catalog.map(pkg => ({ ...pkg, image: pkg.image || DEFAULT_COMBO_FLYER }));
 }

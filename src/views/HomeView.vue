@@ -322,6 +322,7 @@ const openSharePlaqueForPackage = (pkg) => {
     originalPrice: orig > promo ? orig : 0,
     discountPct: disc,
     tag: pkg.badge || `COMBO ${(pkg.services || []).length} EN 1`,
+    image: pkg.image || '/flyers/combos/combo-default.jpg',
     services: pkg.services || []
   }
   showSharePlaqueModal.value = true
@@ -3904,8 +3905,8 @@ const submitOrder = async () => {
           >
             <div class="space-y-4">
               <!-- Arte promocional superior si existe -->
-              <div v-if="pkg.image" class="relative -mx-6 -mt-6 mb-3 h-44 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
-                <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+              <div v-if="pkg.image || true" class="relative -mx-6 -mt-6 mb-3 h-44 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
+                <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
                 <div class="absolute top-3 left-3">
                   <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
@@ -4805,8 +4806,8 @@ const submitOrder = async () => {
         >
           <div class="space-y-4">
             <!-- Header con Flyer Artwork si existe -->
-            <div v-if="pkg.image" class="relative -mx-6 -mt-6 mb-3 h-48 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
-              <img :src="pkg.image" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            <div v-if="pkg.image || true" class="relative -mx-6 -mt-6 mb-3 h-48 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
+              <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
               <div class="absolute top-3 left-3">
                 <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
