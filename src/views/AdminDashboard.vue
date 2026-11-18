@@ -3168,7 +3168,7 @@ const formatWaPhone = (phone) => {
 
 const sendWhatsAppRenewalReminder = (client) => {
   const phone = formatWaPhone(client.phone)
-  const storeTitle = adminStore.providerBankInfo.holderName || 'StreamePro Mayorista'
+  const storeTitle = adminStore.providerBankInfo.holderName || 'StreamePro'
   const daysRemaining = getClientExpiryDays(client.expiry)
   const timeText = daysRemaining <= 0 ? 'hoy' : daysRemaining === 1 ? 'mañana' : `en ${daysRemaining} días`
 
@@ -3176,8 +3176,8 @@ const sendWhatsAppRenewalReminder = (client) => {
     `¡Hola ${client.name}! Te saludamos de ${storeTitle}. 👋\n\n` +
     `Te recordamos que tu suscripción de *${client.platform}* (${client.planName || 'Plan Oficial'}) vence *${timeText}* (Fecha: ${client.expiry}). 📅\n\n` +
     `Para conservar tus perfiles, favoritos y no quedarte sin servicio este fin de semana, confírmanos por aquí para renovar tu mes.\n\n` +
-    `🏦 Alias: ${adminStore.providerBankInfo.cbuAlias || 'STREAMEPRO.MAYORISTA'}\n` +
-    `💳 Titular: ${adminStore.providerBankInfo.holderName || 'StreamePro'}\n\n` +
+    `🏦 Alias: ${adminStore.providerBankInfo.cbuAlias || 'STREAMEPRO'}\n` +
+    `💳 Titular: ${adminStore.providerBankInfo.holderName || 'Cristian Hejt'}\n\n` +
     `¡Respondé a este mensaje para renovar en 1 minuto! ✨`
 
   if (phone && phone.length >= 8) {
@@ -3564,7 +3564,7 @@ const newAccountForm = ref({
 const handleSetActiveAccount = (accId) => {
   const res = adminStore.setActiveBankAccount(accId)
   if (res.success) {
-    toast.add(`¡Cuenta activa cambiada a "${res.activeAccount.name}"! Los clientes y revendedores ahora verán estos datos para transferir.`, 'success')
+    toast.add(`✓ ¡Cuenta activa cambiada a "${res.activeAccount.name}"! Sincronizada en la nube para clientes y revendedores.`, 'success')
   }
 }
 
@@ -3576,17 +3576,25 @@ const openAddAccountModal = (acc = null) => {
     editingAccountId.value = null
     newAccountForm.value = {
       name: `Cuenta #${(adminStore.providerBankAccounts?.length || 0) + 1}`,
-      holderName: adminStore.providerBankInfo.holderName || '',
-      bankName: 'Mercado Pago',
-      cuit: adminStore.providerBankInfo.cuit || '',
-      cbuAlias: '',
-      cbuNumber: '',
-      whatsapp: adminStore.providerBankInfo.whatsapp || '',
-      email: adminStore.providerBankInfo.email || '',
+      holderName: adminStore.providerBankInfo?.holderName || 'Cristian Hejt',
+      bankName: adminStore.providerBankInfo?.bankName || 'Mercado Pago',
+      cuit: adminStore.providerBankInfo?.cuit || '20-00000000-0',
+      cbuAlias: adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO',
+      cbuNumber: adminStore.providerBankInfo?.cbuNumber || '0000000000000000000000',
+      whatsapp: adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321',
+      email: adminStore.providerBankInfo?.email || 'pagos@streampro.com',
       notifyEmail: ''
     }
   }
   showAddAccountModal.value = true
+}
+
+const openEditActiveAccountModal = () => {
+  let active = adminStore.providerBankAccounts.find(a => a.isActive)
+  if (!active && adminStore.providerBankAccounts.length > 0) {
+    active = adminStore.providerBankAccounts[0]
+  }
+  openAddAccountModal(active)
 }
 
 const saveAccountModal = () => {
@@ -3594,12 +3602,18 @@ const saveAccountModal = () => {
     toast.add('Por favor completa Titular y Alias CBU', 'error')
     return
   }
+  if (!newAccountForm.value.cbuNumber || !newAccountForm.value.cbuNumber.trim()) {
+    newAccountForm.value.cbuNumber = '0000000000000000000000'
+  }
+  if (!newAccountForm.value.cuit || !newAccountForm.value.cuit.trim()) {
+    newAccountForm.value.cuit = '20-00000000-0'
+  }
   if (editingAccountId.value) {
     adminStore.updateProviderBankAccount({ id: editingAccountId.value, ...newAccountForm.value })
-    toast.add('Cuenta bancaria actualizada correctamente', 'success')
+    toast.add('✓ Cuenta bancaria actualizada y sincronizada en la nube correctamente', 'success')
   } else {
     adminStore.addProviderBankAccount(newAccountForm.value)
-    toast.add('Nueva cuenta bancaria registrada con éxito', 'success')
+    toast.add('✓ Nueva cuenta bancaria registrada y sincronizada en la nube con éxito', 'success')
   }
   showAddAccountModal.value = false
 }
@@ -3608,7 +3622,7 @@ const handleDeleteAccount = (accId) => {
   if (confirm('¿Estás seguro de eliminar esta cuenta bancaria?')) {
     const res = adminStore.deleteProviderBankAccount(accId)
     if (res.success) {
-      toast.add('Cuenta eliminada', 'success')
+      toast.add('Cuenta eliminada y nube actualizada', 'success')
     } else {
       toast.add(res.error, 'error')
     }
@@ -3617,9 +3631,9 @@ const handleDeleteAccount = (accId) => {
 
 const providerBankForm = ref({ ...adminStore.providerBankInfo })
 const saveProviderBankInfo = () => {
-  Object.assign(adminStore.providerBankInfo, providerBankForm.value)
+  adminStore.updateProviderBankInfo(providerBankForm.value)
   isEditingProviderBank.value = false
-  toast.add('Datos de transferencia bancaria del Proveedor actualizados con éxito', 'success')
+  toast.add('✓ Datos bancarios actualizados y sincronizados en la nube', 'success')
 }
 
 // VALIDADOR MANUAL DE CORREO / COMPROBANTE (ESTILO WANDERLUST)
@@ -7543,6 +7557,53 @@ const deletePackageItem = (pkgId) => {
 
       <!-- SUB-TAB 1: GESTIÓN MULTI-CUENTA BANCARIA -->
       <div v-if="bankSubTab === 'accounts'" class="space-y-6">
+        <!-- Ficha Destacada: Cuenta Oficial de Cobro Activa en Vivo -->
+        <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/40 p-5 rounded-2xl border border-emerald-500/40 shadow-xl space-y-3">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-emerald-500/20 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">💳</span>
+              <div>
+                <h4 class="text-sm font-black text-white flex items-center gap-2 flex-wrap">
+                  <span>Cuenta Oficial de Cobros Activa</span>
+                  <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>SINCRONIZADO EN NUBE</span>
+                  </span>
+                </h4>
+                <p class="text-[11px] text-slate-300 mt-0.5">Estos son los datos exactos que ven los clientes en el Checkout para transferirte.</p>
+              </div>
+            </div>
+            <button 
+              @click="openEditActiveAccountModal"
+              type="button"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Modificar los datos de la cuenta activa"
+            >
+              <span>✏️</span>
+              <span>Editar Datos de Cobro</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+            <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase font-sans text-slate-400 block font-bold">Titular (Nombre de la cuenta)</span>
+              <span class="text-white font-black text-sm truncate block mt-0.5">{{ adminStore.providerBankInfo?.holderName || 'Cristian Hejt' }}</span>
+            </div>
+            <div class="bg-slate-950/80 p-3 rounded-xl border border-amber-500/30">
+              <span class="text-[10px] uppercase font-sans text-amber-400 block font-bold">Alias CBU / CVU</span>
+              <span class="text-amber-300 font-black text-sm truncate block mt-0.5 select-all">{{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO' }}</span>
+            </div>
+            <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase font-sans text-slate-400 block font-bold">Entidad Bancaria</span>
+              <span class="text-slate-200 font-bold text-sm truncate block mt-0.5">{{ adminStore.providerBankInfo?.bankName || 'Mercado Pago' }}</span>
+            </div>
+            <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+              <span class="text-[10px] uppercase font-sans text-slate-400 block font-bold">WhatsApp de Soporte</span>
+              <span class="text-sky-300 font-bold text-sm truncate block mt-0.5">{{ adminStore.providerBankInfo?.whatsapp || '+54 9 291 565-8321' }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
           <div>
             <span class="text-xs font-bold text-white block">Selector de Cuenta Bancaria Activa</span>
@@ -15130,8 +15191,8 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">Titular de la Cuenta</label>
-              <input v-model="newAccountForm.holderName" type="text" placeholder="Ej: StreamePro Central" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">Titular (Nombre de la cuenta)</label>
+              <input v-model="newAccountForm.holderName" type="text" placeholder="Ej: Cristian Hejt" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-medium" required>
             </div>
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Entidad Bancaria</label>
@@ -15142,17 +15203,17 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold uppercase text-slate-400 mb-1">Alias CBU / CVU</label>
-              <input v-model="newAccountForm.cbuAlias" type="text" placeholder="Ej: STREAMEPRO.MAYORISTA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono font-bold text-amber-300" required>
+              <input v-model="newAccountForm.cbuAlias" type="text" placeholder="Ej: STREAMEPRO" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono font-bold text-amber-300" required>
             </div>
             <div>
-              <label class="block font-bold uppercase text-slate-400 mb-1">CUIT / CUIL</label>
-              <input v-model="newAccountForm.cuit" type="text" placeholder="Ej: 20-00000000-0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono" required>
+              <label class="block font-bold uppercase text-slate-400 mb-1">CUIT / CUIL (Opcional)</label>
+              <input v-model="newAccountForm.cuit" type="text" placeholder="Ej: 20-00000000-0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono">
             </div>
           </div>
 
           <div>
-            <label class="block font-bold uppercase text-slate-400 mb-1">CBU / CVU Numérico (22 dígitos)</label>
-            <input v-model="newAccountForm.cbuNumber" type="text" placeholder="0000000000000000000000" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono" required>
+            <label class="block font-bold uppercase text-slate-400 mb-1">CBU / CVU Numérico (22 dígitos - Opcional)</label>
+            <input v-model="newAccountForm.cbuNumber" type="text" placeholder="0000000000000000000000 (Opcional si usas Alias)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-brand-accent font-mono">
           </div>
 
           <div class="grid grid-cols-2 gap-3">

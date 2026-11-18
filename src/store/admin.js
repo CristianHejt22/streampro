@@ -617,9 +617,9 @@ export const DEFAULT_INITIAL_RESELLERS = [
     password: 'StreamDistribuidor2026*',
     isActive: true,
     contactNumber: OFFICIAL_PROVIDER_WHATSAPP,
-    cbuAlias: 'STREAMPRO.REVENDEDOR',
+    cbuAlias: 'STREAMEPRO',
     bankName: 'Mercado Pago / Banco',
-    holderName: 'Distribuidor StreamePro',
+    holderName: 'Cristian Hejt',
     cuit: '20-00000000-0',
     balance: 50000,
     walletHistory: [],
@@ -643,10 +643,10 @@ export const DEFAULT_INITIAL_RESELLERS = [
 ]
 
 const DEFAULT_PROVIDER_BANK = {
-  holderName: 'StreamePro Mayorista Central',
+  holderName: 'Cristian Hejt',
   bankName: 'Mercado Pago',
   cuit: '20-00000000-0',
-  cbuAlias: 'STREAMEPRO.MAYORISTA',
+  cbuAlias: 'STREAMEPRO',
   cbuNumber: '0000000000000000000000',
   whatsapp: OFFICIAL_PROVIDER_WHATSAPP,
   email: 'pagos@streampro.com'
@@ -656,6 +656,12 @@ function getInitialProviderBankSetup() {
   const rawBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, DEFAULT_PROVIDER_BANK)
   const savedBankInfo = {
     ...rawBankInfo,
+    holderName: (rawBankInfo?.holderName === 'StreamePro Mayorista Central' || !rawBankInfo?.holderName)
+      ? DEFAULT_PROVIDER_BANK.holderName
+      : rawBankInfo.holderName,
+    cbuAlias: (rawBankInfo?.cbuAlias === 'STREAMEPRO.MAYORISTA' || !rawBankInfo?.cbuAlias)
+      ? DEFAULT_PROVIDER_BANK.cbuAlias
+      : rawBankInfo.cbuAlias,
     whatsapp: sanitizePhone(rawBankInfo?.whatsapp)
   }
   let savedAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, null)
@@ -679,6 +685,12 @@ function getInitialProviderBankSetup() {
   } else {
     savedAccounts.forEach(acc => {
       acc.whatsapp = sanitizePhone(acc.whatsapp)
+      if (acc.holderName === 'StreamePro Mayorista Central' || !acc.holderName) {
+        acc.holderName = savedBankInfo.holderName || DEFAULT_PROVIDER_BANK.holderName
+      }
+      if (acc.cbuAlias === 'STREAMEPRO.MAYORISTA' || !acc.cbuAlias) {
+        acc.cbuAlias = savedBankInfo.cbuAlias || DEFAULT_PROVIDER_BANK.cbuAlias
+      }
     })
   }
 
@@ -2396,7 +2408,7 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    // Actualizar Datos Bancarios del Proveedor (Sincroniza con la cuenta activa)
+    // Actualizar Datos Bancarios del Proveedor (Sincroniza con la cuenta activa y la nube global)
     updateProviderBankInfo(bankData) {
       Object.assign(this.providerBankInfo, bankData)
       let active = this.providerBankAccounts.find(a => a.isActive)
@@ -2409,6 +2421,7 @@ export const useAdminStore = defineStore('admin', {
         this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
       }
       this.persist(DB_KEYS.PROVIDER_BANK)
+      this.persistStoreSettings()
       return { success: true }
     },
 
@@ -2434,6 +2447,7 @@ export const useAdminStore = defineStore('admin', {
         }
         this.persist(DB_KEYS.PROVIDER_BANK)
         this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+        this.persistStoreSettings()
       }
       return { success: true, activeAccount: active }
     },
@@ -2446,10 +2460,10 @@ export const useAdminStore = defineStore('admin', {
         name: accountData.name || 'Nueva Cuenta Bancaria',
         isActive: isFirst,
         holderName: accountData.holderName || '',
-        bankName: accountData.bankName || '',
-        cuit: accountData.cuit || '',
+        bankName: accountData.bankName || 'Mercado Pago',
+        cuit: accountData.cuit || '20-00000000-0',
         cbuAlias: accountData.cbuAlias || '',
-        cbuNumber: accountData.cbuNumber || '',
+        cbuNumber: accountData.cbuNumber || '0000000000000000000000',
         whatsapp: accountData.whatsapp || '',
         email: accountData.email || '',
         notifyEmail: accountData.notifyEmail || accountData.email || ''
@@ -2459,6 +2473,7 @@ export const useAdminStore = defineStore('admin', {
         this.setActiveBankAccount(newId)
       } else {
         this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+        this.persistStoreSettings()
       }
       return { success: true, account: newAcc }
     },
@@ -2471,6 +2486,7 @@ export const useAdminStore = defineStore('admin', {
           this.setActiveBankAccount(accountData.id)
         } else {
           this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+          this.persistStoreSettings()
         }
         return { success: true }
       }
@@ -2488,6 +2504,7 @@ export const useAdminStore = defineStore('admin', {
         this.setActiveBankAccount(this.providerBankAccounts[0].id)
       } else {
         this.persist(DB_KEYS.PROVIDER_BANK_ACCOUNTS)
+        this.persistStoreSettings()
       }
       return { success: true }
     },
@@ -4829,10 +4846,10 @@ export const useAdminStore = defineStore('admin', {
         whatsapp: OFFICIAL_PROVIDER_WHATSAPP
       }
       this.providerBankInfo = {
-        holderName: 'StreamePro Mayorista Central',
-        bankName: 'Banco / Billetera Virtual',
+        holderName: 'Cristian Hejt',
+        bankName: 'Mercado Pago',
         cuit: '20-00000000-0',
-        cbuAlias: 'STREAMEPRO.MAYORISTA',
+        cbuAlias: 'STREAMEPRO',
         cbuNumber: '0000000000000000000000',
         whatsapp: OFFICIAL_PROVIDER_WHATSAPP,
         email: 'pagos@streampro.com'

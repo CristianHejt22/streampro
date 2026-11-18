@@ -9,6 +9,7 @@ try {
 
 const env = {
   ...process.env,
+  NODE_OPTIONS: '--max-old-space-size=3072',
   TMPDIR: localTemp,
   TEMP: localTemp,
   TMP: localTemp,
@@ -17,7 +18,7 @@ const env = {
 
 const result = spawnSync(
   process.execPath,
-  ['--max-old-space-size=4096', './node_modules/vite/bin/vite.js', 'build'],
+  ['--max-old-space-size=3072', './node_modules/vite/bin/vite.js', 'build'],
   { stdio: 'inherit', env }
 )
 

@@ -281,35 +281,134 @@ export function listenToRegisteredUsers(callback) {
   }
 }
 
+function convertValueToFirestoreRest(val) {
+  if (val === null || val === undefined) return { nullValue: null }
+  if (typeof val === 'boolean') return { booleanValue: val }
+  if (typeof val === 'number') {
+    return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val }
+  }
+  if (typeof val === 'string') return { stringValue: val }
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(convertValueToFirestoreRest) } }
+  }
+  if (typeof val === 'object') {
+    return { mapValue: { fields: convertJsToFirestoreFields(val) } }
+  }
+  return { stringValue: String(val) }
+}
+
+function convertJsToFirestoreFields(obj) {
+  const fields = {}
+  if (!obj || typeof obj !== 'object') return fields
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      fields[key] = convertValueToFirestoreRest(value)
+    }
+  }
+  return fields
+}
+
+function convertFirestoreValueToJs(val) {
+  if (!val || typeof val !== 'object') return val
+  if (val.stringValue !== undefined) return val.stringValue
+  if (val.booleanValue !== undefined) return val.booleanValue
+  if (val.integerValue !== undefined) return parseInt(val.integerValue, 10)
+  if (val.doubleValue !== undefined) return val.doubleValue
+  if (val.nullValue !== undefined) return null
+  if (val.arrayValue !== undefined) {
+    return (val.arrayValue.values || []).map(convertFirestoreValueToJs)
+  }
+  if (val.mapValue !== undefined) {
+    return parseFirestoreFields(val.mapValue.fields || {})
+  }
+  return null
+}
+
+function parseFirestoreFields(fields) {
+  const result = {}
+  if (!fields || typeof fields !== 'object') return result
+  for (const [key, value] of Object.entries(fields)) {
+    result[key] = convertFirestoreValueToJs(value)
+  }
+  return result
+}
+
+export async function saveStoreSettingsViaRest(cleanSettings) {
+  try {
+    const projectId = OFFICIAL_FIREBASE_CONFIG.projectId
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/store_settings`
+    const body = {
+      fields: convertJsToFirestoreFields(cleanSettings)
+    }
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    return res.ok
+  } catch (err) {
+    console.warn('[Firebase REST] Error guardando store_settings vía REST:', err)
+    return false
+  }
+}
+
+export async function fetchStoreSettingsViaRest() {
+  try {
+    const projectId = OFFICIAL_FIREBASE_CONFIG.projectId
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/store_settings`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const json = await res.json()
+    if (!json || !json.fields) return null
+    return parseFirestoreFields(json.fields)
+  } catch (err) {
+    console.warn('[Firebase REST] Error obteniendo store_settings vía REST:', err)
+    return null
+  }
+}
+
 /**
- * Guarda la configuración de visibilidad de la tienda en Firestore para sincronización global
+ * Guarda la configuración de visibilidad y datos bancarios de la tienda en Firestore para sincronización global
  */
 export async function saveStoreSettingsToFirebase(settings) {
+  if (!settings) return { success: false, reason: 'Sin datos de configuración' }
+
+  const data = {
+    isStoreVisible: typeof settings.isStoreVisible === 'boolean' ? settings.isStoreVisible : true,
+    isPhysicalStoreVisible: typeof settings.isPhysicalStoreVisible === 'boolean' ? settings.isPhysicalStoreVisible : false,
+    gamingStoreMarginPercent: Number(settings.gamingStoreMarginPercent ?? 20),
+    gamingResellerCommissionPercent: Number(settings.gamingResellerCommissionPercent ?? 10),
+    gamingMinResellerProfit: Number(settings.gamingMinResellerProfit ?? 1000),
+    ...(Array.isArray(settings.promoCodes) ? { promoCodes: JSON.parse(JSON.stringify(settings.promoCodes)) } : {}),
+    ...(settings.pricingCatalog && typeof settings.pricingCatalog === 'object' ? { pricingCatalog: JSON.parse(JSON.stringify(settings.pricingCatalog)) } : {}),
+    ...(Array.isArray(settings.packages) ? { packages: JSON.parse(JSON.stringify(settings.packages)) } : {}),
+    ...(Array.isArray(settings.gamingProviderSites) ? { gamingProviderSites: JSON.parse(JSON.stringify(settings.gamingProviderSites)) } : {}),
+    ...(settings.gamingOverrides && typeof settings.gamingOverrides === 'object' ? { gamingOverrides: JSON.parse(JSON.stringify(settings.gamingOverrides)) } : {}),
+    ...(settings.providerBankInfo && typeof settings.providerBankInfo === 'object' ? { providerBankInfo: JSON.parse(JSON.stringify(settings.providerBankInfo)) } : {}),
+    ...(Array.isArray(settings.providerBankAccounts) ? { providerBankAccounts: JSON.parse(JSON.stringify(settings.providerBankAccounts)) } : {}),
+    updatedAt: new Date().toISOString()
+  }
+
+  // 1. Intentar con Firestore SDK nativo
   if (!dbInstance) {
     initFirebase()
   }
-  if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
-
-  try {
-    const data = {
-      isStoreVisible: typeof settings.isStoreVisible === 'boolean' ? settings.isStoreVisible : true,
-      isPhysicalStoreVisible: typeof settings.isPhysicalStoreVisible === 'boolean' ? settings.isPhysicalStoreVisible : false,
-      gamingStoreMarginPercent: Number(settings.gamingStoreMarginPercent ?? 20),
-      gamingResellerCommissionPercent: Number(settings.gamingResellerCommissionPercent ?? 10),
-      gamingMinResellerProfit: Number(settings.gamingMinResellerProfit ?? 1000),
-      ...(Array.isArray(settings.promoCodes) ? { promoCodes: JSON.parse(JSON.stringify(settings.promoCodes)) } : {}),
-      ...(settings.pricingCatalog && typeof settings.pricingCatalog === 'object' ? { pricingCatalog: JSON.parse(JSON.stringify(settings.pricingCatalog)) } : {}),
-      ...(Array.isArray(settings.packages) ? { packages: JSON.parse(JSON.stringify(settings.packages)) } : {}),
-      ...(Array.isArray(settings.gamingProviderSites) ? { gamingProviderSites: JSON.parse(JSON.stringify(settings.gamingProviderSites)) } : {}),
-      ...(settings.gamingOverrides && typeof settings.gamingOverrides === 'object' ? { gamingOverrides: JSON.parse(JSON.stringify(settings.gamingOverrides)) } : {}),
-      updatedAt: new Date().toISOString()
+  if (dbInstance) {
+    try {
+      await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })
+      return { success: true, settings: data }
+    } catch (sdkError) {
+      console.warn('[Firebase SDK] Error guardando store_settings, usando REST fallback:', sdkError)
     }
-    await setDoc(doc(dbInstance, 'settings', 'store_settings'), data, { merge: true })
-    return { success: true, settings: data }
-  } catch (error) {
-    console.warn('[Firebase] Error guardando store_settings en la nube:', error)
-    return { success: false, error: error.message }
   }
+
+  // 2. Fallback de alta confiabilidad vía REST API directa
+  const restOk = await saveStoreSettingsViaRest(data)
+  if (restOk) {
+    return { success: true, settings: data }
+  }
+
+  return { success: false, reason: 'No se pudo guardar la configuración en Firebase' }
 }
 
 /**
@@ -531,18 +630,30 @@ export async function fetchStoreSettingsFromFirebase() {
   if (!dbInstance) {
     initFirebase()
   }
-  if (!dbInstance) return null
 
-  try {
-    const snap = await getDoc(doc(dbInstance, 'settings', 'store_settings'))
-    if (snap.exists()) {
-      return snap.data()
+  // 1. Intentar con Firestore SDK nativo
+  if (dbInstance) {
+    try {
+      const snap = await getDoc(doc(dbInstance, 'settings', 'store_settings'))
+      if (snap.exists()) {
+        return snap.data()
+      }
+    } catch (error) {
+      console.warn('[Firebase SDK] Error consultando store_settings en la nube, usando REST:', error)
     }
-    return null
-  } catch (error) {
-    console.warn('[Firebase] Error consultando store_settings en la nube:', error)
-    return null
   }
+
+  // 2. Fallback por REST API directo
+  try {
+    const restData = await fetchStoreSettingsViaRest()
+    if (restData) {
+      return restData
+    }
+  } catch (err) {
+    console.warn('[Firebase REST] Error consultando store_settings vía REST:', err)
+  }
+
+  return null
 }
 
 /**

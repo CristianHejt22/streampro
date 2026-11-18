@@ -2572,10 +2572,10 @@ const copyBankDetails = () => {
     : lastPlacedOrder.value.reseller
   
   const text = `DATOS PARA TRANSFERENCIA BANCARIA - STREAMEPRO\n` +
-    `• Titular: ${info?.holderName || info?.name || 'StreamePro'}\n` +
+    `• Titular: ${info?.holderName || info?.name || 'Cristian Hejt'}\n` +
     `• Banco/Entidad: ${info?.bankName || 'Mercado Pago'}\n` +
     `• CUIT/CUIL: ${info?.cuit || '20-00000000-0'}\n` +
-    `• CBU/Alias: ${info?.cbuAlias || 'STREAMEPRO.PAGOS'}\n` +
+    `• CBU/Alias: ${info?.cbuAlias || 'STREAMEPRO'}\n` +
     `• Monto Total: $${lastPlacedOrder.value.total.toFixed(2)} ARS\n` +
     `• N° de Pedido: ${lastPlacedOrder.value.clientNumber}`
 
@@ -6932,11 +6932,11 @@ const submitOrder = async () => {
             
             <!-- CASO 1: VENTA DIRECTA OFICIAL (PROVEEDOR CENTRAL RECIBE PAGO) -->
             <div v-if="isDirectSale" class="space-y-1 text-slate-300 font-mono text-xs">
-              <p>Titular Oficial: <strong class="text-white">{{ adminStore.providerBankInfo?.holderName || 'StreamePro Mayorista Central' }}</strong></p>
-              <p>Entidad: <span class="text-slate-300">{{ adminStore.providerBankInfo?.bankName || 'Mercado Pago / Banco' }}</span></p>
+              <p>Titular Oficial: <strong class="text-white">{{ adminStore.providerBankInfo?.holderName || 'Cristian Hejt' }}</strong></p>
+              <p>Entidad: <span class="text-slate-300">{{ adminStore.providerBankInfo?.bankName || 'Mercado Pago' }}</span></p>
               <p>CUIT/CUIL: <span class="text-slate-300">{{ adminStore.providerBankInfo?.cuit || '20-00000000-0' }}</span></p>
               <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-1.5">
-                <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA' }}</span>
+                <span class="text-amber-300 font-bold">Alias/CBU: {{ adminStore.providerBankInfo?.cbuAlias || 'STREAMEPRO' }}</span>
                 <span class="text-[11px] text-slate-300 font-sans">WhatsApp Oficial: {{ adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '+54 9 291 565-8321' }}</span>
               </div>
             </div>
@@ -7596,13 +7596,13 @@ const submitOrder = async () => {
             <div class="flex justify-between">
               <span class="text-slate-500">Titular:</span>
               <strong class="text-white">
-                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.holderName || 'StreamePro Mayorista Central') : (lastPlacedOrder.reseller?.holderName || lastPlacedOrder.reseller?.name) }}
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.holderName || 'Cristian Hejt') : (lastPlacedOrder.reseller?.holderName || lastPlacedOrder.reseller?.name) }}
               </strong>
             </div>
             <div class="flex justify-between">
               <span class="text-slate-500">Banco / Billetera:</span>
               <span class="text-slate-200">
-                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.bankName || 'Mercado Pago / Banco') : (lastPlacedOrder.reseller?.bankName || 'Mercado Pago') }}
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.bankName || 'Mercado Pago') : (lastPlacedOrder.reseller?.bankName || 'Mercado Pago') }}
               </span>
             </div>
             <div class="flex justify-between">
@@ -7614,7 +7614,7 @@ const submitOrder = async () => {
             <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
               <span class="text-slate-400 text-[11px]">CBU / Alias:</span>
               <span class="text-amber-300 font-bold text-sm tracking-wide">
-                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cbuAlias || 'STREAMEPRO.MAYORISTA') : (lastPlacedOrder.reseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR') }}
+                {{ lastPlacedOrder.isDirect ? (lastPlacedOrder.providerBankInfo?.cbuAlias || 'STREAMEPRO') : (lastPlacedOrder.reseller?.cbuAlias || 'PAGOS.DISTRIBUIDOR') }}
               </span>
             </div>
           </div>
