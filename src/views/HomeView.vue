@@ -374,6 +374,7 @@ const openSharePlaqueForStreaming = (prod) => {
   const plansObj = getStreamingPlansDisplay(prod)
   const minPrice = getMinStreamingPrice(prod)
   const planNames = Object.values(plansObj).slice(0, 3).map(p => p.label).join(' · ')
+  const meta = getStreamingMeta(prod.platform)
   sharePlaquePayload.value = {
     mode: 'single',
     productType: 'streaming',
@@ -382,7 +383,11 @@ const openSharePlaqueForStreaming = (prod) => {
     title: prod.name,
     subtitle: planNames || prod.description || 'Perfiles oficiales 4K con PIN privado',
     priceNumeric: minPrice,
-    tag: prod.platform || prod.category || 'STREAMING'
+    image: prod.image || '',
+    tag: prod.platform ? `${prod.platform.toUpperCase()} 4K` : 'STREAMING 4K',
+    quality: meta?.badge || '4K ULTRA HD • HDR10',
+    delivery: meta?.deliveryBadge || '🟢 10-15m',
+    highlights: meta?.highlights || ['4K Ultra HD', 'PIN Privado Exclusivo', 'Garantía 30 Días']
   }
   showSharePlaqueModal.value = true
 }
@@ -1744,7 +1749,8 @@ const applyRouteParams = () => {
       storeSection.value = 'digital'
       digitalPlatformFilter.value = platParam
       const cleanPlat = platParam.toLowerCase()
-      const foundProd = availableStreamingProducts.value.find(p => p.platform?.toLowerCase() === cleanPlat || p.name?.toLowerCase().includes(cleanPlat))
+      const streamingList = (products.value && products.value.length ? products.value : (adminStore.digitalProducts || []))
+      const foundProd = streamingList.find(p => (p.platform || '').toLowerCase() === cleanPlat || (p.name || '').toLowerCase().includes(cleanPlat))
       if (foundProd) {
         openConfig(foundProd)
         toast.add(`🎬 Mostrando planes oficiales de: ${foundProd.name}`, 'info')
@@ -1826,6 +1832,12 @@ watch(() => adminStore.physicalProducts?.length, (len) => {
 
 watch(() => adminStore.packages?.length, (len) => {
   if (len > 0 && route.query.pkg) {
+    applyRouteParams()
+  }
+})
+
+watch(() => products.value?.length, (len) => {
+  if (len > 0 && route.query.plat && !selectedProduct.value) {
     applyRouteParams()
   }
 })

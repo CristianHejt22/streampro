@@ -416,58 +416,70 @@ export function generateAttractiveShareCopy({
   promoDiscountPct = 0
 }) {
   const cleanCode = normalizePromoCode(promoCode)
+  const cleanStore = String(storeName || 'StreamePro Oficial').trim()
+  const cleanPhone = String(phone || '+54 9 291 565-8321').trim()
   const priceFormatted = Number(price || 0) > 0 ? `$${Number(price).toLocaleString('es-AR')} ARS` : 'Consultar'
   const origFormatted = Number(originalPrice || 0) > Number(price || 0) ? `$${Number(originalPrice).toLocaleString('es-AR')} ARS` : ''
   const promoLine = cleanCode
-    ? `🎟️ *Cupón de Descuento:* *${cleanCode}*${promoDiscountPct ? ` (${promoDiscountPct}% OFF)` : ''}`
+    ? `🎟️ *Cupón de Descuento Exclusivo:* *${cleanCode}*${promoDiscountPct ? ` (${promoDiscountPct}% OFF aplicado)` : ''}`
     : ''
 
   if (type === 'gaming') {
     const licText = license === 'secondary'
-      ? 'Cuenta Secundaria Oficial (Jugás desde el usuario asignado)'
-      : 'Cuenta Primaria Oficial (Jugás desde tu usuario personal con trofeos)'
+      ? 'Cuenta Secundaria Oficial (Jugás desde el perfil asignado con la misma calidad gráfica y ahorro garantizado)'
+      : 'Cuenta Primaria Oficial (Jugás desde tu usuario personal con trofeos propios y sin conexión permanente)'
     return [
       `🎮🔥 *${title.toUpperCase()}* 🔥🎮`,
       platform ? `🕹️ *Plataforma:* ${platform}` : '',
-      `🏷️ *Precio Especial:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🏷️ *Precio Final Verificado:* *${priceFormatted}*${origFormatted ? ` _(Precio lista anterior: ${origFormatted})_` : ''}`,
       `✅ *Modalidad:* ${licText}`,
-      `⚡ Activación guiada inmediata • Garantía oficial ${storeName}`,
+      `⚡ *Entrega Rápida:* Activación guiada inmediata (60 a 90 min)`,
+      `🛡️ *Garantía Total:* Permanente con soporte oficial post-venta`,
+      `💳 *Medios de Pago:* Transferencia Bancaria (CBU / Alias) • Mercado Pago`,
       promoLine,
-      `📲 *Pedilo y jugá hoy mismo:*`,
+      `🔗 *Ficha oficial con precio verificado y compra online:*`,
       url,
-      phone ? `💬 WhatsApp: ${phone}` : ''
+      `💬 *Pedidos y Atención Directa por WhatsApp:* ${cleanPhone}`,
+      `🏪 *Tienda Oficial:* ${cleanStore}`
     ].filter(Boolean).join('\n')
   }
 
   if (type === 'combo') {
+    const cleanTitle = title.replace(/^super\s*combo\s*:?\s*/i, '').trim()
     return [
-      `🎁⚡ *SUPER COMBO: ${title.toUpperCase()}* ⚡🎁`,
-      subtitle ? `📌 ${subtitle}` : '',
-      `🏷️ *Precio Promo:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
-      `🔒 Perfiles 100% privados con PIN exclusivo`,
-      `⚡ Entrega express en 10-60 min • Garantía SLA 30 días`,
+      `🎁⚡ *SUPER COMBO: ${cleanTitle.toUpperCase()}* ⚡🎁`,
+      subtitle ? `📌 *Incluye:* ${subtitle}` : '',
+      `🏷️ *Precio Promo Verificado:* *${priceFormatted}*${origFormatted ? ` _(Ahorro vs lista anterior: ${origFormatted})_` : ''}`,
+      `🔒 *Perfiles 100% Privados con PIN exclusivo de 4 dígitos*`,
+      `📺 *Calidad:* 4K Ultra HD • HDR10 • Multi-pantalla oficial`,
+      `⚡ *Activación Inmediata:* 10 a 60 minutos con soporte guiado`,
+      `🛡️ *Garantía Total:* 30 días de cobertura con renovación garantizada`,
+      `💳 *Medios de Pago:* Transferencia Bancaria (CBU / Alias) • Mercado Pago`,
       promoLine,
-      `📲 *Aprovechá la oferta acá:*`,
+      `🔗 *Ver combo oficial y pedir online:*`,
       url,
-      phone ? `💬 WhatsApp: ${phone}` : ''
+      `💬 *Pedidos y Atención Directa por WhatsApp:* ${cleanPhone}`,
+      `🏪 *Tienda Oficial:* ${cleanStore}`
     ].filter(Boolean).join('\n')
   }
 
   if (type === 'physical') {
     return [
-      `📦✨ *${title.toUpperCase()}* ✨📦`,
-      subtitle ? `📌 ${subtitle}` : '',
-      `🏷️ *Precio:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
-      `🚚 Envíos a todo el país con seguimiento en tiempo real`,
-      `🛡️ Garantía oficial ${storeName}`,
+      `📦✨ *PRODUCTO OFICIAL: ${title.toUpperCase()}* ✨📦`,
+      subtitle ? `📌 *Detalle:* ${subtitle}` : '',
+      `🏷️ *Precio Final Verificado:* *${priceFormatted}*${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🚚 *Envíos a Todo el País:* Despacho rápido con código de seguimiento en vivo`,
+      `🛡️ *Garantía Oficial:* Producto 100% nuevo y testeado • Factura de compra`,
+      `💳 *Medios de Pago:* Transferencia Bancaria (CBU / Alias) • Mercado Pago`,
       promoLine,
-      `📲 *Comprá online acá:*`,
+      `🔗 *Ver ficha oficial y comprar online:*`,
       url,
-      phone ? `💬 WhatsApp: ${phone}` : ''
+      `💬 *Consultas y Pedidos Directos por WhatsApp:* ${cleanPhone}`,
+      `🏪 *Tienda Oficial:* ${cleanStore}`
     ].filter(Boolean).join('\n')
   }
 
-  // Netflix Especial
+  // Streaming (específico o general)
   const isNetflix = (title || platform).toLowerCase().includes('netflix')
   if (isNetflix) {
     return [
@@ -477,26 +489,32 @@ export function generateAttractiveShareCopy({
       '🔒 *PIN Privado de 4 dígitos*',
       '🏠 *Sin bloqueo de hogar en Argentina (Pide actualizar hogar)*',
       '🔄 *Renovación mes a mes misma cuenta (Modificación de cuenta)*',
-      `🏷️ *Precio Promo:* *${priceFormatted}* / mes${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
-      `🛡️ *Garantía Oficial ${storeName}*`,
+      `🏷️ *Precio Promo Verificado:* *${priceFormatted}* / mes${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+      `🛡️ *Garantía Oficial:* Cobertura total y soporte prioritario ${cleanStore}`,
+      `💳 *Medios de Pago:* Transferencia Bancaria (CBU / Alias) • Mercado Pago`,
       promoLine,
-      phone ? `💬 WhatsApp: ${phone}` : '',
-      `📲 *Activá tu cuenta oficial acá:*`,
-      url
+      `🔗 *Ficha oficial con precio verificado y compra online:*`,
+      url,
+      `💬 *Pedidos y Atención Directa por WhatsApp:* ${cleanPhone}`,
+      `🏪 *Tienda Oficial:* ${cleanStore}`
     ].filter(Boolean).join('\n')
   }
 
-  // Default: Streaming
+  // Default: Streaming oficial
   return [
-    `🎬🍿 *${title.toUpperCase()}* 🍿🎬`,
-    subtitle ? `✨ ${subtitle}` : 'Calidad Ultra HD 4K con Audio Espacial',
-    `🏷️ *Precio:* *${priceFormatted}* / mes`,
-    `🔒 Perfil 100% individual con PIN propio de 4 dígitos`,
-    `🏠 Sin bloqueos de hogar en Argentina • Misma cuenta mes a mes`,
-    `⚡ Entrega oficial en 10 a 60 min • Garantía oficial`,
+    `🎬🍿 *SERVICIO OFICIAL: ${title.toUpperCase()}* 🍿🎬`,
+    subtitle ? `✨ *Modalidad:* ${subtitle}` : '✨ Calidad Ultra HD 4K con Audio Espacial • Perfil Privado con PIN',
+    `🏷️ *Precio Oficial Verificado:* *${priceFormatted}* / mes${origFormatted ? ` _(Antes: ${origFormatted})_` : ''}`,
+    `🔒 *Perfil 100% Individual con PIN propio de 4 dígitos*`,
+    `🏠 *Sin Bloqueos de Hogar:* Funciona en Argentina sin interrupciones`,
+    `🔄 *Renovación Mes a Mes en la Misma Cuenta*`,
+    `⚡ *Entrega Express:* 10 a 60 minutos con activación guiada`,
+    `🛡️ *Garantía Oficial:* Cobertura total y soporte prioritario ${cleanStore}`,
+    `💳 *Medios de Pago:* Transferencia Bancaria (CBU / Alias) • Mercado Pago`,
     promoLine,
-    `📲 *Activá tu cuenta oficial acá:*`,
+    `🔗 *Ficha oficial con precio verificado y compra online:*`,
     url,
-    phone ? `💬 WhatsApp: ${phone}` : ''
+    `💬 *Pedidos y Atención Directa por WhatsApp:* ${cleanPhone}`,
+    `🏪 *Tienda Oficial:* ${cleanStore}`
   ].filter(Boolean).join('\n')
 }

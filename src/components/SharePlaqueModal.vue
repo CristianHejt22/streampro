@@ -242,7 +242,7 @@ const appendPromoToUrl = (baseUrl) => {
 }
 
 const directShareUrl = computed(() => {
-  const origin = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+  const origin = (typeof window !== 'undefined' && window.location?.origin)
     ? window.location.origin
     : 'https://streamepro.me'
   if (props.payload?.shareUrl) return appendPromoToUrl(props.payload.shareUrl)
@@ -556,10 +556,123 @@ async function renderPlaqueBlob() {
         ctx.fillText(srv.planLabel || '1 Mes', sx + cardW / 2, ry0 + cardH - 32)
       })
     } else {
-      ctx.fillStyle = '#38bdf8'
-      ctx.font = '900 54px sans-serif'
+      // Showcase visual atractivo y profesional adaptado por rubro cuando el producto no posee arte directo
+      const pt = effectiveProductType.value
+      const pTitle = (mainItem.value.title || 'Producto StreamePro').toUpperCase()
+      const pTag = (mainItem.value.tag || '').toUpperCase()
+
+      let brandColor = '#38bdf8'
+      let brandGlow = 'rgba(56, 189, 248, 0.40)'
+      let categoryBadge = '🎬 STREAMING OFICIAL • 4K ULTRA HD'
+      let chip1 = '📺 4K ULTRA HD • HDR10'
+      let chip2 = '🔒 PIN PRIVADO EXCLUSIVO'
+      let chip3 = '⚡ ACTIVACIÓN 10-15m'
+
+      if (pt === 'gaming') {
+        brandColor = '#38bdf8'
+        brandGlow = 'rgba(0, 112, 209, 0.45)'
+        categoryBadge = '🎮 LICENCIA DIGITAL PLAYSTATION'
+        chip1 = pTag.includes('SECUNDARIA') ? '🎮 CUENTA SECUNDARIA' : '🎮 CUENTA PRIMARIA'
+        chip2 = '⚡ ENTREGA 60-90 MIN'
+        chip3 = '🛡️ GARANTÍA PERMANENTE'
+      } else if (pt === 'package') {
+        brandColor = '#f59e0b'
+        brandGlow = 'rgba(245, 158, 11, 0.42)'
+        categoryBadge = '🔥 SUPER COMBO OFICIAL • MÁXIMO AHORRO'
+        chip1 = '🍿 MULTI-PLATAFORMA'
+        chip2 = '🔒 PERFILES CON PIN'
+        chip3 = '⚡ ACTIVACIÓN INMEDIATA'
+      } else if (pt === 'physical') {
+        brandColor = '#10b981'
+        brandGlow = 'rgba(16, 185, 129, 0.40)'
+        categoryBadge = '📦 PRODUCTO FÍSICO • TIENDA OFICIAL'
+        chip1 = '🚚 ENVÍOS A TODO EL PAÍS'
+        chip2 = '📦 STOCK INMEDIATO'
+        chip3 = '🛡️ FACTURA & GARANTÍA'
+      } else {
+        const lower = pTitle.toLowerCase()
+        if (lower.includes('disney')) {
+          brandColor = '#38bdf8'
+          brandGlow = 'rgba(2, 132, 199, 0.45)'
+        } else if (lower.includes('max') || lower.includes('hbo')) {
+          brandColor = '#a855f7'
+          brandGlow = 'rgba(147, 51, 234, 0.45)'
+        } else if (lower.includes('spotify')) {
+          brandColor = '#10b981'
+          brandGlow = 'rgba(16, 185, 129, 0.45)'
+        } else if (lower.includes('prime')) {
+          brandColor = '#06b6d4'
+          brandGlow = 'rgba(6, 182, 212, 0.45)'
+        } else if (lower.includes('iptv')) {
+          brandColor = '#f59e0b'
+          brandGlow = 'rgba(245, 158, 11, 0.45)'
+        } else if (lower.includes('netflix')) {
+          brandColor = '#e11d48'
+          brandGlow = 'rgba(225, 29, 72, 0.45)'
+        }
+      }
+
+      // Resplandor radial de ambientación
+      const radGrad = ctx.createRadialGradient(visX + visW / 2, visY + visH / 2, 20, visX + visW / 2, visY + visH / 2, 420)
+      radGrad.addColorStop(0, brandGlow)
+      radGrad.addColorStop(1, 'rgba(4, 8, 20, 0.96)')
+      ctx.fillStyle = radGrad
+      ctx.fillRect(visX, visY, visW, visH)
+
+      // Tarjeta Central Flotante de Alto Impacto
+      const cw = Math.min(680, visW - 140)
+      const ch = 220
+      const cx = visX + (visW - cw) / 2
+      const cy = visY + (visH - ch) / 2 + 14
+
+      ctx.save()
+      ctx.shadowColor = brandGlow
+      ctx.shadowBlur = 28
+      const cardGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy + ch)
+      cardGrad.addColorStop(0, 'rgba(6, 14, 34, 0.95)')
+      cardGrad.addColorStop(1, 'rgba(10, 22, 48, 0.90)')
+      ctx.fillStyle = cardGrad
+      roundRectPath(ctx, cx, cy, cw, ch, 24)
+      ctx.fill()
+      ctx.strokeStyle = brandColor
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.shadowBlur = 0
+
+      // Etiqueta superior de la tarjeta
+      ctx.font = '900 13px monospace'
+      ctx.fillStyle = brandColor
       ctx.textAlign = 'center'
-      ctx.fillText(String(props.storeName || 'STREAMEPRO').toUpperCase().slice(0, 16), visX + visW / 2, visY + visH / 2 + 18)
+      ctx.textBaseline = 'middle'
+      ctx.fillText(categoryBadge, cx + cw / 2, cy + 38)
+
+      // Título destacado central
+      ctx.fillStyle = '#ffffff'
+      let tSize = 40
+      ctx.font = `900 ${tSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      while (ctx.measureText(pTitle).width > cw - 60 && tSize > 22) {
+        tSize -= 2
+        ctx.font = `900 ${tSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+      }
+      ctx.fillText(pTitle, cx + cw / 2, cy + 96)
+
+      // 3 Chips de Beneficios Clave
+      const chips = [chip1, chip2, chip3]
+      const chipW = Math.floor((cw - 44) / 3)
+      chips.forEach((chTxt, cIdx) => {
+        const chX = cx + 16 + cIdx * (chipW + 6)
+        const chY = cy + ch - 54
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
+        roundRectPath(ctx, chX, chY, chipW, 34, 12)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+        ctx.lineWidth = 1
+        ctx.stroke()
+        ctx.fillStyle = '#e2e8f0'
+        ctx.font = 'bold 11px monospace'
+        ctx.fillText(chTxt, chX + chipW / 2, chY + 17)
+      })
+      ctx.restore()
     }
 
     // Logo Crest Superpuesto en Esquina Superior Izquierda
@@ -1023,7 +1136,7 @@ const shareToPlatform = async (platform) => {
                 <img
                   :src="mainItem.image"
                   :alt="mainItem.title"
-                  class="relative z-10 w-full h-full object-cover drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)]"
+                  class="relative z-10 max-w-full max-h-full object-contain p-1.5 drop-shadow-[0_10px_20px_rgba(0,0,0,0.9)]"
                 />
               </template>
 
@@ -1044,8 +1157,26 @@ const shareToPlatform = async (platform) => {
                 </div>
               </div>
 
-              <!-- Fallback -->
-              <div v-else class="relative z-10 text-xl font-black text-sky-300 tracking-tight">{{ storeName }}</div>
+              <!-- Fallback profesional cuando no hay imagen disponible -->
+              <div v-else class="relative z-10 w-full h-full flex items-center justify-center p-3">
+                <div class="w-full max-w-[280px] bg-slate-950/90 border border-sky-400/50 rounded-2xl p-3 shadow-xl text-center space-y-1.5 backdrop-blur-md">
+                  <span class="text-[8px] font-mono font-black text-sky-400 uppercase tracking-wider block">
+                    {{ effectiveProductType === 'gaming' ? '🎮 LICENCIA PLAYSTATION DIGITAL' : effectiveProductType === 'package' ? '🔥 SUPER COMBO OFICIAL' : effectiveProductType === 'physical' ? '📦 PRODUCTO FÍSICO OFICIAL' : '🎬 STREAMING OFICIAL 4K' }}
+                  </span>
+                  <h5 class="text-xs sm:text-sm font-black text-white leading-tight truncate px-1">{{ mainItem.title }}</h5>
+                  <div class="flex items-center justify-center gap-1 pt-0.5">
+                    <span class="text-[7px] font-mono font-bold bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-slate-300">
+                      {{ effectiveProductType === 'gaming' ? '🏆 Trofeos' : '📺 4K UHD' }}
+                    </span>
+                    <span class="text-[7px] font-mono font-bold bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-slate-300">
+                      {{ effectiveProductType === 'gaming' ? '⚡ 60-90m' : '🔒 PIN Privado' }}
+                    </span>
+                    <span class="text-[7px] font-mono font-bold bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-emerald-400">
+                      🛡️ Garantía
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <!-- Crest Logo en Esquina Superior Izquierda (sobre la imagen) -->
               <div class="absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-400/60 rounded-full pl-1 pr-2.5 py-0.5 shadow-lg">
