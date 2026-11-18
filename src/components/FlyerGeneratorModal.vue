@@ -37,7 +37,7 @@ const isPhysicalFlyerAvailable = computed(() => {
 })
 
 // 1. Servicio Individual
-const selectedPlatform = ref('Netflix')
+const selectedPlatform = ref('Max')
 const selectedPlanKey = ref('1_perfil')
 
 // 2. Promoción Combo / Paquete

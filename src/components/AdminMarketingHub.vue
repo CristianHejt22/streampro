@@ -1267,11 +1267,11 @@ const handleResetCreditsAndMetrics = () => {
           <div class="space-y-1">
             <span class="text-2xl">🎬</span>
             <h4 class="font-bold text-white text-sm">Streaming Oficial</h4>
-            <p class="text-xs text-slate-400">Reels verticales para Netflix, Max, Spotify con cuentas privadas 4K y PIN exclusivo.</p>
+            <p class="text-xs text-slate-400">Reels verticales para Max, Disney+, Spotify con cuentas privadas 4K y PIN exclusivo.</p>
           </div>
           <button
             type="button"
-            @click="openAdminReelsStudio({ platform: 'Netflix' })"
+            @click="openAdminReelsStudio({ platform: 'Max' })"
             class="w-full py-2 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-bold transition cursor-pointer"
           >
             Crear Reel Streaming

@@ -156,14 +156,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "sku": "C001",
     "title": "Promo Imperdible 1",
     "category": "streaming",
-    "description": "Netflix Premium, Disney+ (7 ESPN), Prime Video · 1 Dispositivo · 30 Días",
+    "description": "Max Platino 4K, Disney+ (7 ESPN), Prime Video · 1 Dispositivo · 30 Días",
     "badge": "🔥 45% OFF ESPECIAL",
     "durationDays": "30",
     "devices": "1",
     "services": [
       {
-        "platform": "Netflix",
-        "planLabel": "Ultra HD 4K",
+        "platform": "Max",
+        "planLabel": "Ultra HD 4K Platino",
         "units": 1,
         "regularPrice": 8500,
         "cost": 4300
@@ -184,7 +184,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       }
     ],
     "logos": [
-      "netflix.png",
+      "max.png",
       "disney_plus.png",
       "prime_video.png"
     ],
@@ -206,7 +206,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "sku": "C002",
     "title": "Promo Imperdible 2",
     "category": "streaming",
-    "description": "Disney+ 7 + ESPN, Netflix Extra · 1 Dispositivo · 30 Días",
+    "description": "Disney+ 7 + ESPN, Max Estándar · 1 Dispositivo · 30 Días",
     "badge": "🔥 35% OFF",
     "durationDays": "30",
     "devices": "1",
@@ -219,8 +219,8 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "cost": 2000
       },
       {
-        "platform": "Netflix",
-        "planLabel": "Perfil Extra",
+        "platform": "Max",
+        "planLabel": "Estándar HD",
         "units": 1,
         "regularPrice": 6500,
         "cost": 4500
@@ -228,7 +228,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     ],
     "logos": [
       "disney_plus.png",
-      "netflix.png"
+      "max.png"
     ],
     "image": "/flyers/combos/promo-pantallas-total.png",
     "originalPrice": 13700,
@@ -248,14 +248,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "sku": "C003",
     "title": "El Combo Más Poderoso",
     "category": "streaming",
-    "description": "Netflix Premium, ChatGPT Plus, Prime Video · 1 Dispositivo · 30 Días",
+    "description": "Max Platino 4K, ChatGPT Plus, Prime Video · 1 Dispositivo · 30 Días",
     "badge": "🔥 45% OFF ESPECIAL",
     "durationDays": "30",
     "devices": "1",
     "services": [
       {
-        "platform": "Netflix",
-        "planLabel": "Ultra HD 4K",
+        "platform": "Max",
+        "planLabel": "Ultra HD 4K Platino",
         "units": 1,
         "regularPrice": 8500,
         "cost": 4300
@@ -276,7 +276,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       }
     ],
     "logos": [
-      "netflix.png",
+      "max.png",
       "chatgpt.png",
       "prime_video.png"
     ],
@@ -448,7 +448,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "sku": "C008",
     "title": "Combo Épico",
     "category": "streaming",
-    "description": "Prime Video, Netflix Extra, Max Standard, Internet Personal (7 días) · 1 Dispositivo · 30 Días",
+    "description": "Prime Video, Spotify Premium, Max Standard, Internet Personal (7 días) · 1 Dispositivo · 30 Días",
     "badge": "🔥 45% OFF ESPECIAL",
     "durationDays": "30",
     "devices": "1",
@@ -461,8 +461,8 @@ export const OFFICIAL_COMBOS_CATALOG = [
         "cost": 1500
       },
       {
-        "platform": "Netflix",
-        "planLabel": "Perfil Extra",
+        "platform": "Spotify",
+        "planLabel": "Individual Premium",
         "units": 1,
         "regularPrice": 6500,
         "cost": 4500
@@ -484,7 +484,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
     ],
     "logos": [
       "prime_video.png",
-      "netflix.png",
+      "spotify.png",
       "max.png",
       "personal.png"
     ],
@@ -1232,14 +1232,14 @@ export const OFFICIAL_COMBOS_CATALOG = [
     "sku": "C024",
     "title": "Promo Monstruosa",
     "category": "streaming",
-    "description": "Netflix Extra, Prime Video, Max Standard · 1 Dispositivo · 30 Días",
+    "description": "Disney+ ESPN, Prime Video, Max Standard · 1 Dispositivo · 30 Días",
     "badge": "🔥 45% OFF ESPECIAL",
     "durationDays": "30",
     "devices": "1",
     "services": [
       {
-        "platform": "Netflix",
-        "planLabel": "Perfil Extra",
+        "platform": "Disney+",
+        "planLabel": "Premium con ESPN",
         "units": 1,
         "regularPrice": 6500,
         "cost": 4500
@@ -1260,7 +1260,7 @@ export const OFFICIAL_COMBOS_CATALOG = [
       }
     ],
     "logos": [
-      "netflix.png",
+      "disney_plus.png",
       "prime_video.png",
       "max.png"
     ],

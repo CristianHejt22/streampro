@@ -467,7 +467,7 @@ async function resolveBasePreviewPayload(query = {}) {
       ? `Catálogo Gamer PS5 & PS4 | Tienda ${shopDisplayName}`
       : `Catálogo Gamer PS5 & PS4 (+${gList.length} Juegos)`
     sub = 'Entrega garantizada 60/90 min · Cuentas Primarias y Secundarias Oficiales.'
-    badge = shopDisplayName ? `TIENDA ${shopDisplayName} · GAMING` : 'PLAYSTATION STORE OFICIAL'
+    badge = shopDisplayName ? `TIENDA ${shopDisplayName} · GAMING` : 'STREAMEPRO GAMING OFICIAL'
     targetPath = shopSlug ? `/${encodeURIComponent(shopSlug)}/juegos` : '/juegos'
   } else if (sec === 'sorteos') {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
@@ -485,7 +485,7 @@ async function resolveBasePreviewPayload(query = {}) {
     featuredItems = gList.slice(0, 4).map(g => formatGameItem(g, 'primary'))
     headline = 'StreamePro | Juegos Digitales, Streaming & Tienda Oficial'
     sub = 'Entrega garantizada 60/90 min · Cuentas Primarias y Secundarias Oficiales.'
-    badge = 'PLAYSTATION STORE OFICIAL'
+    badge = 'STREAMEPRO GAMING OFICIAL'
     targetPath = '/'
   }
 

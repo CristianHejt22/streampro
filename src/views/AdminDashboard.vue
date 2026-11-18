@@ -5480,7 +5480,7 @@ const deletePackageItem = (pkgId) => {
             </div>
             <div>
               <h3 class="text-lg font-black text-white">Tienda de Suscripciones Digitales</h3>
-              <p class="text-xs text-slate-300">8 plataformas activas (Netflix, Max, Spotify, Disney+, IPTV, etc.)</p>
+              <p class="text-xs text-slate-300">8 plataformas activas (Max, Disney+, Spotify, IPTV, Prime Video, etc.)</p>
             </div>
           </div>
           <span class="text-xs font-mono font-bold bg-sky-400/15 text-sky-300 border border-sky-400/30 px-2.5 py-1 rounded-xl">
@@ -8801,7 +8801,7 @@ const deletePackageItem = (pkgId) => {
             <input 
               v-model="newPackageForm.title" 
               type="text" 
-              placeholder="ej. Promo Imperdible 1 (Netflix + Disney+ + Prime)" 
+              placeholder="ej. Promo Cine Total 4K (Max + Disney+ + Prime)" 
               required
               class="w-full bg-slate-900 border border-slate-800 focus:border-purple-400 rounded-xl p-3 text-white outline-none text-sm font-semibold"
             >
@@ -15352,7 +15352,7 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
                   <input 
                     v-model="srv.platform" 
                     type="text" 
-                    placeholder="Plataforma (ej: Netflix, Disney+, Max)" 
+                    placeholder="Plataforma (ej: Max, Disney+, Prime Video, Spotify)" 
                     class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-bold outline-none"
                     required
                   >

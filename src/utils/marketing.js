@@ -255,7 +255,7 @@ export function generateMarketingCopy({
       promoBlock,
       giveawayBlock,
       `👉 Entrá acá: ${url}`,
-      '#gamingargentina #ps5 #netflix4k #descuentos #streamepro #sorteogamer'
+      '#gamingargentina #ps5 #streaming4k #descuentos #streamepro #sorteogamer'
     ].filter(Boolean).join('\n')
   }
 
@@ -318,7 +318,7 @@ export function generateReelStoryPackage({
       priceFormatted ? `💰 Hoy a solo ${priceFormatted}` : `💰 Super Precio`,
       cleanCode ? `🎟️ Cupón: ${cleanCode}` : '📲 Pedilo al link del perfil'
     ]
-    hashtags = ['#streamingargentina', '#netflixargentina', '#maxargentina', '#spotifyargentina', '#ahorroargentina', '#streamepro', '#cuentasoficiales']
+    hashtags = ['#streamingargentina', '#maxargentina', '#disneyargentina', '#spotifyargentina', '#ahorroargentina', '#streamepro', '#cuentasoficiales']
   } else if (type === 'gaming') {
     hook = `¡No gastes 80 dólares en juegos de PlayStation!`
     voiceover = `Conseguí ${title || 'tu juego favorito'} para PS5 y PS4 en formato digital oficial, para jugar directo desde tu consola sin bloqueos y con activación guiada paso a paso. Entrega al instante con garantía. Aprovechá hoy por solo ${priceFormatted || 'precio especial'}${cleanCode ? ` con el cupón ${cleanCode}` : ''}.`
@@ -342,7 +342,7 @@ export function generateReelStoryPackage({
       priceFormatted ? `🔥 Solo ${priceFormatted}` : '🔥 Ahorro Garantizado',
       cleanCode ? `🎟️ Código: ${cleanCode}` : '📲 Escribinos al WhatsApp'
     ]
-    hashtags = ['#combostreaming', '#ahorro', '#argentinapromos', '#netflixyrelax', '#seriesypelis', '#streamepro']
+    hashtags = ['#combostreaming', '#ahorro', '#argentinapromos', '#cineencasa', '#seriesypelis', '#streamepro']
   } else if (type === 'giveaway') {
     hook = `¡Estamos sorteando una cuenta oficial gratis y participar te lleva 10 segundos!`
     voiceover = `En ${storeName} lanzamos un sorteo oficial para toda la comunidad. Solo tenés que registrar tu número gratis en nuestro sitio y ya estás participando por ${title || 'premios increíbles'}. El sorteo es transparente con acta criptográfica pública. ¡No te quedes afuera!`

@@ -34,52 +34,36 @@ const activePromoLabel = computed(() => String(props.payload?.promoLabel || prop
 const isMultiMode = computed(() => props.payload?.mode === 'multi' && Array.isArray(props.payload?.items) && props.payload.items.length > 0)
 
 // Selector de Estilos Visuales para Placas Rápidas
-const plaqueThemeKey = ref('cyber')
-
-// Auto-selección inteligente de tema según el producto
-watch(() => props.payload, (p) => {
-  if (p) {
-    const titleStr = (p.title || p.name || p.platform || '').toLowerCase()
-    if (titleStr.includes('netflix')) {
-      plaqueThemeKey.value = 'ruby'
-    } else if (p.productType === 'physical') {
-      plaqueThemeKey.value = 'gold'
-    } else if (p.productType === 'package') {
-      plaqueThemeKey.value = 'ruby'
-    } else {
-      plaqueThemeKey.value = 'cyber'
-    }
-  }
-}, { immediate: true })
+const plaqueThemeKey = ref('playstation')
 
 const PLAQUE_THEMES = {
-  cyber: {
-    id: 'cyber',
-    label: '⚡ Cyber Neon',
-    glowRgba: 'rgba(56, 189, 248, 0.35)',
-    borderHex: '#38bdf8',
-    accentHex: '#7dd3fc',
-    badgeGrad: ['#0284c7', '#2563eb'],
-    bgGrad: ['#040814', '#0b1224', '#020617'],
-    cssPill: 'bg-sky-500/20 text-sky-300 border-sky-400/50',
-    cssPrice: 'text-sky-300',
-    cssBorder: 'border-sky-500/40'
+  playstation: {
+    id: 'playstation',
+    label: '🎮 PlayStation Blue',
+    glowRgba: 'rgba(0, 112, 209, 0.45)',
+    borderHex: '#0070d1',
+    accentHex: '#93c5fd',
+    badgeGrad: ['#0070d1', '#00439c'],
+    bgGrad: ['#020817', '#061433', '#020617'],
+    cssPill: 'bg-blue-600/25 text-blue-300 border-blue-500/50',
+    cssPrice: 'text-blue-300',
+    cssBorder: 'border-blue-500/40'
   },
-  ruby: {
-    id: 'ruby',
-    label: '🔴 Ruby Netflix',
-    glowRgba: 'rgba(239, 68, 68, 0.40)',
-    borderHex: '#ef4444',
-    accentHex: '#fca5a5',
-    badgeGrad: ['#dc2626', '#b91c1c'],
-    bgGrad: ['#140404', '#22080a', '#0a0204'],
-    cssPill: 'bg-red-500/20 text-red-300 border-red-400/50',
-    cssPrice: 'text-red-300',
-    cssBorder: 'border-red-500/40'
+  crimson: {
+    id: 'crimson',
+    label: '🔴 4K Cinema',
+    glowRgba: 'rgba(225, 29, 72, 0.42)',
+    borderHex: '#e11d48',
+    accentHex: '#fda4af',
+    badgeGrad: ['#e11d48', '#9f1239'],
+    bgGrad: ['#160309', '#270613', '#0a0205'],
+    cssPill: 'bg-rose-500/20 text-rose-300 border-rose-400/50',
+    cssPrice: 'text-rose-300',
+    cssBorder: 'border-rose-500/40'
   },
   gold: {
     id: 'gold',
-    label: '👑 Gold VIP',
+    label: '👑 Gold VIP Combos',
     glowRgba: 'rgba(245, 158, 11, 0.38)',
     borderHex: '#f59e0b',
     accentHex: '#fde68a',
@@ -91,7 +75,7 @@ const PLAQUE_THEMES = {
   },
   emerald: {
     id: 'emerald',
-    label: '💬 Emerald Pro',
+    label: '💬 Emerald WhatsApp',
     glowRgba: 'rgba(16, 185, 129, 0.38)',
     borderHex: '#10b981',
     accentHex: '#a7f3d0',
@@ -100,8 +84,39 @@ const PLAQUE_THEMES = {
     cssPill: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50',
     cssPrice: 'text-emerald-300',
     cssBorder: 'border-emerald-500/40'
+  },
+  cyber: {
+    id: 'cyber',
+    label: '⚡ Cyber Neon',
+    glowRgba: 'rgba(56, 189, 248, 0.35)',
+    borderHex: '#38bdf8',
+    accentHex: '#7dd3fc',
+    badgeGrad: ['#0284c7', '#2563eb'],
+    bgGrad: ['#040814', '#0b1224', '#020617'],
+    cssPill: 'bg-sky-500/20 text-sky-300 border-sky-400/50',
+    cssPrice: 'text-sky-300',
+    cssBorder: 'border-sky-500/40'
   }
 }
+
+// Auto-selección inteligente de tema según el tipo de producto ofrecido
+watch(() => props.payload, (p) => {
+  if (p) {
+    const pt = p.productType || (p.categoryIds ? 'physical' : (p.services ? 'package' : 'gaming'))
+    const titleStr = (p.title || p.name || p.platform || '').toLowerCase()
+    if (pt === 'gaming' || titleStr.includes('ps5') || titleStr.includes('ps4') || titleStr.includes('playstation') || titleStr.includes('juego') || titleStr.includes('fifa') || titleStr.includes('gta')) {
+      plaqueThemeKey.value = 'playstation'
+    } else if (pt === 'package' || titleStr.includes('combo') || titleStr.includes('promo')) {
+      plaqueThemeKey.value = 'gold'
+    } else if (pt === 'streaming' || titleStr.includes('max') || titleStr.includes('disney') || titleStr.includes('spotify') || titleStr.includes('iptv') || titleStr.includes('4k')) {
+      plaqueThemeKey.value = 'crimson'
+    } else if (pt === 'physical') {
+      plaqueThemeKey.value = 'emerald'
+    } else {
+      plaqueThemeKey.value = 'cyber'
+    }
+  }
+}, { immediate: true })
 
 const accentTheme = computed(() => {
   return PLAQUE_THEMES[plaqueThemeKey.value] || PLAQUE_THEMES.cyber
@@ -146,11 +161,21 @@ const mainItem = computed(() => normalizedItems.value[0] || {
   discountPct: 0
 })
 
-const isNetflixItem = computed(() => {
-  const t = (mainItem.value.title || '').toLowerCase()
+const effectiveProductType = computed(() => {
+  if (props.payload?.productType) return props.payload.productType
+  if (mainItem.value.services?.length) return 'package'
+  if (props.payload?.categoryIds) return 'physical'
   const tag = (mainItem.value.tag || '').toLowerCase()
-  return t.includes('netflix') || tag.includes('netflix')
+  const title = (mainItem.value.title || '').toLowerCase()
+  if (tag.includes('ps5') || tag.includes('ps4') || tag.includes('gaming') || title.includes('ps5') || title.includes('ps4')) return 'gaming'
+  if (tag.includes('4k') || tag.includes('streaming') || tag.includes('perfil') || tag.includes('hd')) return 'streaming'
+  return 'gaming'
 })
+
+const isGamingProduct = computed(() => effectiveProductType.value === 'gaming')
+const isStreamingProduct = computed(() => effectiveProductType.value === 'streaming')
+const isPackageProduct = computed(() => effectiveProductType.value === 'package')
+const isPhysicalProduct = computed(() => effectiveProductType.value === 'physical')
 
 const plaqueHeadline = computed(() => {
   if (isMultiMode.value) {
@@ -163,15 +188,45 @@ const plaqueSubline = computed(() => {
   if (isMultiMode.value) {
     return props.payload?.subtitle || `${normalizedItems.value.length} productos con garantía oficial y entrega rápida`
   }
-  if (isNetflixItem.value) {
-    return '4K ULTRA HD • HDR10 · 🟢 10-15m · PIN Privado'
-  }
   if (mainItem.value.subtitle) return mainItem.value.subtitle
-  const pt = props.payload?.productType || 'gaming'
-  if (pt === 'physical') return '🚚 Stock Inmediato · Envíos a Todo el País · Garantía Oficial'
-  if (pt === 'package') return '🎁 Combo Promocional · Perfiles Privados con PIN'
-  if (pt === 'streaming') return '🎬 Perfil Privado 4K · Entrega 10-15m · Garantía 30d'
-  return '🎮 Licencia Digital Original · Entrega 60/90m · Garantía Oficial'
+  const pt = effectiveProductType.value
+  if (pt === 'physical') return '🚚 Stock Inmediato · Envíos a Todo el País · Factura Oficial'
+  if (pt === 'package') return '🎁 Combo Ahorro VIP · Cuentas Privadas con PIN · 30d Garantía'
+  if (pt === 'streaming') return '🎬 4K Ultra HD • HDR10 · PIN Privado Exclusivo · Sin Bloqueos'
+  const lic = props.payload?.licenseType === 'secondary' ? 'Cuenta Secundaria (Juega con usuario del juego)' : 'Cuenta Primaria (Juega con tu usuario personal)'
+  return `🎮 Licencia Digital Original · ${lic} · Garantía Permanente`
+})
+
+const qualityTagText = computed(() => {
+  const pt = effectiveProductType.value
+  if (pt === 'gaming') {
+    const t = (mainItem.value.title || '').toUpperCase()
+    if (t.includes('PS5') && !t.includes('PS4')) return 'PLAYSTATION 5 DIGITAL'
+    if (t.includes('PS4') && !t.includes('PS5')) return 'PLAYSTATION 4 DIGITAL'
+    return 'PS5 & PS4 DIGITAL'
+  }
+  if (pt === 'streaming') return '4K ULTRA HD • HDR10'
+  if (pt === 'package') return '🔥 MEGA COMBO VIP'
+  if (pt === 'physical') return '🚚 ENVÍO NACIONAL'
+  return (mainItem.value.tag || 'OFICIAL').toUpperCase()
+})
+
+const trustGuaranteeText = computed(() => {
+  const pt = effectiveProductType.value
+  if (pt === 'gaming') return '🛡️ LICENCIA ORIGINAL · ENTREGA INMEDIATA 60/90M · GARANTÍA PERMANENTE'
+  if (pt === 'streaming') return '🛡️ GARANTÍA OFICIAL · PIN PRIVADO EXCLUSIVO · RENOVACIÓN MES A MES'
+  if (pt === 'package') return '🛡️ GARANTÍA INTEGRAL EN TODAS LAS CUENTAS · AHORRO COMPROBADO'
+  if (pt === 'physical') return '🛡️ GARANTÍA OFICIAL · COMPRA PROTEGIDA · SEGUIMIENTO EN VIVO'
+  return '🛡️ GARANTÍA OFICIAL · ATENCIÓN VIP PERSONALIZADA'
+})
+
+const deliveryPillText = computed(() => {
+  const pt = effectiveProductType.value
+  if (pt === 'gaming') return '🟢 60-90m ENTREGA'
+  if (pt === 'streaming') return '🟢 10-15m ENTREGA'
+  if (pt === 'package') return '🟢 ACTIVACIÓN 10-15m'
+  if (pt === 'physical') return '📦 STOCK INMEDIATO'
+  return '🟢 ENTREGA RÁPIDA'
 })
 
 const appendPromoToUrl = (baseUrl) => {
@@ -541,7 +596,7 @@ async function renderPlaqueBlob() {
 
     // Tag / Categoría / Calidad Top-Right sobre la imagen
     ctx.save()
-    const qualityTag = isNetflixItem.value ? '4K ULTRA HD • HDR10' : (mainItem.value.tag || 'OFICIAL').toUpperCase()
+    const qualityTag = qualityTagText.value
     ctx.font = '900 16px monospace'
     const qtw = ctx.measureText(qualityTag).width + 36
     const qtx = visX + visW - 22 - qtw
@@ -557,7 +612,7 @@ async function renderPlaqueBlob() {
     ctx.fillText(qualityTag, qtx + qtw / 2, qty + 26)
 
     // Delivery pill debajo del tag
-    const delPill = '🟢 10-15m ENTREGA'
+    const delPill = deliveryPillText.value
     ctx.font = 'bold 13px monospace'
     const dtw = ctx.measureText(delPill).width + 24
     const dtx = visX + visW - 22 - dtw
@@ -605,9 +660,7 @@ async function renderPlaqueBlob() {
 
     // 2.2 PÍLDORA DE ESPECIFICACIONES / SUBTÍTULO
     const specsY = isTwoLines ? 654 : 640
-    const subText = isNetflixItem.value 
-      ? '✓ 4K ULTRA HD • HDR10 · 🟢 10-15m · PIN Privado 4 dígitos'
-      : (plaqueSubline.value.slice(0, 68))
+    const subText = plaqueSubline.value.slice(0, 72)
     
     ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     const subW = Math.min(W - 120, ctx.measureText(subText).width + 48)
@@ -652,9 +705,7 @@ async function renderPlaqueBlob() {
 
     // 2.4 SELLO DE CONFIANZA Y GARANTÍA OFICIAL
     const trustY = hasOrig ? (priceBoxY + 120) : (priceBoxY + 108)
-    const trustText = isNetflixItem.value
-      ? '🛡️ SIN BLOQUEO EN ARGENTINA · PIN 4 DÍGITOS · RENOVACIÓN MES A MES'
-      : '🛡️ GARANTÍA OFICIAL · ENTREGA INMEDIATA 10-15M · ATENCIÓN VIP'
+    const trustText = trustGuaranteeText.value
     
     ctx.fillStyle = '#34d399'
     ctx.font = '900 15px monospace'
@@ -1080,10 +1131,10 @@ const shareToPlatform = async (platform) => {
                 <!-- Tag Calidad / Entrega Top-Right -->
                 <div class="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
                   <span :class="['text-[8px] font-black px-2 py-0.5 rounded-full border shadow uppercase font-mono', accentTheme.cssPill]">
-                    {{ isNetflixItem ? '4K HDR10' : mainItem.tag }}
+                    {{ qualityTagText }}
                   </span>
                   <span class="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono">
-                    🟢 10-15m
+                    {{ deliveryPillText }}
                   </span>
                 </div>
               </div>
@@ -1105,7 +1156,7 @@ const shareToPlatform = async (platform) => {
                     {{ mainItem.price > 0 ? `$${mainItem.price.toLocaleString()} ARS` : 'Consultar' }}
                   </div>
                   <div class="text-[8px] text-emerald-400 font-bold tracking-wider font-mono uppercase">
-                    {{ isNetflixItem ? '🛡️ Sin bloqueo Argentina · PIN 4 dígitos' : '🛡️ Garantía Oficial · Reemplazo Inmediato' }}
+                    {{ trustGuaranteeText }}
                   </div>
                 </div>
 

@@ -2281,7 +2281,7 @@ const showBrandPill = ref(true)
 const currentSealText = ref('🛡️ GARANTÍA OFICIAL 30 DÍAS')
 
 // Modelos reactivos de textos
-const reelHeadline = ref('NETFLIX 4K ULTRA HD')
+const reelHeadline = ref('MAX PLATINUM 4K ULTRA HD')
 const reelSubline = ref('Perfil Privado con PIN Exclusivo')
 const reelBadgeText = ref('🔥 25% OFF HOY')
 const reelCtaText = ref('📲 PEDILO AL WHATSAPP')
@@ -2633,7 +2633,7 @@ function wrapReelsText(text, maxChars) {
 }
 
 // Entidades seleccionadas
-const pickedStreamingKey = ref('Netflix')
+const pickedStreamingKey = ref('Max')
 const pickedStreamingPlanKey = ref('')
 const pickedGameId = ref('')
 const pickedGamingLicense = ref('primary')
@@ -2641,7 +2641,7 @@ const pickedComboId = ref('')
 const pickedGiveawayId = ref('')
 
 const contentModes = [
-  { id: 'streaming', icon: '🎬', label: 'Streaming', desc: 'Netflix, Max, Spotify' },
+  { id: 'streaming', icon: '🎬', label: 'Streaming', desc: 'Max, Disney+, Spotify' },
   { id: 'gaming', icon: '🎮', label: 'Videojuegos', desc: 'Buscador PS5/PS4' },
   { id: 'combo', icon: '🎁', label: 'Combos VIP', desc: 'Packs con Super Ahorro' },
   { id: 'giveaway', icon: '🎉', label: 'Sorteos', desc: 'Captación de clientes' }
@@ -2972,7 +2972,7 @@ function selectGamingProduct(game) {
 function selectContentMode(modeId) {
   selectedMode.value = modeId
   if (modeId === 'streaming') {
-    pickedStreamingKey.value = Object.keys(adminStore.pricingCatalog)[0] || 'Netflix'
+    pickedStreamingKey.value = Object.keys(adminStore.pricingCatalog).find(k => !k.toLowerCase().includes('netflix')) || 'Max'
     onStreamingServiceChange()
   } else if (modeId === 'gaming') {
     if (!adminStore.isGamingCatalogLoaded && typeof adminStore.loadFullGamingCatalog === 'function') {

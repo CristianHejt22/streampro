@@ -351,11 +351,11 @@ export function getCleanDatabaseSeed() {
   const starterPackages = [
     {
       id: 'PKG-101',
-      title: 'Combo Cine Total 4K (Netflix + Disney+ + Max)',
+      title: 'Combo Cine Total 4K (Max + Disney+ ESPN + Prime)',
       description: 'Las 3 plataformas líderes de series, cine y estrenos en calidad Ultra HD.',
       badge: '🔥 25% OFF - RECOMENDADO',
       services: [
-        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 8500, cost: 4300 },
+        { platform: 'Prime Video', planKey: '1_perfil', planLabel: '1 Pantalla HD', units: 1, regularPrice: 4800, cost: 1500 },
         { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 2000 },
         { platform: 'Disney+', planKey: '1_perfil', planLabel: '1 Pantalla VIP', units: 1, regularPrice: 7200, cost: 2000 }
       ],
@@ -370,11 +370,11 @@ export function getCleanDatabaseSeed() {
     },
     {
       id: 'PKG-102',
-      title: 'Dúo Series & Música (Netflix + Spotify)',
+      title: 'Dúo Series & Música (Max + Spotify)',
       description: 'Tus series favoritas en Ultra HD y toda la música del mundo sin publicidad.',
       badge: '⚡ COMBO POPULAR',
       services: [
-        { platform: 'Netflix', planKey: '1_perfil', planLabel: '1 Pantalla 4K', units: 1, regularPrice: 8500, cost: 4300 },
+        { platform: 'Max', planKey: '1_perfil', planLabel: '1 Pantalla Platino', units: 1, regularPrice: 6000, cost: 2000 },
         { platform: 'Spotify', planKey: '1_perfil', planLabel: '1 Slot Familiar', units: 1, regularPrice: 3800, cost: 1500 }
       ],
       originalPrice: 12300,

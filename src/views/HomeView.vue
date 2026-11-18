@@ -712,6 +712,7 @@ const currentPageSection = computed(() => {
 
 // Sección Activa en Tienda: 'all' (Todo el Catálogo) | 'digital' (Streaming) | 'physical' (Productos Físicos) | 'packages' (Combos) | 'sorteos'
 const storeSection = ref('all')
+const highlightedPackageId = ref(null)
 
 watch(currentPageSection, (sec) => {
   storeSection.value = sec === 'home' ? 'all' : sec
@@ -1679,26 +1680,49 @@ const applyRouteParams = () => {
     showGiftCardModal.value = true
   }
 
-  // Previsualización y apertura automática de producto físico compartido (solo si tienda física está visible)
+  // Previsualización y apertura automática de producto físico compartido
   const sharedProdId = route.query.prod || route.query.p
   if (sharedProdId && isPhysicalNavVisible.value) {
     clientForm.value.isSharedUrl = true
     storeSection.value = 'physical'
-    const cleanId = String(sharedProdId).trim()
-    const foundProd = adminStore.physicalProducts.find(p => String(p.id).trim() === cleanId)
+    const cleanId = String(sharedProdId).trim().toLowerCase()
+    const foundProd = (adminStore.physicalProducts || []).find(p => String(p.id).trim().toLowerCase() === cleanId || String(p.sku || '').trim().toLowerCase() === cleanId)
     if (foundProd) {
       openPhysicalModal(foundProd)
-      toast.add(`¡Bienvenido! Mostrando: ${foundProd.name.slice(0, 32)}...`, 'info')
+      toast.add(`📦 ¡Bienvenido! Mostrando: ${foundProd.name.slice(0, 32)}...`, 'info')
     }
   }
 
-  // Previsualización y apertura automática de videojuego digital compartido (ej: desde enlaces o placas)
+  // Previsualización y apertura automática de paquete o combo compartido (?pkg=C001)
+  const sharedPkgId = route.query.pkg
+  if (sharedPkgId) {
+    clientForm.value.isSharedUrl = true
+    storeSection.value = 'packages'
+    const cleanPkgId = String(sharedPkgId).trim().toLowerCase()
+    highlightedPackageId.value = cleanPkgId
+    const foundPkg = (adminStore.packages || []).find(p => String(p.id).trim().toLowerCase() === cleanPkgId || String(p.sku || '').trim().toLowerCase() === cleanPkgId)
+    if (foundPkg) {
+      toast.add(`🎁 Combo Seleccionado: ${foundPkg.title}`, 'info')
+    }
+    setTimeout(() => {
+      const el = document.getElementById(`combo-${cleanPkgId}`) || document.getElementById('section-combos')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 450)
+  }
+
+  // Previsualización y apertura automática de videojuego digital compartido (?game=id)
   const sharedGameId = route.query.game || route.query.g
   if (sharedGameId) {
     clientForm.value.isSharedUrl = true
     storeSection.value = 'gaming'
-    const cleanGameId = String(sharedGameId).trim()
-    const foundGame = (adminStore.processedGamingProducts || []).find(g => String(g.id).trim() === cleanGameId || String(g.slug).trim() === cleanGameId)
+    const cleanGameId = String(sharedGameId).trim().toLowerCase()
+    const foundGame = (adminStore.processedGamingProducts || []).find(g => 
+      String(g.id).trim().toLowerCase() === cleanGameId || 
+      String(g.slug || '').trim().toLowerCase() === cleanGameId || 
+      String(g.sku || '').trim().toLowerCase() === cleanGameId
+    )
     if (foundGame) {
       if (route.query.lic && (route.query.lic === 'primary' || route.query.lic === 'secondary')) {
         setGameLicense(foundGame.id, route.query.lic)
@@ -1708,13 +1732,22 @@ const applyRouteParams = () => {
       }
       openGamingDetail(foundGame)
       toast.add(`🎮 ¡Bienvenido! Mostrando: ${foundGame.title}`, 'info')
+    } else if (!adminStore.isGamingCatalogLoaded) {
+      adminStore.loadFullGamingCatalog().then(() => applyRouteParams()).catch(() => {})
     }
   } else if (route.query.plat) {
     const platParam = String(route.query.plat).trim()
     if (['PS5', 'PS4', 'PS3', 'Switch', 'Xbox', 'PC'].includes(platParam) && (storeSection.value === 'gaming' || route.query.sec === 'gaming')) {
       gamingPlatformFilter.value = platParam
-    } else if (storeSection.value === 'digital' || route.query.sec === 'digital') {
+    } else if (storeSection.value === 'digital' || route.query.sec === 'digital' || !route.query.sec) {
+      storeSection.value = 'digital'
       digitalPlatformFilter.value = platParam
+      const cleanPlat = platParam.toLowerCase()
+      const foundProd = availableStreamingProducts.value.find(p => p.platform?.toLowerCase() === cleanPlat || p.name?.toLowerCase().includes(cleanPlat))
+      if (foundProd) {
+        openConfig(foundProd)
+        toast.add(`🎬 Mostrando planes oficiales de: ${foundProd.name}`, 'info')
+      }
     }
   }
 
@@ -1777,6 +1810,24 @@ onMounted(() => {
 watch([() => route.path, () => route.query], () => {
   applyRouteParams()
 }, { deep: true })
+
+watch(() => adminStore.processedGamingProducts?.length, (len) => {
+  if (len > 0 && (route.query.game || route.query.g) && !selectedGamingProduct.value) {
+    applyRouteParams()
+  }
+})
+
+watch(() => adminStore.physicalProducts?.length, (len) => {
+  if (len > 0 && (route.query.prod || route.query.p) && !selectedPhysicalProduct.value) {
+    applyRouteParams()
+  }
+})
+
+watch(() => adminStore.packages?.length, (len) => {
+  if (len > 0 && route.query.pkg) {
+    applyRouteParams()
+  }
+})
 
 const currentSelectedProductPlans = computed(() => {
   return getStreamingPlansDisplay(selectedProduct.value)
@@ -2053,7 +2104,7 @@ const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 const homeFeaturedCategories = computed(() => {
   const list = []
   if (isStreamingNavVisible.value) {
-    list.push({ id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Netflix, Max, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' })
+    list.push({ id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Max, Disney+, Prime Video, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' })
   }
   if (isGamingNavVisible.value) {
     list.push({ id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' })
@@ -2081,7 +2132,7 @@ const homeFeaturedCategories = computed(() => {
 const homeFeaturedDigital = computed(() => {
   if (!isStreamingNavVisible.value) return []
   const allowedPlatforms = resellerShopConfig.value?.enabledStreamingPlatforms || []
-  const topPlatforms = ['Netflix', 'Netflix Perfil Extra', 'Disney+', 'Max', 'Spotify', 'IPTV', 'Prime Video']
+  const topPlatforms = ['Disney+', 'Max', 'Spotify', 'Prime Video', 'IPTV', 'YouTube Premium', 'Canva Pro', 'Netflix', 'Netflix Perfil Extra']
   return products.value.filter(p => {
     if (allowedPlatforms.length > 0 && !allowedPlatforms.includes(p.platform) && !allowedPlatforms.includes(p.name)) {
       return false
@@ -3801,10 +3852,11 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="openSharePlaqueForStreaming(product)"
-                class="px-3 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-                title="Compartir en placa para redes"
+                class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
+                title="Compartir placa con logo para WhatsApp y redes"
               >
-                📤
+                <span class="text-xs group-hover/share:scale-125 transition-transform">📤</span>
+                <span class="hidden sm:inline font-bold text-[11px]">Compartir</span>
               </button>
               <button 
                 type="button"
@@ -3847,7 +3899,8 @@ const submitOrder = async () => {
           <div 
             v-for="pkg in homeFeaturedPackages" 
             :key="pkg.id"
-            class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
+            :id="'combo-' + (pkg.id || pkg.sku)"
+            :class="['glass-panel rounded-3xl p-6 border flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10 transition-all duration-300', highlightedPackageId === String(pkg.id).toLowerCase() || highlightedPackageId === String(pkg.sku || '').toLowerCase() ? 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.35)] ring-2 ring-pink-400 scale-[1.02]' : 'border-white/[0.08] hover:border-pink-500/40']"
           >
             <div class="space-y-4">
               <!-- Arte promocional superior si existe -->
@@ -3957,20 +4010,22 @@ const submitOrder = async () => {
               >
                 <span>+ Agregar Combo al Pedido</span>
               </button>
-              <div class="grid grid-cols-2 gap-1.5">
+              <div class="grid grid-cols-2 gap-2">
                 <button 
                   @click="openSharePlaqueForPackage(pkg)"
-                  class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
-                  title="Generar placa con logo para compartir"
+                  class="bg-gradient-to-r from-purple-600/30 via-pink-600/25 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-pink-200 hover:text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all border border-pink-400/40 hover:border-pink-300 flex items-center justify-center gap-1.5 cursor-pointer shadow active:scale-95 group/btn"
+                  title="Generar placa HD para compartir en redes"
                 >
-                  <span>📲 Placa</span>
+                  <span class="text-sm group-hover/btn:scale-125 transition-transform">📲</span>
+                  <span>Compartir Placa</span>
                 </button>
                 <button 
                   @click="sharePackageWhatsApp(pkg)"
-                  class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl border border-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
-                  title="WhatsApp"
+                  class="bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 hover:text-white text-xs font-black py-2.5 px-3 rounded-xl border border-emerald-400/40 hover:border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow active:scale-95"
+                  title="Compartir combo directo a WhatsApp"
                 >
-                  <span>💬 WhatsApp</span>
+                  <span class="text-sm">💬</span>
+                  <span>WhatsApp</span>
                 </button>
               </div>
             </div>
@@ -4126,10 +4181,11 @@ const submitOrder = async () => {
                   <button 
                     type="button"
                     @click.stop="openSharePlaqueForPhysical(item)"
-                    class="px-2.5 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition cursor-pointer"
+                    class="px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                     title="Compartir en placa con logo"
                   >
-                    📤
+                    <span>📤</span>
+                    <span class="hidden sm:inline font-bold text-[10px]">Compartir</span>
                   </button>
                   <button 
                     type="button"
@@ -4369,7 +4425,7 @@ const submitOrder = async () => {
             <span class="text-3xl">🎬</span>
             <div>
               <h3 class="text-lg sm:text-xl font-black text-white">Suscripciones Digitales & Pantallas 4K</h3>
-              <p class="text-xs text-slate-300">Netflix, Max, Spotify, Disney+, IPTV, Prime Video, YouTube Premium y Canva Pro con PIN exclusivo y entrega de 10 min a 1 hora.</p>
+              <p class="text-xs text-slate-300">Max, Disney+, Prime Video, Spotify, YouTube Premium, IPTV y herramientas digitales con PIN exclusivo y entrega inmediata.</p>
             </div>
           </div>
           <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-3 py-1.5 rounded-xl shrink-0 flex items-center gap-1.5">
@@ -4416,7 +4472,7 @@ const submitOrder = async () => {
         <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-md">
           <div class="relative flex-1">
             <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input v-model="searchQuery" type="text" placeholder="Buscar por Netflix, Max, Spotify, Disney, IPTV, YouTube, Canva..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
+            <input v-model="searchQuery" type="text" placeholder="Buscar por Max, Disney+, Spotify, Prime Video, IPTV, YouTube, Canva..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
             <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">✕</button>
           </div>
           <div class="w-px h-6 bg-white/10"></div>
@@ -4530,10 +4586,11 @@ const submitOrder = async () => {
             <button 
               type="button" 
               @click.stop="openSharePlaqueForStreaming(product)"
-              class="px-3 py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border border-indigo-500/35 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-              title="Compartir en placa con logo"
+              class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
+              title="Compartir placa con logo para WhatsApp y redes"
             >
-              📤
+              <span class="text-xs group-hover/share:scale-125 transition-transform">📤</span>
+              <span class="hidden sm:inline font-bold text-[11px]">Compartir</span>
             </button>
             <button 
               type="button"
@@ -4642,7 +4699,7 @@ const submitOrder = async () => {
       <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl w-full shadow-md">
         <div class="relative flex-1">
           <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          <input v-model="searchQuery" type="text" placeholder="Buscar combos (Netflix + Spotify, Trío VIP, MagisTV, Disney)..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
+          <input v-model="searchQuery" type="text" placeholder="Buscar combos (Max + Disney+, Dúo Cine, Star, Prime Video, MagisTV)..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
           <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">✕</button>
         </div>
       </div>
@@ -4743,7 +4800,8 @@ const submitOrder = async () => {
         <div 
           v-for="pkg in paginatedPackages" 
           :key="pkg.id"
-          class="glass-panel rounded-3xl p-6 border border-white/[0.08] hover:border-pink-500/40 transition-all flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10"
+          :id="'combo-' + (pkg.id || pkg.sku)"
+          :class="['glass-panel rounded-3xl p-6 border flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10 transition-all duration-300', highlightedPackageId === String(pkg.id).toLowerCase() || highlightedPackageId === String(pkg.sku || '').toLowerCase() ? 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.35)] ring-2 ring-pink-400 scale-[1.02]' : 'border-white/[0.08] hover:border-pink-500/40']"
         >
           <div class="space-y-4">
             <!-- Header con Flyer Artwork si existe -->
@@ -4864,20 +4922,22 @@ const submitOrder = async () => {
             </button>
 
             <!-- Acciones Secundarias: Placa & WhatsApp -->
-            <div class="grid grid-cols-2 gap-1.5">
+            <div class="grid grid-cols-2 gap-2">
               <button 
                 @click="openSharePlaqueForPackage(pkg)"
-                class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl transition-all border border-indigo-500/35 flex items-center justify-center gap-1 cursor-pointer truncate"
-                title="Generar placa con logo para compartir"
+                class="bg-gradient-to-r from-purple-600/30 via-pink-600/25 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-pink-200 hover:text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all border border-pink-400/40 hover:border-pink-300 flex items-center justify-center gap-1.5 cursor-pointer shadow active:scale-95 group/btn"
+                title="Generar placa HD para compartir en redes"
               >
-                <span>📲 Placa</span>
+                <span class="text-sm group-hover/btn:scale-125 transition-transform">📲</span>
+                <span>Compartir Placa</span>
               </button>
               <button 
                 @click="sharePackageWhatsApp(pkg)"
-                class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold py-2 px-2.5 rounded-xl border border-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
-                title="Compartir combo por WhatsApp"
+                class="bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 hover:text-white text-xs font-black py-2.5 px-3 rounded-xl border border-emerald-400/40 hover:border-emerald-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow active:scale-95"
+                title="Compartir combo directo a WhatsApp"
               >
-                <span>💬 WhatsApp</span>
+                <span class="text-sm">💬</span>
+                <span>WhatsApp</span>
               </button>
             </div>
           </div>
@@ -4950,7 +5010,7 @@ const submitOrder = async () => {
             <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
             <div>
               <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Individuales 4K</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega 60/90 min</p>
+              <p class="text-xs text-slate-400 mt-0.5">Max, Disney+, Prime Video, Spotify con entrega garantizada</p>
             </div>
           </div>
           <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Suscripciones →</span>
@@ -5352,10 +5412,11 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click="openSharePlaqueForGaming(game)"
-                class="bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white text-xs font-bold py-2 px-2 rounded-xl border border-indigo-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                title="Generar placa para compartir con logo"
+                class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white text-xs font-black py-2.5 px-2.5 rounded-xl border border-sky-400/40 hover:border-sky-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm group/btn"
+                title="Generar placa gamer en alta definición para compartir"
               >
-                <span>📤 Compartir</span>
+                <span class="text-sm group-hover/btn:scale-125 transition-transform">📤</span>
+                <span>Compartir Placa</span>
               </button>
             </div>
           </div>
@@ -5566,7 +5627,7 @@ const submitOrder = async () => {
             <span class="text-3xl group-hover:scale-110 transition-transform">🎬</span>
             <div>
               <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">Suscripciones Digitales 4K</h4>
-              <p class="text-xs text-slate-400 mt-0.5">Netflix, Spotify, Max, Disney+ con entrega 60/90 min</p>
+              <p class="text-xs text-slate-400 mt-0.5">Max, Disney+, Prime Video, Spotify con entrega garantizada</p>
             </div>
           </div>
           <span class="text-sky-300 font-bold text-xs group-hover:translate-x-1 transition-transform shrink-0">Ver Streaming →</span>
@@ -5669,7 +5730,7 @@ const submitOrder = async () => {
           </div>
           <div>
             <strong class="text-white text-sm sm:text-base block font-black">¿Buscando Cuentas y Pantallas de Streaming 4K?</strong>
-            <p class="text-xs text-slate-300 mt-0.5">Netflix, Max, Spotify, Disney+, YouTube Premium e IPTV con PIN exclusivo y entrega de 10 min a 1 hora.</p>
+            <p class="text-xs text-slate-300 mt-0.5">Max, Disney+, Prime Video, Spotify, YouTube Premium e IPTV con PIN exclusivo y entrega inmediata.</p>
           </div>
         </div>
         <button 
@@ -6179,25 +6240,26 @@ const submitOrder = async () => {
                   </button>
                 </div>
 
-                <!-- Botón PLACA COMPARTIR DIRECTA -->
-                <div class="flex gap-1 pt-0.5">
+                <!-- Botonera de Compartir y Acciones -->
+                <div class="flex gap-1.5 pt-1">
                   <button 
                     @click="openSharePlaqueForPhysical(item)" 
-                    class="flex-1 bg-indigo-500/15 hover:bg-indigo-500/30 text-[9px] sm:text-[11px] font-black py-1 sm:py-1.5 rounded-lg border border-indigo-500/35 text-indigo-200 hover:text-white transition-colors flex items-center justify-center gap-1 truncate px-1.5 cursor-pointer"
-                    title="Compartir placa con logo sobre el producto"
+                    class="flex-1 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/50 hover:to-purple-600/50 text-[10px] sm:text-xs font-black py-1.5 sm:py-2 rounded-xl border border-indigo-400/40 hover:border-indigo-300 text-indigo-200 hover:text-white transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 group/btn"
+                    title="Compartir placa con logo oficial sobre el producto"
                   >
-                    <span class="truncate">📤 Placa</span>
+                    <span class="text-xs group-hover/btn:scale-125 transition-transform">📤</span>
+                    <span>Compartir Placa</span>
                   </button>
                   <button 
                     @click="shareProductWhatsApp(item)" 
-                    class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-emerald-500/30 transition-colors shrink-0 cursor-pointer"
-                    title="Compartir por WhatsApp"
+                    class="bg-emerald-600/25 hover:bg-emerald-600/45 text-emerald-300 hover:text-white text-xs font-bold px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl border border-emerald-400/40 transition-colors shrink-0 cursor-pointer active:scale-95"
+                    title="Compartir directo por WhatsApp"
                   >
                     💬
                   </button>
                   <button 
                     @click="copyShareProductUrl(item)" 
-                    class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                    class="bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-amber-300 text-xs font-bold px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl border border-white/10 transition-colors shrink-0 flex items-center justify-center cursor-pointer active:scale-95"
                     title="Copiar enlace directo"
                   >
                     🔗
@@ -8117,7 +8179,7 @@ const submitOrder = async () => {
               <input
                 v-model="newReviewForm.product"
                 type="text"
-                placeholder="Ej: Netflix 4K / EA FC 25"
+                placeholder="Ej: Max Platino 4K / EA FC 25"
                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400"
               />
             </div>

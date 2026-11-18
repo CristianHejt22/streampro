@@ -63,6 +63,7 @@ const router = createRouter({
     },
     {
       path: '/combo/:id',
+      alias: ['/c/:id', '/paquete/:id'],
       redirect: to => ({
         path: '/combos',
         query: { ...to.query, pkg: to.params.id }
@@ -70,6 +71,7 @@ const router = createRouter({
     },
     {
       path: '/combo/:id/:ref',
+      alias: ['/c/:id/:ref', '/paquete/:id/:ref'],
       redirect: to => ({
         path: '/combos',
         query: { ...to.query, pkg: to.params.id, ref: to.params.ref }
@@ -77,6 +79,7 @@ const router = createRouter({
     },
     {
       path: '/servicio/:id',
+      alias: ['/s/:id', '/streaming/:id'],
       redirect: to => ({
         path: '/suscripciones',
         query: { ...to.query, plat: to.params.id }
@@ -84,6 +87,7 @@ const router = createRouter({
     },
     {
       path: '/servicio/:id/:ref',
+      alias: ['/s/:id/:ref', '/streaming/:id/:ref'],
       redirect: to => ({
         path: '/suscripciones',
         query: { ...to.query, plat: to.params.id, ref: to.params.ref }
@@ -105,6 +109,7 @@ const router = createRouter({
     },
     {
       path: '/producto/:id/:ref',
+      alias: ['/p/:id/:ref', '/item/:id/:ref', '/articulo/:id/:ref'],
       redirect: to => ({
         path: '/tienda',
         query: { ...to.query, prod: to.params.id, ref: to.params.ref }
@@ -112,7 +117,7 @@ const router = createRouter({
     },
     {
       path: '/juego/:id',
-      alias: ['/j/:id'],
+      alias: ['/j/:id', '/game/:id'],
       redirect: to => ({
         path: '/juegos',
         query: { ...to.query, game: to.params.id }
@@ -120,7 +125,7 @@ const router = createRouter({
     },
     {
       path: '/juego/:id/:ref',
-      alias: ['/j/:id/:ref'],
+      alias: ['/j/:id/:ref', '/game/:id/:ref'],
       redirect: to => ({
         path: '/juegos',
         query: { ...to.query, game: to.params.id, ref: to.params.ref }

@@ -171,7 +171,7 @@ const shareCardViaWhatsApp = () => {
     `¡Hola! Te enviaron una Tarjeta de Regalo ${toStr} por *$${amountStr} ARS* de saldo canjeable.\n\n` +
     `✨ *Dedicatoria:* "${giftMessage.value}"\n` +
     `👤 ${fromStr}\n\n` +
-    `💳 *Válida para:* Suscripciones 4K (Netflix, Max, Disney+), Videojuegos Digitales PS5/PS4, Combos y Tienda Oficial.\n` +
+    `💳 *Válida para:* Suscripciones 4K (Max, Disney+, Prime Video), Videojuegos Digitales PS5/PS4, Combos y Tienda Oficial.\n` +
     `🔗 *Canjéala directamente aquí:* https://streamepro.me/?giftcard=1\n\n` +
     `¡Que la disfrutes!`
 
