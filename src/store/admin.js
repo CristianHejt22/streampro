@@ -1176,7 +1176,23 @@ export const useAdminStore = defineStore('admin', {
     })(),
 
     // BILLETERAS DE CLIENTES PERSISTENTES (Saldo canjeable en compras)
-    customerWallets: loadDb(DB_KEYS.CUSTOMER_WALLETS, {})
+    customerWallets: loadDb(DB_KEYS.CUSTOMER_WALLETS, {}),
+
+    // MÉTRICAS DE MARKETING, CLICS Y RASTREO
+    marketingClicks: loadDb(DB_KEYS.MARKETING_CLICKS, []),
+
+    // CONFIGURACIÓN DE BUSCADORES Y SEO
+    seoConfig: (() => {
+      const stored = loadDb(DB_KEYS.SEO_CONFIG, null)
+      const defaults = {
+        siteTitle: 'StreamePro Oficial | Streaming 4K, Juegos PS5/PS4 y Tecnología en Argentina',
+        metaDescription: 'Tienda Oficial de Streaming 4K Ultra HD y Cuentas Digitales PlayStation en Argentina. Activación express 10-60m, PIN privado, garantía total y medios de pago locales.',
+        keywords: 'streaming argentina, cuentas netflix argentina, juegos ps5 digitales, combos streaming, disney plus, max hbo, playstation cuentas primarias',
+        canonicalUrl: 'https://streamepro.me',
+        ogImage: 'https://streamepro.me/flyers/combos/plaque-template-cyber.webp'
+      }
+      return stored && typeof stored === 'object' ? { ...defaults, ...stored } : defaults
+    })()
   }},
   getters: {
     activeGiftCards: (state) => (state.giftCards || []).filter(c => c.status === 'active'),
@@ -1194,8 +1210,10 @@ export const useAdminStore = defineStore('admin', {
       const totalCreditBalance = (state.discountUsers || []).reduce((acc, u) => acc + Number(u.creditBalance || 0), 0)
       const validGiveawayEntries = (state.giveawayEntries || []).filter(e => e.status !== 'disqualified')
       const totalGiveawayTickets = validGiveawayEntries.reduce((acc, e) => acc + Number(e.ticketsCount || 1), 0)
+      const totalMarketingClicks = (state.marketingClicks || []).length
       return {
         promoOrdersCount: promoOrders.length,
+        totalMarketingClicks,
         totalPromoSales,
         totalDiscountsGiven,
         activeDiscountUsersCount: (state.discountUsers || []).filter(u => u.status === 'active').length,
@@ -6095,6 +6113,25 @@ export const useAdminStore = defineStore('admin', {
       return true
     },
 
+    // ==========================================
+    // GENERADOR DE NÚMEROS DE 6 DÍGITOS PARA SORTEOS
+    // ==========================================
+    generateSixDigitLuckyNumber(existingSet = new Set()) {
+      let num = ''
+      let attempts = 0
+      do {
+        if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+          const arr = new Uint32Array(1)
+          window.crypto.getRandomValues(arr)
+          num = String(100000 + (arr[0] % 900000))
+        } else {
+          num = String(Math.floor(100000 + Math.random() * 900000))
+        }
+        attempts++
+      } while (existingSet && existingSet.has(num) && attempts < 250)
+      return num
+    },
+
     getGiveawayTicketSummary(giveawayId) {
       const entries = (this.giveawayEntries || [])
         .filter(e => e.giveawayId === giveawayId && e.status !== 'disqualified')
@@ -6102,22 +6139,72 @@ export const useAdminStore = defineStore('admin', {
 
       let cursor = 1
       const phoneSet = new Set()
+      const usedLuckyNumbers = new Set()
+
+      // Recopilar números de 6 dígitos ya emitidos
+      entries.forEach(e => {
+        if (Array.isArray(e.luckyNumbers)) {
+          e.luckyNumbers.forEach(n => {
+            const s = String(n || '')
+            if (s.length === 6) usedLuckyNumbers.add(s)
+          })
+        }
+      })
+
+      const allLuckyNumbers = []
+
       const detailed = entries.map(e => {
         const count = Math.max(1, Number(e.ticketsCount || 1))
         const startTicket = cursor
         const endTicket = cursor + count - 1
         cursor += count
         if (e.normalizedPhone) phoneSet.add(e.normalizedPhone)
+
+        // Garantizar números de 6 dígitos para cada ticket del participante
+        let lucky = Array.isArray(e.luckyNumbers) ? e.luckyNumbers.map(String).filter(s => s.length === 6) : []
+        while (lucky.length < count) {
+          let hash = 0
+          const seed = `${e.id || 'ENT'}-${lucky.length}`
+          for (let c = 0; c < seed.length; c++) {
+            hash = ((hash << 5) - hash) + seed.charCodeAt(c)
+            hash |= 0
+          }
+          let candidate = String(100000 + (Math.abs(hash) % 900000))
+          let step = 1
+          while (usedLuckyNumbers.has(candidate) && step < 100) {
+            candidate = String(100000 + ((Math.abs(hash) + step * 31337) % 900000))
+            step++
+          }
+          usedLuckyNumbers.add(candidate)
+          lucky.push(candidate)
+        }
+        e.luckyNumbers = lucky
+
+        const masked = maskPhonePublic(e.phone)
+        lucky.forEach(ln => {
+          allLuckyNumbers.push({
+            luckyNumber: ln,
+            ticketNumber: ln,
+            entryId: e.id,
+            participantName: e.participantName,
+            phone: e.phone,
+            maskedPhone: masked,
+            giveawayId
+          })
+        })
+
         return {
           ...e,
           startTicket,
           endTicket,
-          maskedPhone: maskPhonePublic(e.phone)
+          luckyNumbers: lucky,
+          maskedPhone: masked
         }
       })
 
       return {
         entries: detailed,
+        allLuckyNumbers,
         totalTickets: cursor - 1,
         uniqueParticipants: phoneSet.size
       }
@@ -6159,6 +6246,21 @@ export const useAdminStore = defineStore('admin', {
 
       const freeQty = Math.min(maxPerUser - currentUserTickets, Math.max(1, Number(giveaway.rules?.freeEntryTickets || 1)))
       const referralToken = `INV-${normPhone.slice(-4)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+
+      // Generar números de 6 dígitos únicos para la inscripción
+      const usedLuckyNumbers = new Set()
+      ;(this.giveawayEntries || []).forEach(e => {
+        if (e.giveawayId === giveawayId && Array.isArray(e.luckyNumbers)) {
+          e.luckyNumbers.forEach(n => usedLuckyNumbers.add(String(n)))
+        }
+      })
+      const luckyNumbers = []
+      for (let i = 0; i < freeQty; i++) {
+        const ln = this.generateSixDigitLuckyNumber(usedLuckyNumbers)
+        usedLuckyNumbers.add(ln)
+        luckyNumbers.push(ln)
+      }
+
       const entry = {
         id: `ENT-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
         giveawayId,
@@ -6172,6 +6274,7 @@ export const useAdminStore = defineStore('admin', {
         invitedBy: String(invitedBy || '').trim() || null,
         sourceType: 'web_form',
         ticketsCount: freeQty,
+        luckyNumbers,
         acceptedTerms: true,
         acceptedTermsAt: new Date().toISOString(),
         status: 'valid',
@@ -6198,6 +6301,12 @@ export const useAdminStore = defineStore('admin', {
           const room = Math.max(0, maxPerUser - invTotal)
           const grant = Math.min(room, refBonusQty)
           if (grant > 0) {
+            const refLucky = []
+            for (let k = 0; k < grant; k++) {
+              const rln = this.generateSixDigitLuckyNumber(usedLuckyNumbers)
+              usedLuckyNumbers.add(rln)
+              refLucky.push(rln)
+            }
             const refEntry = {
               id: `ENT-REF-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 90 + 10)}`,
               giveawayId,
@@ -6209,6 +6318,7 @@ export const useAdminStore = defineStore('admin', {
               sourceType: 'referral_bonus',
               invitedParticipant: cleanName,
               ticketsCount: grant,
+              luckyNumbers: refLucky,
               acceptedTerms: true,
               status: 'valid',
               createdAt: new Date().toISOString()
@@ -6248,6 +6358,20 @@ export const useAdminStore = defineStore('admin', {
         const grant = Math.min(Math.max(0, maxPerUser - existingTickets), desired)
         if (grant <= 0) return
 
+        // Generar números de 6 dígitos únicos para la compra
+        const usedLuckyNumbers = new Set()
+        ;(this.giveawayEntries || []).forEach(e => {
+          if (e.giveawayId === g.id && Array.isArray(e.luckyNumbers)) {
+            e.luckyNumbers.forEach(n => usedLuckyNumbers.add(String(n)))
+          }
+        })
+        const luckyNumbers = []
+        for (let i = 0; i < grant; i++) {
+          const ln = this.generateSixDigitLuckyNumber(usedLuckyNumbers)
+          usedLuckyNumbers.add(ln)
+          luckyNumbers.push(ln)
+        }
+
         const entry = {
           id: `ENT-ORD-${Date.now().toString().slice(-5)}-${Math.floor(Math.random() * 90 + 10)}`,
           giveawayId: g.id,
@@ -6259,6 +6383,7 @@ export const useAdminStore = defineStore('admin', {
           sourceType: 'order_bonus',
           orderId,
           ticketsCount: grant,
+          luckyNumbers,
           acceptedTerms: true,
           acceptedTermsAt: new Date().toISOString(),
           status: 'valid',
@@ -6267,7 +6392,13 @@ export const useAdminStore = defineStore('admin', {
         if (!Array.isArray(this.giveawayEntries)) this.giveawayEntries = []
         this.giveawayEntries.push(entry)
         saveGiveawayEntryToFirebase(entry).catch(() => {})
-        awarded.push({ giveawayId: g.id, giveawayTitle: g.title, tickets: grant, entryId: entry.id })
+        awarded.push({
+          giveawayId: g.id,
+          giveawayTitle: g.title,
+          tickets: grant,
+          luckyNumbers,
+          entryId: entry.id
+        })
       })
 
       if (awarded.length > 0) {
@@ -6295,13 +6426,11 @@ export const useAdminStore = defineStore('admin', {
         return { error: 'No hay tickets válidos registrados para ejecutar el sorteo.' }
       }
 
-      // Pool ponderado determinístico por número de ticket
-      const pool = []
-      summary.entries.forEach(entry => {
-        for (let t = entry.startTicket; t <= entry.endTicket; t++) {
-          pool.push({ ticketNumber: t, entry })
-        }
-      })
+      // Pool con cada número de 6 dígitos asignado
+      const pool = summary.allLuckyNumbers || []
+      if (pool.length === 0) {
+        return { error: 'No hay números de 6 dígitos asignados para este sorteo.' }
+      }
 
       const secureRandomInt = (max) => {
         if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
@@ -6319,12 +6448,12 @@ export const useAdminStore = defineStore('admin', {
       const selectedPhones = new Set()
       const winners = []
       let attempts = 0
-      const maxAttempts = pool.length * 4
+      const maxAttempts = pool.length * 5
 
       while (winners.length < totalPick && attempts < maxAttempts) {
         attempts++
         const picked = pool[secureRandomInt(pool.length)]
-        const pKey = picked.entry.normalizedPhone || picked.entry.id
+        const pKey = picked.phone || picked.entryId
         if (selectedPhones.has(pKey)) continue
         selectedPhones.add(pKey)
         const idx = winners.length
@@ -6333,12 +6462,13 @@ export const useAdminStore = defineStore('admin', {
           rank: isAlternate ? idx - desiredWinners + 1 : idx + 1,
           isAlternate,
           roleLabel: isAlternate ? `Suplente #${idx - desiredWinners + 1}` : (desiredWinners === 1 ? 'Ganador Oficial' : `Ganador #${idx + 1}`),
-          ticketNumber: picked.ticketNumber,
-          entryId: picked.entry.id,
-          participantName: picked.entry.participantName,
-          phone: picked.entry.phone,
-          maskedPhone: maskPhonePublic(picked.entry.phone),
-          instagramHandle: picked.entry.instagramHandle || '',
+          ticketNumber: picked.luckyNumber,
+          luckyNumber: picked.luckyNumber,
+          entryId: picked.entryId,
+          participantName: picked.participantName,
+          phone: picked.phone,
+          maskedPhone: picked.maskedPhone,
+          instagramHandle: '',
           claimed: false
         })
       }
@@ -6358,6 +6488,58 @@ export const useAdminStore = defineStore('admin', {
       this.persist(DB_KEYS.GIVEAWAYS)
       saveMarketingHubPatchToFirebase({ giveawaysById: { [giveaway.id]: giveaway } }).catch(() => {})
       return { success: true, giveaway, winners }
+    },
+
+    confirmGiveawayWinner({ giveawayId, winners, drawProof = null }) {
+      const giveaway = (this.giveaways || []).find(g => g.id === giveawayId)
+      if (!giveaway) return { error: 'Sorteo no encontrado.' }
+      giveaway.winners = winners || []
+      giveaway.status = 'drawn'
+      giveaway.drawProof = drawProof || {
+        drawnAt: new Date().toISOString(),
+        totalValidTickets: winners.length,
+        totalParticipants: winners.length,
+        verificationCode: `SP-ACTA-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+        formalitiesSnapshot: 'Verificado bajo Bases y Condiciones Oficiales StreamePro'
+      }
+      giveaway.updatedAt = new Date().toISOString()
+      this.persist(DB_KEYS.GIVEAWAYS)
+      saveMarketingHubPatchToFirebase({ giveawaysById: { [giveaway.id]: giveaway } }).catch(() => {})
+      return { success: true, giveaway }
+    },
+
+    // ==========================================
+    // RASTREO DE CLICS, CONVERSIÓN Y SEO
+    // ==========================================
+    recordMarketingClick({ type = 'link', targetId = '', ref = 'DIRECT', channel = 'web', platform = '', promoCode = '' } = {}) {
+      const click = {
+        id: `CLK-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+        type, // 'gaming' | 'streaming' | 'combo' | 'physical' | 'giveaway' | 'reseller_invite' | 'plaque_share'
+        targetId,
+        ref: ref || 'DIRECT',
+        channel, // 'whatsapp' | 'telegram' | 'facebook' | 'twitter' | 'instagram' | 'direct' | 'qr'
+        platform,
+        promoCode,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      }
+      if (!Array.isArray(this.marketingClicks)) this.marketingClicks = []
+      this.marketingClicks.unshift(click)
+      if (this.marketingClicks.length > 2000) {
+        this.marketingClicks = this.marketingClicks.slice(0, 2000)
+      }
+      this.persist(DB_KEYS.MARKETING_CLICKS)
+      return click
+    },
+
+    clearMarketingClicks() {
+      this.marketingClicks = []
+      this.persist(DB_KEYS.MARKETING_CLICKS)
+    },
+
+    saveSeoConfig(config) {
+      this.seoConfig = { ...this.seoConfig, ...config }
+      this.persist(DB_KEYS.SEO_CONFIG)
     },
 
     // ==========================================

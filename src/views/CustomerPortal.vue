@@ -549,6 +549,7 @@ const myGiveawayEntries = computed(() => {
       const g = (adminStore.giveaways || []).find(x => x.id === e.giveawayId)
       return {
         ...e,
+        luckyNumbers: (Array.isArray(e.luckyNumbers) && e.luckyNumbers.length) ? e.luckyNumbers : [String(e.startTicket || 1).padStart(6, '0')],
         giveawayTitle: g?.title || `Sorteo ${e.giveawayId}`,
         prizeTitle: g?.prizeTitle || '',
         giveawayStatus: g?.status || 'active',
@@ -2028,6 +2029,11 @@ const getGameInstallSteps = (order) => {
                     </span>
                   </div>
                   <p v-if="entry.prizeTitle" class="text-slate-400">Premio: {{ entry.prizeTitle }}</p>
+                  <div v-if="entry.luckyNumbers?.length" class="flex flex-wrap gap-1 pt-1">
+                    <span v-for="num in entry.luckyNumbers" :key="num" class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded font-mono font-black text-[11px] tracking-wider shadow">
+                      🎟️ #{{ num }}
+                    </span>
+                  </div>
                   <p v-if="entry.winners?.length > 0 && entry.drawProof?.verificationCode" class="text-emerald-300 font-bold">
                     🏆 Sorteo ejecutado — Acta: {{ entry.drawProof.verificationCode }} ({{ entry.winners.filter(w => !w.isAlternate).length }} ganador/es)
                   </p>

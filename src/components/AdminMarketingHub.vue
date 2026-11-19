@@ -13,10 +13,20 @@ const emit = defineEmits(['openPlaque', 'openFlyer'])
 const adminStore = useAdminStore()
 const toast = useToastStore()
 
-const subTab = ref('discount_users') // 'campaign' | 'discount_users' | 'giveaways' | 'coupons' | 'analytics' | 'reels_studio'
+const subTab = ref('discount_users') // 'campaign' | 'discount_users' | 'giveaways' | 'coupons' | 'analytics' | 'reels_studio' | 'seo_tools' | 'partners'
 const ReelsStoryStudioModal = defineAsyncComponent(() => import('./ReelsStoryStudioModal.vue'))
+const LiveGiveawayDrawModal = defineAsyncComponent(() => import('./LiveGiveawayDrawModal.vue'))
+
 const showAdminReelsModal = ref(false)
 const adminReelsPayload = ref(null)
+
+const showLiveDrawModal = ref(false)
+const liveDrawGiveawayId = ref('')
+
+const openLiveDrawer = (gId = '') => {
+  liveDrawGiveawayId.value = gId || (adminStore.giveaways && adminStore.giveaways[0]?.id) || ''
+  showLiveDrawModal.value = true
+}
 
 const openAdminReelsStudio = (payload = null) => {
   adminReelsPayload.value = payload
@@ -497,6 +507,299 @@ const handleResetCreditsAndMetrics = () => {
   adminStore.resetDiscountUsersAndCredits()
   toast.add('📊 Métricas & Créditos reiniciados con éxito', 'success')
 }
+
+// ==========================================
+// 5. HERRAMIENTAS PARA BUSCADORES (SEO & GOOGLE)
+// ==========================================
+const seoForm = ref({
+  siteTitle: adminStore.seoConfig?.siteTitle || 'StreamePro Oficial | Streaming 4K, Juegos PS5/PS4 y Tecnología en Argentina',
+  metaDescription: adminStore.seoConfig?.metaDescription || 'Tienda Oficial de Streaming 4K Ultra HD y Cuentas Digitales PlayStation en Argentina. Activación express 10-60m, PIN privado, garantía total y medios de pago locales.',
+  keywords: adminStore.seoConfig?.keywords || 'streaming argentina, cuentas netflix argentina, juegos ps5 digitales, combos streaming, disney plus, max hbo, playstation cuentas primarias',
+  canonicalUrl: adminStore.seoConfig?.canonicalUrl || 'https://streamepro.me',
+  ogImage: adminStore.seoConfig?.ogImage || 'https://streamepro.me/flyers/combos/plaque-template-cyber.webp'
+})
+
+const saveSeoSettings = () => {
+  adminStore.saveSeoConfig({ ...seoForm.value })
+  toast.add('🔍 Configuración SEO y Meta Tags guardada correctamente', 'success')
+}
+
+const schemaJsonLd = computed(() => {
+  const f = seoForm.value
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${f.canonicalUrl}/#website`,
+        url: f.canonicalUrl,
+        name: 'StreamePro Argentina',
+        description: f.metaDescription,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${f.canonicalUrl}/juegos?q={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      },
+      {
+        '@type': 'Organization',
+        '@id': `${f.canonicalUrl}/#organization`,
+        name: 'StreamePro Oficial',
+        url: f.canonicalUrl,
+        logo: `${f.canonicalUrl}/favicon.png`,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          telephone: '+54-9-291-565-8321',
+          contactType: 'customer support',
+          areaServed: 'AR',
+          availableLanguage: 'Spanish'
+        }
+      },
+      {
+        '@type': 'AggregateRating',
+        itemReviewed: {
+          '@type': 'Store',
+          name: 'StreamePro Argentina Oficial',
+          image: f.ogImage
+        },
+        ratingValue: '4.9',
+        bestRating: '5',
+        worstRating: '1',
+        ratingCount: '1240'
+      }
+    ]
+  }
+  return JSON.stringify(data, null, 2)
+})
+
+const sitemapXml = computed(() => {
+  const base = seoForm.value.canonicalUrl || 'https://streamepro.me'
+  const today = new Date().toISOString().slice(0, 10)
+  const routes = [
+    { path: '/', priority: '1.0', freq: 'daily' },
+    { path: '/suscripciones', priority: '0.9', freq: 'daily' },
+    { path: '/combos', priority: '0.9', freq: 'daily' },
+    { path: '/juegos', priority: '0.9', freq: 'daily' },
+    { path: '/tienda', priority: '0.8', freq: 'daily' },
+    { path: '/sorteos', priority: '0.8', freq: 'weekly' },
+    { path: '/revendedores', priority: '0.7', freq: 'weekly' }
+  ]
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${routes.map(r => `  <url>
+    <loc>${base}${r.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${r.freq}</changefreq>
+    <priority>${r.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`
+})
+
+const robotsTxt = computed(() => {
+  const base = seoForm.value.canonicalUrl || 'https://streamepro.me'
+  return `# Robots.txt oficial StreamePro Argentina
+User-agent: *
+Allow: /
+Allow: /suscripciones
+Allow: /combos
+Allow: /juegos
+Allow: /tienda
+Allow: /sorteos
+Allow: /revendedores
+
+# Rutas privadas protegidas
+Disallow: /myprove
+Disallow: /crm
+Disallow: /portal
+
+Sitemap: ${base}/sitemap.xml
+`
+})
+
+const copySchemaJson = async () => {
+  try {
+    await navigator.clipboard.writeText(schemaJsonLd.value)
+    toast.add('📋 Schema.org JSON-LD copiado al portapapeles', 'success')
+  } catch {
+    toast.add('No se pudo copiar JSON-LD', 'error')
+  }
+}
+
+const copySitemap = async () => {
+  try {
+    await navigator.clipboard.writeText(sitemapXml.value)
+    toast.add('📋 Sitemap.xml copiado al portapapeles', 'success')
+  } catch {
+    toast.add('No se pudo copiar sitemap', 'error')
+  }
+}
+
+const copyRobots = async () => {
+  try {
+    await navigator.clipboard.writeText(robotsTxt.value)
+    toast.add('📋 Robots.txt copiado al portapapeles', 'success')
+  } catch {
+    toast.add('No se pudo copiar robots.txt', 'error')
+  }
+}
+
+// ==========================================
+// 6. HERRAMIENTAS PARA INCORPORAR SOCIOS / REVENDEDORES
+// ==========================================
+const partnerCalculator = ref({
+  salesPerDay: 5,
+  avgTicket: 12000,
+  marginPct: 35
+})
+
+const calculatedDailyProfit = computed(() => {
+  const c = partnerCalculator.value
+  return Math.round(c.salesPerDay * c.avgTicket * (c.marginPct / 100))
+})
+
+const calculatedMonthlyProfit = computed(() => {
+  return calculatedDailyProfit.value * 30
+})
+
+const partnerInviteCopy = computed(() => {
+  const origin = seoForm.value.canonicalUrl || 'https://streamepro.me'
+  const daily = calculatedDailyProfit.value.toLocaleString('es-AR')
+  const monthly = calculatedMonthlyProfit.value.toLocaleString('es-AR')
+  return `🚀 *¡SUMATE COMO DISTRIBUIDOR OFICIAL STREAMEPRO!* 💼🍿\n\n` +
+    `Empezá hoy a vender cuentas de Streaming 4K Ultra HD y Videojuegos Digitales PS5/PS4 con tu propia tienda online y panel de autogestión.\n\n` +
+    `💰 *Simulación de Ganancia Estimada:*\n` +
+    `• Vendiendo solo ${partnerCalculator.value.salesPerDay} cuentas por día:\n` +
+    `• Ganancia Diaria: *$ ${daily} ARS*\n` +
+    `• Ganancia Mensual: *$ ${monthly} ARS* directos a tu bolsillo.\n\n` +
+    `✅ Stock digital con entrega 10-60m\n` +
+    `✅ Precios mayoristas exclusivos con hasta ${partnerCalculator.value.marginPct}% de margen\n` +
+    `✅ Generador de Flyers automáticos para WhatsApp\n` +
+    `✅ Garantía total y soporte oficial para tus clientes\n\n` +
+    `📲 *Postulate gratis en 1 minuto acá:*\n` +
+    `${origin}/revendedores`
+})
+
+const copyPartnerInvite = async () => {
+  try {
+    await navigator.clipboard.writeText(partnerInviteCopy.value)
+    toast.add('📋 Propuesta de socios copiada al portapapeles', 'success')
+  } catch {
+    toast.add('No se pudo copiar la propuesta', 'error')
+  }
+}
+
+const sendPartnerWhatsApp = () => {
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(partnerInviteCopy.value)}`, '_blank')
+}
+
+const approveResellerApp = (app) => {
+  const res = adminStore.approveResellerApplication(app.id)
+  if (res.error) {
+    toast.add(res.error, 'error')
+    return
+  }
+  toast.add(`✅ Distribuidor ${res.reseller.name} aprobado (#${res.reseller.id})`, 'success')
+  if (res.credentialsMessage && app.whatsapp) {
+    const digits = String(app.whatsapp).replace(/[^0-9]/g, '')
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(res.credentialsMessage)}`, '_blank')
+  }
+}
+
+const rejectResellerApp = (app) => {
+  if (!confirm(`¿Rechazar postulación de ${app.fullName}?`)) return
+  adminStore.rejectResellerApplication(app.id)
+  toast.add('Postulación rechazada', 'info')
+}
+
+const sendStarterKitWhatsApp = (app) => {
+  const origin = seoForm.value.canonicalUrl || 'https://streamepro.me'
+  const cleanPhone = String(app.whatsapp || '').replace(/[^0-9]/g, '')
+  const msg = `📦🚀 *KIT DE BIENVENIDA — DISTRIBUIDOR OFICIAL STREAMEPRO*\n\n` +
+    `¡Hola ${app.fullName || app.name}! Te damos la bienvenida oficial al equipo de distribuidores.\n\n` +
+    `📍 *Tus Herramientas Clave para Empezar a Vender Hoy:*\n` +
+    `1. *Tu Panel de Control Mayorista:* ${origin}/crm\n` +
+    `2. *Tu Tienda Personalizada para Clientes:* ${origin}/tienda/${app.createdResellerId || 'RES-01'}\n` +
+    `3. *Generador de Placas y Flyers HD:* Accedé a tu panel y compartí con 1 clic en tus estados.\n` +
+    `4. *Soporte y Garantías:* Todas las cuentas cuentan con SLA y reemplazo asegurado.\n\n` +
+    `Cualquier consulta sobre cómo cargar saldo o despachar tu primer pedido, estamos a tu disposición.`
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
+// ==========================================
+// 7. RASTREO DE CLICS & ANALÍTICA DE CONVERSIÓN
+// ==========================================
+const clicksChannelFilter = ref('all')
+const clicksSearch = ref('')
+
+const filteredClicks = computed(() => {
+  let list = adminStore.marketingClicks || []
+  if (clicksChannelFilter.value !== 'all') {
+    list = list.filter(c => c.channel === clicksChannelFilter.value)
+  }
+  const q = clicksSearch.value.toLowerCase().trim()
+  if (q) {
+    list = list.filter(c =>
+      (c.targetId && c.targetId.toLowerCase().includes(q)) ||
+      (c.ref && c.ref.toLowerCase().includes(q)) ||
+      (c.type && c.type.toLowerCase().includes(q)) ||
+      (c.platform && c.platform.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
+
+const clicksByChannelStats = computed(() => {
+  const map = {}
+  ;(adminStore.marketingClicks || []).forEach(c => {
+    const ch = c.channel || 'direct'
+    map[ch] = (map[ch] || 0) + 1
+  })
+  return map
+})
+
+const clicksByTypeStats = computed(() => {
+  const map = {}
+  ;(adminStore.marketingClicks || []).forEach(c => {
+    const t = c.type || 'link'
+    map[t] = (map[t] || 0) + 1
+  })
+  return map
+})
+
+const exportClicksCsv = () => {
+  const list = adminStore.marketingClicks || []
+  if (!list.length) {
+    toast.add('No hay registros de clics para exportar', 'info')
+    return
+  }
+  const headers = ['ID', 'Fecha', 'Hora', 'Tipo', 'Destino/ID', 'Distribuidor/Ref', 'Canal', 'Plataforma', 'Cupón']
+  const rows = list.map(c => [
+    c.id,
+    c.timestamp ? c.timestamp.slice(0, 10) : '',
+    c.createdAt || '',
+    c.type,
+    c.targetId,
+    c.ref,
+    c.channel,
+    c.platform,
+    c.promoCode
+  ])
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.map(x => `"${x || ''}"`).join(','))].join('\n')
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement('a')
+  link.setAttribute('href', encodedUri)
+  link.setAttribute('download', `clics_streamepro_${new Date().toISOString().slice(0, 10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  toast.add('📊 Archivo CSV de clics exportado correctamente', 'success')
+}
+
+const clearClicksHistory = () => {
+  if (!confirm('¿Deseas reiniciar las métricas y registros de clics?')) return
+  adminStore.clearMarketingClicks()
+  toast.add('Registro de clics reiniciado', 'info')
+}
 </script>
 
 <template>
@@ -580,6 +883,23 @@ const handleResetCreditsAndMetrics = () => {
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'reels_studio' ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
         >
           <span>🎬 Estudio Reels &amp; Estados 9:16</span>
+        </button>
+        <button
+          type="button"
+          @click="subTab = 'seo_tools'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'seo_tools' ? 'bg-cyan-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+        >
+          <span>🔍 Buscadores &amp; SEO</span>
+        </button>
+        <button
+          type="button"
+          @click="subTab = 'partners'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'partners' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+        >
+          <span>🤝 Incorporar Socios</span>
+          <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-rose-600 text-white text-[10px] px-1.5 rounded-full animate-pulse font-bold">
+            {{ adminStore.pendingResellerApplications.length }}
+          </span>
         </button>
       </div>
     </div>
@@ -893,7 +1213,17 @@ const handleResetCreditsAndMetrics = () => {
 
       <!-- Lista de Sorteos, Participantes y Ejecución -->
       <div class="xl:col-span-7 bg-[#020617] border border-slate-800 rounded-3xl p-5 space-y-4 text-xs">
-        <h3 class="text-base font-black text-white">🏆 Sorteos Activos y Finalizados ({{ (adminStore.giveaways || []).length }})</h3>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 class="text-base font-black text-white">🏆 Sorteos Activos y Finalizados ({{ (adminStore.giveaways || []).length }})</h3>
+          <button
+            type="button"
+            @click="openLiveDrawer('')"
+            class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+          >
+            <span>🎰</span>
+            <span>Abrir Sorteador en Vivo (6 Dígitos)</span>
+          </button>
+        </div>
         <div v-if="!adminStore.giveaways?.length" class="text-center py-10 text-slate-500">
           Crea tu primer sorteo oficial con bases transparentes desde el formulario izquierdo.
         </div>
@@ -919,12 +1249,15 @@ const handleResetCreditsAndMetrics = () => {
             <div v-if="g.winners?.length" class="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3 space-y-1.5">
               <strong class="text-amber-300 block">Acta Verificada: {{ g.drawProof?.verificationCode }}</strong>
               <div v-for="(w, wi) in g.winners" :key="wi" class="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-lg">
-                <span><strong class="text-emerald-300">{{ w.roleLabel }}:</strong> {{ w.participantName }} ({{ w.phone }}) · #{{ String(w.ticketNumber).padStart(4, '0') }}</span>
+                <span><strong class="text-emerald-300">{{ w.roleLabel }}:</strong> {{ w.participantName }} ({{ w.phone }}) · #{{ w.luckyNumber || w.ticketNumber }}</span>
                 <button type="button" @click="notifyWinnerWhatsApp(g, w)" class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] cursor-pointer">💬 Notificar</button>
               </div>
             </div>
 
             <div class="flex flex-wrap gap-1.5">
+              <button type="button" @click="openLiveDrawer(g.id)" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-bold cursor-pointer shadow">
+                🎰 En Vivo (6 Dígitos)
+              </button>
               <button type="button" @click="inspectingGiveawayId = inspectingGiveawayId === g.id ? null : g.id" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold cursor-pointer">
                 👥 Ver Tickets
               </button>
@@ -943,9 +1276,17 @@ const handleResetCreditsAndMetrics = () => {
               <div v-if="!inspectedSummary.entries.length" class="text-slate-400 text-center py-2">Sin inscripciones todavía.</div>
               <div v-for="ent in inspectedSummary.entries" :key="ent.id" class="flex items-center justify-between text-[11px] bg-slate-950 px-2.5 py-1.5 rounded-lg">
                 <div>
-                  <span class="font-mono text-fuchsia-300 font-bold mr-2">#{{ String(ent.startTicket).padStart(4, '0') }}<template v-if="ent.endTicket > ent.startTicket">-{{ String(ent.endTicket).padStart(4, '0') }}</template></span>
-                  <strong class="text-white">{{ ent.participantName }}</strong>
-                  <span class="text-slate-400 ml-1.5">{{ ent.phone }} ({{ ent.sourceType }})</span>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span
+                      v-for="num in (ent.luckyNumbers || [String(ent.startTicket).padStart(6, '0')])"
+                      :key="num"
+                      class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.5 rounded font-mono font-black text-[10px]"
+                    >
+                      #{{ num }}
+                    </span>
+                    <strong class="text-white ml-1">{{ ent.participantName }}</strong>
+                    <span class="text-slate-400 ml-1">({{ ent.phone }})</span>
+                  </div>
                 </div>
                 <button type="button" @click="adminStore.disqualifyGiveawayEntry(ent.id)" class="text-rose-400 hover:underline font-bold cursor-pointer">Anular</button>
               </div>
@@ -1228,9 +1569,106 @@ const handleResetCreditsAndMetrics = () => {
           </div>
           <div class="text-right font-mono shrink-0">
             <span :class="['font-black', l.amount >= 0 ? 'text-emerald-300' : 'text-sky-300']">
-              {{ l.amount >= 0 ? `+$${Number(l.amount).toLocaleString()}` : `-$${Math.abs(Number(l.amount)).toLocaleString()}` }}
+              {{ l.amount >= 0 ? `+${Number(l.amount).toLocaleString()}` : `-${Math.abs(Number(l.amount)).toLocaleString()}` }}
             </span>
             <span class="ml-2 px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">{{ l.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN DE MÉTRICAS DE CLICS Y CONVERSIÓN EN TIEMPO REAL -->
+      <div class="pt-4 border-t border-slate-800/80 space-y-3">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h4 class="text-sm font-black text-white flex items-center gap-1.5">
+              <span>🖱️</span>
+              <span>Rastreo de Clics, Tráfico y Canales de Conversión ({{ (adminStore.marketingClicks || []).length }})</span>
+            </h4>
+            <p class="text-[11px] text-slate-400">Clics registrados en placas compartidas, enlaces de WhatsApp, redes y visitas referidas.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="exportClicksCsv"
+              class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 font-bold text-xs flex items-center gap-1 cursor-pointer transition"
+            >
+              <span>📥 Exportar CSV</span>
+            </button>
+            <button
+              type="button"
+              @click="clearClicksHistory"
+              class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 font-bold text-xs cursor-pointer transition"
+            >
+              <span>🗑️</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Clics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block font-bold uppercase">Total Clics</span>
+            <strong class="text-lg text-white font-mono font-black">{{ (adminStore.marketingClicks || []).length }}</strong>
+          </div>
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block font-bold uppercase">WhatsApp</span>
+            <strong class="text-lg text-emerald-300 font-mono font-black">{{ clicksByChannelStats['whatsapp'] || 0 }}</strong>
+          </div>
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block font-bold uppercase">Instagram / X</span>
+            <strong class="text-lg text-pink-300 font-mono font-black">{{ (clicksByChannelStats['instagram'] || 0) + (clicksByChannelStats['twitter'] || 0) }}</strong>
+          </div>
+          <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block font-bold uppercase">Conversión Est.</span>
+            <strong class="text-lg text-amber-300 font-mono font-black">
+              {{ (adminStore.marketingClicks || []).length > 0 ? ((adminStore.marketingMetrics.promoOrdersCount / (adminStore.marketingClicks || []).length) * 100).toFixed(1) + '%' : '0.0%' }}
+            </strong>
+          </div>
+        </div>
+
+        <!-- Filtros y Buscador de Clics -->
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+          <div class="flex items-center gap-1 overflow-x-auto custom-scrollbar py-0.5">
+            <button
+              v-for="ch in ['all', 'whatsapp', 'telegram', 'instagram', 'facebook', 'twitter', 'direct']"
+              :key="ch"
+              type="button"
+              @click="clicksChannelFilter = ch"
+              :class="[
+                'px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0 cursor-pointer transition',
+                clicksChannelFilter === ch ? 'bg-sky-500 text-slate-950 font-black' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              ]"
+            >
+              {{ ch }}
+            </button>
+          </div>
+          <input
+            v-model="clicksSearch"
+            type="text"
+            placeholder="🔍 Filtrar por destino, producto o distribuidor..."
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none"
+          />
+        </div>
+
+        <!-- Lista de Clics -->
+        <div v-if="!filteredClicks.length" class="text-center py-4 text-slate-500 text-xs">
+          No hay clics registrados bajo este filtro todavía.
+        </div>
+        <div v-else class="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+          <div
+            v-for="c in filteredClicks.slice(0, 50)"
+            :key="c.id"
+            class="flex items-center justify-between text-[11px] bg-slate-950 p-2 rounded-xl border border-slate-800"
+          >
+            <div class="flex items-center gap-2 truncate">
+              <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase font-mono bg-sky-500/15 text-sky-300 border border-sky-400/30 shrink-0">
+                {{ c.channel }}
+              </span>
+              <strong class="text-white truncate">{{ c.targetId || c.type }}</strong>
+              <span class="text-slate-400 font-mono text-[10px]">Ref: {{ c.ref }}</span>
+              <span v-if="c.promoCode" class="text-amber-300 font-mono text-[10px]">🎟️ {{ c.promoCode }}</span>
+            </div>
+            <span class="text-slate-500 font-mono text-[10px] shrink-0 ml-2">{{ c.createdAt }}</span>
           </div>
         </div>
       </div>
@@ -1325,6 +1763,336 @@ const handleResetCreditsAndMetrics = () => {
       </div>
     </div>
 
+    <!-- ============================================================== -->
+    <!-- SUB-TAB 7: HERRAMIENTAS PARA BUSCADORES (SEO & GOOGLE)         -->
+    <!-- ============================================================== -->
+    <div v-else-if="subTab === 'seo_tools'" class="bg-[#020617] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 space-y-5 text-xs animate-in fade-in">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+            Posicionamiento en Google &amp; Búsqueda
+          </span>
+          <h3 class="text-lg font-black text-white mt-1">🔍 Herramientas para Buscadores (Google SEO &amp; Rich Snippets)</h3>
+          <p class="text-[11px] text-slate-400">Optimiza títulos, descripciones, microdatos Schema.org, sitemap y robots para máxima visibilidad.</p>
+        </div>
+        <button
+          type="button"
+          @click="saveSeoSettings"
+          class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs shadow-lg transition cursor-pointer shrink-0"
+        >
+          💾 Guardar Configuración SEO
+        </button>
+      </div>
+
+      <!-- VISTA PREVIA AUTÉNTICA DE GOOGLE SERP (MOCKUP EN VIVO) -->
+      <div class="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-black uppercase text-cyan-400 flex items-center gap-1.5">
+            <span>🌐</span>
+            <span>Vista Previa de tu Resultado en Google (SERP Preview)</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Google Search Desktop &amp; Mobile</span>
+        </div>
+
+        <!-- Tarjeta Google Estilo Real -->
+        <div class="bg-white rounded-xl p-4 text-slate-900 shadow-md space-y-1 max-w-xl">
+          <div class="flex items-center gap-2 text-xs text-slate-600">
+            <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-black">S</span>
+            <div class="leading-none">
+              <span class="text-[12px] font-medium text-slate-800 block">StreamePro Argentina</span>
+              <span class="text-[11px] text-slate-500 block truncate font-mono">{{ seoForm.canonicalUrl }}</span>
+            </div>
+          </div>
+          <h4 class="text-base text-[#1a0dab] hover:underline font-medium cursor-pointer leading-tight pt-1">
+            {{ seoForm.siteTitle }}
+          </h4>
+          <div class="flex items-center gap-1 text-[11px] text-amber-600 font-medium pt-0.5">
+            <span>★★★★★</span>
+            <span class="text-slate-600 font-normal">Calificación: 4.9 · ‎1.240 opiniones · ‎Precios en $ ARS</span>
+          </div>
+          <p class="text-xs text-[#4d5156] leading-relaxed pt-0.5 line-clamp-2">
+            {{ seoForm.metaDescription }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Formulario de Meta Tags & Palabras Clave -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div class="flex justify-between items-center">
+            <label class="text-[11px] font-bold text-white uppercase">Meta Título (Google Title Tag)</label>
+            <span :class="['text-[10px] font-mono font-bold', seoForm.siteTitle.length > 65 ? 'text-amber-400' : 'text-emerald-400']">
+              {{ seoForm.siteTitle.length }}/65 caracteres
+            </span>
+          </div>
+          <input
+            v-model="seoForm.siteTitle"
+            type="text"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold outline-none focus:border-cyan-400 transition"
+          />
+
+          <div class="flex justify-between items-center pt-1">
+            <label class="text-[11px] font-bold text-white uppercase">Meta Descripción (Snippet)</label>
+            <span :class="['text-[10px] font-mono font-bold', seoForm.metaDescription.length > 160 ? 'text-amber-400' : 'text-emerald-400']">
+              {{ seoForm.metaDescription.length }}/160 caracteres
+            </span>
+          </div>
+          <textarea
+            v-model="seoForm.metaDescription"
+            rows="3"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-cyan-400 transition leading-relaxed"
+          ></textarea>
+
+          <label class="text-[11px] font-bold text-white uppercase block pt-1">Palabras Clave (Keywords)</label>
+          <input
+            v-model="seoForm.keywords"
+            type="text"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-300 font-mono outline-none focus:border-cyan-400 transition"
+          />
+        </div>
+
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <label class="text-[11px] font-bold text-white uppercase block">URL Canónica Oficial</label>
+          <input
+            v-model="seoForm.canonicalUrl"
+            type="text"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-cyan-300 font-mono outline-none"
+          />
+
+          <label class="text-[11px] font-bold text-white uppercase block pt-1">Imagen OpenGraph para Redes &amp; Google (og:image)</label>
+          <input
+            v-model="seoForm.ogImage"
+            type="text"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-300 font-mono outline-none"
+          />
+
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-2 text-[11px] text-slate-400">
+            <strong class="text-white block">💡 Recomendaciones Oficiales para Buscadores:</strong>
+            <p>• Incluye tu ubicación clave ("Argentina") y las categorías clave ("Streaming 4K", "Juegos PS5").</p>
+            <p>• La meta descripción óptima debe tener entre 140 y 160 caracteres para no truncarse en móviles.</p>
+            <p>• El JSON-LD estructurado de abajo le otorga a Google tus estrellas ⭐ de calificación y precios.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MICRODATOS SCHEMA.ORG & SITEMAP / ROBOTS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <!-- Schema.org JSON-LD -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <strong class="text-white text-xs">📜 Schema.org JSON-LD (Microdatos Google)</strong>
+            <button
+              type="button"
+              @click="copySchemaJson"
+              class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-[10px] font-bold cursor-pointer"
+            >
+              📋 Copiar JSON-LD
+            </button>
+          </div>
+          <pre class="bg-slate-900 p-2.5 rounded-xl font-mono text-[10px] text-emerald-300 overflow-x-auto max-h-48 custom-scrollbar border border-white/5">{{ schemaJsonLd }}</pre>
+        </div>
+
+        <!-- Sitemap.xml y Robots.txt -->
+        <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <strong class="text-white text-xs">🗺️ Sitemap.xml &amp; Robots.txt Dinámicos</strong>
+            <div class="flex gap-1.5">
+              <button
+                type="button"
+                @click="copySitemap"
+                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer"
+              >
+                Copiar Sitemap
+              </button>
+              <button
+                type="button"
+                @click="copyRobots"
+                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer"
+              >
+                Copiar Robots
+              </button>
+            </div>
+          </div>
+          <pre class="bg-slate-900 p-2.5 rounded-xl font-mono text-[10px] text-sky-300 overflow-x-auto max-h-48 custom-scrollbar border border-white/5">{{ sitemapXml }}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SUB-TAB 8: HERRAMIENTAS PARA INCORPORAR SOCIOS / DISTRIBUIDORES-->
+    <!-- ============================================================== -->
+    <div v-else-if="subTab === 'partners'" class="bg-[#020617] border border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-5 text-xs animate-in fade-in">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
+            Crecimiento &amp; Red de Socios
+          </span>
+          <h3 class="text-lg font-black text-white mt-1">🤝 Centro de Reclutamiento e Incorporación de Distribuidores</h3>
+          <p class="text-[11px] text-slate-400">Atrae socios, calcula márgenes de rentabilidad, aprueba solicitudes y envía kits de bienvenida automáticos.</p>
+        </div>
+        <button
+          type="button"
+          @click="sendPartnerWhatsApp"
+          class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5 shrink-0"
+        >
+          <span>💬</span>
+          <span>Compartir Propuesta a Socios</span>
+        </button>
+      </div>
+
+      <!-- SOLICITUDES DE SOCIOS PENDIENTES DE APROBACIÓN -->
+      <div v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-amber-950/20 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <strong class="text-amber-300 text-xs font-black flex items-center gap-1.5">
+            <span>📩</span>
+            <span>Postulaciones Pendientes de Nuevos Socios ({{ adminStore.pendingResellerApplications.length }}):</span>
+          </strong>
+          <span class="text-[10px] text-slate-400 font-mono">1 Clic para Aprobar y Enviar Credenciales</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div
+            v-for="app in adminStore.pendingResellerApplications"
+            :key="app.id"
+            class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2"
+          >
+            <div class="flex justify-between items-start">
+              <div>
+                <strong class="text-white text-sm block">{{ app.fullName }}</strong>
+                <span class="text-sky-400 font-mono text-[11px] block">{{ app.whatsapp }} ({{ app.city || 'Argentina' }})</span>
+                <span class="text-slate-400 text-[10px]">{{ app.storeName ? ('Tienda: ' + app.storeName) : 'Sin nombre de tienda' }}</span>
+              </div>
+              <span class="text-[9px] font-mono bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-amber-300">
+                #{{ app.id }}
+              </span>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button
+                type="button"
+                @click="approveResellerApp(app)"
+                class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black cursor-pointer shadow transition"
+              >
+                ✅ Aprobar y Crear Distribuidor
+              </button>
+              <button
+                type="button"
+                @click="rejectResellerApp(app)"
+                class="px-3 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold cursor-pointer transition"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULADOR INTERACTIVO DE GANANCIAS PARA FUTUROS SOCIOS -->
+      <div class="bg-gradient-to-r from-amber-950/30 via-slate-950 to-slate-950 p-5 rounded-2xl border border-amber-500/40 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h4 class="text-sm font-black text-amber-300 flex items-center gap-1.5">
+              <span>💰</span>
+              <span>Simulador / Calculadora de Ganancia para Atraer Distribuidores</span>
+            </h4>
+            <p class="text-[11px] text-slate-400">Demuestra al postulante cuánto puede generar al día y al mes vendiendo en su ciudad.</p>
+          </div>
+          <button
+            type="button"
+            @click="copyPartnerInvite"
+            class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold text-xs flex items-center gap-1 cursor-pointer transition"
+          >
+            <span>📋 Copiar Propuesta</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[10px] text-slate-400 block mb-1">Cuentas vendidas por día</label>
+            <input
+              v-model.number="partnerCalculator.salesPerDay"
+              type="number"
+              min="1"
+              max="50"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-mono text-center font-bold"
+            />
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 block mb-1">Ticket Promedio Venta (ARS)</label>
+            <input
+              v-model.number="partnerCalculator.avgTicket"
+              type="number"
+              min="1000"
+              step="500"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-mono text-center font-bold"
+            />
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 block mb-1">Margen Mayorista (%)</label>
+            <input
+              v-model.number="partnerCalculator.marginPct"
+              type="number"
+              min="10"
+              max="60"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white font-mono text-center font-bold"
+            />
+          </div>
+        </div>
+
+        <!-- Resultados Proyectados -->
+        <div class="grid grid-cols-2 gap-3 pt-1 text-center">
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-white/5">
+            <span class="text-[10px] text-slate-400 uppercase block font-bold">Ganancia Diaria Estimada</span>
+            <strong class="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+              $ {{ calculatedDailyProfit.toLocaleString('es-AR') }} ARS
+            </strong>
+          </div>
+          <div class="bg-slate-900/90 p-3 rounded-xl border border-amber-500/30">
+            <span class="text-[10px] text-amber-300 uppercase block font-bold">Ganancia Mensual Proyectada</span>
+            <strong class="text-xl sm:text-2xl font-black font-mono text-amber-300">
+              $ {{ calculatedMonthlyProfit.toLocaleString('es-AR') }} ARS
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEXTO Y PROPUESTA DE RECLUTAMIENTO LISTA -->
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+        <div class="flex items-center justify-between">
+          <strong class="text-white text-xs">💬 Texto de Campaña para Captar Distribuidores (WhatsApp &amp; Redes):</strong>
+          <span class="text-[10px] text-slate-500 font-mono">Enlace a /revendedores</span>
+        </div>
+        <div class="bg-slate-900 p-3 rounded-xl font-mono text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto select-all border border-white/5">
+          {{ partnerInviteCopy }}
+        </div>
+      </div>
+
+      <!-- STARTER PACK / KIT DE BIENVENIDA -->
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <strong class="text-white text-xs flex items-center gap-1.5">
+              <span>📦</span>
+              <span>Starter Pack / Kit de Bienvenida para Nuevos Socios</span>
+            </strong>
+            <p class="text-[10px] text-slate-400">Envía las instrucciones iniciales, enlaces y pautas de cobro a cualquier socio en 1 clic.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="reseller in adminStore.resellers.slice(0, 6)"
+            :key="reseller.id"
+            type="button"
+            @click="sendStarterKitWhatsApp(reseller)"
+            class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition"
+          >
+            <span>📲 Kit para {{ reseller.name }} ({{ reseller.id }})</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL CANJE / LIQUIDACIÓN DE CRÉDITO -->
     <div v-if="redeemModalUser" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div class="bg-slate-900 border border-sky-500/40 w-full max-w-md rounded-3xl p-5 space-y-4 text-xs">
@@ -1356,6 +2124,14 @@ const handleResetCreditsAndMetrics = () => {
       </div>
     </div>
   </div>
+
+    <!-- MODAL: SORTEADOR EN VIVO HD (6 DÍGITOS) -->
+    <LiveGiveawayDrawModal
+      :show="showLiveDrawModal"
+      :initial-giveaway-id="liveDrawGiveawayId"
+      @close="showLiveDrawModal = false"
+      @winner-confirmed="(g) => { toast.add(`🏆 Ganador guardado para ${g.title}`, 'success'); showLiveDrawModal = false }"
+    />
 
     <!-- MODAL: ESTUDIO DE REELS, TIKTOK & ESTADOS 9:16 -->
     <ReelsStoryStudioModal

@@ -159,7 +159,7 @@ const router = createRouter({
     },
     {
       path: '/revendedores',
-      alias: ['/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros'],
+      alias: ['/unete', '/distribuidores', '/quiero-ser-revendedor', '/trabaja-con-nosotros', '/socios', '/afiliados'],
       name: 'recruitment',
       component: ResellerRecruitmentView
     },

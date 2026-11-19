@@ -18,8 +18,11 @@ const selectedGiveaway = ref(null)
 const showParticipateModal = ref(false)
 const showFormalitiesModal = ref(false)
 const showDiscountProgramModal = ref(false)
+const showLiveDrawModal = ref(false)
 const myLookupPhone = ref('')
 const lastIssuedPass = ref(null)
+
+import LiveGiveawayDrawModal from './LiveGiveawayDrawModal.vue'
 
 const entryForm = ref({
   name: '',
@@ -215,6 +218,14 @@ const submitDiscountApplication = () => {
         <div class="flex flex-wrap gap-2.5 shrink-0">
           <button
             type="button"
+            @click="showLiveDrawModal = true"
+            class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>🎰</span>
+            <span>Sorteador en Vivo (6 Dígitos)</span>
+          </button>
+          <button
+            type="button"
             @click="showDiscountProgramModal = true"
             class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5"
           >
@@ -243,22 +254,37 @@ const submitDiscountApplication = () => {
             class="bg-slate-950/90 border border-slate-700 focus:border-fuchsia-400 rounded-xl px-3 py-1.5 text-xs text-white font-mono outline-none w-48 sm:w-56"
           >
         </div>
-        <div v-if="myTicketsByGiveaway.length > 0" class="flex flex-wrap gap-2">
+        <div v-if="myTicketsByGiveaway.length > 0" class="flex flex-wrap gap-2 w-full pt-1">
           <div
             v-for="mt in myTicketsByGiveaway"
             :key="mt.giveaway.id"
-            class="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-[11px] text-emerald-200 flex items-center gap-2"
+            class="p-2.5 rounded-2xl bg-slate-950/90 border border-emerald-400/30 text-[11px] text-emerald-200 space-y-1.5 flex-1 min-w-[280px]"
           >
-            <strong class="text-white">{{ mt.giveaway.title }}:</strong>
-            <span class="font-black text-emerald-300">{{ mt.totalTickets }} tickets</span>
-            <button
-              v-if="mt.referralToken && mt.giveaway.status === 'active'"
-              type="button"
-              @click="shareGiveawayInviteWhatsApp(mt.giveaway, mt.referralToken)"
-              class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] cursor-pointer"
-            >
-              +Chances WA
-            </button>
+            <div class="flex items-center justify-between gap-2">
+              <strong class="text-white truncate">{{ mt.giveaway.title }}:</strong>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-black text-emerald-300 font-mono">{{ mt.totalTickets }} ticket(s)</span>
+                <button
+                  v-if="mt.referralToken && mt.giveaway.status === 'active'"
+                  type="button"
+                  @click="shareGiveawayInviteWhatsApp(mt.giveaway, mt.referralToken)"
+                  class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] cursor-pointer"
+                >
+                  +Chances WA
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1 pt-0.5">
+              <template v-for="ent in mt.entries" :key="ent.id">
+                <span
+                  v-for="num in (ent.luckyNumbers || [String(ent.startTicket).padStart(6, '0')])"
+                  :key="num"
+                  class="bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded font-mono font-black text-[10px] tracking-wider"
+                >
+                  🎟️ #{{ num }}
+                </span>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -420,15 +446,17 @@ const submitDiscountApplication = () => {
             <span class="text-3xl block">🎫</span>
             <h5 class="text-base font-black text-white">¡Inscripción Confirmada!</h5>
             <p class="text-xs text-emerald-200">
-              Tus números de ticket asignados:
-              <strong class="font-mono text-sm text-amber-300 block mt-1">
-                #{{ String(lastIssuedPass.startTicket).padStart(4, '0') }}
-                <template v-if="lastIssuedPass.endTicket > lastIssuedPass.startTicket">
-                  al #{{ String(lastIssuedPass.endTicket).padStart(4, '0') }}
-                </template>
-                ({{ lastIssuedPass.ticketsCount }} chance/s)
-              </strong>
+              Tus números de 6 dígitos para el sorteo en vivo:
             </p>
+            <div v-if="lastIssuedPass.luckyNumbers?.length" class="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+              <span v-for="num in lastIssuedPass.luckyNumbers" :key="num" class="bg-amber-400 text-slate-950 px-3 py-1 rounded-xl font-mono font-black text-xs tracking-wider shadow">
+                🎟️ #{{ num }}
+              </span>
+            </div>
+            <div v-else class="font-mono text-sm text-amber-300">
+              #{{ String(lastIssuedPass.startTicket).padStart(6, '0') }}
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono block">({{ lastIssuedPass.ticketsCount }} chance/s asignada/s)</span>
           </div>
 
           <div v-if="selectedGiveaway.rules?.ticketsPerReferral > 0" class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5 text-xs">
@@ -495,6 +523,13 @@ const submitDiscountApplication = () => {
         </form>
       </div>
     </div>
+
+    <!-- MODAL SORTEADOR EN VIVO HD -->
+    <LiveGiveawayDrawModal
+      :show="showLiveDrawModal"
+      :initial-giveaway-id="selectedGiveaway?.id || ''"
+      @close="showLiveDrawModal = false"
+    />
 
     <!-- MODAL BASES Y FORMALIDADES COMPLETAS -->
     <div v-if="showFormalitiesModal && selectedGiveaway" class="fixed inset-0 z-[95] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-md">

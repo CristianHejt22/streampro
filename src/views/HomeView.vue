@@ -1561,6 +1561,32 @@ const resolveReseller = (param) => {
 const applyRouteParams = () => {
   const slugParam = route.params.shopSlug || route.query.shop
   const refParam = route.query.ref || slugParam
+
+  // Rastreo de clics de marketing entrantes
+  if (refParam || route.query.promo || route.query.plat || route.query.game || route.query.pkg || route.query.prod || route.query.sorteo) {
+    try {
+      const clickTrackKey = `clk_${route.fullPath}`
+      if (typeof window !== 'undefined' && !sessionStorage.getItem(clickTrackKey)) {
+        sessionStorage.setItem(clickTrackKey, '1')
+        let targetType = 'store'
+        let targetId = ''
+        if (route.query.game) { targetType = 'gaming'; targetId = String(route.query.game) }
+        else if (route.query.plat) { targetType = 'streaming'; targetId = String(route.query.plat) }
+        else if (route.query.pkg) { targetType = 'combo'; targetId = String(route.query.pkg) }
+        else if (route.query.prod) { targetType = 'physical'; targetId = String(route.query.prod) }
+        else if (route.query.sorteo) { targetType = 'giveaway'; targetId = String(route.query.sorteo) }
+
+        adminStore.recordMarketingClick({
+          type: targetType,
+          targetId,
+          ref: String(refParam || clientForm.value.selectedResellerId || 'DIRECT'),
+          channel: String(route.query.utm_source || 'direct'),
+          platform: String(route.query.plat || ''),
+          promoCode: String(route.query.promo || '')
+        })
+      }
+    } catch (_) {}
+  }
   if (refParam) {
     const cleanRef = String(refParam).trim().toLowerCase()
     if (cleanRef === 'direct' || cleanRef === 'oficial') {
@@ -7644,10 +7670,20 @@ const submitOrder = async () => {
               Ver Sorteos →
             </RouterLink>
           </div>
-          <div class="space-y-1">
-            <div v-for="t in lastPlacedOrder.awardedGiveawayTickets" :key="t.entryId" class="flex items-center justify-between text-xs text-slate-200 bg-slate-950/70 px-3 py-1.5 rounded-lg border border-amber-500/20">
-              <span class="truncate pr-2">{{ t.giveawayTitle }}</span>
-              <span class="font-mono font-black text-amber-300 shrink-0">+{{ t.tickets }} chance(s)</span>
+          <div class="space-y-1.5">
+            <div v-for="t in lastPlacedOrder.awardedGiveawayTickets" :key="t.entryId" class="text-xs text-slate-200 bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/30 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="truncate pr-2 font-bold">{{ t.giveawayTitle }}</span>
+                <span class="font-mono font-black text-amber-300 shrink-0">+{{ t.tickets }} chance(s)</span>
+              </div>
+              <div v-if="t.luckyNumbers?.length" class="space-y-1 pt-0.5">
+                <span class="text-[10px] text-slate-400 font-mono block">Tus números de 6 dígitos asignados para el sorteo en vivo:</span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="num in t.luckyNumbers" :key="num" class="bg-amber-400 text-slate-950 px-2 py-0.5 rounded font-mono font-black text-[11px] tracking-wider shadow">
+                    🎟️ #{{ num }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

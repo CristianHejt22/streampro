@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useAdminStore } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { generateAttractiveShareCopy } from '../utils/marketing'
 
@@ -15,6 +16,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'openInStudio'])
+const adminStore = useAdminStore()
 const toast = useToastStore()
 const isExporting = ref(false)
 
@@ -999,6 +1001,16 @@ const shareToPlatform = async (platform) => {
   const url = directShareUrl.value
   const title = plaqueHeadline.value
   const copy = attractiveCopy.value
+
+  try {
+    adminStore.recordMarketingClick({
+      type: effectiveProductType.value,
+      targetId: String(props.payload?.id || props.payload?.title || ''),
+      ref: props.resellerRef || 'DIRECT',
+      channel: platform,
+      promoCode: activePromoCode.value || ''
+    })
+  } catch (_) {}
 
   if (platform === 'whatsapp') {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(copy)}`, '_blank')
