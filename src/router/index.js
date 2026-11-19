@@ -263,24 +263,14 @@ router.onError((error, to) => {
     error?.message?.includes('Expected a JavaScript-or-Wasm module script')
 
   if (isChunkError) {
-    const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || 0)
+    const lastReload = sessionStorage.getItem('last_chunk_reload')
     const now = Date.now()
-    if (now - lastReload > 20000) {
-      sessionStorage.setItem('last_chunk_reload', String(now))
-      if ('caches' in window) {
-        caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).finally(() => {
-          if (to?.fullPath) {
-            window.location.href = to.fullPath
-          } else {
-            window.location.reload()
-          }
-        })
+    if (!lastReload || now - parseInt(lastReload) > 10000) {
+      sessionStorage.setItem('last_chunk_reload', now.toString())
+      if (to?.fullPath) {
+        window.location.href = to.fullPath
       } else {
-        if (to?.fullPath) {
-          window.location.href = to.fullPath
-        } else {
-          window.location.reload()
-        }
+        window.location.reload()
       }
     }
   }

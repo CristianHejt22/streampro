@@ -966,12 +966,6 @@ const filteredGamingProducts = computed(() => {
         if (!game.platform || !game.platform.includes('PS4')) continue
       } else if (selCat === 'PS3') {
         if (!game.platform || !game.platform.includes('PS3')) continue
-      } else if (selCat === 'Xbox') {
-        if (!game.platform || !game.platform.toLowerCase().includes('xbox')) continue
-      } else if (selCat === 'Nintendo Switch' || selCat === 'Switch') {
-        if (!game.platform || !game.platform.toLowerCase().includes('switch')) continue
-      } else if (selCat === 'PC') {
-        if (!game.platform || (!game.platform.toLowerCase().includes('pc') && !game.platform.toLowerCase().includes('steam'))) continue
       } else if (selCat === 'Lanzamientos') {
         const badge = game.badge || ''
         if (!badge || (!badge.includes('LANZAMIENTO') && !badge.includes('PREVENTA') && !badge.includes('2026') && !badge.includes('2025') && !badge.includes('2024') && !badge.includes('TOP') && !badge.includes('MÁS VENDIDO') && !badge.includes('FENÓMENO') && !badge.includes('JUEGO DEL AÑO'))) {
@@ -1703,12 +1697,23 @@ const applyRouteParams = () => {
     physicalCategoryFilter.value = route.query.cat
   }
 
-  // Sincronizar sección activa de forma reactiva y consistente
-  const currentSec = currentPageSection.value
-  storeSection.value = currentSec === 'home' ? 'all' : currentSec
-  if (route.query.pkg) {
-    clientForm.value.isSharedUrl = true
-    toast.add('¡Mostrando paquete promocional seleccionado!', 'info')
+  // Redirección y activación de sección física, digital, gaming, paquetes, sorteos o todo
+  if (route.query.sec === 'sorteos' || route.query.sorteo || ['/sorteos', '/sorteo', '/descuentos', '/embajadores'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'sorteos'
+  } else if (route.query.sec === 'physical' || ['/tienda', '/catalogo', '/productos', '/p'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'physical'
+  } else if (route.query.sec === 'digital' || ['/suscripciones', '/streaming', '/digital'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'digital'
+  } else if (route.query.sec === 'gaming' || route.query.game || route.query.g || ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation', '/juego', '/j'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'gaming'
+  } else if (route.query.sec === 'packages' || route.query.pkg || ['/combos', '/paquetes', '/ofertas'].some(p => route.path.toLowerCase() === p || route.path.toLowerCase().startsWith(p + '/'))) {
+    storeSection.value = 'packages'
+    if (route.query.pkg) {
+      clientForm.value.isSharedUrl = true
+      toast.add('¡Mostrando paquete promocional seleccionado!', 'info')
+    }
+  } else if (route.query.sec === 'all' || route.path === '/') {
+    storeSection.value = 'all'
   }
 
   // Búsqueda global desde querystring (?q=...)
@@ -1864,35 +1869,27 @@ onMounted(() => {
   const isDirectGamingRoute = route.path === '/juegos' || 
     route.path.startsWith('/juego') || 
     Boolean(route.query.game || route.query.g) || 
-    currentPageSection.value === 'gaming' ||
     storeSection.value === 'gaming'
 
   if (isDirectGamingRoute) {
     adminStore.ensureGamingProductsLoaded().catch(() => {})
   } else {
-    // Intersección diferida + respaldo suave para navegación sin bloqueos
-    if (typeof window !== 'undefined') {
-      if ('IntersectionObserver' in window) {
-        setTimeout(() => {
-          const targetEl = document.getElementById('home-gaming-preview') || document.getElementById('videojuegos-digitales')
-          if (targetEl) {
-            const observer = new IntersectionObserver((entries) => {
-              if (entries[0]?.isIntersecting) {
-                if (!adminStore.isGamingCatalogLoaded) {
-                  adminStore.loadFullGamingCatalog().catch(() => {})
-                }
-                observer.disconnect()
-              }
-            }, { rootMargin: '600px' })
-            observer.observe(targetEl)
-          }
-        }, 500)
-      }
+    // Intersección diferida: No descargar los 10.7MB del catálogo Gaming hasta que el usuario se acerque a la sección gamer
+    if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
       setTimeout(() => {
-        if (!adminStore.isGamingCatalogLoaded && !adminStore.isLoadingGamingCatalog) {
-          adminStore.loadFullGamingCatalog().catch(() => {})
+        const targetEl = document.getElementById('home-gaming-preview') || document.getElementById('videojuegos-digitales')
+        if (targetEl) {
+          const observer = new IntersectionObserver((entries) => {
+            if (entries[0]?.isIntersecting) {
+              if (!adminStore.isGamingCatalogLoaded) {
+                adminStore.loadFullGamingCatalog().catch(() => {})
+              }
+              observer.disconnect()
+            }
+          }, { rootMargin: '600px' })
+          observer.observe(targetEl)
         }
-      }, 6000)
+      }, 500)
     }
   }
   adminStore.initStoreSettingsSync().catch(() => {})
@@ -1902,9 +1899,6 @@ onMounted(() => {
 
 watch([() => route.path, () => route.query], () => {
   applyRouteParams()
-  if (currentPageSection.value === 'gaming' && !adminStore.isGamingCatalogLoaded) {
-    adminStore.ensureGamingProductsLoaded().catch(() => {})
-  }
 }, { deep: true })
 
 watch(() => adminStore.processedGamingProducts?.length, (len) => {
@@ -5337,15 +5331,6 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- Indicador de Sincronización en Vivo del Catálogo Completo (15.328 Juegos) -->
-      <div v-if="adminStore.isLoadingGamingCatalog" class="mb-4 flex items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-400/30 rounded-2xl px-4 py-3 text-xs text-indigo-200 shadow-sm">
-        <div class="flex items-center gap-2.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
-          <span class="font-bold">Sincronizando catálogo oficial (15.328 títulos)...</span>
-        </div>
-        <span class="text-[10px] font-mono bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 font-bold shrink-0">Cargando datos</span>
-      </div>
-
       <!-- Cuadrícula de Juegos -->
       <!-- Banner Selección Compartida Gaming -->
       <div v-if="sharedSelectionGameIds.length > 0" class="mb-4 flex flex-wrap items-center justify-between gap-2 bg-indigo-500/15 border border-indigo-400/40 rounded-2xl px-4 py-3 text-xs">
@@ -5620,15 +5605,6 @@ const submitOrder = async () => {
               »»
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Estado de Carga si el catálogo masivo se está descargando -->
-      <div v-else-if="adminStore.isLoadingGamingCatalog" class="text-center py-16 bg-slate-900/40 rounded-3xl border border-indigo-500/20 space-y-4">
-        <div class="w-12 h-12 mx-auto rounded-full border-4 border-indigo-500/20 border-t-indigo-400 animate-spin"></div>
-        <div class="space-y-1">
-          <h4 class="text-base font-bold text-white">Cargando catálogo completo de videojuegos...</h4>
-          <p class="text-xs text-slate-400">Sincronizando 15.328 títulos oficiales PlayStation, Xbox, Switch y PC.</p>
         </div>
       </div>
 
