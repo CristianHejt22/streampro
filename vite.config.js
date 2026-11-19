@@ -111,20 +111,6 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
-          },
-          {
-            urlPattern: ({ url }) => url.hostname.includes('image.api.playstation.com') || url.pathname.startsWith('/flyers/'),
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'streamepro-images-cache',
-              expiration: {
-                maxEntries: 150,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
           }
         ]
       },
@@ -166,7 +152,6 @@ export default defineConfig({
   ],
   build: {
     target: 'esnext',
-    reportCompressedSize: false,
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
@@ -183,9 +168,6 @@ export default defineConfig({
             }
             if (id.includes('firebase')) {
               return 'vendor-firebase'
-            }
-            if (id.includes('html2canvas') || id.includes('html-to-image')) {
-              return 'vendor-canvas'
             }
           }
         }

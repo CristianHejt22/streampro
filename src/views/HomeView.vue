@@ -916,104 +916,54 @@ const availableGamingSubcategories = computed(() => {
 const filteredGamingProducts = computed(() => {
   if (!isGamingNavVisible.value) return []
   const list = adminStore.processedGamingProducts || []
-  const listLen = list.length
-  if (listLen === 0) return []
-
-  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms
-  const hasAllowedPlatforms = Boolean(allowedPlatforms && allowedPlatforms.length > 0)
-  const sharedIds = sharedSelectionGameIds.value
-  const sharedSet = (sharedIds && sharedIds.length > 0) ? new Set(sharedIds) : null
-  const favSet = onlyGamingFavorites.value ? new Set(gamingWishlistIds.value) : null
+  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms || []
   const ceiling = gamingPriceCeiling.value !== 'ALL' ? Number(gamingPriceCeiling.value) : 0
-  const q = gamingSearch.value ? gamingSearch.value.toLowerCase().trim() : ''
+  const onlyFavs = onlyGamingFavorites.value
+  const favSet = onlyFavs ? new Set(gamingWishlistIds.value) : null
+  const q = gamingSearch.value.toLowerCase().trim()
 
-  const selCat = selectedGamingCat.value || 'Todas'
-  const selSubcat = (selectedGamingSubcat.value && selectedGamingSubcat.value !== 'Todas') ? selectedGamingSubcat.value : null
-  const platFilter = (gamingPlatformFilter.value && gamingPlatformFilter.value !== 'ALL') ? gamingPlatformFilter.value : null
+  const filtered = list.filter(game => {
+    if (allowedPlatforms.length > 0 && !allowedPlatforms.some(plat => game.platform && game.platform.includes(plat))) return false
+    if (sharedSelectionGameIds.value.length > 0 && !sharedSelectionGameIds.value.includes(game.id)) return false
+    if (favSet && !favSet.has(game.id)) return false
 
-  const result = []
-
-  for (let i = 0; i < listLen; i++) {
-    const game = list[i]
-
-    // 1. O(1) comprobación de selección compartida
-    if (sharedSet && !sharedSet.has(game.id)) continue
-
-    // 2. O(1) comprobación de favoritos
-    if (favSet && !favSet.has(game.id)) continue
-
-    // 3. Plataforma activa de revendedor
-    if (hasAllowedPlatforms) {
-      const gPlat = game.platform || ''
-      let platAllowed = false
-      for (let p = 0; p < allowedPlatforms.length; p++) {
-        if (gPlat.includes(allowedPlatforms[p])) {
-          platAllowed = true
-          break
-        }
-      }
-      if (!platAllowed) continue
+    let matchesCat = false
+    if (selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
+      matchesCat = true
+    } else if (selectedGamingCat.value === 'PS5') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
+    } else if (selectedGamingCat.value === 'PS4') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
+    } else if (selectedGamingCat.value === 'PS3') {
+      matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
+    } else if (selectedGamingCat.value === 'Lanzamientos') {
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
+    } else {
+      matchesCat = game.category === selectedGamingCat.value
     }
 
-    // 4. Filtro por plataforma seleccionada
-    if (platFilter && (!game.platform || !game.platform.includes(platFilter))) continue
+    const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
+    const matchesPlatform = gamingPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingPlatformFilter.value))
+    const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
+    if (!matchesCat || !matchesSubcat || !matchesPlatform || !matchesQ) return false
 
-    // 5. Filtro por categoría principal
-    if (selCat !== 'Todas') {
-      if (selCat === 'PS5') {
-        if (!game.platform || !game.platform.includes('PS5')) continue
-      } else if (selCat === 'PS4') {
-        if (!game.platform || !game.platform.includes('PS4')) continue
-      } else if (selCat === 'PS3') {
-        if (!game.platform || !game.platform.includes('PS3')) continue
-      } else if (selCat === 'Lanzamientos') {
-        const badge = game.badge || ''
-        if (!badge || (!badge.includes('LANZAMIENTO') && !badge.includes('PREVENTA') && !badge.includes('2026') && !badge.includes('2025') && !badge.includes('2024') && !badge.includes('TOP') && !badge.includes('MÁS VENDIDO') && !badge.includes('FENÓMENO') && !badge.includes('JUEGO DEL AÑO'))) {
-          continue
-        }
-      } else {
-        if (game.category !== selCat) continue
-      }
-    }
-
-    // 6. Filtro por subcategoría
-    if (selSubcat && game.subcategory !== selSubcat) continue
-
-    // 7. Filtro por precio máximo (techo)
     if (ceiling > 0) {
       const refPrice = Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0)
-      if (!refPrice || refPrice > ceiling) continue
+      if (!refPrice || refPrice > ceiling) return false
     }
+    return true
+  })
 
-    // 8. Búsqueda por texto (rápida: título primero, luego subcampos si falla)
-    if (q) {
-      const title = (game.title || '').toLowerCase()
-      if (!title.includes(q)) {
-        const subcat = (game.subcategory || '').toLowerCase()
-        if (!subcat.includes(q)) {
-          const cat = (game.category || '').toLowerCase()
-          if (!cat.includes(q)) {
-            const desc = (game.description || '').toLowerCase()
-            if (!desc.includes(q)) continue
-          }
-        }
-      }
-    }
-
-    result.push(game)
+  if (gamingSortBy.value === 'price_asc') {
+    return [...filtered].sort((a, b) => Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 9999999) - Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 9999999))
   }
-
-  // Ordenamiento in-situ sin clonado innecesario
-  const sortBy = gamingSortBy.value
-  if (sortBy === 'price_asc') {
-    result.sort((a, b) => Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 9999999) - Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 9999999))
-  } else if (sortBy === 'price_desc') {
-    result.sort((a, b) => Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 0) - Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 0))
-  } else if (sortBy === 'title_asc') {
-    result.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
+  if (gamingSortBy.value === 'price_desc') {
+    return [...filtered].sort((a, b) => Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 0) - Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 0))
   }
-
-  return result
+  if (gamingSortBy.value === 'title_asc') {
+    return [...filtered].sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
+  }
+  return filtered
 })
 
 // Paginación y alto rendimiento del catálogo Gaming (1,160+ títulos)
@@ -1874,22 +1824,15 @@ onMounted(() => {
   if (isDirectGamingRoute) {
     adminStore.ensureGamingProductsLoaded().catch(() => {})
   } else {
-    // Intersección diferida: No descargar los 10.7MB del catálogo Gaming hasta que el usuario se acerque a la sección gamer
-    if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+    // Carga no bloqueante en tiempo libre (idle) para mantener TTI inmediato en home
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(() => {
+        adminStore.loadFullGamingCatalog().catch(() => {})
+      }, { timeout: 3500 })
+    } else {
       setTimeout(() => {
-        const targetEl = document.getElementById('home-gaming-preview') || document.getElementById('videojuegos-digitales')
-        if (targetEl) {
-          const observer = new IntersectionObserver((entries) => {
-            if (entries[0]?.isIntersecting) {
-              if (!adminStore.isGamingCatalogLoaded) {
-                adminStore.loadFullGamingCatalog().catch(() => {})
-              }
-              observer.disconnect()
-            }
-          }, { rootMargin: '600px' })
-          observer.observe(targetEl)
-        }
-      }, 500)
+        adminStore.loadFullGamingCatalog().catch(() => {})
+      }, 2500)
     }
   }
   adminStore.initStoreSettingsSync().catch(() => {})
@@ -3647,8 +3590,6 @@ const submitOrder = async () => {
         <RouterLink 
           v-if="isGamingNavVisible"
           :to="getSectionLink('juegos')"
-          @mouseenter="adminStore.ensureGamingProductsLoaded()"
-          @focus="adminStore.ensureGamingProductsLoaded()"
           :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap',
             currentPageSection === 'gaming' 
@@ -3777,8 +3718,6 @@ const submitOrder = async () => {
 
           <RouterLink 
             :to="getSectionLink('juegos')" 
-            @mouseenter="adminStore.ensureGamingProductsLoaded()"
-            @focus="adminStore.ensureGamingProductsLoaded()"
             class="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/20 transition-all flex items-center gap-1.5"
           >
             <span>🎮</span>
@@ -4005,7 +3944,7 @@ const submitOrder = async () => {
             <div class="space-y-4">
               <!-- Arte promocional superior si existe -->
               <div v-if="pkg.image || true" class="relative -mx-6 -mt-6 mb-3 h-44 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
-                <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" />
+                <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
                 <div class="absolute top-3 left-3">
                   <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
@@ -4134,7 +4073,7 @@ const submitOrder = async () => {
       </div>
 
       <!-- 3.5 Selección de Ofertas: 🎮 Videojuegos Digitales Oficiales PS5, PS4 & PS3 -->
-      <div v-if="isGamingNavVisible && (adminStore.processedGamingProducts || []).length > 0" id="home-gaming-preview" class="space-y-4">
+      <div v-if="isGamingNavVisible && (adminStore.processedGamingProducts || []).length > 0" class="space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 shadow-lg">
           <div class="flex items-center gap-3">
             <span class="text-3xl">🎮</span>
@@ -4150,8 +4089,6 @@ const submitOrder = async () => {
           </div>
           <RouterLink
             :to="getSectionLink('juegos')"
-            @mouseenter="adminStore.ensureGamingProductsLoaded()"
-            @focus="adminStore.ensureGamingProductsLoaded()"
             class="px-4 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white font-black text-xs border border-indigo-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
           >
             <span>Explorar {{ (adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR') }} Juegos</span>
@@ -4168,8 +4105,8 @@ const submitOrder = async () => {
           >
             <div>
               <div class="relative h-36 sm:h-44 bg-slate-950 overflow-hidden flex items-center justify-center">
-                <img :src="game.image" aria-hidden="true" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-40 brightness-75 pointer-events-none select-none" @error="(e) => e.target.style.display = 'none'">
-                <img :src="game.image" :alt="game.title" loading="lazy" decoding="async" class="relative z-[1] w-full h-full object-contain p-2 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
+                <img :src="game.image" aria-hidden="true" loading="lazy" class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-40 brightness-75 pointer-events-none select-none" @error="(e) => e.target.style.display = 'none'">
+                <img :src="game.image" :alt="game.title" loading="lazy" class="relative z-[1] w-full h-full object-contain p-2 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'">
                 <span class="absolute top-2 left-2 z-10 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full font-mono shadow">{{ game.platform }}</span>
               </div>
               <div class="p-3.5 space-y-1">
@@ -4230,7 +4167,6 @@ const submitOrder = async () => {
                   :alt="item.name" 
                   class="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
-                  decoding="async"
                 >
               </div>
             </div>
@@ -4909,7 +4845,7 @@ const submitOrder = async () => {
           <div class="space-y-4">
             <!-- Header con Flyer Artwork si existe -->
             <div v-if="pkg.image || true" class="relative -mx-6 -mt-6 mb-3 h-48 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
-              <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" />
+              <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
               <div class="absolute top-3 left-3">
                 <span class="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3 py-1 rounded-full shadow-lg">
