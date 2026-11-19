@@ -9,6 +9,20 @@ export default async function handler(req, res) {
     return res.status(200).end()
   }
 
+  // Si se solicita scrapeo en vivo y estamos en entorno que soporte ejecución del scraper
+  const shouldScrape = req.query?.scrape === 'true' || req.query?.scrape === '1' || req.url?.includes('scrape=true')
+  if (shouldScrape) {
+    try {
+      const { scrapeAndSyncGamingCatalog } = await import('../scripts/sync-gaming-catalog.js')
+      const liveResult = await scrapeAndSyncGamingCatalog()
+      if (liveResult && liveResult.success && Array.isArray(liveResult.products)) {
+        return res.status(200).json(liveResult)
+      }
+    } catch (scrapeErr) {
+      console.warn('[api/sync-gaming] Live scrape fallback to local assets:', scrapeErr.message)
+    }
+  }
+
   try {
     const productsUrl = new URL('../src/assets/gamingProducts.json', import.meta.url)
     const categoriesUrl = new URL('../src/assets/gamingCategories.json', import.meta.url)

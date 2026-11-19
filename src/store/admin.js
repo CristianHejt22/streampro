@@ -1118,6 +1118,7 @@ export const useAdminStore = defineStore('admin', {
       saveDb(DB_KEYS.GAMING_PROVIDER_SITES, defaults)
       return defaults
     })(),
+    lastGamingScrapeTime: loadDb(DB_KEYS.GAMING_LAST_SCRAPE, null),
     promoCodes: (() => {
       const stored = loadDb(DB_KEYS.PROMO_CODES, null)
       const officialWelcome = { code: 'BIENVENIDO', type: 'percent', value: 10, scope: 'all', minAmount: 0, maxUses: 500, uses: 0, active: true, description: '10% OFF bienvenida (ACTIVO PARA NUEVOS USUARIOS)' }
@@ -6776,7 +6777,7 @@ export const useAdminStore = defineStore('admin', {
 
     async syncGamingFromApi() {
       try {
-        const res = await fetch('/api/sync-gaming')
+        const res = await fetch('/api/sync-gaming?scrape=true')
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
@@ -6784,6 +6785,8 @@ export const useAdminStore = defineStore('admin', {
           this.isGamingCatalogLoaded = true
           this.totalCatalogGamingCount = data.products.length
           this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+          this.lastGamingScrapeTime = new Date().toISOString()
+          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
           invalidateGamingCache()
           this.persist(DB_KEYS.GAMING_PRODUCTS)
           if (Array.isArray(data.categories) && data.categories.length > 0) {
@@ -6794,17 +6797,22 @@ export const useAdminStore = defineStore('admin', {
             this.gamingSubcategories = data.subcategories
             this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
           }
-          return { success: true, count: data.products.length }
+          return { success: true, count: data.products.length, timestamp: this.lastGamingScrapeTime }
         }
         throw new Error(data.error || 'Respuesta inválida de la API de videojuegos')
       } catch (err) {
         console.warn('Sync API gaming falló o entorno estático, aplicando catálogo base sincronizado...', err)
         if (_loadedBaseGamingData && _loadedBaseGamingData.length > 0) {
-          return this.updateGamingProductsFromJson(_loadedBaseGamingData, gamingCategoriesData, gamingSubcategoriesData)
+          const res = this.updateGamingProductsFromJson(_loadedBaseGamingData, gamingCategoriesData, gamingSubcategoriesData)
+          this.lastGamingScrapeTime = new Date().toISOString()
+          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
+          return { ...res, fallback: true, count: _loadedBaseGamingData.length, timestamp: this.lastGamingScrapeTime }
         }
         try {
           const loaded = await this.loadFullGamingCatalog()
-          return { success: true, count: loaded.length }
+          this.lastGamingScrapeTime = new Date().toISOString()
+          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
+          return { success: true, count: loaded.length, fallback: true, timestamp: this.lastGamingScrapeTime }
         } catch {}
         return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
       }

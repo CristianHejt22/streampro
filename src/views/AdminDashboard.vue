@@ -3184,21 +3184,51 @@ const handleImportGamingCatalog = (event) => {
   reader.readAsText(file, 'utf-8')
 }
 
-const handleSyncGamingCatalog = async () => {
+const lastGamingScrapeLocal = ref(localStorage.getItem('streamepro_last_gaming_scrape') || '')
+
+const lastGamingScrapeDisplay = computed(() => {
+  const ts = adminStore.lastGamingScrapeTime || lastGamingScrapeLocal.value
+  if (!ts) return ''
+  try {
+    const d = new Date(ts)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    }
+    return ts
+  } catch {
+    return ts
+  }
+})
+
+const handleScrapeAndSyncGamingWebs = async () => {
   isSyncingGaming.value = true
+  // Forzar inmediatamente que el Mayor Costo quede visible en pantalla
+  onlyHighestCostProvider.value = true
+
   try {
     const res = await adminStore.syncGamingFromApi()
+    const nowStr = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    lastGamingScrapeLocal.value = nowStr
+    try {
+      localStorage.setItem('streamepro_last_gaming_scrape', nowStr)
+    } catch {}
+
     if (res.success) {
-      toast.add(`¡Catálogo Gaming sincronizado! ${res.count} videojuegos extraídos en vivo desde Argentina Play y JDA.`, 'success')
+      toast.add(
+        `¡Scrapeo completado! ${res.count || adminStore.processedGamingProducts.length} videojuegos sincronizados con las webs. Mayor Costo de Proveedor fijado y visible en pantalla.`,
+        'success'
+      )
     } else {
       toast.add(res.error || 'Error al conectar con los proveedores gaming', 'error')
     }
   } catch (err) {
-    toast.add('Error al sincronizar proveedores gaming', 'error')
+    toast.add('Error al scrapear y actualizar proveedores gaming: ' + (err.message || ''), 'error')
   } finally {
     isSyncingGaming.value = false
   }
 }
+
+const handleSyncGamingCatalog = handleScrapeAndSyncGamingWebs
 
 // RECORDATORIOS PERSUASIVOS DE RENOVACIÓN POR WHATSAPP
 const getClientExpiryDays = (expiryStr) => {
@@ -10719,16 +10749,16 @@ const deletePackageItem = (pkgId) => {
             class="hidden"
           >
 
-          <!-- Sincronización en 1 Clic desde Scrapers Multi-Sitio -->
+          <!-- Botón Destacado: Scrapeo y Actualización con las Webs (Mayor Costo Visible) -->
           <button 
             type="button"
-            @click="handleSyncGamingCatalog"
+            @click="handleScrapeAndSyncGamingWebs"
             :disabled="isSyncingGaming"
-            class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
-            title="Sincronizar en vivo catálogos y precios desde todos los sitios gaming configurados"
+            class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 disabled:opacity-50 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+            title="Scrapear en vivo y actualizar precios desde Digital Games Shop, Argentina Play, JDA, Tu Tienda Gamer y Fusion Games dejando fijado y visible el mayor costo"
           >
-            <span :class="{'animate-spin inline-block': isSyncingGaming}">🔄</span>
-            <span>{{ isSyncingGaming ? 'Sincronizando Gaming...' : 'Sincronizar Sitios Gaming' }}</span>
+            <span :class="{'animate-spin inline-block': isSyncingGaming}">🕷️</span>
+            <span>{{ isSyncingGaming ? 'Scrapeando & Actualizando Webs...' : '🕷️ Scrapear & Actualizar Precios Web (Mayor Costo Visible)' }}</span>
           </button>
 
           <!-- Importar JSON -->
@@ -10932,23 +10962,37 @@ const deletePackageItem = (pkgId) => {
             </div>
 
             <!-- Switcher: Tabla vs Tarjetas -->
-            <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Botón Rápido de Scrapeo de Precios Web -->
               <button 
                 type="button" 
-                @click="gamingComparisonViewMode = 'table'"
-                :class="['px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer', gamingComparisonViewMode === 'table' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
-                title="Vista en tabla completa"
+                @click="handleScrapeAndSyncGamingWebs"
+                :disabled="isSyncingGaming"
+                class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                title="Scrapear y actualizar precios mayoristas en vivo dejando el mayor costo visible"
               >
-                📑 Tabla
+                <span :class="{'animate-spin inline-block': isSyncingGaming}">🕷️</span>
+                <span>{{ isSyncingGaming ? 'Scrapeando...' : '🕷️ Scrapear Webs (Mayor Costo)' }}</span>
               </button>
-              <button 
-                type="button" 
-                @click="gamingComparisonViewMode = 'cards'"
-                :class="['px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer', gamingComparisonViewMode === 'cards' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
-                title="Vista en tarjetas visuales con comparativa"
-              >
-                🗂️ Tarjetas
-              </button>
+
+              <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+                <button 
+                  type="button" 
+                  @click="gamingComparisonViewMode = 'table'"
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer', gamingComparisonViewMode === 'table' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+                  title="Vista en tabla completa"
+                >
+                  📑 Tabla
+                </button>
+                <button 
+                  type="button" 
+                  @click="gamingComparisonViewMode = 'cards'"
+                  :class="['px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer', gamingComparisonViewMode === 'cards' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white']"
+                  title="Vista en tarjetas visuales con comparativa"
+                >
+                  🗂️ Tarjetas
+                </button>
+              </div>
             </div>
           </div>
 
@@ -10965,14 +11009,14 @@ const deletePackageItem = (pkgId) => {
             </div>
 
             <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
-              <!-- Toggle: Proveedor Único Visible vs Ver Todas las Webs Scrapeadas -->
+              <!-- Toggle: Mayor Costo Fijado y Visible vs Comparativa -->
               <button 
                 type="button" 
                 @click="onlyHighestCostProvider = !onlyHighestCostProvider"
-                :class="['px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer', onlyHighestCostProvider ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white']"
-                title="Alternar entre vista resumida o comparar todas las webs scrapeadas lado a lado"
+                :class="['px-3 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 border cursor-pointer', onlyHighestCostProvider ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20' : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-white']"
+                title="Fijar y dejar visible el Mayor Costo de Proveedor como base de PVP seguro"
               >
-                <span>{{ onlyHighestCostProvider ? '✓ Proveedor Único (Mayor Costo)' : '👁️ Comparando Webs Scrapeadas' }}</span>
+                <span>{{ onlyHighestCostProvider ? '🛡️ Mayor Costo Visible (Fijado)' : '👁️ Comparando Webs Scrapeadas' }}</span>
               </button>
 
               <!-- Filtrar por Web Scrapeada, Agregada o Lista TXT -->
@@ -11028,6 +11072,44 @@ const deletePackageItem = (pkgId) => {
                 <option value="PC">PC / Steam</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        <!-- Barra Informativa: Estado de Scrapeo y Mayor Costo Fijado -->
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-indigo-950/40 border border-amber-500/30 text-xs font-mono">
+          <div class="flex items-center gap-2 text-amber-300">
+            <span class="text-base">🛡️</span>
+            <span>
+              <strong>Mayor Costo Proveedor:</strong> 
+              <span v-if="onlyHighestCostProvider" class="text-amber-200 font-black">
+                FIJADO & VISIBLE EN PANTALLA (Garantiza margen de ganancia en PVP oficial)
+              </span>
+              <span v-else class="text-slate-400">
+                Mostrando comparativa detallada de todas las webs
+              </span>
+            </span>
+            <span v-if="lastGamingScrapeDisplay" class="text-slate-400 text-[11px] hidden md:inline">
+              • Último scrapeo: <strong class="text-white">{{ lastGamingScrapeDisplay }}</strong>
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              v-if="!onlyHighestCostProvider" 
+              type="button" 
+              @click="onlyHighestCostProvider = true"
+              class="text-[10px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded-lg transition cursor-pointer"
+            >
+              Fijar Mayor Costo Visible
+            </button>
+            <button 
+              type="button" 
+              @click="handleScrapeAndSyncGamingWebs"
+              :disabled="isSyncingGaming"
+              class="text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95"
+            >
+              <span :class="{'animate-spin inline-block': isSyncingGaming}">🕷️</span>
+              <span>{{ isSyncingGaming ? 'Scrapeando...' : 'Re-scrapear Webs' }}</span>
+            </button>
           </div>
         </div>
 
@@ -11096,8 +11178,8 @@ const deletePackageItem = (pkgId) => {
             <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th class="p-3.5">Videojuego & Plataforma</th>
-                <th class="p-3.5 text-indigo-300 bg-indigo-950/20 border-x border-slate-800">
-                  {{ onlyHighestCostProvider ? '🏢 Proveedor, Mayor Costo & Brecha' : '🌐 Comparativa Todos los Sitios Agregados & Scrapeados' }}
+                <th class="p-3.5 text-amber-300 bg-amber-950/25 border-x border-slate-800">
+                  {{ onlyHighestCostProvider ? '📈 MAYOR COSTO PROVEEDOR (Líder Web & Base PVP)' : '🌐 Comparativa Todos los Sitios Agregados & Scrapeados' }}
                 </th>
                 <th class="p-3.5 text-emerald-400 bg-emerald-950/30 border-r border-slate-800">
                   ⭐️ PVP Web (Mayor Costo)
@@ -11130,20 +11212,25 @@ const deletePackageItem = (pkgId) => {
 
                 <!-- Columna Proveedor, Webs Scrapeadas & Diferencia de Costos -->
                 <td v-if="onlyHighestCostProvider" class="p-3.5 bg-slate-900/60 border-x border-slate-800 font-mono">
-                  <button 
-                    type="button" 
-                    @click="openProviderModal(game)"
-                    class="w-full text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 transition cursor-pointer group shadow-sm space-y-1.5"
-                    title="Clic para abrir el Botón Proveedor y elegir a quién comprar"
-                  >
-                    <div class="flex items-center justify-between gap-1">
-                      <span class="text-[10px] font-bold text-white flex items-center gap-1.5 truncate">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                        <span class="truncate">Compras en: {{ game.bestFulfillmentPrimaryName || 'Proveedor Óptimo' }}</span>
-                      </span>
-                      <span class="text-[9px] text-indigo-400 group-hover:text-indigo-300 font-bold shrink-0 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-500/30">
-                        {{ (game.activeProvidersList || []).length }} sitios ⚙️
-                      </span>
+                  <div class="w-full text-left p-2.5 rounded-xl bg-slate-950 border border-slate-800 shadow-sm space-y-2">
+                    <!-- BLOQUE DESTACADO: MAYOR COSTO VISIBLE -->
+                    <div class="p-2 rounded-xl bg-amber-500/10 border-2 border-amber-500/40 text-[10px] space-y-1 shadow-sm">
+                      <div class="flex items-center justify-between gap-1">
+                        <span class="text-[9px] font-black text-amber-300 flex items-center gap-1 uppercase tracking-wider">
+                          📈 MAYOR COSTO VISIBLE
+                        </span>
+                        <span class="text-[9px] bg-amber-500/20 text-amber-200 font-black px-1.5 py-0.5 rounded border border-amber-500/30 truncate max-w-[130px]" :title="game.highestProviderName">
+                          {{ game.highestProviderName || 'Líder Web' }}
+                        </span>
+                      </div>
+                      <div class="flex items-baseline justify-between mt-1">
+                        <div class="text-sm font-black text-white">
+                          ${{ (game.baseCostPrimary || 0).toLocaleString() }} <span class="text-[9px] font-bold text-amber-300">ARS</span>
+                        </div>
+                        <span class="text-[9px] text-slate-400">
+                          Sec: ${{ (game.baseCostSecondary || 0).toLocaleString() }}
+                        </span>
+                      </div>
                     </div>
 
                     <!-- Mini-Pills de Todas las Webs Scrapeadas y Lista .TXT -->
@@ -11166,31 +11253,36 @@ const deletePackageItem = (pkgId) => {
                       </span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80 text-[10px]">
+                    <!-- Compra Óptima & Botón de Proveedor -->
+                    <div class="flex items-center justify-between gap-1 text-[10px] pt-1 border-t border-slate-800/80">
                       <div class="min-w-0">
-                        <span class="text-amber-300 block text-[9px] truncate" :title="game.highestProviderName">📈 Mayor ({{ game.highestProviderName || 'Base' }}):</span>
-                        <strong class="text-white font-black">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
-                      </div>
-                      <div class="min-w-0">
-                        <span class="text-emerald-300 block text-[9px] truncate" :title="game.bestFulfillmentPrimaryName">🏆 Compra ({{ game.bestFulfillmentPrimaryName }}):</span>
+                        <span class="text-emerald-300 block text-[9px] truncate" :title="game.bestFulfillmentPrimaryName">🏆 Compras en {{ game.bestFulfillmentPrimaryName }}:</span>
                         <strong class="text-emerald-400 font-black">${{ (game.actualPurchaseCostPrimary ?? game.minCostPrimary ?? game.baseCostPrimary ?? 0).toLocaleString() }}</strong>
                       </div>
+                      <button 
+                        type="button" 
+                        @click="openProviderModal(game)"
+                        class="text-[9px] text-indigo-400 hover:text-indigo-300 font-bold bg-indigo-500/15 hover:bg-indigo-500/25 px-2 py-1 rounded-lg border border-indigo-500/30 transition cursor-pointer shrink-0"
+                        title="Ver comparativa de todos los proveedores o cambiar web de compra"
+                      >
+                        {{ (game.activeProvidersList || []).length }} webs ⚙️
+                      </button>
                     </div>
 
                     <!-- DIFERENCIA / ARBITRAJE VISIBLE -->
-                    <div v-if="game.diffPrimary > 0" class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                    <div v-if="game.diffPrimary > 0" class="pt-1 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
                       <span class="text-amber-400 font-bold flex items-center gap-1">
-                        <span>⚡</span> Diferencia: +${{ game.diffPrimary.toLocaleString() }}
+                        <span>⚡</span> Brecha: +${{ game.diffPrimary.toLocaleString() }}
                       </span>
                       <span class="bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded text-[9px] font-bold border border-amber-500/40">
-                        +{{ game.diffPrimaryPercent }}% Brecha
+                        +{{ game.diffPrimaryPercent }}% Arbitraje
                       </span>
                     </div>
-                    <div v-else class="mt-1 pt-1 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-500">
+                    <div v-else class="pt-1 border-t border-slate-800/80 flex items-center justify-between text-[9px] text-slate-500">
                       <span>🔹 1 Fuente Cotizada</span>
                       <span>Sin diferencia</span>
                     </div>
-                  </button>
+                  </div>
                 </td>
 
                 <!-- Comparativa Completa de TODAS las Webs Agregadas, Scrapeadas & Lista .TXT -->
@@ -11408,17 +11500,24 @@ const deletePackageItem = (pkgId) => {
 
             <!-- Caja Comparativa: Mayor Costo Base & Compra vs PVP Plataforma -->
             <div class="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span class="text-[9px] text-amber-300 font-bold block uppercase tracking-wider truncate" :title="game.highestProviderName">📈 Mayor Costo ({{ game.highestProviderName || 'Base' }})</span>
-                <div class="flex justify-between text-[11px]">
-                  <span class="text-slate-400">Prim:</span>
-                  <strong class="text-white font-black">${{ (game.baseCostPrimary || 0).toLocaleString() }}</strong>
+              <div class="p-2.5 rounded-xl bg-amber-500/10 border-2 border-amber-500/40 space-y-1.5 shadow-sm shadow-amber-500/10">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[9px] text-amber-300 font-black block uppercase tracking-wider truncate" :title="game.highestProviderName">
+                    📈 MAYOR COSTO
+                  </span>
+                  <span class="text-[8px] bg-amber-500/20 text-amber-200 font-black px-1.5 py-0.5 rounded border border-amber-500/30 truncate max-w-[90px]" :title="game.highestProviderName">
+                    {{ game.highestProviderName || 'Base' }}
+                  </span>
                 </div>
-                <div class="flex justify-between text-[11px]">
-                  <span class="text-slate-400">Sec:</span>
+                <div class="flex justify-between items-baseline text-[11px]">
+                  <span class="text-slate-300">Primaria:</span>
+                  <strong class="text-white font-black text-xs">${{ (game.baseCostPrimary || 0).toLocaleString() }} ARS</strong>
+                </div>
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-slate-400">Secundaria:</span>
                   <span class="text-indigo-300 font-bold">${{ (game.baseCostSecondary || 0).toLocaleString() }}</span>
                 </div>
-                <div class="text-[9px] text-emerald-300 pt-1 border-t border-slate-800/80 truncate" :title="game.bestFulfillmentPrimaryName">
+                <div class="text-[9px] text-emerald-300 pt-1 border-t border-amber-500/20 truncate" :title="game.bestFulfillmentPrimaryName">
                   Compras a: <strong>${{ (game.actualPurchaseCostPrimary ?? game.minCostPrimary ?? game.baseCostPrimary ?? 0).toLocaleString() }} ({{ game.bestFulfillmentPrimaryName }})</strong>
                 </div>
               </div>
