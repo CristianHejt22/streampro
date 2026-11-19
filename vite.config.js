@@ -96,8 +96,16 @@ export default defineConfig({
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 3500000,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
-        globIgnores: ['**/catalog-gaming*.js'],
+        globIgnores: ['**/catalog-gaming*.js', '**/AdminDashboard*.js', '**/catalog-physical*.js'],
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'streamepro-navigation-cache',
+              networkTimeoutSeconds: 3
+            }
+          },
           {
             urlPattern: ({ url }) => url.pathname.includes('catalog-gaming'),
             handler: 'CacheFirst',
@@ -183,9 +191,6 @@ export default defineConfig({
             }
             if (id.includes('firebase')) {
               return 'vendor-firebase'
-            }
-            if (id.includes('html2canvas') || id.includes('html-to-image')) {
-              return 'vendor-canvas'
             }
           }
         }

@@ -5,10 +5,24 @@ import router from './router'
 import './style.css'
 import { useAdminStore } from './store/admin'
 
-// Manejador global para actualización de recursos al desplegar nuevas versiones
+// Manejador seguro para actualización de recursos al desplegar nuevas versiones (protección contra bucles de recarga)
 window.addEventListener('vite:preloadError', (event) => {
-  console.warn('Nueva versión de StreamePro detectada. Actualizando recursos...', event)
-  window.location.reload()
+  event?.preventDefault?.()
+  console.warn('[StreamePro] Fallo al precargar recurso dinámico. Verificando versión...', event)
+  const lastReload = Number(sessionStorage.getItem('streamepro_last_chunk_reload') || 0)
+  const now = Date.now()
+  if (now - lastReload > 20000) {
+    sessionStorage.setItem('streamepro_last_chunk_reload', String(now))
+    if ('caches' in window) {
+      caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).finally(() => {
+        window.location.reload()
+      })
+    } else {
+      window.location.reload()
+    }
+  } else {
+    console.error('[StreamePro] Se detuvo el bucle de recarga continua. La sesión continúa con los recursos en memoria.')
+  }
 })
 
 const app = createApp(App)
