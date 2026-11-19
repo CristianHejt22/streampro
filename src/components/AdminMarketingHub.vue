@@ -14,6 +14,7 @@ const adminStore = useAdminStore()
 const toast = useToastStore()
 
 const subTab = ref('discount_users') // 'campaign' | 'discount_users' | 'giveaways' | 'coupons' | 'analytics' | 'reels_studio' | 'seo_tools' | 'partners'
+const hubCategory = ref('all') // 'all' | 'discounts' | 'giveaways' | 'content' | 'growth'
 const ReelsStoryStudioModal = defineAsyncComponent(() => import('./ReelsStoryStudioModal.vue'))
 const LiveGiveawayDrawModal = defineAsyncComponent(() => import('./LiveGiveawayDrawModal.vue'))
 
@@ -225,6 +226,11 @@ const resetDiscountForm = () => {
 }
 
 const saveDiscountUser = () => {
+  discountForm.value.code = (discountForm.value.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
+  if (!discountForm.value.code) {
+    toast.add('Ingresa un código válido para el usuario descuento', 'error')
+    return
+  }
   const res = adminStore.upsertDiscountUser(discountForm.value)
   if (res.error) {
     toast.add(res.error, 'error')
@@ -643,6 +649,35 @@ const copyRobots = async () => {
   }
 }
 
+const downloadFile = (filename, content, type = 'text/plain;charset=utf-8') => {
+  try {
+    const blob = new Blob([content], { type })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.add(`📥 Archivo ${filename} descargado con éxito`, 'success')
+  } catch (e) {
+    toast.add(`No se pudo descargar ${filename}`, 'error')
+  }
+}
+
+const downloadSitemap = () => {
+  downloadFile('sitemap.xml', sitemapXml.value, 'application/xml;charset=utf-8')
+}
+
+const downloadRobots = () => {
+  downloadFile('robots.txt', robotsTxt.value, 'text/plain;charset=utf-8')
+}
+
+const downloadSchemaJson = () => {
+  downloadFile('schema.json', schemaJsonLd.value, 'application/ld+json;charset=utf-8')
+}
+
 // ==========================================
 // 6. HERRAMIENTAS PARA INCORPORAR SOCIOS / REVENDEDORES
 // ==========================================
@@ -837,9 +872,56 @@ const clearClicksHistory = () => {
         </div>
       </div>
 
-      <!-- SUB-NAVEGACIÓN -->
-      <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+      <!-- FILTROS POR CATEGORÍA FUNCIONAL -->
+      <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 hidden sm:inline">Módulos:</span>
         <button
+          type="button"
+          @click="hubCategory = 'all'"
+          :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer', hubCategory === 'all' ? 'bg-fuchsia-600 text-white shadow font-black' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+        >
+          🎯 Todo el Hub (8)
+        </button>
+        <button
+          type="button"
+          @click="hubCategory = 'discounts'; if (!['discount_users', 'coupons'].includes(subTab)) subTab = 'discount_users'"
+          :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1', hubCategory === 'discounts' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+        >
+          🏷️ Descuentos &amp; Cupones
+          <span v-if="adminStore.pendingDiscountApplications.length > 0" class="bg-rose-600 text-white text-[9px] px-1 rounded-full animate-pulse">
+            {{ adminStore.pendingDiscountApplications.length }}
+          </span>
+        </button>
+        <button
+          type="button"
+          @click="hubCategory = 'giveaways'; subTab = 'giveaways'"
+          :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer', hubCategory === 'giveaways' ? 'bg-fuchsia-500 text-white font-black shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+        >
+          🎰 Sorteos &amp; En Vivo
+        </button>
+        <button
+          type="button"
+          @click="hubCategory = 'content'; if (!['campaign', 'reels_studio'].includes(subTab)) subTab = 'campaign'"
+          :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer', hubCategory === 'content' ? 'bg-sky-400 text-slate-950 font-black shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+        >
+          🎨 Difusión &amp; Reels 9:16
+        </button>
+        <button
+          type="button"
+          @click="hubCategory = 'growth'; if (!['seo_tools', 'analytics', 'partners'].includes(subTab)) subTab = 'seo_tools'"
+          :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1', hubCategory === 'growth' ? 'bg-emerald-400 text-slate-950 font-black shadow' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800']"
+        >
+          🚀 SEO, Clics &amp; Socios
+          <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-rose-600 text-white text-[9px] px-1 rounded-full animate-pulse font-bold">
+            {{ adminStore.pendingResellerApplications.length }}
+          </span>
+        </button>
+      </div>
+
+      <!-- BOTONES DE SUB-HERRAMIENTAS ORGANIZADAS -->
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button
+          v-if="hubCategory === 'all' || hubCategory === 'discounts'"
           type="button"
           @click="subTab = 'discount_users'"
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'discount_users' ? 'bg-amber-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
@@ -850,20 +932,7 @@ const clearClicksHistory = () => {
           </span>
         </button>
         <button
-          type="button"
-          @click="subTab = 'giveaways'"
-          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'giveaways' ? 'bg-fuchsia-500 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
-        >
-          <span>🎉 Sorteos &amp; Actas ({{ (adminStore.giveaways || []).length }})</span>
-        </button>
-        <button
-          type="button"
-          @click="subTab = 'campaign'"
-          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'campaign' ? 'bg-sky-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
-        >
-          <span>📢 Banner Tienda &amp; Copys Redes</span>
-        </button>
-        <button
+          v-if="hubCategory === 'all' || hubCategory === 'discounts'"
           type="button"
           @click="subTab = 'coupons'"
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'coupons' ? 'bg-indigo-500 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
@@ -871,13 +940,31 @@ const clearClicksHistory = () => {
           <span>🎟️ Cupones Globales ({{ (adminStore.promoCodes || []).length }})</span>
         </button>
         <button
+          v-if="hubCategory === 'all' || hubCategory === 'giveaways'"
           type="button"
-          @click="subTab = 'analytics'"
-          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'analytics' ? 'bg-emerald-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+          @click="subTab = 'giveaways'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'giveaways' ? 'bg-fuchsia-500 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
         >
-          <span>📊 Métricas &amp; Créditos ({{ (adminStore.discountCreditsLog || []).length }})</span>
+          <span>🎉 Sorteos Oficiales &amp; Actas ({{ (adminStore.giveaways || []).length }})</span>
         </button>
         <button
+          v-if="hubCategory === 'all' || hubCategory === 'giveaways'"
+          type="button"
+          @click="openLiveDrawer('')"
+          class="px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white shadow-lg"
+        >
+          <span>🎰 Sorteador en Vivo (6 Dígitos)</span>
+        </button>
+        <button
+          v-if="hubCategory === 'all' || hubCategory === 'content'"
+          type="button"
+          @click="subTab = 'campaign'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'campaign' ? 'bg-sky-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+        >
+          <span>📢 Banner Tienda &amp; Copys Redes</span>
+        </button>
+        <button
+          v-if="hubCategory === 'all' || hubCategory === 'content'"
           type="button"
           @click="subTab = 'reels_studio'"
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'reels_studio' ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
@@ -885,18 +972,28 @@ const clearClicksHistory = () => {
           <span>🎬 Estudio Reels &amp; Estados 9:16</span>
         </button>
         <button
+          v-if="hubCategory === 'all' || hubCategory === 'growth'"
           type="button"
           @click="subTab = 'seo_tools'"
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'seo_tools' ? 'bg-cyan-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
         >
-          <span>🔍 Buscadores &amp; SEO</span>
+          <span>🔍 Buscadores &amp; SEO Google</span>
         </button>
         <button
+          v-if="hubCategory === 'all' || hubCategory === 'growth'"
+          type="button"
+          @click="subTab = 'analytics'"
+          :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'analytics' ? 'bg-emerald-400 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
+        >
+          <span>📊 Métricas, Clics &amp; Créditos</span>
+        </button>
+        <button
+          v-if="hubCategory === 'all' || hubCategory === 'growth'"
           type="button"
           @click="subTab = 'partners'"
           :class="['px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5', subTab === 'partners' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800']"
         >
-          <span>🤝 Incorporar Socios</span>
+          <span>🤝 Incorporar Socios (Afiliados)</span>
           <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-rose-600 text-white text-[10px] px-1.5 rounded-full animate-pulse font-bold">
             {{ adminStore.pendingResellerApplications.length }}
           </span>
@@ -1881,13 +1978,22 @@ const clearClicksHistory = () => {
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <strong class="text-white text-xs">📜 Schema.org JSON-LD (Microdatos Google)</strong>
-            <button
-              type="button"
-              @click="copySchemaJson"
-              class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-[10px] font-bold cursor-pointer"
-            >
-              📋 Copiar JSON-LD
-            </button>
+            <div class="flex gap-1.5">
+              <button
+                type="button"
+                @click="copySchemaJson"
+                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-[10px] font-bold cursor-pointer transition"
+              >
+                📋 Copiar
+              </button>
+              <button
+                type="button"
+                @click="downloadSchemaJson"
+                class="px-2.5 py-1 rounded-lg bg-sky-600/30 hover:bg-sky-600 text-sky-200 text-[10px] font-bold cursor-pointer transition border border-sky-500/30"
+              >
+                📥 Descargar .json
+              </button>
+            </div>
           </div>
           <pre class="bg-slate-900 p-2.5 rounded-xl font-mono text-[10px] text-emerald-300 overflow-x-auto max-h-48 custom-scrollbar border border-white/5">{{ schemaJsonLd }}</pre>
         </div>
@@ -1896,20 +2002,34 @@ const clearClicksHistory = () => {
         <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <strong class="text-white text-xs">🗺️ Sitemap.xml &amp; Robots.txt Dinámicos</strong>
-            <div class="flex gap-1.5">
+            <div class="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 @click="copySitemap"
-                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer"
+                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer transition"
               >
                 Copiar Sitemap
               </button>
               <button
                 type="button"
+                @click="downloadSitemap"
+                class="px-2 py-1 rounded-lg bg-cyan-600/30 hover:bg-cyan-600 text-cyan-200 text-[10px] font-bold cursor-pointer transition border border-cyan-500/30"
+              >
+                📥 .xml
+              </button>
+              <button
+                type="button"
                 @click="copyRobots"
-                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer"
+                class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold cursor-pointer transition"
               >
                 Copiar Robots
+              </button>
+              <button
+                type="button"
+                @click="downloadRobots"
+                class="px-2 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 text-[10px] font-bold cursor-pointer transition border border-emerald-500/30"
+              >
+                📥 .txt
               </button>
             </div>
           </div>

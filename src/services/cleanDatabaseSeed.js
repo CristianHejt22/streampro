@@ -422,7 +422,15 @@ export function getCleanDatabaseSeed() {
     [DB_KEYS.RESELLER_ALERTS]: [],
     [DB_KEYS.RENEWAL_REQUESTS]: [],
     [DB_KEYS.GIVEAWAYS]: DEFAULT_PRODUCTION_GIVEAWAYS,
-    [DB_KEYS.GIVEAWAY_ENTRIES]: []
+    [DB_KEYS.GIVEAWAY_ENTRIES]: [],
+    [DB_KEYS.MARKETING_CLICKS]: [],
+    [DB_KEYS.SEO_CONFIG]: {
+      siteTitle: 'StreamePro Oficial | Streaming 4K, Juegos PS5/PS4 y Tecnología en Argentina',
+      metaDescription: 'Tienda Oficial de Streaming 4K Ultra HD y Cuentas Digitales PlayStation en Argentina. Activación express 10-60m, PIN privado, garantía total y medios de pago locales.',
+      keywords: 'streaming argentina, cuentas netflix argentina, juegos ps5 digitales, combos streaming, disney plus, max hbo, playstation cuentas primarias',
+      canonicalUrl: 'https://streamepro.me',
+      ogImage: 'https://streamepro.me/flyers/combos/plaque-template-cyber.webp'
+    }
   }
 }
 

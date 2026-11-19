@@ -95,15 +95,30 @@ const officialSummary = computed(() => {
   return adminStore.getGiveawayTicketSummary(selectedGiveawayId.value)
 })
 
+const initGiveawaySelection = () => {
+  if (props.initialGiveawayId) {
+    selectedGiveawayId.value = props.initialGiveawayId
+    drawMode.value = 'official'
+  } else if (!selectedGiveawayId.value && adminStore.giveaways?.length > 0) {
+    selectedGiveawayId.value = adminStore.giveaways[0].id
+  }
+}
+
 watch(() => props.show, (newVal) => {
   if (newVal) {
-    if (props.initialGiveawayId) {
-      selectedGiveawayId.value = props.initialGiveawayId
-      drawMode.value = 'official'
-    } else if (!selectedGiveawayId.value && adminStore.giveaways?.length > 0) {
-      selectedGiveawayId.value = adminStore.giveaways[0].id
-    }
+    initGiveawaySelection()
   }
+})
+
+watch(() => props.initialGiveawayId, (newId) => {
+  if (newId) {
+    selectedGiveawayId.value = newId
+    drawMode.value = 'official'
+  }
+})
+
+onMounted(() => {
+  initGiveawaySelection()
 })
 
 // Confeti animado ligero sobre canvas

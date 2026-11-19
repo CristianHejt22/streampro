@@ -547,9 +547,20 @@ const myGiveawayEntries = computed(() => {
     .filter(e => belongsToAuthenticated(e.phone, e.clientNumber, e.id))
     .map(e => {
       const g = (adminStore.giveaways || []).find(x => x.id === e.giveawayId)
+      let lucky = Array.isArray(e.luckyNumbers) && e.luckyNumbers.length ? e.luckyNumbers : []
+      if (!lucky.length && g) {
+        const sum = adminStore.getGiveawayTicketSummary(g.id)
+        const match = sum?.entries?.find(ent => ent.id === e.id)
+        if (match && Array.isArray(match.luckyNumbers) && match.luckyNumbers.length) {
+          lucky = match.luckyNumbers
+        }
+      }
+      if (!lucky.length) {
+        lucky = [String(e.startTicket || 1).padStart(6, '0')]
+      }
       return {
         ...e,
-        luckyNumbers: (Array.isArray(e.luckyNumbers) && e.luckyNumbers.length) ? e.luckyNumbers : [String(e.startTicket || 1).padStart(6, '0')],
+        luckyNumbers: lucky,
         giveawayTitle: g?.title || `Sorteo ${e.giveawayId}`,
         prizeTitle: g?.prizeTitle || '',
         giveawayStatus: g?.status || 'active',

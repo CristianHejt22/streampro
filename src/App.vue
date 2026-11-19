@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useAdminStore, useResellerStore } from './store/admin'
@@ -32,6 +32,22 @@ const checkSavedUser = () => {
     savedUserName.value = ''
   }
 }
+
+watch(() => adminStore.seoConfig, (cfg) => {
+  if (cfg && typeof document !== 'undefined') {
+    if (cfg.siteTitle && !route.meta?.title) {
+      document.title = cfg.siteTitle
+    }
+    if (cfg.metaDescription) {
+      const metaDesc = document.querySelector('meta[name="description"]')
+      if (metaDesc) metaDesc.setAttribute('content', cfg.metaDescription)
+    }
+    if (cfg.keywords) {
+      const metaKey = document.querySelector('meta[name="keywords"]')
+      if (metaKey) metaKey.setAttribute('content', cfg.keywords)
+    }
+  }
+}, { immediate: true, deep: true })
 
 onMounted(() => {
   checkSavedUser()

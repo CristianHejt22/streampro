@@ -194,6 +194,43 @@ const handleSaveEditedInventory = () => {
 
 // Pestañas del Panel de Proveedor
 const adminTab = ref('inventory') // 'inventory' | 'orders' | 'renewals' | 'resellers' | 'bank'
+const adminCategoryFilter = ref('all') // 'all' | 'catalogs' | 'orders' | 'marketing' | 'finance'
+
+const adminCategoryTabs = {
+  catalogs: ['inventory', 'catalog', 'packages', 'gaming', 'physical'],
+  orders: ['orders', 'renewals', 'clients', 'users'],
+  marketing: ['marketing', 'resellers', 'giftcards'],
+  finance: ['bank', 'database']
+}
+
+const isTabInCurrentCategory = (tab) => {
+  if (adminCategoryFilter.value === 'all') return true
+  return (adminCategoryTabs[adminCategoryFilter.value] || []).includes(tab)
+}
+
+const selectAdminCategory = (cat) => {
+  adminCategoryFilter.value = cat
+  if (cat !== 'all') {
+    const tabsInCat = adminCategoryTabs[cat] || []
+    if (!tabsInCat.includes(adminTab.value)) {
+      adminTab.value = tabsInCat[0]
+    }
+  }
+}
+
+watch(adminTab, (newTab) => {
+  if (adminCategoryFilter.value !== 'all') {
+    const currentList = adminCategoryTabs[adminCategoryFilter.value] || []
+    if (!currentList.includes(newTab)) {
+      for (const [catName, tabs] of Object.entries(adminCategoryTabs)) {
+        if (tabs.includes(newTab)) {
+          adminCategoryFilter.value = catName
+          break
+        }
+      }
+    }
+  }
+})
 
 // CAMBIO PRIVADO DE CONTRASEÑA EN PANEL PROVEEDOR
 // Solo visto por el proveedor hasta una nueva compra o reemplazo,
@@ -5347,203 +5384,196 @@ const deletePackageItem = (pkgId) => {
       </div>
     </div>
 
-    <!-- Navegación de Pestañas del Proveedor -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-2 p-1.5 bg-slate-900/60 backdrop-blur rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap w-full">
-        <button 
-          @click="adminTab = 'inventory'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'inventory' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          📦 Inventario & Stock
-        </button>
-        <button 
-          @click="adminTab = 'catalog'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'catalog' ? 'bg-cyan-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🏷️ Catálogo & Precios ({{ Object.keys(adminStore.pricingCatalog).length }})
-        </button>
-        <button 
-          @click="adminTab = 'orders'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'orders' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🚚 Despachos ({{ streamingStats.pending }})
-          <span v-if="adminStore.openSupportTickets?.length > 0" class="bg-rose-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Tickets de soporte abiertos">
-            🆘 {{ adminStore.openSupportTickets.length }}
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'renewals'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'renewals' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🔄 Renovaciones ({{ adminStore.renewalRequests.length }})
-        </button>
-        <button 
-          @click="adminTab = 'resellers'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'resellers' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          👥 Revendedores ({{ adminStore.resellers.length }})
-          <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow">
-            {{ adminStore.pendingResellerApplications.length }} solicitudes
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'clients'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'clients' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          👤 Clientes & Ventas ({{ resellerStore.clients.length }})
-        </button>
-        <button 
-          @click="adminTab = 'users'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'users' ? 'bg-sky-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          📇 Directorio Clientes & PINs ({{ adminStore.registeredUsers.length }})
-        </button>
-        <button 
-          @click="adminTab = 'giftcards'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'giftcards' ? 'bg-gradient-to-r from-amber-400 to-rose-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🎁 Tarjetas de Regalo & Billeteras ({{ adminStore.giftCards?.length || 0 }})
-        </button>
-        <button 
-          @click="adminTab = 'physical'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'physical' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          📦 Tienda & Catálogo Físico ({{ adminStore.physicalProducts.length }})
-          <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
-            {{ adminStore.pendingPhysicalOrders.length }} pedidos
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'packages'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'packages' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🎁 Paquetes & Ofertas ({{ adminStore.packages.length }})
-        </button>
-        <button 
-          @click="adminTab = 'gaming'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🎮 Juegos Digitales ({{ adminStore.processedGamingProducts.length }})
-          <span v-if="adminStore.gamingSalesStats?.pendingCount > 0" class="bg-amber-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Pedidos gamer pendientes">
-            {{ adminStore.gamingSalesStats.pendingCount }} pend.
-          </span>
-          <span v-else-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
-            {{ adminStore.gamingOrders.length }}
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'bank'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'bank' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          🏦 Cuentas & Validador de Pagos
-          <span v-if="adminStore.bankTransfers?.length > 0" class="bg-emerald-500 text-slate-950 font-mono text-[10px] px-2 py-0.5 rounded-full font-black">
-            {{ adminStore.bankTransfers.length }}
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'marketing'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'marketing' ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-black shadow' : 'text-amber-300 hover:text-white hover:bg-slate-800']"
-        >
-          📣 Marketing, Sorteos & Descuentos
-          <span v-if="adminStore.pendingDiscountApplications?.length > 0" class="bg-rose-600 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
-            {{ adminStore.pendingDiscountApplications.length }} sol.
-          </span>
-          <span v-else-if="adminStore.activeGiveaways?.length > 0" class="bg-amber-400/20 text-amber-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-black border border-amber-400/30">
-            {{ adminStore.activeGiveaways.length }} act.
-          </span>
-        </button>
-        <button 
-          @click="adminTab = 'database'"
-          :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2', adminTab === 'database' ? 'bg-rose-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
-        >
-          💾 Sistema & Base de Datos
-        </button>
+    <!-- Selector de Categorías de Gestión / Organización de Funciones -->
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-900/80 backdrop-blur rounded-2xl border border-slate-800">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-[10px] font-black uppercase text-slate-400 px-2 hidden md:inline">Áreas:</span>
+          <button
+            type="button"
+            @click="selectAdminCategory('all')"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5', adminCategoryFilter === 'all' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            <span>🌐 Todas (14)</span>
+          </button>
+          <button
+            type="button"
+            @click="selectAdminCategory('orders')"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5', adminCategoryFilter === 'orders' ? 'bg-sky-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            <span>🚚 Ventas &amp; Pedidos (4)</span>
+            <span v-if="streamingStats.pending > 0 || adminStore.renewalRequests.length > 0" class="bg-rose-500 text-white font-mono text-[9px] px-1.5 rounded-full font-black animate-pulse">
+              {{ streamingStats.pending + adminStore.renewalRequests.length }}
+            </span>
+          </button>
+          <button
+            type="button"
+            @click="selectAdminCategory('catalogs')"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5', adminCategoryFilter === 'catalogs' ? 'bg-cyan-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            <span>📦 Catálogos &amp; Stock (5)</span>
+            <span v-if="adminStore.gamingSalesStats?.pendingCount > 0" class="bg-amber-400 text-slate-950 font-mono text-[9px] px-1.5 rounded-full font-black">
+              {{ adminStore.gamingSalesStats.pendingCount }}
+            </span>
+          </button>
+          <button
+            type="button"
+            @click="selectAdminCategory('marketing')"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5', adminCategoryFilter === 'marketing' ? 'bg-gradient-to-r from-amber-400 to-rose-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            <span>📣 Marketing &amp; Socios (3)</span>
+            <span v-if="adminStore.pendingResellerApplications?.length > 0 || adminStore.pendingDiscountApplications?.length > 0" class="bg-red-500 text-white font-mono text-[9px] px-1.5 rounded-full font-black animate-pulse">
+              {{ (adminStore.pendingResellerApplications?.length || 0) + (adminStore.pendingDiscountApplications?.length || 0) }}
+            </span>
+          </button>
+          <button
+            type="button"
+            @click="selectAdminCategory('finance')"
+            :class="['px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5', adminCategoryFilter === 'finance' ? 'bg-emerald-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            <span>🏦 Finanzas &amp; Sistema (2)</span>
+            <span v-if="adminStore.bankTransfers?.length > 0" class="bg-emerald-500 text-slate-950 font-mono text-[9px] px-1.5 rounded-full font-black">
+              {{ adminStore.bankTransfers.length }}
+            </span>
+          </button>
+        </div>
       </div>
 
-      <!-- Botón para Notificar Eventualidad al Revendedor (YA FUE AVISADO) -->
-      <button 
-        @click="openIncidentModal()" 
-        class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2"
-      >
-        <span>📢 Avisar Eventualidad a Revendedor</span>
-      </button>
-    </div>
-
-    <!-- ACCESO RÁPIDO DUAL: TIENDA DE SUSCRIPCIONES & TIENDA DE PRODUCTOS FÍSICOS -->
-    <div v-if="adminTab === 'inventory'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Tarjeta 1: Tienda de Suscripciones -->
-      <div class="bg-gradient-to-br from-sky-950/50 via-slate-900 to-indigo-950/40 p-6 rounded-3xl border border-sky-500/30 shadow-xl flex flex-col justify-between space-y-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow-inner">
-              🎬
-            </div>
-            <div>
-              <h3 class="text-lg font-black text-white">Tienda de Suscripciones Digitales</h3>
-              <p class="text-xs text-slate-300">8 plataformas activas (Max, Disney+, Spotify, IPTV, Prime Video, etc.)</p>
-            </div>
-          </div>
-          <span class="text-xs font-mono font-bold bg-sky-400/15 text-sky-300 border border-sky-400/30 px-2.5 py-1 rounded-xl">
-            {{ adminStore.orders.length }} Órdenes
-          </span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
+      <!-- Navegación de Pestañas del Proveedor Filtradas -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-2 p-1.5 bg-slate-900/60 backdrop-blur rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap w-full">
           <button 
-            type="button" 
+            v-if="isTabInCurrentCategory('inventory')"
+            @click="adminTab = 'inventory'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'inventory' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            📦 Inventario & Stock
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('catalog')"
             @click="adminTab = 'catalog'"
-            class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'catalog' ? 'bg-cyan-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
           >
-            <span>🏷️ Editar Precios & Planes</span>
+            🏷️ Catálogo & Precios ({{ Object.keys(adminStore.pricingCatalog).length }})
           </button>
           <button 
-            type="button" 
+            v-if="isTabInCurrentCategory('orders')"
             @click="adminTab = 'orders'"
-            class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'orders' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
           >
-            <span>🚚 Despachos ({{ adminStore.pendingOrders.length }})</span>
+            🚚 Despachos ({{ streamingStats.pending }})
+            <span v-if="adminStore.openSupportTickets?.length > 0" class="bg-rose-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Tickets de soporte abiertos">
+              🆘 {{ adminStore.openSupportTickets.length }}
+            </span>
           </button>
-          <a 
-            href="/?sec=digital" 
-            target="_blank" 
-            class="bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
-          >
-            <span>🌐 Ver Tienda Pública ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Tarjeta 2: Tienda de Productos Físicos -->
-      <div class="bg-gradient-to-br from-amber-950/50 via-slate-900 to-orange-950/40 p-6 rounded-3xl border border-amber-500/30 shadow-xl flex flex-col justify-between space-y-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-2xl shadow-inner">
-              📦
-            </div>
-            <div>
-              <h3 class="text-lg font-black text-white">Tienda & Catálogo de Productos Físicos</h3>
-              <p class="text-xs text-slate-300">{{ adminStore.physicalProducts.length }} productos sincronizados (tecnología, bazar, herramientas)</p>
-            </div>
-          </div>
-          <span class="text-xs font-mono font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-1 rounded-xl">
-            {{ adminStore.pendingPhysicalOrders.length }} Pendientes
-          </span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
           <button 
-            type="button" 
-            @click="adminTab = 'physical'"
-            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+            v-if="isTabInCurrentCategory('renewals')"
+            @click="adminTab = 'renewals'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'renewals' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
           >
-            <span>📦 Ver Catálogo & Pedidos Físicos</span>
+            🔄 Renovaciones ({{ adminStore.renewalRequests.length }})
           </button>
-          <a 
-            href="/p" 
-            target="_blank" 
-            class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
+          <button 
+            v-if="isTabInCurrentCategory('resellers')"
+            @click="adminTab = 'resellers'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'resellers' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
           >
-            <span>🌐 Ver Catálogo en Vivo (/p) ↗</span>
-          </a>
+            👥 Revendedores ({{ adminStore.resellers.length }})
+            <span v-if="adminStore.pendingResellerApplications?.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow">
+              {{ adminStore.pendingResellerApplications.length }} solicitudes
+            </span>
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('clients')"
+            @click="adminTab = 'clients'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'clients' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            👤 Clientes & Ventas ({{ resellerStore.clients.length }})
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('users')"
+            @click="adminTab = 'users'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'users' ? 'bg-sky-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            📇 Directorio Clientes & PINs ({{ adminStore.registeredUsers.length }})
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('giftcards')"
+            @click="adminTab = 'giftcards'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'giftcards' ? 'bg-gradient-to-r from-amber-400 to-rose-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            🎁 Tarjetas de Regalo & Billeteras ({{ adminStore.giftCards?.length || 0 }})
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('physical')"
+            @click="adminTab = 'physical'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'physical' ? 'bg-amber-400 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            📦 Tienda & Catálogo Físico ({{ adminStore.physicalProducts.length }})
+            <span v-if="adminStore.pendingPhysicalOrders.length > 0" class="bg-red-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
+              {{ adminStore.pendingPhysicalOrders.length }} pedidos
+            </span>
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('packages')"
+            @click="adminTab = 'packages'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'packages' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            🎁 Paquetes & Ofertas ({{ adminStore.packages.length }})
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('gaming')"
+            @click="adminTab = 'gaming'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            🎮 Juegos Digitales ({{ adminStore.processedGamingProducts.length }})
+            <span v-if="adminStore.gamingSalesStats?.pendingCount > 0" class="bg-amber-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse" title="Pedidos gamer pendientes">
+              {{ adminStore.gamingSalesStats.pendingCount }} pend.
+            </span>
+            <span v-else-if="adminStore.gamingOrders?.length > 0" class="bg-indigo-400 text-slate-950 font-mono text-[10px] px-1.5 py-0.2 rounded-full font-black">
+              {{ adminStore.gamingOrders.length }}
+            </span>
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('bank')"
+            @click="adminTab = 'bank'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'bank' ? 'bg-brand-accent text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            🏦 Cuentas & Validador de Pagos
+            <span v-if="adminStore.bankTransfers?.length > 0" class="bg-emerald-500 text-slate-950 font-mono text-[10px] px-2 py-0.5 rounded-full font-black">
+              {{ adminStore.bankTransfers.length }}
+            </span>
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('marketing')"
+            @click="adminTab = 'marketing'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'marketing' ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-black shadow' : 'text-amber-300 hover:text-white hover:bg-slate-800']"
+          >
+            📣 Marketing, Sorteos & Descuentos
+            <span v-if="adminStore.pendingDiscountApplications?.length > 0" class="bg-rose-600 text-white font-mono text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
+              {{ adminStore.pendingDiscountApplications.length }} sol.
+            </span>
+            <span v-else-if="adminStore.activeGiveaways?.length > 0" class="bg-amber-400/20 text-amber-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-black border border-amber-400/30">
+              {{ adminStore.activeGiveaways.length }} act.
+            </span>
+          </button>
+          <button 
+            v-if="isTabInCurrentCategory('database')"
+            @click="adminTab = 'database'"
+            :class="['px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer', adminTab === 'database' ? 'bg-rose-500 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800']"
+          >
+            💾 Sistema & Base de Datos
+          </button>
         </div>
+
+        <!-- Botón para Notificar Eventualidad al Revendedor (YA FUE AVISADO) -->
+        <button 
+          type="button"
+          @click="openIncidentModal()" 
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
+        >
+          <span>📢 Avisar Eventualidad a Revendedor</span>
+        </button>
       </div>
     </div>
 
@@ -9358,8 +9388,88 @@ const deletePackageItem = (pkgId) => {
       </div>
     </div>
 
-    <!-- Gestión de Inventario Mayorista: Con opción de Cambiar Contraseña Privada (Solo Proveedor) -->
-    <div v-if="adminTab === 'inventory'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
+    <!-- PESTAÑA: INVENTARIO MAYORISTA & STOCK -->
+    <div v-if="adminTab === 'inventory'" class="space-y-6">
+<!-- ACCESO RÁPIDO DUAL: TIENDA DE SUSCRIPCIONES & TIENDA DE PRODUCTOS FÍSICOS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Tarjeta 1: Tienda de Suscripciones -->
+      <div class="bg-gradient-to-br from-sky-950/50 via-slate-900 to-indigo-950/40 p-6 rounded-3xl border border-sky-500/30 shadow-xl flex flex-col justify-between space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow-inner">
+              🎬
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">Tienda de Suscripciones Digitales</h3>
+              <p class="text-xs text-slate-300">8 plataformas activas (Max, Disney+, Spotify, IPTV, Prime Video, etc.)</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono font-bold bg-sky-400/15 text-sky-300 border border-sky-400/30 px-2.5 py-1 rounded-xl">
+            {{ adminStore.orders.length }} Órdenes
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
+          <button 
+            type="button" 
+            @click="adminTab = 'catalog'"
+            class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🏷️ Editar Precios & Planes</span>
+          </button>
+          <button 
+            type="button" 
+            @click="adminTab = 'orders'"
+            class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>🚚 Despachos ({{ adminStore.pendingOrders.length }})</span>
+          </button>
+          <a 
+            href="/?sec=digital" 
+            target="_blank" 
+            class="bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
+          >
+            <span>🌐 Ver Tienda Pública ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Tarjeta 2: Tienda de Productos Físicos -->
+      <div class="bg-gradient-to-br from-amber-950/50 via-slate-900 to-orange-950/40 p-6 rounded-3xl border border-amber-500/30 shadow-xl flex flex-col justify-between space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-2xl shadow-inner">
+              📦
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-white">Tienda & Catálogo de Productos Físicos</h3>
+              <p class="text-xs text-slate-300">{{ adminStore.physicalProducts.length }} productos sincronizados (tecnología, bazar, herramientas)</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-1 rounded-xl">
+            {{ adminStore.pendingPhysicalOrders.length }} Pendientes
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.08]">
+          <button 
+            type="button" 
+            @click="adminTab = 'physical'"
+            class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>📦 Ver Catálogo & Pedidos Físicos</span>
+          </button>
+          <a 
+            href="/p" 
+            target="_blank" 
+            class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ml-auto"
+          >
+            <span>🌐 Ver Catálogo en Vivo (/p) ↗</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+      <!-- Gestión de Inventario Mayorista: Con opción de Cambiar Contraseña Privada (Solo Proveedor) -->
+      <div class="bg-slate-900/40 rounded-3xl border border-slate-800 p-8 backdrop-blur-md">
       <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
         <div class="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center text-brand-accent border border-brand-accent/20">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8-4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
@@ -9645,6 +9755,8 @@ const deletePackageItem = (pkgId) => {
           </tbody>
         </table>
       </div>
+    </div>
+
     </div>
 
     <!-- ==================== PESTAÑA: GESTIÓN DE PROVEEDORES GAMING (ARGENTINA PLAY & JDA) ==================== -->

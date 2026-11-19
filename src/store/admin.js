@@ -1686,6 +1686,10 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.GIFT_CARDS, this.giftCards)
       } else if (key === DB_KEYS.CUSTOMER_WALLETS) {
         saveDb(DB_KEYS.CUSTOMER_WALLETS, this.customerWallets)
+      } else if (key === DB_KEYS.MARKETING_CLICKS) {
+        saveDb(DB_KEYS.MARKETING_CLICKS, this.marketingClicks)
+      } else if (key === DB_KEYS.SEO_CONFIG) {
+        saveDb(DB_KEYS.SEO_CONFIG, this.seoConfig)
       } else {
         saveDb(DB_KEYS.INVENTORY, this.inventory)
         saveDb(DB_KEYS.RESELLERS, this.resellers)
@@ -1728,6 +1732,8 @@ export const useAdminStore = defineStore('admin', {
         saveDb(DB_KEYS.DISCOUNT_CREDITS_LOG, this.discountCreditsLog)
         saveDb(DB_KEYS.GIVEAWAYS, this.giveaways)
         saveDb(DB_KEYS.GIVEAWAY_ENTRIES, this.giveawayEntries)
+        saveDb(DB_KEYS.MARKETING_CLICKS, this.marketingClicks)
+        saveDb(DB_KEYS.SEO_CONFIG, this.seoConfig)
       }
     },
 
@@ -2389,6 +2395,10 @@ export const useAdminStore = defineStore('admin', {
           const cList = Object.values(hub.creditsLogById).filter(Boolean)
           this.discountCreditsLog = cList.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, 200)
           this.persist(DB_KEYS.DISCOUNT_CREDITS_LOG)
+        }
+        if (hub.seoConfig && typeof hub.seoConfig === 'object') {
+          this.seoConfig = { ...this.seoConfig, ...hub.seoConfig }
+          this.persist(DB_KEYS.SEO_CONFIG)
         }
       }
 
@@ -3621,30 +3631,38 @@ export const useAdminStore = defineStore('admin', {
 
     // Restauración Integral a Base de Datos Depurada de Producción
     async resetDatabaseToCleanSeed() {
-      const res = await applyPristineDatabase()
-      
-      this.adminAuth = loadDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
-      this.pricingCatalog = loadDb(DB_KEYS.PRICING_CATALOG, CLEAN_PRICING_CATALOG)
-      this.inventory = loadDb(DB_KEYS.INVENTORY, [])
-      this.resellers = loadDb(DB_KEYS.RESELLERS, [])
-      this.resellerApplications = []
-      this.orders = []
-      this.physicalOrders = []
-      this.packages = loadDb(DB_KEYS.PACKAGES, getFreshOfficialCombos())
-      this.providerBankAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [])
-      this.providerBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
-      this.bankTransfers = []
-      this.walletTransactions = []
-      this.resellerAlerts = []
-      this.renewalRequests = []
-      this.ensurePhysicalProductsLoaded()
-      
-      const resellerStore = useResellerStore()
-      resellerStore.clients = []
-      resellerStore.wallet = 50000
-      resellerStore.persist()
-      
-      return res
+      try {
+        const res = await applyPristineDatabase()
+        
+        this.adminAuth = loadDb(DB_KEYS.ADMIN_AUTH, this.adminAuth)
+        this.pricingCatalog = loadDb(DB_KEYS.PRICING_CATALOG, CLEAN_PRICING_CATALOG)
+        this.inventory = loadDb(DB_KEYS.INVENTORY, [])
+        this.resellers = loadDb(DB_KEYS.RESELLERS, [])
+        this.resellerApplications = []
+        this.orders = []
+        this.physicalOrders = []
+        this.packages = loadDb(DB_KEYS.PACKAGES, getFreshOfficialCombos())
+        this.providerBankAccounts = loadDb(DB_KEYS.PROVIDER_BANK_ACCOUNTS, [])
+        this.providerBankInfo = loadDb(DB_KEYS.PROVIDER_BANK, this.providerBankInfo)
+        this.bankTransfers = []
+        this.walletTransactions = []
+        this.resellerAlerts = []
+        this.renewalRequests = []
+        this.giveaways = loadDb(DB_KEYS.GIVEAWAYS, DEFAULT_PRODUCTION_GIVEAWAYS)
+        this.giveawayEntries = []
+        this.marketingClicks = []
+        this.ensurePhysicalProductsLoaded()
+        
+        const resellerStore = useResellerStore()
+        resellerStore.clients = []
+        resellerStore.wallet = 50000
+        resellerStore.persist()
+        
+        return res
+      } catch (err) {
+        console.error('[Store] Error en resetDatabaseToCleanSeed:', err)
+        return { success: false, error: err.message }
+      }
     },
 
     // Administrar Revendedores desde el Panel Proveedor
@@ -6152,6 +6170,7 @@ export const useAdminStore = defineStore('admin', {
       })
 
       const allLuckyNumbers = []
+      let hasBackfill = false
 
       const detailed = entries.map(e => {
         const count = Math.max(1, Number(e.ticketsCount || 1))
@@ -6162,6 +6181,7 @@ export const useAdminStore = defineStore('admin', {
 
         // Garantizar números de 6 dígitos para cada ticket del participante
         let lucky = Array.isArray(e.luckyNumbers) ? e.luckyNumbers.map(String).filter(s => s.length === 6) : []
+        const initialLen = lucky.length
         while (lucky.length < count) {
           let hash = 0
           const seed = `${e.id || 'ENT'}-${lucky.length}`
@@ -6177,6 +6197,9 @@ export const useAdminStore = defineStore('admin', {
           }
           usedLuckyNumbers.add(candidate)
           lucky.push(candidate)
+        }
+        if (lucky.length > initialLen) {
+          hasBackfill = true
         }
         e.luckyNumbers = lucky
 
@@ -6201,6 +6224,10 @@ export const useAdminStore = defineStore('admin', {
           maskedPhone: masked
         }
       })
+
+      if (hasBackfill) {
+        this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+      }
 
       return {
         entries: detailed,
@@ -6504,6 +6531,33 @@ export const useAdminStore = defineStore('admin', {
       }
       giveaway.updatedAt = new Date().toISOString()
       this.persist(DB_KEYS.GIVEAWAYS)
+
+      // Marcar entradas ganadoras y persistir estado de tickets
+      if (Array.isArray(winners) && winners.length > 0 && Array.isArray(this.giveawayEntries)) {
+        const winnerMap = new Map()
+        winners.forEach(w => {
+          if (w.entryId) winnerMap.set(w.entryId, w)
+          if (w.luckyNumber) winnerMap.set(String(w.luckyNumber), w)
+        })
+        let entriesChanged = false
+        this.giveawayEntries.forEach(entry => {
+          if (entry.giveawayId === giveawayId) {
+            const match = winnerMap.get(entry.id) || (Array.isArray(entry.luckyNumbers) && entry.luckyNumbers.find(ln => winnerMap.has(String(ln))))
+            if (match) {
+              const winData = typeof match === 'object' ? match : winnerMap.get(String(match))
+              entry.isWinner = true
+              entry.wonRank = winData?.rank || 1
+              entry.wonRole = winData?.roleLabel || 'Ganador'
+              entry.winningLuckyNumber = winData?.luckyNumber || entry.luckyNumbers?.[0] || ''
+              entriesChanged = true
+            }
+          }
+        })
+        if (entriesChanged) {
+          this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+        }
+      }
+
       saveMarketingHubPatchToFirebase({ giveawaysById: { [giveaway.id]: giveaway } }).catch(() => {})
       return { success: true, giveaway }
     },
@@ -6540,6 +6594,7 @@ export const useAdminStore = defineStore('admin', {
     saveSeoConfig(config) {
       this.seoConfig = { ...this.seoConfig, ...config }
       this.persist(DB_KEYS.SEO_CONFIG)
+      saveMarketingHubPatchToFirebase({ seoConfig: this.seoConfig }).catch(() => {})
     },
 
     // ==========================================
