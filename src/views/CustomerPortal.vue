@@ -265,13 +265,16 @@ const toggleGameGuide = (orderId) => {
 
 const isGamingOrder = (o) => {
   if (!o) return false
+  if (o.orderType === 'package' || o.orderType === 'combo' || o.isPackage || o.packageId || o.category === 'Combos' || o.category === 'Combo Especial' || o.planKey === 'combo_bundle' || (o.platform && o.platform.includes(' + '))) {
+    return false
+  }
   return o.orderType === 'gaming' ||
     o.category === 'Videojuegos Digitales' ||
     o.category === 'gaming' ||
-    Boolean(o.gameTitle) ||
     Boolean(o.licenseType) ||
     Boolean(o.gamePlatform) ||
-    (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PS3') || o.platform.includes('Juego')))
+    Boolean(o.gameTitle) ||
+    (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PS3')))
 }
 
 const normalizeDigits = (val) => String(val || '').replace(/[^0-9]/g, '').replace(/^549?/, '').replace(/^0/, '')

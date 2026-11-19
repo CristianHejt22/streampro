@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAdminStore, useResellerStore } from '../store/admin'
+import { useAdminStore, useResellerStore, isPackageOrder, isGamingOrder } from '../store/admin'
 import { useToastStore } from '../store/toast'
 import { loadDb, DB_KEYS, generateSecurePassword, exportDatabaseBackup, importDatabaseBackup } from '../services/db'
 import { getDatabaseHealthStatus, applyPristineDatabase } from '../services/cleanDatabaseSeed'
@@ -217,6 +217,20 @@ const selectAdminCategory = (cat) => {
     }
   }
 }
+
+watch(gamingAdminSubTab, (val) => {
+  if (val === 'orders') {
+    adminTab.value = 'orders'
+    ordersSubSection.value = 'gaming'
+  }
+})
+
+watch(adminPhysicalSubTab, (val) => {
+  if (val === 'orders') {
+    adminTab.value = 'orders'
+    ordersSubSection.value = 'physical'
+  }
+})
 
 watch(adminTab, (newTab) => {
   if (adminCategoryFilter.value !== 'all') {
@@ -3789,26 +3803,27 @@ const deliveryMatches = ref([])
 
 const availableAccountsForOrder = computed(() => {
   if (!selectedOrder.value) return []
-  return adminStore.inventory.filter(i => 
-    i.platform === selectedOrder.value.platform && 
-    (i.status === 'Available' || i.profiles.some(p => !p.isAssigned))
-  )
+  const isCombo = isOrderPackageType(selectedOrder.value)
+  return adminStore.inventory.filter(i => {
+    const hasFreeProfiles = i.status === 'Available' || (i.profiles && i.profiles.some(p => !p.isAssigned))
+    if (!hasFreeProfiles) return false
+    if (isCombo) {
+      if (selectedOrder.value.services && Array.isArray(selectedOrder.value.services)) {
+        return selectedOrder.value.services.some(s => s.platform === i.platform)
+      }
+      return selectedOrder.value.platform && selectedOrder.value.platform.includes(i.platform)
+    }
+    return i.platform === selectedOrder.value.platform
+  })
 })
 
-// GESTIÓN Y CONTROL ORDENADO DE PEDIDOS STREAMING (Excluye videojuegos digitales para evitar contaminación)
-const streamingOrderSearch = ref('')
-const streamingOrderStatusFilter = ref('All') // 'All' | 'Waiting Provider' | 'Dispatched' | 'Cancelado'
-const streamingOrderResellerFilter = ref('All')
+// SECCIONES DE PEDIDOS & DESPACHOS: 'streaming' | 'gaming' | 'physical'
+const ordersSubSection = ref('streaming')
+// SUB-FILTRO DE TIPO EN STREAMING & COMBOS: 'ALL' | 'INDIVIDUAL' | 'COMBO'
+const streamingItemTypeFilter = ref('ALL')
 
-const isOrderGamingType = (o) => {
-  if (!o) return false
-  return o.orderType === 'gaming' ||
-    o.category === 'Videojuegos Digitales' ||
-    Boolean(o.gameTitle) ||
-    Boolean(o.licenseType) ||
-    (o.planKey && String(o.planKey).startsWith('gaming_')) ||
-    (o.platform && (o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PlayStation')))
-}
+const isOrderPackageType = (o) => isPackageOrder(o)
+const isOrderGamingType = (o) => isGamingOrder(o)
 
 const streamingBaseOrders = computed(() => {
   return (adminStore.orders || []).filter(o => !isOrderGamingType(o))
@@ -3816,6 +3831,11 @@ const streamingBaseOrders = computed(() => {
 
 const filteredStreamingOrdersForAdmin = computed(() => {
   let list = streamingBaseOrders.value
+  if (streamingItemTypeFilter.value === 'INDIVIDUAL') {
+    list = list.filter(o => !isOrderPackageType(o))
+  } else if (streamingItemTypeFilter.value === 'COMBO') {
+    list = list.filter(o => isOrderPackageType(o))
+  }
   if (streamingOrderStatusFilter.value !== 'All') {
     if (streamingOrderStatusFilter.value === 'Waiting Provider') {
       list = list.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente')
@@ -3838,6 +3858,7 @@ const filteredStreamingOrdersForAdmin = computed(() => {
       (o.customerName && o.customerName.toLowerCase().includes(q)) ||
       (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
       (o.platform && o.platform.toLowerCase().includes(q)) ||
+      (o.packageName && o.packageName.toLowerCase().includes(q)) ||
       (o.pin && String(o.pin).includes(q)) ||
       (o.voucher && o.voucher.toLowerCase().includes(q)) ||
       (o.resellerName && o.resellerName.toLowerCase().includes(q))
@@ -3848,12 +3869,20 @@ const filteredStreamingOrdersForAdmin = computed(() => {
 
 const streamingStats = computed(() => {
   const all = streamingBaseOrders.value
+  const combos = all.filter(o => isOrderPackageType(o)).length
+  const singles = all.filter(o => !isOrderPackageType(o)).length
   const pending = all.filter(o => o.status === 'Waiting Provider' || o.status === 'Pendiente').length
   const dispatched = all.filter(o => o.status === 'Dispatched').length
   const cancelled = all.filter(o => o.status === 'Cancelado').length
   const totalAmount = all.reduce((sum, o) => sum + (o.status !== 'Cancelado' ? Number(o.clientPrice || o.total || 0) : 0), 0)
-  return { all: all.length, pending, dispatched, cancelled, totalAmount }
+  return { all: all.length, pending, dispatched, cancelled, totalAmount, combos, singles }
 })
+
+const handleClearPhysicalOrders = () => {
+  if (!confirm('¿Estás seguro de vaciar todos los pedidos de productos físicos?')) return
+  adminStore.clearPhysicalOrders()
+  toast.add('Pedidos físicos vaciados correctamente', 'info')
+}
 
 const handleCancelStreamingOrder = (order) => {
   const reason = prompt('Indica el motivo de cancelación del pedido:', 'Cancelado por administración')
@@ -5642,6 +5671,87 @@ const deletePackageItem = (pkgId) => {
 
     <!-- Centro de Despachos de Pedidos -->
     <div v-if="adminTab === 'orders'" class="bg-slate-900/40 rounded-3xl border border-slate-800 p-6 sm:p-8 backdrop-blur-md space-y-6">
+      <!-- ==================== BARRA PRINCIPAL DE SECCIONES DE PEDIDOS ==================== -->
+      <div class="flex flex-wrap items-center justify-between gap-4 p-2 bg-[#020617] rounded-2xl border border-slate-800">
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto">
+          <button 
+            type="button"
+            @click="ordersSubSection = 'streaming'"
+            :class="['px-5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0', ordersSubSection === 'streaming' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
+          >
+            <span>🎬 Streaming & Combos</span>
+            <span class="bg-cyan-400/20 text-cyan-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold border border-cyan-400/30">
+              {{ streamingStats.pending }} pend. ({{ streamingStats.all }})
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            @click="ordersSubSection = 'gaming'"
+            :class="['px-5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0', ordersSubSection === 'gaming' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
+          >
+            <span>🎮 Videojuegos Digitales</span>
+            <span class="bg-indigo-400/20 text-indigo-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold border border-indigo-400/30">
+              {{ adminStore.gamingSalesStats?.pendingCount || 0 }} pend. ({{ adminStore.gamingOrders.length }})
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            @click="ordersSubSection = 'physical'"
+            :class="['px-5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0', ordersSubSection === 'physical' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-900']"
+          >
+            <span>📦 Productos Físicos</span>
+            <span class="bg-amber-400/20 text-amber-200 font-mono text-[10px] px-2 py-0.5 rounded-full font-bold border border-amber-400/30">
+              {{ adminStore.pendingPhysicalOrders.length }} pend. ({{ (adminStore.physicalOrders || []).length }})
+            </span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button 
+            v-if="ordersSubSection === 'streaming'"
+            type="button"
+            @click="handleClearStreamingOrders"
+            class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+            title="Vaciar pedidos de streaming para dejar limpio el despacho en producción real"
+          >
+            <span>🗑️</span>
+            <span>Vaciar Streaming</span>
+          </button>
+          <button 
+            v-else-if="ordersSubSection === 'gaming'"
+            type="button"
+            @click="handleClearGamingOrders"
+            class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+            title="Vaciar pedidos de videojuegos para dejar limpio el despacho gamer en producción real"
+          >
+            <span>🗑️</span>
+            <span>Vaciar Gamer</span>
+          </button>
+          <button 
+            v-else-if="ordersSubSection === 'physical'"
+            type="button"
+            @click="handleClearPhysicalOrders"
+            class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+            title="Vaciar pedidos de tienda física"
+          >
+            <span>🗑️</span>
+            <span>Vaciar Físicos</span>
+          </button>
+          <button 
+            @click="manualCloudSync" 
+            :disabled="isSyncingCloud"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 shrink-0"
+            title="Sincronizar pedidos desde la base de datos de Firebase"
+          >
+            <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 1: PEDIDOS STREAMING & COMBOS -->
+      <div v-if="ordersSubSection === 'streaming'" class="space-y-6">
       
       <!-- HEADER CON TÍTULO Y BOTÓN DE SINCRONIZACIÓN -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
@@ -5689,7 +5799,7 @@ const deletePackageItem = (pkgId) => {
         </div>
         <button
           type="button"
-          @click="adminTab = 'gaming'; gamingAdminSubTab = 'orders'"
+          @click="ordersSubSection = 'gaming'"
           class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition cursor-pointer shrink-0"
         >
           Ir a Pedidos Gamer →
@@ -5833,6 +5943,40 @@ const deletePackageItem = (pkgId) => {
         </div>
       </div>
 
+      <!-- SUB-FILTRO DE TIPO EN STREAMING & COMBOS -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-black uppercase text-slate-400 tracking-wider">Filtrar por:</span>
+          <button 
+            type="button"
+            @click="streamingItemTypeFilter = 'ALL'"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer', streamingItemTypeFilter === 'ALL' ? 'bg-cyan-500 text-slate-950 font-black shadow' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800']"
+          >
+            <span>🍿 Todos</span>
+            <span class="text-[10px] font-mono font-bold opacity-80">({{ streamingStats.all }})</span>
+          </button>
+          <button 
+            type="button"
+            @click="streamingItemTypeFilter = 'INDIVIDUAL'"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer', streamingItemTypeFilter === 'INDIVIDUAL' ? 'bg-cyan-500 text-slate-950 font-black shadow' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800']"
+          >
+            <span>📺 Streaming Individual</span>
+            <span class="text-[10px] font-mono font-bold opacity-80">({{ streamingStats.singles }})</span>
+          </button>
+          <button 
+            type="button"
+            @click="streamingItemTypeFilter = 'COMBO'"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer', streamingItemTypeFilter === 'COMBO' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black shadow' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800']"
+          >
+            <span>🎁 Combos Especiales</span>
+            <span class="text-[10px] font-mono font-bold opacity-80">({{ streamingStats.combos }})</span>
+          </button>
+        </div>
+        <div class="text-[11px] text-slate-400 font-mono">
+          Mostrando {{ filteredStreamingOrdersForAdmin.length }} de {{ streamingStats.all }} órdenes
+        </div>
+      </div>
+
       <!-- BARRA DE FILTROS Y BÚSQUEDA ORDENADA -->
       <div class="flex flex-col md:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
         <div class="flex-1 relative">
@@ -5890,14 +6034,20 @@ const deletePackageItem = (pkgId) => {
           <div class="flex justify-between items-start gap-4">
             <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-2">
-                <span v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))" class="text-[10px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  🎮 VIDEOJUEGO
+                <span v-if="isOrderPackageType(order)" class="text-[10px] font-black uppercase bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-pink-300 border border-pink-500/40 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                  <span>🎁</span> COMBO STREAMING
+                </span>
+                <span v-else-if="isOrderGamingType(order)" class="text-[10px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>🎮</span> VIDEOJUEGO
+                </span>
+                <span v-else class="text-[10px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>📺</span> STREAMING
                 </span>
                 <span class="text-lg font-black text-white">
-                  {{ order.gameTitle || order.platform }}
+                  {{ order.packageName || order.gameTitle || order.platform }}
                 </span>
                 <button 
-                  v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))"
+                  v-if="isOrderGamingType(order)"
                   type="button" 
                   @click="openAssignGameModal(order)"
                   class="text-[10px] bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer"
@@ -5947,7 +6097,10 @@ const deletePackageItem = (pkgId) => {
                   </span>
                 </p>
                 <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 pt-0.5">
-                  <span v-if="order.orderType === 'gaming' || order.gameTitle || (order.platform && (order.platform.includes('PS4') || order.platform.includes('PS5')))">
+                  <span v-if="isOrderPackageType(order)">
+                    Modalidad: <strong class="text-pink-300">🎁 Combo Promocional</strong> • Detalle: <strong class="text-slate-200">{{ order.planLabel || (order.devices + ' Pantallas en total') }}</strong>
+                  </span>
+                  <span v-else-if="isOrderGamingType(order)">
                     Modalidad: <strong class="text-amber-300">{{ order.licenseLabel || order.planLabel || '⭐️ Cuenta Primaria' }}</strong> • Plataforma: <strong class="text-slate-200">{{ order.gamePlatform || 'PS4 / PS5' }}</strong>
                   </span>
                   <span v-else>Plan: <strong class="text-slate-200">{{ order.planLabel || order.devices + ' Pantallas' }}</strong></span>
@@ -5955,6 +6108,18 @@ const deletePackageItem = (pkgId) => {
                   <span>Monto: <strong class="text-emerald-400 font-mono">${{ (order.clientPrice || order.total || 0).toLocaleString() }} ARS</strong></span>
                   <span v-if="order.paymentMethod">• {{ order.paymentMethod }}</span>
                 </div>
+              </div>
+
+              <!-- Cuentas y Pantallas incluidas en el Combo -->
+              <div v-if="isOrderPackageType(order) && order.services && order.services.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+                <span 
+                  v-for="(srv, sIdx) in order.services" 
+                  :key="sIdx" 
+                  class="text-[10px] bg-purple-950/60 border border-purple-500/30 text-purple-200 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 shadow-sm"
+                >
+                  <span>🍿</span> {{ srv.platform || srv.name }}
+                  <span class="text-pink-400 font-mono">({{ srv.units || 1 }} pant.)</span>
+                </span>
               </div>
 
               <!-- Comprobante adjunto -->
@@ -6110,6 +6275,770 @@ const deletePackageItem = (pkgId) => {
             <p v-if="order.cancelledAt" class="text-[10px] text-slate-500 font-mono">Fecha: {{ order.cancelledAt }}</p>
           </div>
         </div>
+      </div>
+      </div>
+
+      <!-- SECCIÓN 2: PEDIDOS VIDEOJUEGOS DIGITALES -->
+      <div v-else-if="ordersSubSection === 'gaming'" class="space-y-6">
+        
+        <!-- ENCABEZADO Y ACCIONES RÁPIDAS -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#020617] p-5 rounded-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🎮📦</span>
+              <h3 class="text-lg font-black text-white">Centro de Despacho & Control de Ventas Gamer</h3>
+              <span class="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                {{ adminStore.gamingSalesStats?.totalOrders || adminStore.gamingOrders.length }} Total
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Control de facturación, cálculo de márgenes netos, verificación de comprobantes y entrega de licencias vía WhatsApp.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button"
+              @click="handleClearGamingOrders"
+              class="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
+              title="Vaciar pedidos de videojuegos para dejar limpio el despacho gamer en producción real"
+            >
+              <span>🗑️</span>
+              <span>Vaciar Pedidos Gamer</span>
+            </button>
+            <button 
+              type="button"
+              @click="manualCloudSync"
+              :disabled="isSyncingCloud"
+              class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
+              title="Sincronizar pedidos gamer con Firebase"
+            >
+              <span>{{ isSyncingCloud ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI METRICS GRID: DATOS FINANCIEROS Y OPERATIVOS GAMER -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <!-- Facturación Total -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-emerald-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Facturado Total</span>
+            <span class="text-xl font-black text-emerald-400 font-mono block">
+              ${{ (adminStore.gamingSalesStats?.totalBilled || 0).toLocaleString() }}
+            </span>
+            <span class="text-[10px] text-slate-400">ARS cobrados</span>
+          </div>
+
+          <!-- Margen / Ganancia Estimada -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-purple-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Ganancia / Margen</span>
+            <span class="text-xl font-black text-purple-400 font-mono block">
+              +${{ (adminStore.gamingSalesStats?.totalProfit || 0).toLocaleString() }}
+            </span>
+            <span class="text-[10px] text-purple-300/80">Margen neto est.</span>
+          </div>
+
+          <!-- Por Despachar / Pendientes -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-amber-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Por Entregar</span>
+            <span class="text-2xl font-black text-amber-400 font-mono block">
+              {{ adminStore.gamingSalesStats?.pendingCount || 0 }}
+            </span>
+            <span class="text-[10px] text-amber-300/80">Esperando entrega</span>
+          </div>
+
+          <!-- Entregados -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-sky-500/30 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Entregados</span>
+            <span class="text-2xl font-black text-sky-400 font-mono block">
+              {{ adminStore.gamingSalesStats?.dispatchedCount || 0 }}
+            </span>
+            <span class="text-[10px] text-sky-300/80">Despachados</span>
+          </div>
+
+          <!-- Licencias Primarias vs Secundarias -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Tipo de Licencia</span>
+            <div class="text-sm font-black text-white font-mono flex items-center gap-1.5 pt-1">
+              <span class="text-amber-300">⭐️ {{ adminStore.gamingSalesStats?.primaryCount || 0 }}</span>
+              <span class="text-slate-500">/</span>
+              <span class="text-indigo-300">⚡️ {{ adminStore.gamingSalesStats?.secondaryCount || 0 }}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Primarias / Secundarias</span>
+          </div>
+
+          <!-- Desglose por Proveedor -->
+          <div class="bg-[#020617] p-4 rounded-2xl border border-slate-800 space-y-1">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Por Proveedor</span>
+            <div class="text-xs font-black text-white font-mono flex items-center gap-1 pt-1">
+              <span class="text-blue-300">🇦🇷 {{ adminStore.gamingSalesStats?.argPlayCount || 0 }}</span>
+              <span class="text-slate-500">|</span>
+              <span class="text-amber-300">🎮 {{ adminStore.gamingSalesStats?.jdaCount || 0 }}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Arg Play / JDA</span>
+          </div>
+        </div>
+
+        <!-- BANDEJA DE CONSULTAS Y SOLICITUDES MANUALES DE JUEGOS (CLIENTES / REVENDEDORES) -->
+        <div v-if="gamingInquiryTicketsForAdmin.length > 0" class="bg-[#020617] border border-amber-500/35 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📩</span>
+              <div>
+                <h4 class="text-sm font-black text-amber-300">
+                  Consultas & Solicitudes Manuales de Juegos ({{ openGameRequestCount }} pendientes)
+                </h4>
+                <p class="text-[11px] text-slate-400">
+                  Pedidos o consultas enviadas por Clientes y Revendedores Oficiales. Contesta directo o pásalo al POS con 1 click.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto custom-scrollbar">
+            <div
+              v-for="t in gamingInquiryTicketsForAdmin"
+              :key="t.id"
+              :class="['p-3.5 rounded-xl border text-xs space-y-2', t.status === 'Resuelto' ? 'bg-slate-950/60 border-emerald-500/25 opacity-80' : 'bg-slate-950 border-amber-500/35']"
+            >
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-mono font-bold text-indigo-300">#{{ t.id }}</span>
+                  <span :class="['text-[10px] font-black px-2 py-0.5 rounded-full', t.sourceRole === 'reseller' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30']">
+                    {{ t.sourceRole === 'reseller' ? '🏪 Revendedor' : '👤 Cliente' }}
+                  </span>
+                  <span class="font-black text-white">{{ t.clientName }}</span>
+                  <span v-if="t.phone" class="text-[10px] text-cyan-300 font-mono">({{ t.phone }})</span>
+                </div>
+                <span :class="['text-[10px] px-2 py-0.5 rounded-full font-bold', t.status === 'Resuelto' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300']">
+                  {{ t.status }}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span class="font-black text-amber-300">🎮 {{ t.requestedGame || t.subject }}</span>
+                <span v-if="t.requestedPlatform" class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[10px]">{{ t.requestedPlatform }}</span>
+                <span v-if="t.requestedLicense" class="px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-200 font-bold text-[10px]">{{ t.requestedLicense }}</span>
+              </div>
+
+              <p class="text-slate-300 bg-slate-900/70 p-2 rounded-lg">{{ t.message }}</p>
+
+              <div v-if="t.status !== 'Resuelto'" class="flex flex-wrap gap-1.5 pt-1">
+                <input
+                  v-model="supportTicketReplies[t.id]"
+                  type="text"
+                  placeholder="Responder cotización o disponibilidad al cliente/revendedor..."
+                  class="flex-1 min-w-[140px] bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-amber-400"
+                >
+                <button
+                  type="button"
+                  @click="handleResolveSupportTicket(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer"
+                >
+                  ✅ Responder
+                </button>
+                <button
+                  v-if="t.phone"
+                  type="button"
+                  @click="sendTicketReplyWhatsApp(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-[11px] cursor-pointer"
+                  title="Responder directo por WhatsApp"
+                >
+                  💬 WA
+                </button>
+                <button
+                  type="button"
+                  @click="openSupportTicketInPos(t)"
+                  class="px-2.5 py-1.5 rounded-lg bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 font-bold text-[11px] cursor-pointer"
+                  title="Cargar en POS Venta Rápida para cobrar o cotizar"
+                >
+                  🛒 POS
+                </button>
+              </div>
+              <div v-else class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <p v-if="t.adminReply" class="text-[11px] text-emerald-300 italic">
+                  Respuesta Admin: {{ t.adminReply }}
+                </p>
+                <div class="flex gap-1.5 ml-auto">
+                  <button
+                    v-if="t.phone"
+                    type="button"
+                    @click="sendTicketReplyWhatsApp(t)"
+                    class="px-2 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-[10px] cursor-pointer"
+                  >
+                    💬 Reenviar WA
+                  </button>
+                  <button
+                    type="button"
+                    @click="openSupportTicketInPos(t)"
+                    class="px-2 py-1 rounded-lg bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white border border-pink-500/30 font-bold text-[10px] cursor-pointer"
+                  >
+                    🛒 POS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTROS Y BÚSQUEDA REACTIVA -->
+        <div class="flex flex-col md:flex-row gap-3 bg-[#020617] p-4 rounded-2xl border border-slate-800">
+          <div class="flex-1 relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-500 text-xs">🔍</span>
+            <input 
+              v-model="gamingOrderSearch" 
+              type="text" 
+              placeholder="Buscar por N° Orden, cliente, WhatsApp, videojuego o proveedor..." 
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+            >
+            <button 
+              v-if="gamingOrderSearch" 
+              @click="gamingOrderSearch = ''" 
+              type="button" 
+              class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Filtro por Estado -->
+            <select 
+              v-model="gamingOrderStatusFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todos los Estados ({{ adminStore.gamingOrders.length }})</option>
+              <option value="PENDING">⏳ Pendientes ({{ adminStore.gamingSalesStats?.pendingCount || 0 }})</option>
+              <option value="DISPATCHED">✅ Entregados ({{ adminStore.gamingSalesStats?.dispatchedCount || 0 }})</option>
+            </select>
+
+            <!-- Filtro por Proveedor -->
+            <select 
+              v-model="gamingOrderProviderFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todos los Proveedores</option>
+              <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">
+                {{ site.badge || site.name }}
+              </option>
+            </select>
+
+            <!-- Filtro por Licencia -->
+            <select 
+              v-model="gamingOrderLicenseFilter" 
+              class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Todas las Licencias</option>
+              <option value="primary">⭐️ Cuenta Primaria</option>
+              <option value="secondary">⚡️ Cuenta Secundaria</option>
+            </select>
+
+            <!-- Reset -->
+            <button 
+              v-if="gamingOrderSearch || gamingOrderStatusFilter !== 'ALL' || gamingOrderProviderFilter !== 'ALL' || gamingOrderLicenseFilter !== 'ALL'"
+              @click="gamingOrderSearch = ''; gamingOrderStatusFilter = 'ALL'; gamingOrderProviderFilter = 'ALL'; gamingOrderLicenseFilter = 'ALL'"
+              type="button"
+              class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+              title="Limpiar filtros"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- LISTA DE PEDIDOS GAMER -->
+        <div v-if="adminStore.gamingOrders.length === 0" class="p-12 bg-[#020617] border border-slate-800 rounded-2xl text-center space-y-3">
+          <span class="text-4xl block">🎮📦</span>
+          <h4 class="text-base font-bold text-white">No hay pedidos de videojuegos registrados aún</h4>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">
+            Cuando los clientes agreguen juegos digitales desde la tienda web o WhatsApp, aquí aparecerá el pedido con el proveedor asignado (Argentina Play o JDA), el cálculo de márgenes y los botones de compra y entrega en 1 clic.
+          </p>
+        </div>
+
+        <div v-else-if="filteredGamingOrdersForAdmin.length === 0" class="p-10 bg-[#020617] border border-slate-800 border-dashed rounded-2xl text-center space-y-3">
+          <span class="text-3xl block">🔍</span>
+          <h4 class="text-sm font-bold text-white">No se encontraron pedidos gamer con los filtros seleccionados</h4>
+          <p class="text-xs text-slate-400">Intenta cambiar el término de búsqueda o restablecer los filtros.</p>
+          <button 
+            type="button"
+            @click="gamingOrderSearch = ''; gamingOrderStatusFilter = 'ALL'; gamingOrderProviderFilter = 'ALL'; gamingOrderLicenseFilter = 'ALL'"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+          >
+            Restablecer Filtros
+          </button>
+        </div>
+
+        <div v-else class="space-y-4">
+          <!-- Selector de Paginación Superior -->
+          <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+            <span>Mostrando <strong>{{ paginatedGamingOrdersForAdmin.length }}</strong> de <strong>{{ filteredGamingOrdersForAdmin.length }}</strong> pedidos</span>
+            <div class="flex items-center gap-2">
+              <span>Por página:</span>
+              <select v-model="gamingOrderPageSize" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs outline-none">
+                <option :value="15">15</option>
+                <option :value="30">30</option>
+                <option :value="60">60</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cards de Pedidos Gamer -->
+          <div class="grid grid-cols-1 gap-3.5">
+            <div 
+              v-for="order in paginatedGamingOrdersForAdmin" 
+              :key="order.id"
+              :class="[
+                'bg-[#020617] border rounded-2xl p-4 sm:p-5 transition-all shadow-lg space-y-3.5',
+                order.status === 'Dispatched' || order.status === 'Entregado' 
+                  ? 'border-emerald-500/30 hover:border-emerald-500/50' 
+                  : 'border-amber-500/40 hover:border-amber-400/60 shadow-amber-500/5'
+              ]"
+            >
+              <!-- Fila Superior: ID, Estado, Canal y Fecha -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                <div class="flex items-center gap-2.5">
+                  <span class="font-mono font-bold text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+                    #{{ order.id }}
+                  </span>
+                  
+                  <span 
+                    :class="[
+                      'text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer transition',
+                      order.status === 'Dispatched' || order.status === 'Entregado'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30' 
+                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                    ]"
+                    @click="handleToggleGamingOrderStatus(order)"
+                    :title="'Click para cambiar estado a ' + (order.status === 'Dispatched' ? 'Pendiente' : 'Entregado')"
+                  >
+                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '✅ Entregado' : '⏳ Pendiente' }}</span>
+                  </span>
+
+                  <span v-if="order.resellerName" class="text-[10px] font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                    🏪 {{ order.resellerName }}
+                  </span>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                  <span v-if="order.createdAt || order.createdDate" class="font-mono text-[11px]">
+                    🕒 {{ order.createdAt || order.createdDate }}
+                  </span>
+                  <button 
+                    type="button"
+                    @click="copyGamingOrderDetails(order)"
+                    class="text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1 cursor-pointer"
+                    title="Copiar resumen del pedido"
+                  >
+                    📋 Copiar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Fila Principal: Datos del Juego, Cliente y Precios -->
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+                <!-- Info del Cliente y Juego (md:col-span-7) -->
+                <div class="md:col-span-7 space-y-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-black text-white">{{ order.customerName || 'Cliente' }}</span>
+                    <a 
+                      v-if="order.customerPhone"
+                      :href="'https://wa.me/' + formatWaPhone(order.customerPhone)" 
+                      target="_blank" 
+                      class="text-xs text-emerald-400 hover:underline flex items-center gap-0.5 font-mono"
+                      title="Abrir chat de WhatsApp"
+                    >
+                      <span>💬 {{ order.customerPhone }}</span>
+                    </a>
+                  </div>
+
+                  <div class="text-xs text-slate-300 flex flex-wrap items-center gap-2">
+                    <span class="text-white font-black text-base">🎮 {{ order.gameTitle || order.platform }}</span>
+                    <button 
+                      type="button" 
+                      @click="openAssignGameModal(order)"
+                      class="text-[10px] bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Editar o cambiar el nombre del juego"
+                    >
+                      ✏️ Editar Juego
+                    </button>
+                    <span :class="['px-2 py-0.5 rounded text-[11px] font-bold', (order.licenseType === 'primary' || (order.licenseLabel && order.licenseLabel.includes('Primaria'))) ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-indigo-400/20 text-indigo-300 border border-indigo-400/30']">
+                      {{ order.licenseLabel || (order.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria') }}
+                    </span>
+                  </div>
+
+                  <div v-if="!order.gameTitle || order.gameTitle.includes('Pendiente') || order.gameTitle === 'Videojuego PS4 / PS5'" class="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                    <span>⚠️ Nombre del juego pendiente de asignar.</span>
+                    <button @click="openAssignGameModal(order)" type="button" class="underline font-bold text-amber-200 hover:text-white cursor-pointer">
+                      Asignar Nombre del Juego Ahora →
+                    </button>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 text-xs pt-1">
+                    <span class="text-slate-400">Proveedor de compra:</span>
+                    <select
+                      :value="order.fulfillmentProvider || 'argentinaplay'"
+                      @change="handleQuickChangeGamingProvider(order, $event.target.value)"
+                      class="bg-slate-900 border border-indigo-500/40 rounded-lg px-2 py-1 text-[11px] font-bold text-indigo-300 outline-none focus:border-indigo-400 cursor-pointer"
+                      title="Cambiar sitio web donde comprar este pedido y recalcular costo"
+                    >
+                      <option v-for="site in (adminStore.gamingProviderSites || [])" :key="site.key" :value="site.key">
+                        {{ site.badge || site.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Credenciales Gamer Entregadas (si existen) -->
+                  <div v-if="order.accountDetails && order.accountDetails.email" class="mt-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-black text-emerald-300 uppercase text-[10px]">🔑 Credenciales Despachadas</span>
+                      <button
+                        type="button"
+                        @click="copyGamingOrderCredentials(order)"
+                        class="text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded font-bold cursor-pointer"
+                      >
+                        📋 Copiar Acceso
+                      </button>
+                    </div>
+                    <p class="text-slate-200 font-mono truncate">Correo: <strong>{{ order.accountDetails.email }}</strong></p>
+                    <p class="text-slate-200 font-mono">Clave: <strong>{{ order.accountDetails.pass || '-' }}</strong> <span v-if="order.accountDetails.pin" class="text-amber-300 ml-2">PIN/2FA: <strong>{{ order.accountDetails.pin }}</strong></span></p>
+                    <p v-if="order.accountDetails.notes" class="text-slate-400 italic">{{ order.accountDetails.notes }}</p>
+                  </div>
+                </div>
+
+                <!-- Desglose Financiero (md:col-span-5) -->
+                <div class="md:col-span-5 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Cobrado</span>
+                    <span class="text-xs sm:text-sm font-black text-emerald-400 font-mono block">
+                      ${{ (order.clientPrice || order.totalAmount || 0).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-slate-500">ARS</span>
+                  </div>
+
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-slate-400 block">Costo Prov.</span>
+                    <span class="text-xs sm:text-sm font-bold text-slate-300 font-mono block">
+                      ${{ (order.providerCost || 0).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-slate-500">ARS</span>
+                  </div>
+
+                  <div>
+                    <span class="text-[9px] uppercase font-bold text-purple-300 block">Margen Est.</span>
+                    <span class="text-xs sm:text-sm font-black text-purple-400 font-mono block">
+                      +${{ Math.max(0, (order.resellerProfit || ((order.clientPrice || 0) - (order.providerCost || 0)))).toLocaleString() }}
+                    </span>
+                    <span class="text-[9px] text-purple-300/70">ARS neto</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fila Inferior: Botones de Acción -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/60">
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Botón Despachar Credenciales en Nube -->
+                  <button
+                    type="button"
+                    @click="openGamingDispatchModal(order)"
+                    class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs transition flex items-center gap-1 shadow cursor-pointer"
+                    title="Cargar correo, clave PSN/2FA y despachar a la Bóveda del cliente"
+                  >
+                    <span>🔑</span>
+                    <span>{{ order.accountDetails?.email ? 'Editar Credenciales' : 'Despachar Juego' }}</span>
+                  </button>
+
+                  <!-- Botón de Alternar Estado (Entregado / Pendiente) -->
+                  <button 
+                    type="button"
+                    @click="handleToggleGamingOrderStatus(order)"
+                    :class="[
+                      'px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1 shadow cursor-pointer',
+                      order.status === 'Dispatched' || order.status === 'Entregado'
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    ]"
+                  >
+                    <span>{{ order.status === 'Dispatched' || order.status === 'Entregado' ? '🔄 Pendiente' : '✅ Entregado' }}</span>
+                  </button>
+
+                  <!-- Botón de Ver Comprobante si existe -->
+                  <button 
+                    v-if="order.hasReceipt || order.voucher"
+                    type="button"
+                    @click="openReceiptViewer(order)"
+                    class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-bold text-xs transition flex items-center gap-1 cursor-pointer"
+                    title="Ver comprobante de pago subido por el cliente"
+                  >
+                    <span>🧾 Ver Comprobante</span>
+                  </button>
+
+                  <!-- Botón Comprar en Proveedor -->
+                  <a 
+                    v-if="order.providerUrl || adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.url"
+                    :href="order.providerUrl || adminStore.gamingProviderSites?.find(s => s.key === order.fulfillmentProvider)?.url" 
+                    target="_blank"
+                    class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                  >
+                    <span>🔗 Comprar en Proveedor ↗</span>
+                  </a>
+
+                  <!-- Botón Entregar por WhatsApp -->
+                  <button 
+                    type="button" 
+                    @click="sendWhatsAppGameDelivery(order)"
+                    class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1 shadow cursor-pointer"
+                  >
+                    <span>💬 Entregar por WhatsApp</span>
+                  </button>
+
+                  <!-- Botón Editar / Asignar Juego -->
+                  <button 
+                    type="button" 
+                    @click="openAssignGameModal(order)"
+                    class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+                    title="Editar título o plataforma del juego"
+                  >
+                    <span>✏️ Editar Juego</span>
+                  </button>
+                </div>
+
+                <!-- Botón Eliminar Pedido -->
+                <button 
+                  type="button"
+                  @click="handleDeleteGamingOrder(order)"
+                  class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                  title="Eliminar pedido gamer"
+                >
+                  <span class="text-sm">🗑️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Paginador Inferior -->
+          <div v-if="totalGamingOrderPages > 1" class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-800">
+            <span class="text-xs text-slate-400">
+              Página <strong>{{ gamingOrderCurrentPage }}</strong> de <strong>{{ totalGamingOrderPages }}</strong> ({{ filteredGamingOrdersForAdmin.length }} pedidos gamer)
+            </span>
+            <div class="flex items-center gap-1">
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage = 1"
+                :disabled="gamingOrderCurrentPage === 1"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                ««
+              </button>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage--"
+                :disabled="gamingOrderCurrentPage === 1"
+                class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                Anterior
+              </button>
+              <span class="px-3 py-1 text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+                {{ gamingOrderCurrentPage }} / {{ totalGamingOrderPages }}
+              </span>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage++"
+                :disabled="gamingOrderCurrentPage === totalGamingOrderPages"
+                class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                Siguiente
+              </button>
+              <button 
+                type="button" 
+                @click="gamingOrderCurrentPage = totalGamingOrderPages"
+                :disabled="gamingOrderCurrentPage === totalGamingOrderPages"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                »»
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: PEDIDOS PRODUCTOS FÍSICOS -->
+      <div v-else-if="ordersSubSection === 'physical'" class="space-y-4">
+        <!-- Filtros de Búsqueda de Pedidos -->
+        <div class="flex flex-col sm:flex-row gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <input 
+            v-model="physicalOrderSearch" 
+            type="text" 
+            placeholder="Buscar pedido por ID, cliente, teléfono..." 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 flex-1"
+          >
+          <select 
+            v-model="physicalOrderStatusFilter" 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-amber-400 cursor-pointer"
+          >
+            <option value="All">Todos los Estados ({{ adminStore.physicalOrders.length }})</option>
+            <option value="Pendiente">Pendientes ({{ adminStore.pendingPhysicalOrders.length }})</option>
+            <option value="Recibido">Recibidos ({{ adminStore.receivedPhysicalOrders.length }})</option>
+            <option value="Confirmado">Confirmados ({{ adminStore.confirmedPhysicalOrders.length }})</option>
+            <option value="Cancelado">Cancelados ({{ adminStore.cancelledPhysicalOrders.length }})</option>
+          </select>
+        </div>
+
+      <div v-if="filteredPhysicalOrdersForAdmin.length === 0" class="text-slate-500 text-center py-12 bg-slate-900/30 rounded-2xl border border-slate-800 border-dashed text-xs">
+        No se encontraron pedidos de productos físicos con los filtros actuales.
+      </div>
+
+      <div v-else class="space-y-4">
+        <div 
+          v-for="order in filteredPhysicalOrdersForAdmin" 
+          :key="order.id" 
+          class="bg-[#020617] rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl"
+        >
+          <div class="flex flex-wrap justify-between items-start gap-4 border-b border-slate-800/80 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-black text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
+                  {{ order.id }}
+                </span>
+                <h4 class="font-bold text-white text-base">{{ order.customerName }} ({{ order.customerNumber }})</h4>
+                <span class="text-xs text-slate-400 font-mono">{{ order.createdAt }}</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-400">
+                <span>WhatsApp: <strong class="text-slate-200">{{ order.customerPhone }}</strong></span>
+                <span>•</span>
+                <span>Revendedor: <strong class="text-sky-300 font-mono">[{{ order.resellerId }}] {{ order.resellerName }}</strong></span>
+                <span>•</span>
+                <span :class="order.source === 'shared_url' ? 'text-emerald-400 font-bold' : 'text-blue-300'">
+                  Origen: {{ order.source === 'shared_url' ? '🔗 Link Compartido (3% Comisión)' : '🛍️ Tienda General (1% Comisión)' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span :class="[
+                'text-xs font-black px-3 py-1 rounded-full border flex items-center gap-1.5',
+                (order.status === 'Confirmado' || order.status === 'Aprobado') ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                order.status === 'Recibido' ? 'bg-sky-500/20 text-sky-400 border-sky-500/30 animate-pulse' :
+                order.status === 'Cancelado' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse'
+              ]">
+                <span :class="[
+                  'w-1.5 h-1.5 rounded-full',
+                  (order.status === 'Confirmado' || order.status === 'Aprobado') ? 'bg-emerald-400' :
+                  order.status === 'Recibido' ? 'bg-sky-400' :
+                  order.status === 'Cancelado' ? 'bg-red-400' :
+                  'bg-amber-400'
+                ]"></span>
+                {{ (order.status === 'Confirmado' || order.status === 'Aprobado') ? 'Confirmado' : order.status }}
+              </span>
+
+              <!-- Acciones de Administrador -->
+              <div class="flex items-center gap-2">
+                <!-- Botón Ver Comprobante en Nube -->
+                <button 
+                  v-if="order.hasReceipt || order.receiptStatus === 'pending_verification' || (order.voucher && order.voucher.toLowerCase().includes('comprobante'))"
+                  @click="openReceiptViewer(order, true)"
+                  class="bg-sky-600/25 hover:bg-sky-600 text-sky-200 hover:text-white border border-sky-500/40 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer"
+                  title="Ver comprobante en la nube (JPG/PDF)"
+                >
+                  <span>☁️</span>
+                  <span>Ver Comprobante ({{ order.receiptFileType === 'application/pdf' ? 'PDF' : 'JPG' }})</span>
+                </button>
+                <span v-else-if="order.receiptStatus === 'verified_and_purged'" class="text-[10px] text-slate-400 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-xl font-mono">
+                  ✓ Comprobante depurado
+                </span>
+                <!-- Si está Pendiente: Botón Marcar como Recibido -->
+                <button 
+                  v-if="order.status === 'Pendiente'"
+                  @click="handleMarkPhysicalOrderReceived(order)"
+                  class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow flex items-center gap-1.5"
+                  title="Marcar como Recibido para que vendedor oficial contacte al comprador"
+                >
+                  <span>📞 Marcar como Recibido</span>
+                </button>
+
+                <!-- Si está Pendiente o Recibido: Botón Confirmar Compra -->
+                <button 
+                  v-if="order.status === 'Pendiente' || order.status === 'Recibido'"
+                  @click="handleConfirmPhysicalOrder(order)"
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-4 py-2 rounded-xl transition-all shadow flex items-center gap-1.5"
+                  title="Confirmar compra y acreditar comisión a billetera del revendedor"
+                >
+                  <span>✓ Confirmar Compra</span>
+                </button>
+
+                <!-- Cancelar si no está finalizado -->
+                <button 
+                  v-if="order.status === 'Pendiente' || order.status === 'Recibido'"
+                  @click="handleCancelPhysicalOrder(order)"
+                  class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white font-bold text-xs px-3 py-2 rounded-xl border border-red-500/30 transition-all flex items-center gap-1"
+                  title="Cancelar pedido físico"
+                >
+                  <span>✕ Cancelar</span>
+                </button>
+
+                <!-- Eliminar orden física -->
+                <button 
+                  @click="handleDeletePhysicalOrder(order)"
+                  class="bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 font-bold text-xs px-2.5 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Eliminar pedido físico"
+                >
+                  <span>🗑️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensaje de Asesoría Directa Oficial -->
+          <div v-if="order.status === 'Pendiente'" class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-xs text-amber-300 flex items-center gap-2">
+            <span>⏳</span>
+            <span><strong>Estado PENDIENTE:</strong> El cliente completó sus datos pero aún NO transfirió dinero. Al marcar como <strong>Recibido</strong>, un vendedor oficial se comunicará por WhatsApp para confirmar stock disponible y datos para el pago y envío.</span>
+          </div>
+          <div v-else-if="order.status === 'Recibido'" class="bg-sky-500/10 border border-sky-500/20 p-3 rounded-xl text-xs text-sky-300 flex items-center gap-2">
+            <span>📞</span>
+            <span><strong>Estado RECIBIDO:</strong> Un vendedor oficial de la tienda física se comunicará para continuar con el pedido y asesorarlo. Al momento de concretar la compra, haz clic en <strong>Confirmar Compra</strong> para acreditar la comisión en la billetera del revendedor.</span>
+          </div>
+          <div v-else-if="order.status === 'Confirmado' || order.status === 'Aprobado'" class="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+            <span>✅</span>
+            <span><strong>Compra CONFIRMADA:</strong> El Administrador confirmó la compra. Comisión de +${{ order.commissionAmount.toLocaleString() }} ARS acreditada como saldo a favor en la billetera de {{ order.resellerName }}.</span>
+          </div>
+
+          <!-- Items del Pedido Físico -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div v-for="(pItem, idx) in order.items" :key="idx" class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+              <img v-if="pItem.image" :src="pItem.image" :alt="pItem.name" class="w-12 h-12 object-contain bg-white rounded-lg p-1 shrink-0">
+              <div class="flex-1 min-w-0 text-xs">
+                <h5 class="font-bold text-white truncate">{{ pItem.name }}</h5>
+                <div class="text-slate-400 mt-0.5">
+                  Cantidad: <strong class="text-slate-200">{{ pItem.quantity }} un.</strong> · Precio: <span class="text-amber-400 font-bold">${{ pItem.priceNumeric ? pItem.priceNumeric.toLocaleString() : pItem.price }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dirección de Envío y Liquidación de Comisión -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
+            <div>
+              <span class="text-slate-400 uppercase font-semibold text-[11px] block">Dirección de Entrega:</span>
+              <span class="text-white font-medium">{{ order.shippingAddress }}</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-6 sm:text-right">
+              <div>
+                <span class="text-slate-400 uppercase font-semibold text-[11px] block">Total Pedido:</span>
+                <span class="text-lg font-black text-white">${{ order.totalAmount.toLocaleString() }} ARS</span>
+              </div>
+              <div class="bg-amber-400/10 px-3.5 py-1.5 rounded-xl border border-amber-400/20">
+                <span class="text-amber-400 uppercase font-bold text-[10px] block">Comisión Revendedor ({{ (order.commissionRate * 100) }}%):</span>
+                <span class="text-lg font-black text-emerald-400">+${{ order.commissionAmount.toLocaleString() }} ARS</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="order.status === 'Cancelado' && order.cancelReason" class="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-xs text-red-300">
+            <strong>Motivo de Cancelación:</strong> {{ order.cancelReason }}
+          </div>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -8292,7 +9221,7 @@ const deletePackageItem = (pkgId) => {
           </button>
           <button 
             type="button"
-            @click="adminPhysicalSubTab = 'orders'"
+            @click="adminTab = 'orders'; ordersSubSection = 'physical'"
             :class="[
               'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow',
               adminPhysicalSubTab === 'orders' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -9933,7 +10862,7 @@ const deletePackageItem = (pkgId) => {
 
         <button 
           type="button"
-          @click="gamingAdminSubTab = 'orders'"
+          @click="adminTab = 'orders'; ordersSubSection = 'gaming'"
           :class="['px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5', gamingAdminSubTab === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white']"
         >
           <span>📦</span>

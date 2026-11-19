@@ -74,6 +74,38 @@ export function invalidateGamingCache() {
   _cachedGamingSummaryKey = ''
 }
 
+export const isPackageOrder = (o) => {
+  if (!o) return false
+  return Boolean(
+    o.orderType === 'package' ||
+    o.orderType === 'combo' ||
+    o.isPackage ||
+    o.packageId ||
+    o.category === 'Combos' ||
+    o.category === 'Combo Especial' ||
+    o.category === 'Paquetes' ||
+    o.planKey === 'combo_bundle' ||
+    (o.planKey && String(o.planKey).includes('combo')) ||
+    (Array.isArray(o.services) && o.services.length > 0) ||
+    (typeof o.platform === 'string' && o.platform.includes(' + '))
+  )
+}
+
+export const isGamingOrder = (o) => {
+  if (!o) return false
+  if (isPackageOrder(o)) return false
+  return Boolean(
+    o.orderType === 'gaming' || 
+    o.category === 'Videojuegos Digitales' || 
+    o.category === 'gaming' ||
+    Boolean(o.licenseType) ||
+    (o.planKey && String(o.planKey).startsWith('gaming_')) ||
+    (Boolean(o.gameTitle) && !isPackageOrder(o)) ||
+    (o.gamePlatform && ['PS4', 'PS5', 'PS3', 'PlayStation'].some(p => String(o.gamePlatform).includes(p))) ||
+    (o.platform && (o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PS3') || o.platform.includes('PlayStation')))
+  )
+}
+
 const DEFAULT_MARKETING_CAMPAIGN = {
   bannerEnabled: true,
   bannerBadge: 'PROMOS & SORTEOS',
@@ -879,14 +911,25 @@ export const useAdminStore = defineStore('admin', {
     orders: (() => {
       const raw = loadDb(DB_KEYS.ORDERS, [])
       if (!Array.isArray(raw)) return []
-      return raw.map(o => {
-        const isGaming = o.orderType === 'gaming' || 
-          o.category === 'Videojuegos Digitales' || 
-          Boolean(o.gameTitle) || 
-          Boolean(o.licenseType) ||
-          (o.platform && (o.platform.includes('PS4') || o.platform.includes('PS5') || o.platform.includes('PlayStation')))
+      let hadRepairs = false
+      const sanitized = raw.map(o => {
+        if (!o) return o
+        if (isPackageOrder(o)) {
+          if (o.orderType !== 'package' || o.category !== 'Streaming' || o.gameTitle || !o.isPackage) {
+            o.orderType = 'package'
+            o.isPackage = true
+            o.category = 'Streaming'
+            delete o.gameTitle
+            delete o.gamePlatform
+            delete o.licenseType
+            delete o.licenseLabel
+            delete o.fulfillmentProvider
+            hadRepairs = true
+          }
+          return o
+        }
 
-        if (isGaming) {
+        if (isGamingOrder(o)) {
           o.orderType = 'gaming'
           o.category = 'Videojuegos Digitales'
           if (!o.gamePlatform) o.gamePlatform = 'PS4 / PS5'
@@ -902,9 +945,17 @@ export const useAdminStore = defineStore('admin', {
           if (o.gameTitle && ['PS4 / PS5', 'PS4', 'PS5', 'PlayStation'].includes(o.platform.trim())) {
             o.platform = `${o.gameTitle} (${o.gamePlatform})`
           }
+          return o
         }
+
+        if (!o.orderType || o.orderType === 'single') o.orderType = 'streaming'
+        if (!o.category) o.category = 'Streaming'
         return o
       })
+      if (hadRepairs) {
+        saveDb(DB_KEYS.ORDERS, sanitized)
+      }
+      return sanitized
     })(),
 
     // CATÁLOGO Y PEDIDOS DE PRODUCTOS FÍSICOS (Sincronizado con revende.com.ar y Gestión Admin)
@@ -1426,24 +1477,10 @@ export const useAdminStore = defineStore('admin', {
         avgCostPrimary: s.count > 0 ? Math.round(s.sumCostPrimary / s.count) : 0
       }))
     },
-    gamingOrders: (state) => (state.orders || []).filter(o => 
-      o.orderType === 'gaming' || 
-      o.category === 'Videojuegos Digitales' || 
-      o.category === 'gaming' ||
-      Boolean(o.gameTitle) ||
-      Boolean(o.licenseType) ||
-      (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5')))
-    ),
+    gamingOrders: (state) => (state.orders || []).filter(o => isGamingOrder(o)),
 
     gamingSalesStats: (state) => {
-      const orders = (state.orders || []).filter(o => 
-        o.orderType === 'gaming' || 
-        o.category === 'Videojuegos Digitales' || 
-        o.category === 'gaming' ||
-        Boolean(o.gameTitle) ||
-        Boolean(o.licenseType) ||
-        (o.platform && (o.platform.includes('PlayStation') || o.platform.includes('PS4') || o.platform.includes('PS5')))
-      )
+      const orders = (state.orders || []).filter(o => isGamingOrder(o))
       let totalBilled = 0
       let totalCost = 0
       let totalProfit = 0
@@ -1796,13 +1833,17 @@ export const useAdminStore = defineStore('admin', {
         }
 
         remoteStreaming.forEach(rem => {
-          const isGaming = rem.orderType === 'gaming' || 
-            rem.category === 'Videojuegos Digitales' || 
-            Boolean(rem.gameTitle) || 
-            Boolean(rem.licenseType) ||
-            (rem.platform && (rem.platform.includes('PS4') || rem.platform.includes('PS5') || rem.platform.includes('PlayStation')))
-
-          if (isGaming) {
+          if (!rem) return
+          if (isPackageOrder(rem)) {
+            rem.orderType = 'package'
+            rem.isPackage = true
+            rem.category = 'Streaming'
+            delete rem.gameTitle
+            delete rem.gamePlatform
+            delete rem.licenseType
+            delete rem.licenseLabel
+            delete rem.fulfillmentProvider
+          } else if (isGamingOrder(rem)) {
             rem.orderType = 'gaming'
             rem.category = 'Videojuegos Digitales'
             if (!rem.gamePlatform) rem.gamePlatform = 'PS4 / PS5'
@@ -1816,6 +1857,9 @@ export const useAdminStore = defineStore('admin', {
             if (rem.gameTitle && ['PS4 / PS5', 'PS4', 'PS5', 'PlayStation'].includes(rem.platform.trim())) {
               rem.platform = `${rem.gameTitle} (${rem.gamePlatform})`
             }
+          } else {
+            if (!rem.orderType) rem.orderType = 'streaming'
+            if (!rem.category) rem.category = 'Streaming'
           }
 
           const idx = this.orders.findIndex(o => o.id === rem.id)
@@ -3978,14 +4022,13 @@ export const useAdminStore = defineStore('admin', {
       const isDirect = !orderData.resellerId || orderData.resellerId === 'DIRECT'
       const resellerObj = isDirect ? null : this.resellers.find(r => r.id === orderData.resellerId)
       
-      const isGaming = orderData.orderType === 'gaming' || 
-        orderData.category === 'Videojuegos Digitales' || 
-        Boolean(orderData.gameTitle) || 
-        Boolean(orderData.licenseType) ||
-        (orderData.platform && (orderData.platform.includes('PS4') || orderData.platform.includes('PS5') || orderData.platform.includes('PlayStation')))
+      const isPackage = isPackageOrder(orderData)
+      const isGaming = !isPackage && isGamingOrder(orderData)
 
-      const cleanGameTitle = orderData.gameTitle || (isGaming && orderData.platform && !['PS4 / PS5', 'PS4', 'PS5', 'PlayStation'].includes(orderData.platform.trim()) ? orderData.platform.replace(/\s*\((PS4|PS5|PS4\s*\/\s*PS5|PlayStation)\)/i, '').trim() : null)
-      const gamePlatform = orderData.gamePlatform || (isGaming ? 'PS4 / PS5' : null)
+      const cleanGameTitle = isGaming 
+        ? (orderData.gameTitle || (orderData.platform && !['PS4 / PS5', 'PS4', 'PS5', 'PlayStation'].includes(orderData.platform.trim()) ? orderData.platform.replace(/\s*\((PS4|PS5|PS4\s*\/\s*PS5|PlayStation)\)/i, '').trim() : null))
+        : null
+      const gamePlatform = isGaming ? (orderData.gamePlatform || 'PS4 / PS5') : null
       
       let resolvedPlatform = orderData.platform
       if (isGaming && cleanGameTitle) {
@@ -4018,16 +4061,20 @@ export const useAdminStore = defineStore('admin', {
         receiptFileSize: orderData.receiptFileSize || 0,
         receiptStatus: orderData.hasReceipt ? 'pending_verification' : 'no_receipt',
         paymentMethod: orderData.paymentMethod || 'Transferencia Bancaria',
-        orderType: isGaming ? 'gaming' : (orderData.orderType || 'streaming'),
-        gameId: orderData.gameId || null,
-        gameTitle: cleanGameTitle || (isGaming ? 'Videojuego PS4 / PS5' : null),
+        orderType: isGaming ? 'gaming' : (isPackage ? 'package' : 'streaming'),
+        isPackage: isPackage,
+        packageId: isPackage ? (orderData.packageId || orderData.id || null) : null,
+        packageName: isPackage ? (orderData.packageName || orderData.name || orderData.platform || null) : null,
+        services: isPackage ? (orderData.services || []) : null,
+        gameId: isGaming ? (orderData.gameId || null) : null,
+        gameTitle: isGaming ? (cleanGameTitle || 'Videojuego PS4 / PS5') : null,
         gamePlatform: isGaming ? gamePlatform : null,
-        licenseType: orderData.licenseType || null,
-        licenseLabel: orderData.licenseLabel || null,
-        fulfillmentProvider: orderData.fulfillmentProvider || null,
-        fulfillmentProviderName: orderData.fulfillmentProviderName || null,
-        providerUrl: orderData.providerUrl || null,
-        category: isGaming ? 'Videojuegos Digitales' : (orderData.category || null),
+        licenseType: isGaming ? (orderData.licenseType || null) : null,
+        licenseLabel: isGaming ? (orderData.licenseLabel || null) : null,
+        fulfillmentProvider: isGaming ? (orderData.fulfillmentProvider || null) : null,
+        fulfillmentProviderName: isGaming ? (orderData.fulfillmentProviderName || null) : null,
+        providerUrl: isGaming ? (orderData.providerUrl || null) : null,
+        category: isGaming ? 'Videojuegos Digitales' : 'Streaming',
         promoCode: orderData.promoCode || null,
         promoDiscountAmount: Number(orderData.promoDiscountAmount || 0),
         discountUserId: orderData.discountUserId || null,
@@ -4400,43 +4447,23 @@ export const useAdminStore = defineStore('admin', {
     },
 
     clearStreamingOrders() {
-      const toRemove = this.orders.filter(o => 
-        o.orderType !== 'gaming' && 
-        o.category !== 'Videojuegos Digitales' && 
-        o.category !== 'gaming' && 
-        !o.gameTitle
-      )
+      const toRemove = this.orders.filter(o => !isGamingOrder(o))
       toRemove.forEach(o => {
         if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
         deleteOrderFromFirebase(o.id).catch(() => {})
       })
-      this.orders = this.orders.filter(o => 
-        o.orderType === 'gaming' || 
-        o.category === 'Videojuegos Digitales' || 
-        o.category === 'gaming' || 
-        Boolean(o.gameTitle)
-      )
+      this.orders = this.orders.filter(o => isGamingOrder(o))
       this.persist(DB_KEYS.ORDERS)
       return { success: true, count: toRemove.length }
     },
 
     clearGamingOrders() {
-      const toRemove = this.orders.filter(o => 
-        o.orderType === 'gaming' || 
-        o.category === 'Videojuegos Digitales' || 
-        o.category === 'gaming' || 
-        Boolean(o.gameTitle)
-      )
+      const toRemove = this.orders.filter(o => isGamingOrder(o))
       toRemove.forEach(o => {
         if (o.hasReceipt || o.receiptStatus) deleteReceipt(o.id).catch(() => {})
         deleteOrderFromFirebase(o.id).catch(() => {})
       })
-      this.orders = this.orders.filter(o => 
-        o.orderType !== 'gaming' && 
-        o.category !== 'Videojuegos Digitales' && 
-        o.category !== 'gaming' && 
-        !o.gameTitle
-      )
+      this.orders = this.orders.filter(o => !isGamingOrder(o))
       this.persist(DB_KEYS.ORDERS)
       return { success: true, count: toRemove.length }
     },

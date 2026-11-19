@@ -2875,8 +2875,9 @@ const submitOrder = async () => {
     const linePromoDiscount = (verifiedCoupon?.code && cartSubtotalSnapshot > 0)
       ? Math.round(totalPromoDiscount * (rawLineAmount / cartSubtotalSnapshot))
       : 0
-    const isGaming = item.itemType === 'gaming' || Boolean(item.gameId) || Boolean(item.licenseType)
-    const normalizedItemForPromo = { ...item, itemType: isGaming ? 'gaming' : (item.itemType || 'streaming') }
+    const isPackage = item.itemType === 'package' || Boolean(item.packageDetails) || Boolean(item.services)
+    const isGaming = !isPackage && (item.itemType === 'gaming' || Boolean(item.gameId) || Boolean(item.licenseType))
+    const normalizedItemForPromo = { ...item, itemType: isGaming ? 'gaming' : (isPackage ? 'packages' : (item.itemType || 'streaming')) }
     const lineReward = verifiedCoupon?.isDiscountUserCode
       ? computeReferrerRewardBreakdown(verifiedCoupon, [normalizedItemForPromo], netMultiplier).totalReward
       : 0
@@ -2895,11 +2896,11 @@ const submitOrder = async () => {
       })
     }
 
-    const gameName = item.title || item.baseName || item.name || null
-    const gamePlatform = item.platform || 'PS4 / PS5'
+    const gameName = isGaming ? (item.title || item.baseName || item.name || null) : null
+    const gamePlatform = isGaming ? (item.platform || 'PS4 / PS5') : null
     const platformDisplay = isGaming && gameName 
       ? (gameName.includes(gamePlatform) ? gameName : `${gameName} (${gamePlatform})`)
-      : item.platform
+      : (item.platform || item.title || item.name)
 
     await adminStore.createStreamingOrder({
       id: streamingOrderId,
@@ -2932,16 +2933,20 @@ const submitOrder = async () => {
       discountUserId: verifiedCoupon?.discountUserId || null,
       referrerRewardAmount: lineReward,
       referrerRewardStatus: lineReward > 0 ? 'Pendiente' : null,
-      orderType: isGaming ? 'gaming' : (item.itemType === 'package' ? 'package' : 'streaming'),
-      gameId: item.gameId || item.id || null,
-      gameTitle: gameName,
+      orderType: isGaming ? 'gaming' : (isPackage ? 'package' : 'streaming'),
+      isPackage: isPackage,
+      packageId: isPackage ? (item.id || item.packageId || null) : null,
+      packageName: isPackage ? (item.title || item.name || platformDisplay) : null,
+      services: isPackage ? (item.packageDetails?.services || item.services || []) : null,
+      gameId: isGaming ? (item.gameId || item.id || null) : null,
+      gameTitle: isGaming ? gameName : null,
       gamePlatform: isGaming ? gamePlatform : null,
-      licenseType: item.licenseType || null,
-      licenseLabel: item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria'),
-      fulfillmentProvider: item.providerKey || null,
-      fulfillmentProviderName: item.fulfillmentProviderName || item.providerName || null,
-      providerUrl: item.providerUrl || null,
-      category: isGaming ? 'Videojuegos Digitales' : null,
+      licenseType: isGaming ? (item.licenseType || null) : null,
+      licenseLabel: isGaming ? (item.licenseLabel || (item.licenseType === 'primary' ? '⭐️ Cuenta Primaria' : '⚡️ Cuenta Secundaria')) : null,
+      fulfillmentProvider: isGaming ? (item.providerKey || null) : null,
+      fulfillmentProviderName: isGaming ? (item.fulfillmentProviderName || item.providerName || null) : null,
+      providerUrl: isGaming ? (item.providerUrl || null) : null,
+      category: isGaming ? 'Videojuegos Digitales' : 'Streaming',
       profileSelections: (item.profiles || []).map(p => ({
         name: p.name
       }))
