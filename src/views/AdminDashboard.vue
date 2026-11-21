@@ -124,6 +124,84 @@ const handleAddStock = () => {
   showNewStockPass.value = false
 }
 
+// Filtros y Búsqueda en Inventario Mayorista
+const invSearchQuery = ref('')
+const invPlatformFilter = ref('All')
+const invStatusFilter = ref('All') // 'All' | 'in_stock' | 'full'
+const invSortBy = ref('newest') // 'newest' | 'free_profiles' | 'cost_desc'
+
+const filteredInventory = computed(() => {
+  let list = (adminStore.inventory || []).filter(item => {
+    if (invPlatformFilter.value !== 'All' && item.platform !== invPlatformFilter.value) {
+      return false
+    }
+    const freeCount = (item.profiles || []).filter(p => !p.isAssigned).length
+    if (invStatusFilter.value === 'in_stock' && freeCount === 0) {
+      return false
+    }
+    if (invStatusFilter.value === 'full' && freeCount > 0) {
+      return false
+    }
+    const q = invSearchQuery.value.trim().toLowerCase()
+    if (q) {
+      const matchAccount = (item.account || '').toLowerCase().includes(q)
+      const matchId = (item.id || '').toLowerCase().includes(q)
+      const matchPlat = (item.platform || '').toLowerCase().includes(q)
+      const matchPin = (item.profiles || []).some(p => (p.pin || '').includes(q) || (p.name || '').toLowerCase().includes(q))
+      if (!matchAccount && !matchId && !matchPlat && !matchPin) return false
+    }
+    return true
+  })
+
+  if (invSortBy.value === 'free_profiles') {
+    list = [...list].sort((a, b) => {
+      const freeA = (a.profiles || []).filter(p => !p.isAssigned).length
+      const freeB = (b.profiles || []).filter(p => !p.isAssigned).length
+      return freeB - freeA
+    })
+  } else if (invSortBy.value === 'cost_desc') {
+    list = [...list].sort((a, b) => (b.cost || 0) - (a.cost || 0))
+  }
+
+  return list
+})
+
+const copyFullLotData = (item) => {
+  if (!item) return
+  const freeProfiles = (item.profiles || []).filter(p => !p.isAssigned)
+  const profilesList = (item.profiles || []).map((p, idx) => {
+    return `  • ${p.name || ('Perfil ' + (idx + 1))}: PIN [${p.pin || 'Sin PIN'}] - ${p.isAssigned ? 'Ocupado (' + (p.assignedTo || 'Cliente') + ')' : '🟢 LIBRE'}`
+  }).join('\n')
+
+  const text = `📦 LOTE OFICIAL STREAMEPRO
+Plataforma: ${item.platform} (Lote: ${item.id})
+Correo Máster: ${item.account}
+Contraseña: ${item.pass}
+Perfiles Disponibles (${freeProfiles.length}/${(item.profiles || []).length} libres):
+${profilesList}
+Costo Mayorista: ${(item.cost || 0).toLocaleString('es-AR')} ARS`
+
+  navigator.clipboard.writeText(text).then(() => {
+    toast.add(`📋 ¡Datos completos del lote ${item.platform} copiados al portapapeles!`, 'success')
+  }).catch(() => {
+    toast.add('Error al copiar al portapapeles', 'error')
+  })
+}
+
+// Filtros y Búsqueda en Catálogo de Precios
+const catalogSearchQuery = ref('')
+const filteredPricingCatalog = computed(() => {
+  const cat = adminStore.pricingCatalog || {}
+  const q = catalogSearchQuery.value.trim().toLowerCase()
+  if (!q) return cat
+  const entries = Object.entries(cat).filter(([platKey, platData]) => {
+    const name = (platData.name || platKey).toLowerCase()
+    const desc = (platData.description || '').toLowerCase()
+    return name.includes(q) || desc.includes(q) || platKey.toLowerCase().includes(q)
+  })
+  return Object.fromEntries(entries)
+})
+
 // Visibilidad de contraseñas en tabla (ocultas por defecto)
 const visiblePasswordMap = ref({})
 const toggleInvPasswordVisibility = (id) => {
@@ -8387,9 +8465,28 @@ const deletePackageItem = (pkgId) => {
         </button>
       </div>
 
+      <!-- Barra de Búsqueda Rápida de Plataformas en Catálogo -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#020617] rounded-2xl border border-slate-800">
+        <div class="relative flex-1 w-full sm:w-auto">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">🔍</span>
+          <input 
+            v-model="catalogSearchQuery" 
+            type="text" 
+            placeholder="Buscar plataforma o servicio en el catálogo (ej: Netflix, Spotify, Max)..." 
+            class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-500"
+          />
+          <button v-if="catalogSearchQuery" @click="catalogSearchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400 font-mono">
+            {{ Object.keys(filteredPricingCatalog).length }} de {{ Object.keys(adminStore.pricingCatalog || {}).length }} plataformas
+          </span>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div 
-          v-for="(platData, platKey) in adminStore.pricingCatalog" 
+          v-for="(platData, platKey) in filteredPricingCatalog" 
           :key="platKey"
           class="bg-[#020617] rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl relative overflow-hidden"
         >
@@ -10611,6 +10708,66 @@ const deletePackageItem = (pkgId) => {
       </form>
       
       <!-- Tabla de Lotes con Botón de Modificar Contraseña Privada -->
+      <!-- Barra de Filtración y Búsqueda de Inventario Mayorista -->
+      <div v-if="adminStore.inventory.length > 0" class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3.5 bg-[#020617] rounded-2xl border border-slate-800 mb-4 shadow-lg">
+        <div class="flex items-center gap-2 flex-1">
+          <div class="relative flex-1">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">🔍</span>
+            <input 
+              v-model="invSearchQuery" 
+              type="text" 
+              placeholder="Buscar por correo máster, ID de lote o PIN de perfil..." 
+              class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
+            />
+            <button v-if="invSearchQuery" @click="invSearchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
+          </div>
+          <select 
+            v-model="invPlatformFilter" 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-sky-500 cursor-pointer"
+          >
+            <option value="All">Plataforma: Todas</option>
+            <option v-for="plat in ['Netflix', 'Netflix Perfil Extra', 'Max', 'Spotify', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium']" :key="plat" :value="plat">
+              {{ plat }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="inline-flex rounded-xl bg-slate-900 p-1 border border-slate-800 text-xs font-bold">
+            <button 
+              type="button" 
+              @click="invStatusFilter = 'All'" 
+              :class="['px-2.5 py-1 rounded-lg transition-colors cursor-pointer', invStatusFilter === 'All' ? 'bg-sky-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+            >
+              Todos ({{ adminStore.inventory.length }})
+            </button>
+            <button 
+              type="button" 
+              @click="invStatusFilter = 'in_stock'" 
+              :class="['px-2.5 py-1 rounded-lg transition-colors cursor-pointer', invStatusFilter === 'in_stock' ? 'bg-emerald-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white']"
+            >
+              🟢 Con Cupo Libre
+            </button>
+            <button 
+              type="button" 
+              @click="invStatusFilter = 'full'" 
+              :class="['px-2.5 py-1 rounded-lg transition-colors cursor-pointer', invStatusFilter === 'full' ? 'bg-red-500 text-white font-black' : 'text-slate-400 hover:text-white']"
+            >
+              🔴 Llenas
+            </button>
+          </div>
+
+          <select 
+            v-model="invSortBy" 
+            class="bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-white text-xs font-medium focus:outline-none cursor-pointer"
+          >
+            <option value="newest">Más recientes</option>
+            <option value="free_profiles">Mayor stock libre</option>
+            <option value="cost_desc">Mayor costo</option>
+          </select>
+        </div>
+      </div>
+
       <div v-if="adminStore.inventory.length === 0" class="text-center py-12 px-4 bg-[#020617] rounded-2xl border border-slate-800 border-dashed space-y-3">
         <span class="text-4xl block">📦</span>
         <h4 class="text-base font-bold text-white">Inventario Mayorista Vacío (Listo para Producción)</h4>
@@ -10631,7 +10788,7 @@ const deletePackageItem = (pkgId) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800">
-            <tr v-for="item in adminStore.inventory" :key="item.id" class="hover:bg-slate-800/40 transition-colors">
+            <tr v-for="item in filteredInventory" :key="item.id" class="hover:bg-slate-800/40 transition-colors">
               <td class="px-6 py-4 font-mono text-xs text-brand-accent font-bold">{{ item.id }}</td>
               <td class="px-6 py-4 font-black text-white">{{ item.platform }}</td>
               <td class="px-6 py-4">
@@ -10689,6 +10846,15 @@ const deletePackageItem = (pkgId) => {
                 </div>
               </td>
               <td class="px-6 py-4 flex items-center gap-2">
+                <button 
+                  type="button"
+                  @click="copyFullLotData(item)"
+                  class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Copiar datos completos del lote (correo, clave, perfiles y PINs) para WhatsApp o soporte"
+                >
+                  <span>📋</span>
+                  <span class="hidden sm:inline">Copiar Todo</span>
+                </button>
                 <button 
                   @click="openEditInventoryModal(item)" 
                   class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-bold border border-indigo-500/30 transition-colors flex items-center gap-1 cursor-pointer"

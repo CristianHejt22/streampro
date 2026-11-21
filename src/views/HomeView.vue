@@ -2078,8 +2078,30 @@ watch([currentPageSection, selectedPhysicalProduct, selectedGamingProduct], ([se
 const searchQuery = ref('')
 const selectedCategory = ref('All')
 const digitalPlatformFilter = ref('All')
+const digitalPlanTypeFilter = ref('all') // 'all' | 'perfil' | 'cuenta_completa'
+const digitalSortBy = ref('recommended') // 'recommended' | 'price_asc' | 'price_desc' | 'name_asc'
+const digitalOnlyInStock = ref(false)
 const digitalCurrentPage = ref(1)
 const digitalItemsPerPage = ref(8) // 4, 6, 8, 'all'
+
+const hasActiveDigitalFilters = computed(() => {
+  return searchQuery.value.trim() !== '' ||
+    selectedCategory.value !== 'All' ||
+    digitalPlatformFilter.value !== 'All' ||
+    digitalPlanTypeFilter.value !== 'all' ||
+    digitalSortBy.value !== 'recommended' ||
+    digitalOnlyInStock.value
+})
+
+const resetDigitalFilters = () => {
+  searchQuery.value = ''
+  selectedCategory.value = 'All'
+  digitalPlatformFilter.value = 'All'
+  digitalPlanTypeFilter.value = 'all'
+  digitalSortBy.value = 'recommended'
+  digitalOnlyInStock.value = false
+  digitalCurrentPage.value = 1
+}
 
 // Paginación y Categorías de Paquetes y Combos
 const packagesCurrentPage = ref(1)
@@ -2359,7 +2381,7 @@ const getWhatsAppContactUrl = (customMsg = '') => {
 const filteredProducts = computed(() => {
   if (!isStreamingNavVisible.value) return []
   const allowedPlatforms = resellerShopConfig.value?.enabledStreamingPlatforms || []
-  return products.value.filter(p => {
+  let list = products.value.filter(p => {
     if (allowedPlatforms.length > 0 && !allowedPlatforms.includes(p.platform) && !allowedPlatforms.includes(p.name)) {
       return false
     }
@@ -2368,9 +2390,41 @@ const filteredProducts = computed(() => {
       p.platform.toLowerCase() === digitalPlatformFilter.value.toLowerCase() ||
       p.name.toLowerCase().includes(digitalPlatformFilter.value.toLowerCase())
     const q = searchQuery.value.toLowerCase().trim()
-    const matchSearch = !q || p.name.toLowerCase().includes(q) || p.platform.toLowerCase().includes(q)
-    return matchCat && matchPlatform && matchSearch
+    const matchSearch = !q || p.name.toLowerCase().includes(q) || p.platform.toLowerCase().includes(q) ||
+      (p.description && p.description.toLowerCase().includes(q))
+    if (!matchCat || !matchPlatform || !matchSearch) return false
+
+    // Filtro por Modalidad (Perfil individual con PIN vs Cuenta completa familiar)
+    if (digitalPlanTypeFilter.value !== 'all') {
+      const plans = Object.values(getStreamingPlansDisplay(p))
+      if (digitalPlanTypeFilter.value === 'perfil') {
+        const hasPerfil = plans.some(pl => pl.type === 'perfil' || pl.type === 'perfil_extra' || (pl.label && pl.label.toLowerCase().includes('perfil')) || pl.units === 1)
+        if (!hasPerfil) return false
+      } else if (digitalPlanTypeFilter.value === 'cuenta_completa') {
+        const hasCompleta = plans.some(pl => pl.type === 'cuenta_completa' || (pl.label && pl.label.toLowerCase().includes('cuenta completa')) || (pl.label && pl.label.toLowerCase().includes('familiar')) || (pl.units && pl.units >= 3))
+        if (!hasCompleta) return false
+      }
+    }
+
+    // Filtro por Stock Inmediato
+    if (digitalOnlyInStock.value) {
+      const stock = adminStore.getPlatformStock(p.platform)
+      if (stock.status !== 'in_stock') return false
+    }
+
+    return true
   })
+
+  // Ordenamiento Dinámico
+  if (digitalSortBy.value === 'price_asc') {
+    list = [...list].sort((a, b) => getMinStreamingPrice(a) - getMinStreamingPrice(b))
+  } else if (digitalSortBy.value === 'price_desc') {
+    list = [...list].sort((a, b) => getMinStreamingPrice(b) - getMinStreamingPrice(a))
+  } else if (digitalSortBy.value === 'name_asc') {
+    list = [...list].sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  return list
 })
 
 const digitalTotalPages = computed(() => {
@@ -2395,7 +2449,7 @@ const changeDigitalPage = (page) => {
   scrollToSection('suscripciones-digitales')
 }
 
-watch([searchQuery, selectedCategory, digitalPlatformFilter, digitalItemsPerPage], () => {
+watch([searchQuery, selectedCategory, digitalPlatformFilter, digitalPlanTypeFilter, digitalSortBy, digitalOnlyInStock, digitalItemsPerPage], () => {
   digitalCurrentPage.value = 1
 })
 
@@ -3886,7 +3940,7 @@ const submitOrder = async () => {
           </RouterLink>
         </div>
 
-                <!-- Grid de 6 Tarjetas de Marca de Alto Impacto (Limpio, sin exponer planes dentro del contenedor) -->
+                <!-- Grid de Tarjetas Digitales de Alto Impacto -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           <div 
             v-for="product in homeFeaturedDigital" 
@@ -3898,11 +3952,14 @@ const submitOrder = async () => {
               getStreamingMeta(product.platform).accentGlow
             ]"
           >
+            <!-- Top brand subtle glowing accent line -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r opacity-70 group-hover:opacity-100 transition-opacity" :class="getStreamingMeta(product.platform).badgeClass"></div>
+
             <!-- Ambient Glow -->
             <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none bg-sky-400"></div>
 
             <div class="space-y-3.5">
-              <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA -->
+              <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA con punto verde activo -->
               <div class="flex items-start justify-between gap-2.5">
                 <div class="flex items-center gap-3 min-w-0">
                   <div 
@@ -3918,12 +3975,26 @@ const submitOrder = async () => {
                     </h4>
                   </div>
                 </div>
-                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shrink-0">
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border font-mono bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shrink-0 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   {{ getStreamingMeta(product.platform).deliveryBadge || '🟢 10-15m' }}
                 </span>
               </div>
 
-              <!-- Beneficios Clave del Servicio (Sin exponer los planes en el contenedor) -->
+              <!-- Micro-chips de Confianza & Modalidad -->
+              <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-300">
+                <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <span>🔒</span> PIN Privado
+                </span>
+                <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <span>🔄</span> Misma Cuenta
+                </span>
+                <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                  <span>🛡️</span> Garantía 30d
+                </span>
+              </div>
+
+              <!-- Beneficios Clave del Servicio -->
               <div class="space-y-1.5 py-1">
                 <div 
                   v-for="(hl, hIdx) in (getStreamingMeta(product.platform).highlights || ['Calidad 4K Ultra HD', 'PIN Privado Exclusivo', 'Garantía 30 Días']).slice(0, 3)" 
@@ -3950,10 +4021,10 @@ const submitOrder = async () => {
                 </div>
                 <div class="text-right space-y-1">
                   <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 inline-flex items-center gap-1 font-mono">
-                    <span>⚡</span> {{ getStreamingPlansKeys(product).length }} Opciones
+                    <span>⚡</span> {{ getStreamingPlansKeys(product).length }} Modalidades
                   </span>
-                  <div class="text-[9px] text-emerald-400 font-mono font-bold">
-                    🛡️ SLA 30d Garantía
+                  <div class="text-[9px] text-emerald-400 font-mono font-bold flex items-center justify-end gap-1">
+                    <span>🛡️</span> Reemplazo Directo
                   </div>
                 </div>
               </div>
@@ -3964,26 +4035,27 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="openStreamingInfo(product)"
-                class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-                title="Ver especificaciones técnicas y compatibilidad"
+                class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                title="Ver especificaciones técnicas y ficha completa"
               >
-                ℹ️
+                <span>ℹ️</span>
+                <span class="hidden md:inline text-[11px]">Ficha</span>
               </button>
               <button 
                 type="button" 
                 @click.stop="openSharePlaqueForStreaming(product)"
-                class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
+                class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
                 title="Compartir placa con logo para WhatsApp y redes"
               >
                 <span class="text-xs group-hover/share:scale-125 transition-transform">📤</span>
-                <span class="hidden sm:inline font-bold text-[11px]">Compartir</span>
+                <span class="hidden sm:inline font-bold text-[11px]">Placa</span>
               </button>
               <button 
                 type="button"
                 @click.stop="openConfig(product)" 
                 class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
               >
-                <span class="hidden sm:inline">Ver Planes & Modalidades</span><span class="sm:hidden">Ver Planes</span>
+                <span class="hidden sm:inline">Ver Planes & Precios</span><span class="sm:hidden">Ver Planes</span>
                 <span>→</span>
               </button>
             </div>
@@ -4539,35 +4611,46 @@ const submitOrder = async () => {
     <!-- ==================== SECCIÓN 1: SUSCRIPCIONES DIGITALES (PÁGINA DEDICADA) ==================== -->
     <div v-else-if="currentPageSection === 'digital'" id="suscripciones-digitales" class="space-y-6">
       <!-- Header de Sección Oficial con Filtros por Plataforma -->
-      <div class="bg-gradient-to-r from-sky-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-500/30 shadow-xl space-y-3">
+      <div class="bg-gradient-to-r from-sky-950/50 via-slate-900 to-slate-950 p-4 sm:p-6 rounded-3xl border border-sky-500/30 shadow-xl space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div class="flex items-center gap-3">
-            <span class="text-3xl">🎬</span>
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-2xl shadow-inner shrink-0">
+              🎬
+            </div>
             <div>
-              <h3 class="text-lg sm:text-xl font-black text-white">Suscripciones Digitales & Pantallas 4K</h3>
-              <p class="text-xs text-slate-300">Max, Disney+, Prime Video, Spotify, YouTube Premium, IPTV y herramientas digitales con PIN exclusivo y entrega inmediata.</p>
+              <h3 class="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                <span>Suscripciones Digitales & Pantallas 4K</span>
+                <span class="hidden sm:inline text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  OFICIAL STREAMEPRO
+                </span>
+              </h3>
+              <p class="text-xs text-slate-300 mt-0.5">Max, Disney+, Netflix, Prime Video, Spotify, YouTube, IPTV y herramientas digitales con activación oficial, PIN exclusivo y garantía inmediata.</p>
             </div>
           </div>
-          <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-3 py-1.5 rounded-xl shrink-0 flex items-center gap-1.5">
+          <span class="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-3.5 py-1.5 rounded-xl shrink-0 flex items-center gap-2 shadow-sm">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            8 Plataformas Oficiales
+            <span>{{ filteredProducts.length }} Disponibles</span>
           </span>
         </div>
 
         <!-- Chips Interactivos de Plataformas Digitales -->
-        <div class="pt-2 border-t border-white/[0.08] flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs font-bold">
-          <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0 mr-1">Filtrar:</span>
+        <div class="pt-3 border-t border-white/[0.08] flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs font-bold">
+          <span class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+            <span>🔍</span> Filtrar:
+          </span>
           <button 
             type="button"
             @click="digitalPlatformFilter = 'All'"
             :class="[
-              'px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer text-xs',
+              'px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer text-xs flex items-center gap-1.5',
               digitalPlatformFilter === 'All' 
                 ? 'bg-sky-400 text-slate-950 font-black shadow-md shadow-sky-400/20' 
                 : 'bg-slate-900 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
             ]"
           >
-            🌟 Todas (9)
+            <span>🌟</span>
+            <span>Todas</span>
+            <span class="ml-1 text-[10px] font-mono opacity-80">({{ products.length }})</span>
           </button>
           <button 
             v-for="plat in ['Netflix', 'Netflix Perfil Extra', 'Spotify', 'Max', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']" 
@@ -4587,34 +4670,140 @@ const submitOrder = async () => {
         </div>
       </div>
 
-      <!-- Barra de Búsqueda y Filtros Compactos para Suscripciones -->
-      <div class="flex flex-col sm:flex-row items-center gap-3">
-        <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl flex-1 w-full shadow-md">
-          <div class="relative flex-1">
-            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input v-model="searchQuery" type="text" placeholder="Buscar por Max, Disney+, Spotify, Prime Video, IPTV, YouTube, Canva..." class="w-full bg-transparent border-none py-2 pl-9 pr-8 text-white focus:outline-none focus:ring-0 text-xs sm:text-sm placeholder:text-slate-500">
+      <!-- Barra de Búsqueda y Filtración Multi-Criterio -->
+      <div class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <!-- Campo 1: Búsqueda por Texto -->
+          <div class="relative bg-slate-900/80 border border-white/[0.08] rounded-2xl flex items-center shadow-md">
+            <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Buscar servicio, 4k, pin..." 
+              class="w-full bg-transparent border-none py-2.5 pl-10 pr-8 text-white focus:outline-none focus:ring-0 text-xs font-medium placeholder:text-slate-500"
+            />
             <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">✕</button>
           </div>
-          <div class="w-px h-6 bg-white/10"></div>
-          <select v-model="selectedCategory" class="bg-transparent border-none py-2 px-2 text-white focus:outline-none cursor-pointer text-xs font-semibold pr-3">
-            <option value="All" class="bg-slate-900">Todas las categorías</option>
-            <option value="Streaming" class="bg-slate-900">Series & Películas</option>
-            <option value="Musica" class="bg-slate-900">Música & Audio</option>
-            <option value="IPTV" class="bg-slate-900">Televisión IPTV</option>
-          </select>
+
+          <!-- Campo 2: Selector de Categoría -->
+          <div class="bg-slate-900/80 border border-white/[0.08] rounded-2xl flex items-center px-3 shadow-md">
+            <span class="text-xs text-slate-400 mr-2">📂</span>
+            <select v-model="selectedCategory" class="w-full bg-transparent border-none py-2.5 text-white focus:outline-none cursor-pointer text-xs font-semibold">
+              <option value="All" class="bg-slate-900">Categoría: Todas</option>
+              <option value="Streaming" class="bg-slate-900">🎬 Series & Películas</option>
+              <option value="Musica" class="bg-slate-900">🎧 Música & Audio</option>
+              <option value="IPTV" class="bg-slate-900">📺 Televisión IPTV</option>
+            </select>
+          </div>
+
+          <!-- Campo 3: Selector de Modalidad (Perfil vs Cuenta Completa) -->
+          <div class="bg-slate-900/80 border border-white/[0.08] rounded-2xl flex items-center px-3 shadow-md">
+            <span class="text-xs text-slate-400 mr-2">👥</span>
+            <select v-model="digitalPlanTypeFilter" class="w-full bg-transparent border-none py-2.5 text-white focus:outline-none cursor-pointer text-xs font-semibold">
+              <option value="all" class="bg-slate-900">Modalidad: Todas</option>
+              <option value="perfil" class="bg-slate-900">👤 Perfil con PIN (Económico)</option>
+              <option value="cuenta_completa" class="bg-slate-900">🏠 Cuenta Completa Familiar</option>
+            </select>
+          </div>
+
+          <!-- Campo 4: Selector de Ordenamiento -->
+          <div class="bg-slate-900/80 border border-white/[0.08] rounded-2xl flex items-center px-3 shadow-md">
+            <span class="text-xs text-slate-400 mr-2">⇅</span>
+            <select v-model="digitalSortBy" class="w-full bg-transparent border-none py-2.5 text-white focus:outline-none cursor-pointer text-xs font-semibold">
+              <option value="recommended" class="bg-slate-900">⭐ Más Recomendados</option>
+              <option value="price_asc" class="bg-slate-900">🟢 Menor Precio</option>
+              <option value="price_desc" class="bg-slate-900">💎 Mayor Precio</option>
+              <option value="name_asc" class="bg-slate-900">🔤 Nombre (A - Z)</option>
+            </select>
+          </div>
         </div>
 
-        <RouterLink 
-          :to="getSectionLink('combos')" 
-          class="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/25 text-xs font-bold transition shrink-0"
-        >
-          <span>🎁</span>
-          <span>Ver Combos con Descuento →</span>
-        </RouterLink>
+        <!-- Fila de Acciones Rápidas: Toggle de Stock Inmediato y Estado de Filtros -->
+        <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+          <div class="flex items-center gap-2">
+            <!-- Toggle de Stock Inmediato -->
+            <button 
+              type="button" 
+              @click="digitalOnlyInStock = !digitalOnlyInStock"
+              :class="[
+                'px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm',
+                digitalOnlyInStock 
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-emerald-500/20' 
+                  : 'bg-slate-900 text-slate-400 border-white/10 hover:text-white hover:bg-slate-800'
+              ]"
+            >
+              <span class="w-2 h-2 rounded-full" :class="digitalOnlyInStock ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'"></span>
+              <span>🟢 Solo Stock Inmediato (10-15m)</span>
+            </button>
+
+            <!-- Botón Limpiar Filtros -->
+            <button 
+              v-if="hasActiveDigitalFilters" 
+              type="button" 
+              @click="resetDigitalFilters"
+              class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>↺</span>
+              <span>Limpiar filtros</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs text-slate-400 font-medium">
+            <span>Mostrando <span class="font-bold text-white font-mono">{{ filteredProducts.length }}</span> de <span class="font-bold text-sky-400 font-mono">{{ products.length }}</span> plataformas</span>
+            <RouterLink 
+              :to="getSectionLink('combos')" 
+              class="hidden sm:inline-flex items-center gap-1 text-pink-400 hover:text-pink-300 font-bold ml-2 transition"
+            >
+              <span>🎁 Ver Combos</span>
+              <span>→</span>
+            </RouterLink>
+          </div>
+        </div>
+
+        <!-- Badges de Filtros Activos (si hay alguno aplicado) -->
+        <div v-if="hasActiveDigitalFilters" class="flex flex-wrap items-center gap-1.5 text-[11px] pt-1">
+          <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mr-1">Activos:</span>
+          <span v-if="searchQuery" class="bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span>Búsqueda: "{{ searchQuery }}"</span>
+            <button @click="searchQuery = ''" class="hover:text-white font-bold ml-0.5">✕</button>
+          </span>
+          <span v-if="digitalPlatformFilter !== 'All'" class="bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span>Plataforma: {{ digitalPlatformFilter }}</span>
+            <button @click="digitalPlatformFilter = 'All'" class="hover:text-white font-bold ml-0.5">✕</button>
+          </span>
+          <span v-if="selectedCategory !== 'All'" class="bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span>Categoría: {{ selectedCategory }}</span>
+            <button @click="selectedCategory = 'All'" class="hover:text-white font-bold ml-0.5">✕</button>
+          </span>
+          <span v-if="digitalPlanTypeFilter !== 'all'" class="bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span>{{ digitalPlanTypeFilter === 'perfil' ? '👤 Solo Perfil con PIN' : '🏠 Solo Cuenta Completa' }}</span>
+            <button @click="digitalPlanTypeFilter = 'all'" class="hover:text-white font-bold ml-0.5">✕</button>
+          </span>
+          <span v-if="digitalOnlyInStock" class="bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+            <span>🟢 Stock Inmediato</span>
+            <button @click="digitalOnlyInStock = false" class="hover:text-white font-bold ml-0.5">✕</button>
+          </span>
+        </div>
       </div>
 
-            <!-- Catálogo de Suscripciones Oficiales 4K (Limpio y conectado a modal) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+      <!-- Estado Vacío Cuando No Hay Coincidencias -->
+      <div v-if="filteredProducts.length === 0" class="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-4">
+        <div class="text-4xl sm:text-5xl">🔍</div>
+        <div class="max-w-md mx-auto space-y-1.5">
+          <h4 class="text-lg font-bold text-white">No encontramos plataformas con los filtros seleccionados</h4>
+          <p class="text-xs text-slate-400">Intenta buscar por otro término o restablece los filtros para ver todo el catálogo disponible con entrega inmediata.</p>
+        </div>
+        <button 
+          type="button" 
+          @click="resetDigitalFilters" 
+          class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black text-xs transition shadow-md cursor-pointer"
+        >
+          ↺ Ver Catálogo Completo
+        </button>
+      </div>
+
+      <!-- Catálogo de Suscripciones Oficiales 4K (Tarjetas Optimizadas) -->
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
         <div 
           v-for="product in paginatedDigitalProducts" 
           :key="product.id" 
@@ -4625,11 +4814,14 @@ const submitOrder = async () => {
             getStreamingMeta(product.platform).accentGlow
           ]"
         >
+          <!-- Top brand subtle glowing accent line -->
+          <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r opacity-70 group-hover:opacity-100 transition-opacity" :class="getStreamingMeta(product.platform).badgeClass"></div>
+
           <!-- Ambient Glow -->
           <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none bg-sky-400"></div>
 
           <div class="space-y-3.5">
-            <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA -->
+            <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA con punto verde activo -->
             <div class="flex items-start justify-between gap-2.5">
               <div class="flex items-center gap-3 min-w-0">
                 <div 
@@ -4653,7 +4845,21 @@ const submitOrder = async () => {
                   'bg-sky-500/15 text-sky-300 border-sky-500/30'
                 ]"
               >
+                <span class="w-1.5 h-1.5 rounded-full" :class="adminStore.getPlatformStock(product.platform).status === 'in_stock' ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'"></span>
                 <span>{{ adminStore.getPlatformStock(product.platform).status === 'in_stock' ? '🟢 Stock 10-15m' : (adminStore.getPlatformStock(product.platform).status === 'low_stock' ? '🟡 Últimos cupos' : '⏱️ 10m a 1h') }}</span>
+              </span>
+            </div>
+
+            <!-- Micro-chips de Confianza & Modalidad -->
+            <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-300">
+              <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span>🔒</span> PIN Privado
+              </span>
+              <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span>🔄</span> Misma Cuenta
+              </span>
+              <span class="bg-slate-900/90 border border-slate-700/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span>🛡️</span> Garantía 30d
               </span>
             </div>
 
@@ -4684,10 +4890,10 @@ const submitOrder = async () => {
               </div>
               <div class="text-right space-y-1">
                 <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 inline-flex items-center gap-1 font-mono">
-                  <span>⚡</span> {{ getStreamingPlansKeys(product).length }} Opciones
+                  <span>⚡</span> {{ getStreamingPlansKeys(product).length }} Modalidades
                 </span>
-                <div class="text-[9px] text-emerald-400 font-mono font-bold">
-                  🛡️ SLA 30d Garantía
+                <div class="text-[9px] text-emerald-400 font-mono font-bold flex items-center justify-end gap-1">
+                  <span>🛡️</span> Reemplazo Directo
                 </div>
               </div>
             </div>
@@ -4698,26 +4904,27 @@ const submitOrder = async () => {
             <button 
               type="button" 
               @click.stop="openStreamingInfo(product)"
-              class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer"
-              title="Ver detalles y especificaciones del servicio"
+              class="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700 font-bold text-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+              title="Ver detalles y especificaciones técnicas completas"
             >
-              ℹ️
+              <span>ℹ️</span>
+              <span class="hidden md:inline text-[11px]">Ficha</span>
             </button>
             <button 
               type="button" 
               @click.stop="openSharePlaqueForStreaming(product)"
-              class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
+              class="px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600/30 via-purple-600/25 to-pink-600/30 hover:from-indigo-600/50 hover:to-pink-600/50 text-indigo-200 hover:text-white border border-indigo-400/40 hover:border-indigo-300 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-95 group/share"
               title="Compartir placa con logo para WhatsApp y redes"
             >
               <span class="text-xs group-hover/share:scale-125 transition-transform">📤</span>
-              <span class="hidden sm:inline font-bold text-[11px]">Compartir</span>
+              <span class="hidden sm:inline font-bold text-[11px]">Placa</span>
             </button>
             <button 
-              type="button"
+              type="button" 
               @click.stop="openConfig(product)" 
               class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
             >
-              <span class="hidden sm:inline">Ver Planes & Modalidades</span><span class="sm:hidden">Ver Planes</span>
+              <span class="hidden sm:inline">Ver Planes & Precios</span><span class="sm:hidden">Ver Planes</span>
               <span>→</span>
             </button>
           </div>
@@ -6542,28 +6749,51 @@ const submitOrder = async () => {
         </div>
 
         <!-- Selector Visual de Planes con Precios Dinámicos de Catálogo -->
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">
-            Modalidades y Precios Disponibles
-          </label>
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">
+              Modalidades y Precios Disponibles
+            </label>
+            <button 
+              type="button" 
+              @click="openStreamingInfo(selectedProduct)" 
+              class="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1 transition cursor-pointer"
+            >
+              <span>ℹ️</span>
+              <span>Ficha Técnica Completa</span>
+            </button>
+          </div>
           <div class="grid grid-cols-1 gap-2.5">
             <div 
               v-for="(plan, pKey) in currentSelectedProductPlans" 
               :key="pKey"
               @click="selectedPlanKey = pKey; onPlanChange()"
               :class="[
-                'p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between',
+                'p-3.5 sm:p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between relative overflow-hidden',
                 selectedPlanKey === pKey 
                   ? 'bg-sky-500/15 border-brand-accent text-white shadow-[0_0_20px_rgba(56,189,248,0.25)]' 
                   : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
               ]"
             >
+              <!-- Badge MÁS ELEGIDO si es perfil individual o primer plan -->
+              <span 
+                v-if="pKey === '1_perfil' || pKey === 'perfil_extra'"
+                class="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg tracking-wider"
+              >
+                ⭐ MÁS ELEGIDO
+              </span>
+
               <div class="flex items-center gap-3">
                 <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0', selectedPlanKey === pKey ? 'border-brand-accent bg-brand-accent' : 'border-slate-600']">
                   <div v-if="selectedPlanKey === pKey" class="w-2 h-2 rounded-full bg-slate-950"></div>
                 </div>
                 <div>
-                  <div class="font-black text-sm text-white">{{ plan.label }}</div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-black text-sm text-white">{{ plan.label }}</span>
+                    <span class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                      {{ (plan.units && plan.units > 1) ? `📺 ${plan.units} Pantallas` : '📱 1 Pantalla' }}
+                    </span>
+                  </div>
                   <div class="text-[11px] text-slate-400 mt-0.5">{{ getPlanFeatureHint(plan) }}</div>
                 </div>
               </div>
@@ -6571,7 +6801,9 @@ const submitOrder = async () => {
                 <div class="font-black text-base text-brand-accent font-mono">
                   ${{ Number(plan.clientPrice || 0).toLocaleString() }} <span class="text-[10px] font-normal text-slate-400">ARS</span>
                 </div>
-                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Garantía 30d</div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center justify-end gap-1">
+                  <span>✓</span> Garantía 30d
+                </div>
               </div>
             </div>
           </div>
@@ -7466,23 +7698,50 @@ const submitOrder = async () => {
           </p>
         </div>
 
+        <!-- Guía de Activación Oficial en 3 Pasos -->
+        <div class="bg-gradient-to-r from-sky-950/40 via-slate-950 to-slate-950 border border-sky-500/20 p-4 rounded-2xl space-y-2 text-xs">
+          <div class="flex items-center gap-2 text-sky-400 font-black">
+            <span>🚀</span>
+            <span>¿Cómo se activa este servicio?</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span class="font-black text-white block mb-0.5">1. Elige tu Plan</span>
+              <span class="text-slate-400">Selecciona si prefieres perfil privado con PIN o cuenta completa.</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span class="font-black text-white block mb-0.5">2. Abona Fácil</span>
+              <span class="text-slate-400">Transferencia bancaria (Alias/CVU) o Mercado Pago con acreditación inmediata.</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span class="font-black text-white block mb-0.5">3. Activación 10m</span>
+              <span class="text-slate-400">Recibe tus credenciales oficiales de acceso por WhatsApp y correo.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Botones de Acción -->
-        <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
-          <button 
-            type="button" 
-            @click="showStreamingInfoModal = false"
-            class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
-          >
-            Cerrar
-          </button>
-          <button 
-            type="button" 
-            @click="openConfigFromInfo"
-            class="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-brand-accent hover:bg-sky-400 transition-all shadow-[0_0_15px_rgba(56,189,248,0.3)] cursor-pointer flex items-center gap-2"
-          >
-            <span>Elegir Plan</span>
-            <span>→</span>
-          </button>
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-3 border-t border-slate-800">
+          <span class="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+            <span>🛡️</span> Soporte prioritario y garantía de reemplazo 30 días
+          </span>
+          <div class="flex items-center gap-2.5 w-full sm:w-auto">
+            <button 
+              type="button" 
+              @click="showStreamingInfoModal = false"
+              class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+            <button 
+              type="button" 
+              @click="openConfigFromInfo"
+              class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black text-xs transition shadow-lg cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <span>⚡ Configurar y Adquirir Plan</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
