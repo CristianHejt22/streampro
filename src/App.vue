@@ -746,12 +746,22 @@ const handleOpenCart = () => {
       <RouterLink 
         v-if="isCombosNavVisible"
         :to="getAppSectionLink('combos')"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2 rounded-xl relative cursor-pointer"
         :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'text-pink-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
       >
         <span class="text-base leading-none">🎁</span>
         <span>Combos</span>
         <span v-if="activePackagesCount > 0" class="absolute top-0 right-1 w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
+      </RouterLink>
+
+      <RouterLink 
+        v-if="isGamingNavVisible"
+        :to="getAppSectionLink('juegos')"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2 rounded-xl cursor-pointer"
+        :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'text-indigo-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+      >
+        <span class="text-base leading-none">🎮</span>
+        <span>Juegos</span>
       </RouterLink>
 
       <RouterLink 
