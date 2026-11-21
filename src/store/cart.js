@@ -273,7 +273,7 @@ export const useCartStore = defineStore('cart', {
       this.persistCart()
     },
     // AGREGAR VIDEOJUEGO DIGITAL (PS4 / PS5 - Primaria o Secundaria con Mayor Precio)
-    addGamingItem(game, licenseType = 'primary', quantity = 1) {
+    addGamingItem(game, licenseType = 'primary', quantity = 1, consoleVariant = null) {
       const platLower = String(game.platform || '').toLowerCase()
       const isSingleMode = platLower.includes('pc') || platLower.includes('steam') || platLower.includes('ps3')
       const resolvedLicense = isSingleMode ? 'primary' : licenseType
@@ -291,7 +291,8 @@ export const useCartStore = defineStore('cart', {
         ? (game.actualPurchaseCostPrimary || providerData.costPrimary || providerData.primaryPrice || game.minCostPrimary || game.baseCostPrimary || effectivePrice)
         : (game.actualPurchaseCostSecondary || providerData.costSecondary || providerData.secondaryPrice || game.minCostSecondary || game.baseCostSecondary || effectivePrice)
 
-      const cartItemKey = `gaming_${game.id}_${resolvedLicense}`
+      const chosenPlatform = consoleVariant || game.platform || 'PS5'
+      const cartItemKey = `gaming_${game.id}_${resolvedLicense}_${chosenPlatform}`
       const existingItem = this.items.find(i => i.cartItemKey === cartItemKey)
 
       if (existingItem) {
@@ -301,10 +302,10 @@ export const useCartStore = defineStore('cart', {
           cartItemKey,
           id: game.id,
           gameId: game.id,
-          name: `${game.title} (${game.platform})`,
+          name: `${game.title} (${chosenPlatform})`,
           baseName: game.title,
           title: game.title,
-          platform: game.platform,
+          platform: chosenPlatform,
           category: 'Videojuegos Digitales',
           planKey: `gaming_${resolvedLicense}`,
           planLabel: isSingleMode

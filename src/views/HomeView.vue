@@ -834,6 +834,7 @@ const sharedSelectionProdIds = ref([])
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
 const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
+const selectedGameConsole = ref('PS5')
 
 const loadStoredGamingWishlist = () => {
   try {
@@ -1022,7 +1023,39 @@ watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSear
 
 const openGamingDetail = (game) => {
   selectedGamingProduct.value = game
+  if (game?.platform && game.platform.includes('PS5')) {
+    selectedGameConsole.value = 'PS5'
+  } else if (game?.platform && game.platform.includes('PS4')) {
+    selectedGameConsole.value = 'PS4'
+  } else if (game?.platform && game.platform.includes('Xbox')) {
+    selectedGameConsole.value = 'Xbox'
+  } else if (game?.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) {
+    selectedGameConsole.value = 'PC Steam'
+  } else if (game?.platform && game.platform.includes('Switch')) {
+    selectedGameConsole.value = 'Switch'
+  } else {
+    selectedGameConsole.value = game?.platform || 'PS5'
+  }
   showGamingDetailModal.value = true
+}
+
+const copyGameTechnicalSheet = (game) => {
+  if (!game) return
+  const lic = getGameSelectedLicense(game.id)
+  const price = lic === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
+  const chosenConsole = selectedGameConsole.value || game.platform || 'PS5'
+  const text = `🎮 *STREAMEPRO - FICHA OFICIAL*\n` +
+    `🎯 *Juego:* ${game.title}\n` +
+    `🕹️ *Consola:* ${chosenConsole}\n` +
+    `🔑 *Modalidad:* ${lic === 'primary' ? '⭐️ Cuenta Primaria (Juegas con tu usuario)' : '⚡️ Cuenta Secundaria (Ahorro)'}\n` +
+    `💰 *Precio Final:* ${price?.toLocaleString()} ARS (Sin 60% de impuestos)\n` +
+    `⚡ *Entrega:* 60-90 min garantizada\n` +
+    `👉 Ver catálogo y comprar: ${window.location.origin}/juegos?g=${encodeURIComponent(game.slug || game.id)}`
+  navigator.clipboard.writeText(text).then(() => {
+    toast.add('📋 ¡Ficha técnica copiada al portapapeles!', 'success')
+  }).catch(() => {
+    toast.add('No se pudo copiar al portapapeles', 'error')
+  })
 }
 
 const addGameToCartFromCard = (game) => {
@@ -1035,17 +1068,20 @@ const addGameToCartFromCard = (game) => {
 const addGameToCartFromModal = () => {
   if (!selectedGamingProduct.value) return
   const licenseType = getGameSelectedLicense(selectedGamingProduct.value.id)
-  cartStore.addGamingItem(selectedGamingProduct.value, licenseType, 1)
-  toast.add(`✓ "${selectedGamingProduct.value.title}" (${licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria'}) agregado al carrito`, 'success')
+  const chosenConsole = selectedGameConsole.value || selectedGamingProduct.value.platform
+  cartStore.addGamingItem(selectedGamingProduct.value, licenseType, 1, chosenConsole)
+  toast.add(`✓ "${selectedGamingProduct.value.title}" (${chosenConsole} - ${licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria'}) agregado al carrito`, 'success')
   showGamingDetailModal.value = false
   cartStore.openDrawer()
 }
 
-const buyGamingViaWhatsApp = (game, licenseType = null) => {
+const buyGamingViaWhatsApp = (game, licenseType = null, chosenConsole = null) => {
   const lic = licenseType || getGameSelectedLicense(game.id)
   const isPrim = lic === 'primary'
   const price = isPrim ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice
   const cleanPhone = effectiveDistributorPhone.value.replace(/\D/g, '') || '5492915658321'
+
+  const consoleTarget = chosenConsole || selectedGameConsole.value || game.platform || 'PS5'
 
   let networkName = 'PlayStation Store'
   if (game.platform && game.platform.includes('Switch')) networkName = 'Nintendo eShop'
@@ -1054,12 +1090,13 @@ const buyGamingViaWhatsApp = (game, licenseType = null) => {
 
   const modalityText = (game.platform && (game.platform.includes('PC') || game.platform.includes('Steam')))
     ? '🔑 Clave Digital Original'
-    : (isPrim ? '⭐️ Cuenta Primaria (Juego con mi usuario)' : '⚡️ Cuenta Secundaria (Ahorro, requiere conexión)')
+    : (isPrim ? '⭐️ Cuenta Primaria (Juego con mi propio usuario)' : '⚡️ Cuenta Secundaria (Ahorro, requiere conexión)')
 
   const msg = `¡Hola! Me interesa comprar el videojuego digital en *StreamePro*:\n\n` +
-    `🎮 *Juego:* ${game.title} (${game.platform})\n` +
+    `🎮 *Juego:* ${game.title}\n` +
+    `🕹️ *Consola / Dispositivo:* ${consoleTarget}\n` +
     `🔑 *Modalidad:* ${modalityText}\n` +
-    `💰 *Precio:* $${price?.toLocaleString()} ARS\n\n` +
+    `💰 *Precio:* ${price?.toLocaleString()} ARS\n\n` +
     `¿Tienen entrega en 60/90min para ${networkName}?`
   window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
@@ -8259,14 +8296,58 @@ const submitOrder = async () => {
           </div>
         </div>
 
+        <!-- Selector de Consola para Juegos Multiplataforma (PS5 vs PS4) -->
+        <div v-if="selectedGamingProduct.platform && (selectedGamingProduct.platform.includes('/') || (selectedGamingProduct.platform.includes('PS4') && selectedGamingProduct.platform.includes('PS5')))" class="bg-slate-950/90 p-3.5 rounded-2xl border border-indigo-500/30 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block font-black uppercase text-indigo-300 text-xs flex items-center gap-1.5">
+              <span>🕹️</span> Selecciona tu Consola:
+            </label>
+            <span class="text-[10px] font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+              Dual-Gen Oficial
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button 
+              type="button" 
+              @click="selectedGameConsole = 'PS5'"
+              :class="[
+                'p-2.5 sm:p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer',
+                selectedGameConsole === 'PS5' 
+                  ? 'bg-blue-600/30 border-blue-400 text-white shadow-lg ring-2 ring-blue-500/40' 
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+              ]"
+            >
+              <span class="font-black text-xs sm:text-sm flex items-center gap-1.5">
+                <span>⚡</span> PlayStation 5
+              </span>
+              <span class="text-[10px] text-sky-300 font-medium">4K 60FPS • DualSense • SSD</span>
+            </button>
+            <button 
+              type="button" 
+              @click="selectedGameConsole = 'PS4'"
+              :class="[
+                'p-2.5 sm:p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer',
+                selectedGameConsole === 'PS4' 
+                  ? 'bg-sky-600/30 border-sky-400 text-white shadow-lg ring-2 ring-sky-500/40' 
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+              ]"
+            >
+              <span class="font-black text-xs sm:text-sm flex items-center gap-1.5">
+                <span>🎮</span> PlayStation 4
+              </span>
+              <span class="text-[10px] text-slate-400 font-medium">Full HD 1080p • PS4 Pro / Slim</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Selector de Cuenta Primaria vs Cuenta Secundaria en Modal -->
         <div v-if="selectedGamingProduct.platform && (selectedGamingProduct.platform.includes('PC') || selectedGamingProduct.platform.includes('Steam'))" class="bg-slate-950 p-4 rounded-2xl border border-purple-500/30 space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-black text-purple-300">🔑 Clave Digital Oficial Steam</span>
             <span class="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-mono font-bold">100% Permanente</span>
           </div>
-          <div class="text-xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
-          <p class="text-xs text-slate-300">Recibes una clave oficial de activación directa para canjear en la aplicación Steam en tu computadora. El juego queda asociado de por vida a tu cuenta personal.</p>
+          <div class="text-2xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
+          <p class="text-xs text-slate-300">Recibes una clave oficial de activación directa para canjear en la aplicación Steam en tu computadora. El juego queda asociado de por vida a tu cuenta personal con soporte para multijugador y logros.</p>
         </div>
 
         <!-- Caso PS3: Licencia Digital Completa en Modal -->
@@ -8275,47 +8356,109 @@ const submitOrder = async () => {
             <span class="text-xs font-black text-cyan-300">🕹️ Licencia Digital Oficial PlayStation 3</span>
             <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded font-mono font-bold">100% Permanente</span>
           </div>
-          <div class="text-xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
+          <div class="text-2xl font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
           <p class="text-xs text-slate-300">Recibes una cuenta oficial verificada para descargar el juego completo directamente desde PlayStation Store en tu consola PS3. Puedes jugar con o sin conexión a internet y guardar tus avances.</p>
         </div>
 
-        <div v-else class="space-y-2 bg-slate-950 p-4 rounded-2xl border border-indigo-500/30">
-          <label class="block font-black uppercase text-indigo-300 text-xs">
-            Selecciona la Modalidad Deseada:
-          </label>
-          <div class="grid grid-cols-2 gap-3">
+        <!-- Comparativa Visual Rica: Cuenta Primaria vs Cuenta Secundaria -->
+        <div v-else class="space-y-2.5 bg-slate-950/90 p-3.5 sm:p-4 rounded-2xl border border-indigo-500/30">
+          <div class="flex items-center justify-between">
+            <label class="block font-black uppercase text-indigo-300 text-xs">
+              Selecciona tu Modalidad de Juego:
+            </label>
+            <span class="text-[10px] text-emerald-400 font-mono font-bold">100% Original y Permanente</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Tarjeta Cuenta Primaria -->
             <div 
               @click="setGameLicense(selectedGamingProduct.id, 'primary')"
               :class="[
-                'p-3 rounded-2xl border cursor-pointer transition-all space-y-1',
+                'p-3.5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative overflow-hidden',
                 getGameSelectedLicense(selectedGamingProduct.id) === 'primary' 
-                  ? 'bg-blue-950/60 border-blue-500 shadow-md ring-2 ring-blue-500/30' 
-                  : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
+                  ? 'bg-blue-950/70 border-blue-500 shadow-xl ring-2 ring-blue-500/30 text-white' 
+                  : 'bg-slate-900/80 border-slate-800 opacity-70 hover:opacity-100 text-slate-300'
               ]"
             >
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-black text-blue-300">⭐️ Cuenta Primaria</span>
-                <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'primary'" class="text-[10px] bg-blue-500 text-slate-950 font-black px-1.5 rounded">Elegido</span>
+              <span class="absolute top-0 right-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+                ⭐ MÁS ELEGIDA
+              </span>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-black text-blue-300">👑 Cuenta Primaria</span>
               </div>
-              <div class="text-lg font-black text-white font-mono">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }} ARS</div>
-              <p class="text-[10px] text-slate-400">Juegas con tu usuario personal, acumulas trofeos y juegas con o sin internet.</p>
+              <div class="flex items-baseline gap-1 font-mono">
+                <span class="text-2xl font-black text-white">${{ selectedGamingProduct.effectivePrimaryPrice?.toLocaleString() }}</span>
+                <span class="text-xs text-slate-400 font-bold">ARS</span>
+              </div>
+              <div class="space-y-1 text-[11px] text-slate-300 pt-1.5 border-t border-white/10">
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Juegas con tu usuario de siempre</div>
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Acumulas tus propios trofeos</div>
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Juegas con o sin conexión a internet</div>
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Compatible con multijugador online</div>
+              </div>
             </div>
 
+            <!-- Tarjeta Cuenta Secundaria -->
             <div 
               @click="setGameLicense(selectedGamingProduct.id, 'secondary')"
               :class="[
-                'p-3 rounded-2xl border cursor-pointer transition-all space-y-1',
+                'p-3.5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative overflow-hidden',
                 getGameSelectedLicense(selectedGamingProduct.id) === 'secondary' 
-                  ? 'bg-amber-950/60 border-amber-500 shadow-md ring-2 ring-amber-500/30' 
-                  : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100'
+                  ? 'bg-amber-950/70 border-amber-500 shadow-xl ring-2 ring-amber-500/30 text-white' 
+                  : 'bg-slate-900/80 border-slate-800 opacity-70 hover:opacity-100 text-slate-300'
               ]"
             >
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-black text-amber-300">⚡️ Cuenta Secundaria</span>
-                <span v-if="getGameSelectedLicense(selectedGamingProduct.id) === 'secondary'" class="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 rounded">Elegido</span>
+              <span class="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+                ⚡ MÁXIMO AHORRO
+              </span>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-black text-amber-300">⚡️ Cuenta Secundaria</span>
               </div>
-              <div class="text-lg font-black text-white font-mono">${{ selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString() }} ARS</div>
-              <p class="text-[10px] text-slate-400">Juegas con el usuario asignado, requiere conexión constante a internet.</p>
+              <div class="flex items-baseline gap-1 font-mono">
+                <span class="text-2xl font-black text-white">${{ selectedGamingProduct.effectiveSecondaryPrice?.toLocaleString() }}</span>
+                <span class="text-xs text-slate-400 font-bold">ARS</span>
+              </div>
+              <div class="space-y-1 text-[11px] text-slate-300 pt-1.5 border-t border-white/10">
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Mismo juego completo oficial</div>
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Juegas desde el usuario asignado</div>
+                <div class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">⚠️</span> Requiere internet al iniciar sesión</div>
+                <div class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span> Ahorro del 50% garantizado</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner Comparativo de Ahorro Real frente a PlayStation Store (+60% Impuestos) -->
+        <div class="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-2xl flex items-center justify-between text-xs text-emerald-300">
+          <div class="flex items-center gap-2">
+            <span class="text-base shrink-0">🔥</span>
+            <span><strong>Precios Finales en Pesos:</strong> Sin percepciones ni el 60% de impuestos que cobra PlayStation Store con tarjetas bancarias. ¡Ahorras hasta un 50% directo!</span>
+          </div>
+        </div>
+
+        <!-- Guía de Activación y Descarga en 4 Pasos -->
+        <div class="bg-gradient-to-r from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-500/25 p-4 rounded-2xl space-y-2 text-xs">
+          <div class="flex items-center justify-between text-indigo-300 font-black">
+            <span class="flex items-center gap-2">
+              <span>🚀</span> ¿Cómo se entrega e instala tu juego?
+            </span>
+            <span class="text-[10px] text-emerald-400 font-mono">Paso a Paso Oficial</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-amber-400 font-black block mb-0.5">1. Elige Consola</span>
+              <span class="text-slate-400">Seleccionas tu consola (PS5/PS4) y tu modalidad preferida.</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-sky-400 font-black block mb-0.5">2. Abona al Instante</span>
+              <span class="text-slate-400">Transferencia Alias/CVU o Mercado Pago sin impuestos país del 60%.</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-emerald-400 font-black block mb-0.5">3. Recibe en 60m</span>
+              <span class="text-slate-400">Te enviamos datos oficiales verificados por WhatsApp con instructivo.</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-purple-400 font-black block mb-0.5">4. Descarga Directa</span>
+              <span class="text-slate-400">Descargas desde la Biblioteca oficial de tu consola y listo para jugar.</span>
             </div>
           </div>
         </div>
@@ -8378,6 +8521,14 @@ const submitOrder = async () => {
           <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 pt-0.5">
             <button
               type="button"
+              @click="copyGameTechnicalSheet(selectedGamingProduct)"
+              class="flex-1 py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-slate-800 font-bold flex items-center justify-center gap-1 cursor-pointer"
+              title="Copiar resumen del juego con precios"
+            >
+              <span>📋 Copiar Ficha</span>
+            </button>
+            <button
+              type="button"
               @click="copyGamingShareUrl(selectedGamingProduct)"
               class="flex-1 py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 font-bold flex items-center justify-center gap-1 cursor-pointer"
             >
@@ -8393,7 +8544,7 @@ const submitOrder = async () => {
                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
               ]"
             >
-              <span>{{ isGamingFavorite(selectedGamingProduct.id) ? '❤️ En Favoritos' : '🤍 Favorito' }}</span>
+              <span>{{ isGamingFavorite(selectedGamingProduct.id) ? '❤️ Guardado' : '🤍 Favorito' }}</span>
             </button>
           </div>
         </div>
