@@ -412,6 +412,18 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <!-- Enlace discreto a Panel Proveedor / Admin -->
+        <div class="pt-1 flex items-center justify-center text-xs border-t border-white/[0.06]">
+          <RouterLink 
+            to="/myprove" 
+            @click="$emit('update:modelValue', false)"
+            class="text-[11px] font-mono text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <span>🔒</span>
+            <span>Acceso Centro Mayorista / Proveedor</span>
+          </RouterLink>
+        </div>
+
         <!-- Historial de Pedidos Recientes -->
         <div v-if="clientOrders.length > 0" class="space-y-2">
           <div class="flex items-center justify-between">

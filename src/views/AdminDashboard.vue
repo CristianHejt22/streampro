@@ -218,20 +218,6 @@ const selectAdminCategory = (cat) => {
   }
 }
 
-watch(gamingAdminSubTab, (val) => {
-  if (val === 'orders') {
-    adminTab.value = 'orders'
-    ordersSubSection.value = 'gaming'
-  }
-})
-
-watch(adminPhysicalSubTab, (val) => {
-  if (val === 'orders') {
-    adminTab.value = 'orders'
-    ordersSubSection.value = 'physical'
-  }
-})
-
 watch(adminTab, (newTab) => {
   if (adminCategoryFilter.value !== 'all') {
     const currentList = adminCategoryTabs[adminCategoryFilter.value] || []
@@ -3849,6 +3835,20 @@ const availableAccountsForOrder = computed(() => {
 
 // SECCIONES DE PEDIDOS & DESPACHOS: 'streaming' | 'gaming' | 'physical'
 const ordersSubSection = ref('streaming')
+
+watch(gamingAdminSubTab, (val) => {
+  if (val === 'orders') {
+    adminTab.value = 'orders'
+    ordersSubSection.value = 'gaming'
+  }
+})
+
+watch(adminPhysicalSubTab, (val) => {
+  if (val === 'orders') {
+    adminTab.value = 'orders'
+    ordersSubSection.value = 'physical'
+  }
+})
 // SUB-FILTRO DE TIPO EN STREAMING & COMBOS: 'ALL' | 'INDIVIDUAL' | 'COMBO'
 const streamingItemTypeFilter = ref('ALL')
 const streamingOrderStatusFilter = ref('All')
@@ -4692,15 +4692,6 @@ const handleDuplicatePlan = (platKey, pKey) => {
 }
 
 // GESTIÓN Y ARMADO DE PAQUETES & OFERTAS (PROVEEDOR)
-// Sincronización automática de cantidad de dispositivos mencionados en la descripción (salvo override manual)
-watch(() => newPackageForm.value.description, (newDesc) => {
-  if (!newDesc) return
-  const match = newDesc.match(/(\d+)\s*(?:dispositivos?|disp\.?|pantallas?)/i)
-  if (match && match[1]) {
-    newPackageForm.value.devices = match[1]
-  }
-})
-
 const newPackageForm = ref({
   title: '',
   category: 'streaming',
@@ -4718,6 +4709,15 @@ const newPackageForm = ref({
   platformProfit: 0,
   resellerCost: 0,
   promoPrice: 0
+})
+
+// Sincronización automática de cantidad de dispositivos mencionados en la descripción (salvo override manual)
+watch(() => newPackageForm.value.description, (newDesc) => {
+  if (!newDesc) return
+  const match = newDesc.match(/(\d+)\s*(?:dispositivos?|disp\.?|pantallas?)/i)
+  if (match && match[1]) {
+    newPackageForm.value.devices = match[1]
+  }
 })
 
 const packageCategoryFilter = ref('all') // 'all' | 'streaming' | 'internet' | 'panel'

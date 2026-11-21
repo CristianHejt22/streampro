@@ -131,6 +131,16 @@ const isClientArea = computed(() => {
 const isResellerArea = computed(() => route.name === 'crm' || ['/crm', '/cm', '/reseller', '/revendedor', '/panel', '/c'].includes(route.path))
 const isAdminArea = computed(() => route.name === 'myprove' || ['/myprove', '/myprov', '/proveedor', '/admin-proveedor', '/prove', '/admin'].includes(route.path))
 
+const supportWhatsAppUrl = computed(() => {
+  const phone = adminStore.providerBankInfo?.whatsapp || adminStore.adminAuth?.whatsapp || '5492915658321'
+  let cleanPhone = String(phone).replace(/[^0-9]/g, '')
+  if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1)
+  if (cleanPhone.length === 10) cleanPhone = `549${cleanPhone}`
+  else if (cleanPhone.length === 11 && cleanPhone.startsWith('15')) cleanPhone = `54911${cleanPhone.substring(2)}`
+  else if (cleanPhone.length === 12 && cleanPhone.startsWith('54') && !cleanPhone.startsWith('549')) cleanPhone = `549${cleanPhone.substring(2)}`
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent('¡Hola! Me comunico desde StreamePro para consultar por productos y soporte.')}`
+})
+
 const isAdminUser = computed(() => {
   try {
     const saved = getRememberedSession('admin')
@@ -658,6 +668,11 @@ const handleOpenCart = () => {
             </span>
             <span class="text-slate-700">•</span>
             <span>Servicio Protegido SSL</span>
+            <span class="text-slate-700">•</span>
+            <RouterLink to="/myprove" class="text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer" title="Acceso Panel Proveedor">
+              <span>🔒</span>
+              <span>Acceso Proveedor</span>
+            </RouterLink>
           </div>
         </div>
       </div>
