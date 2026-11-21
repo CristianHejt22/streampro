@@ -45,9 +45,10 @@ onMounted(() => {
   notifPermission.value = getNotificationPermission()
   inAppNotifActive.value = isInAppNotificationEnabled()
 
-  // Comprobar si el usuario minimizó el banner previamente en esta sesión
-  const savedDismiss = sessionStorage.getItem('streampro_pwa_dismissed')
-  if (savedDismiss === 'true') {
+  // En móviles o si el usuario minimizó el banner, iniciar colapsado para no entorpecer la visual
+  const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 640
+  const savedDismiss = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('streampro_pwa_dismissed') : null
+  if (savedDismiss === 'true' || isMobileScreen) {
     isCollapsed.value = true
   }
 
@@ -139,7 +140,7 @@ const dismissBanner = () => {
     <!-- BANNER FLOTANTE DE INSTALACIÓN PWA Y NOTIFICACIONES -->
     <div 
       v-if="!isInstalled && !isCollapsed" 
-      class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-40 animate-in slide-in-from-bottom-4 duration-300"
+      class="fixed bottom-18 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-96 z-50 animate-in slide-in-from-bottom-4 duration-300"
     >
       <div class="bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border border-amber-500/40 rounded-2xl p-4 shadow-2xl shadow-black/80 backdrop-blur-xl relative space-y-3">
         <!-- Botón minimizar / cerrar -->
@@ -249,7 +250,7 @@ const dismissBanner = () => {
     <!-- BOTÓN MINIMIZADO FLOTANTE (Si fue cerrado o para acceso rápido) -->
     <div 
       v-else-if="!isInstalled" 
-      class="fixed bottom-4 right-4 z-40 animate-fade-in"
+      class="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 animate-fade-in"
     >
       <button 
         @click="isCollapsed = false" 

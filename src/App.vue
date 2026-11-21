@@ -490,7 +490,7 @@ const handleOpenCart = () => {
       </div>
     </header>
 
-    <main :class="['flex-grow relative', isRecruitmentArea ? 'w-full p-0' : 'container mx-auto px-4 py-8 max-w-7xl']">
+    <main :class="['flex-grow relative', isRecruitmentArea ? 'w-full p-0' : 'container mx-auto px-3 sm:px-4 py-3 sm:py-8 pb-24 sm:pb-8 max-w-7xl']">
       <RouterView />
     </main>
 
@@ -675,7 +675,7 @@ const handleOpenCart = () => {
       :href="supportWhatsAppUrl"
       target="_blank"
       rel="noopener noreferrer"
-      class="fixed bottom-5 left-4 sm:left-6 z-40 group flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs shadow-[0_4px_20px_rgba(16,185,129,0.4)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.6)] transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/40 cursor-pointer"
+      class="fixed bottom-20 left-3 sm:bottom-6 sm:left-6 z-30 group flex items-center gap-2.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs shadow-[0_4px_20px_rgba(16,185,129,0.4)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.6)] transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/40 cursor-pointer"
       title="Soporte Oficial por WhatsApp"
     >
       <span class="relative flex h-3 w-3">
@@ -694,7 +694,7 @@ const handleOpenCart = () => {
         v-if="showScrollTop"
         type="button"
         @click="scrollToTop"
-        class="fixed bottom-5 right-5 sm:right-6 z-40 p-3 rounded-full bg-slate-900/90 hover:bg-slate-800 text-sky-400 hover:text-white border border-sky-500/40 shadow-xl shadow-black/50 backdrop-blur-md transition-all transform hover:scale-110 active:scale-95 cursor-pointer"
+        class="fixed bottom-32 right-3 sm:bottom-6 sm:right-6 z-30 p-2.5 sm:p-3 rounded-full bg-slate-900/90 hover:bg-slate-800 text-sky-400 hover:text-white border border-sky-500/40 shadow-xl shadow-black/50 backdrop-blur-md transition-all transform hover:scale-110 active:scale-95 cursor-pointer"
         title="Volver al inicio"
         aria-label="Volver al inicio"
       >
@@ -704,29 +704,67 @@ const handleOpenCart = () => {
       </button>
     </Transition>
 
-    <!-- Barra Rápida de Carrito Flotante en Móviles -->
-    <div 
-      v-if="isClientArea && cartStore.totalItems > 0"
-      class="sm:hidden fixed bottom-4 inset-x-3 z-30 bg-slate-950/95 backdrop-blur-md border border-sky-500/40 rounded-2xl p-2.5 shadow-2xl flex items-center justify-between shadow-black/80"
+    <!-- Unified Mobile Bottom Dock (App-Style Navigation) -->
+    <nav 
+      v-if="isClientArea"
+      class="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-white/[0.08] px-2 py-1.5 flex items-center justify-around shadow-[0_-8px_25px_rgba(0,0,0,0.7)]"
     >
-      <div class="flex items-center gap-2.5 pl-1.5">
-        <span class="w-7 h-7 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center font-black text-xs font-mono">
-          {{ cartStore.totalItems }}
-        </span>
-        <div class="flex flex-col">
-          <span class="text-[10px] text-slate-400 font-medium leading-none">Mi Carrito</span>
-          <span class="text-xs font-black text-white font-mono leading-tight">${{ cartStore.total.toLocaleString('es-AR') }} ARS</span>
-        </div>
-      </div>
+      <RouterLink 
+        :to="homeLink"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl cursor-pointer"
+        :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'text-sky-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+      >
+        <span class="text-base leading-none">🌟</span>
+        <span>Inicio</span>
+      </RouterLink>
+
+      <RouterLink 
+        v-if="isStreamingNavVisible"
+        :to="getAppSectionLink('suscripciones')"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl cursor-pointer"
+        :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'text-sky-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+      >
+        <span class="text-base leading-none">🎬</span>
+        <span>Streaming</span>
+      </RouterLink>
+
+      <RouterLink 
+        v-if="isCombosNavVisible"
+        :to="getAppSectionLink('combos')"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
+        :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'text-pink-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+      >
+        <span class="text-base leading-none">🎁</span>
+        <span>Combos</span>
+        <span v-if="activePackagesCount > 0" class="absolute top-0 right-1 w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
+      </RouterLink>
+
+      <RouterLink 
+        :to="getAppSectionLink('sorteos')"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
+        :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'text-amber-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+      >
+        <span class="text-base leading-none">🎉</span>
+        <span>Sorteos</span>
+        <span v-if="activeGiveawaysCount > 0" class="absolute top-0 right-1 w-2 h-2 rounded-full bg-amber-400"></span>
+      </RouterLink>
+
+      <!-- Botón Carrito en Dock -->
       <button 
         type="button"
         @click="handleOpenCart"
-        class="bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-md cursor-pointer active:scale-95 flex items-center gap-1.5"
+        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
+        :class="cartStore.totalItems > 0 ? 'text-emerald-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
       >
-        <span>Ver Pedido</span>
-        <span>→</span>
+        <div class="relative">
+          <span class="text-base leading-none">🛒</span>
+          <span v-if="cartStore.totalItems > 0" class="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center font-mono shadow">
+            {{ cartStore.totalItems }}
+          </span>
+        </div>
+        <span>{{ cartStore.totalItems > 0 ? `${(cartStore.total / 1000).toFixed(0)}k` : 'Carrito' }}</span>
       </button>
-    </div>
+    </nav>
 
     <!-- Toasts Container -->
     <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">

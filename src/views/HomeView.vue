@@ -3406,7 +3406,8 @@ const submitOrder = async () => {
     </nav>
 
     <!-- Hero Banner Promocional Enterprise (Exclusivo en Portada Principal) -->
-    <div v-if="currentPageSection === 'home'" id="hero-banner" class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
+    <!-- DESKTOP HERO (sm:block) -->
+    <div v-if="currentPageSection === 'home'" id="hero-banner" class="hidden sm:block glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-white/[0.08] shadow-2xl">
       <div class="absolute right-[-10%] top-[-20%] w-96 h-96 bg-gradient-to-br from-sky-500/20 via-blue-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute left-[-10%] bottom-[-20%] w-80 h-80 bg-gradient-to-tr from-amber-500/15 via-indigo-600/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       
@@ -3475,7 +3476,7 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Botones de Acción Focalizados (Sin Sobrecargar la Visual) -->
+        <!-- Botones de Acción Focalizados -->
         <div class="mt-6 flex flex-wrap items-center gap-3">
           <a 
             href="#secciones-catalogo"
@@ -3510,6 +3511,75 @@ const submitOrder = async () => {
           >
             <span>💬</span>
             <span>Asesoría Oficial WhatsApp</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE ULTRA-COMPACT HERO BANNER (sm:hidden) -->
+    <div v-if="currentPageSection === 'home'" id="hero-banner-mobile" class="sm:hidden relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-900 border border-sky-500/30 p-3.5 shadow-xl">
+      <div class="absolute -right-8 -top-8 w-40 h-40 bg-sky-500/15 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -left-8 -bottom-8 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="relative z-10 space-y-2">
+        <!-- Badges Micro Header -->
+        <div class="flex items-center justify-between gap-1 text-[10px]">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold font-mono">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Entrega 10m - 1h
+          </span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
+            <span class="text-amber-400">★</span> 4.9 · +2.4k
+          </span>
+        </div>
+
+        <!-- Title -->
+        <div>
+          <h2 class="text-lg font-black text-white leading-tight tracking-tight">
+            Streaming 4K, Combos & Gaming
+          </h2>
+          <p class="text-[11px] text-slate-300 mt-0.5 leading-snug">
+            PIN privado exclusivo, sin caídas y entrega garantizada en 10-60 min.
+          </p>
+        </div>
+
+        <!-- Quick Access Dynamic Horizontal Strip -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+          <button 
+            type="button"
+            @click="toggleOnlyDiscounts"
+            :class="[
+              'px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 shrink-0 transition-all border shadow-sm cursor-pointer',
+              onlyDiscountsFilter
+                ? 'bg-red-500 text-white border-red-400 font-black'
+                : 'bg-red-950/60 text-red-300 border-red-500/30'
+            ]"
+          >
+            <span>🔥</span> Ofertas % OFF
+          </button>
+
+          <RouterLink
+            :to="getSectionLink('combos')"
+            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-pink-500/15 text-pink-300 border border-pink-500/30 flex items-center gap-1 shrink-0 transition-all"
+          >
+            <span>🎁</span> Combos -35%
+          </RouterLink>
+
+          <button
+            type="button"
+            @click="giftCardModalTab = 'create'; showGiftCardModal = true"
+            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0 transition-all cursor-pointer"
+          >
+            <span>💳</span> Gift Cards 20%
+          </button>
+
+          <a 
+            :href="getWhatsAppContactUrl()"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800 text-sky-300 border border-sky-500/30 flex items-center gap-1 shrink-0 transition-all"
+          >
+            <span>💬</span> WhatsApp
           </a>
         </div>
       </div>
@@ -3768,7 +3838,7 @@ const submitOrder = async () => {
             :key="cat.id"
             type="button"
             @click="goToCategory(cat)"
-            class="p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-white/[0.06] hover:border-white/20 transition-all text-left flex flex-col justify-between group shadow-sm hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-white/[0.06] hover:border-white/20 transition-all text-left flex flex-col justify-between group shadow-sm hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
           >
             <div>
               <div class="flex items-center justify-between mb-2">
@@ -3817,7 +3887,7 @@ const submitOrder = async () => {
         </div>
 
                 <!-- Grid de 6 Tarjetas de Marca de Alto Impacto (Limpio, sin exponer planes dentro del contenedor) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           <div 
             v-for="product in homeFeaturedDigital" 
             :key="product.id" 
@@ -3866,7 +3936,7 @@ const submitOrder = async () => {
               </div>
 
               <!-- Bloque Precio de Referencia & Disponibilidad Oficial -->
-              <div class="flex items-center justify-between bg-slate-950/90 rounded-2xl p-3.5 border border-slate-800/80">
+              <div class="flex items-center justify-between bg-slate-950/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-800/80">
                 <div>
                   <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
                     Planes oficiales desde:
@@ -3913,7 +3983,7 @@ const submitOrder = async () => {
                 @click.stop="openConfig(product)" 
                 class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
               >
-                <span>Ver Planes & Modalidades</span>
+                <span class="hidden sm:inline">Ver Planes & Modalidades</span><span class="sm:hidden">Ver Planes</span>
                 <span>→</span>
               </button>
             </div>
@@ -3945,16 +4015,16 @@ const submitOrder = async () => {
           </RouterLink>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-6">
           <div 
             v-for="pkg in homeFeaturedPackages" 
             :key="pkg.id"
             :id="'combo-' + (pkg.id || pkg.sku)"
-            :class="['glass-panel rounded-3xl p-6 border flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10 transition-all duration-300', highlightedPackageId === String(pkg.id).toLowerCase() || highlightedPackageId === String(pkg.sku || '').toLowerCase() ? 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.35)] ring-2 ring-pink-400 scale-[1.02]' : 'border-white/[0.08] hover:border-pink-500/40']"
+            :class="['glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 border flex flex-col justify-between relative group hover:shadow-2xl hover:shadow-pink-500/10 transition-all duration-300', highlightedPackageId === String(pkg.id).toLowerCase() || highlightedPackageId === String(pkg.sku || '').toLowerCase() ? 'border-pink-500 shadow-[0_0_35px_rgba(236,72,153,0.35)] ring-2 ring-pink-400 scale-[1.02]' : 'border-white/[0.08] hover:border-pink-500/40']"
           >
             <div class="space-y-4">
               <!-- Arte promocional superior si existe -->
-              <div v-if="pkg.image || true" class="relative -mx-6 -mt-6 mb-3 h-44 rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
+              <div v-if="pkg.image || true" class="relative -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 mb-3 h-36 sm:h-44 rounded-t-2xl sm:rounded-t-3xl overflow-hidden bg-slate-950 border-b border-pink-500/20">
                 <img :src="pkg.image || '/flyers/combos/combo-default.jpg'" :alt="pkg.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
                 <div class="absolute top-3 left-3">
@@ -4544,7 +4614,7 @@ const submitOrder = async () => {
       </div>
 
             <!-- Catálogo de Suscripciones Oficiales 4K (Limpio y conectado a modal) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
         <div 
           v-for="product in paginatedDigitalProducts" 
           :key="product.id" 
@@ -4600,7 +4670,7 @@ const submitOrder = async () => {
             </div>
 
             <!-- Bloque Precio de Referencia & Garantía -->
-            <div class="flex items-center justify-between bg-slate-950/90 rounded-2xl p-3.5 border border-slate-800/80">
+            <div class="flex items-center justify-between bg-slate-950/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-800/80">
               <div>
                 <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
                   Planes oficiales desde:
@@ -4647,7 +4717,7 @@ const submitOrder = async () => {
               @click.stop="openConfig(product)" 
               class="flex-1 bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-xs cursor-pointer active:scale-95"
             >
-              <span>Ver Planes & Modalidades</span>
+              <span class="hidden sm:inline">Ver Planes & Modalidades</span><span class="sm:hidden">Ver Planes</span>
               <span>→</span>
             </button>
           </div>
