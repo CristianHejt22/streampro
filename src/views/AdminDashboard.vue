@@ -3851,6 +3851,9 @@ const availableAccountsForOrder = computed(() => {
 const ordersSubSection = ref('streaming')
 // SUB-FILTRO DE TIPO EN STREAMING & COMBOS: 'ALL' | 'INDIVIDUAL' | 'COMBO'
 const streamingItemTypeFilter = ref('ALL')
+const streamingOrderStatusFilter = ref('All')
+const streamingOrderResellerFilter = ref('All')
+const streamingOrderSearch = ref('')
 
 const isOrderPackageType = (o) => isPackageOrder(o)
 const isOrderGamingType = (o) => isGamingOrder(o)

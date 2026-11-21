@@ -1399,7 +1399,7 @@ const checkAndTriggerGamingPopup = () => {
 
     setTimeout(() => {
       if (
-        showCartModal.value ||
+        showCartDrawer.value ||
         showClientGameInquiry.value ||
         showGamingDetailModal.value ||
         showSharePlaqueModal.value ||

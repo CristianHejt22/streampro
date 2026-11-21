@@ -97,6 +97,15 @@ export function broadcastDbChange(key, value) {
   }
 }
 
+export function saveDbSilent(key, value) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
 export function saveDb(key, value) {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))

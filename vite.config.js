@@ -95,7 +95,8 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 3500000,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        navigateFallback: null,
+        globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest}'],
         globIgnores: ['**/catalog-gaming*.js'],
         runtimeCaching: [
           {

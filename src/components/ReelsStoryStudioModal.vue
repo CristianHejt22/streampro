@@ -1957,7 +1957,7 @@ const goToFlyerStudio = () => {
     platform: selectedGamingPlatform.value || '',
     license: pickedGamingLicense.value || 'primary',
     badge: reelBadgeText.value,
-    image: customCoverUrl.value || (selectedMode.value === 'gaming' ? selectedGamingProduct.value?.image : null) || ''
+    image: reelArtworkUrl.value || ''
   }
   emit('openFlyer', payload)
 }

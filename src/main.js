@@ -8,7 +8,10 @@ import { useAdminStore } from './store/admin'
 // Manejador global para actualización de recursos al desplegar nuevas versiones
 window.addEventListener('vite:preloadError', (event) => {
   console.warn('Nueva versión de StreamePro detectada. Actualizando recursos...', event)
-  window.location.reload()
+  if (!window.__reloadingOnPreload) {
+    window.__reloadingOnPreload = true
+    setTimeout(() => { window.location.reload() }, 1000)
+  }
 })
 
 const app = createApp(App)

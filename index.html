@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        if (localStorage.getItem('streampro_prod_v2_gaming_products')) {
+          localStorage.removeItem('streampro_prod_v2_gaming_products');
+        }
+      } catch (e) {}
+    </script>
     
     <!-- SEO & Metadatos Principales Protegidos (Sin exposición de marcas de suscripción a buscadores) -->
     <title>StreamePro | Videojuegos Digitales PS5 & PS4, Gaming, Tecnología y Entretenimiento</title>

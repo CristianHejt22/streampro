@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, defineAsyncComponent, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useToastStore } from './store/toast'
 import { useAdminStore, useResellerStore } from './store/admin'
@@ -49,6 +49,18 @@ watch(() => adminStore.seoConfig, (cfg) => {
   }
 }, { immediate: true, deep: true })
 
+const showScrollTop = ref(false)
+const handleScroll = () => {
+  if (typeof window !== 'undefined') {
+    showScrollTop.value = window.scrollY > 350
+  }
+}
+const scrollToTop = () => {
+  if (typeof window !== 'undefined') {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
 onMounted(() => {
   checkSavedUser()
   adminStore.ensurePhysicalProductsLoaded()
@@ -56,24 +68,47 @@ onMounted(() => {
   // Sincronización en la nube con Firebase Firestore para todos los clientes en tiempo real
   adminStore.initStoreSettingsSync().catch(() => {})
 
-  // Sincronización en tiempo real entre pestañas y ventanas abiertas
+  // Monitor de estado de conectividad en tiempo real y scroll
   if (typeof window !== 'undefined') {
-    // 1. BroadcastChannel (0 ms entre pestañas para cambios de precios, combos, catálogo y visibilidad)
+    window.addEventListener('online', () => {
+      toastStore.add('🟢 Conexión a internet restablecida.', 'success')
+    })
+    window.addEventListener('offline', () => {
+      toastStore.add('⚠️ Modo sin conexión: Navegando en catálogo offline con respaldo local.', 'warning')
+    })
+    window.addEventListener('scroll', handleScroll, { passive: true })
+  }
+
+  // Sincronización en tiempo real protegida y con debounce entre pestañas
+  if (typeof window !== 'undefined') {
+    let syncDebounceTimer = null
+    const handleSync = (key) => {
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer)
+      syncDebounceTimer = setTimeout(() => {
+        adminStore.reloadKeyFromStorage(key)
+      }, 60)
+    }
+
     if ('BroadcastChannel' in window) {
       const bc = new BroadcastChannel('streamepro_catalog_sync')
       bc.onmessage = (event) => {
         if (event.data && event.data.type === 'DB_CHANGED') {
-          adminStore.reloadKeyFromStorage(event.data.key)
+          handleSync(event.data.key)
         }
       }
+    } else {
+      window.addEventListener('storage', (e) => {
+        if (!e.key) return
+        const cleanKey = e.key.replace('streampro_prod_v2_', '')
+        handleSync(cleanKey)
+      })
     }
+  }
+})
 
-    // 2. Storage event (fallback automático para recarga entre ventanas)
-    window.addEventListener('storage', (e) => {
-      if (!e.key) return
-      const cleanKey = e.key.replace('streampro_prod_v2_', '')
-      adminStore.reloadKeyFromStorage(cleanKey)
-    })
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('scroll', handleScroll)
   }
 })
 
@@ -634,6 +669,65 @@ const handleOpenCart = () => {
     <!-- Banner & Acceso PWA / Notificaciones Push Multi-dispositivo -->
     <PwaInstallPrompt />
 
+    <!-- Botón Flotante Inteligente de Soporte WhatsApp Oficial -->
+    <a 
+      v-if="!isAdminArea"
+      :href="supportWhatsAppUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="fixed bottom-5 left-4 sm:left-6 z-40 group flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs shadow-[0_4px_20px_rgba(16,185,129,0.4)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.6)] transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/40 cursor-pointer"
+      title="Soporte Oficial por WhatsApp"
+    >
+      <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+      </span>
+      <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+      </svg>
+      <span class="hidden sm:inline tracking-wide">WhatsApp</span>
+    </a>
+
+    <!-- Botón Flotante Scroll-to-Top -->
+    <Transition name="fade">
+      <button 
+        v-if="showScrollTop"
+        type="button"
+        @click="scrollToTop"
+        class="fixed bottom-5 right-5 sm:right-6 z-40 p-3 rounded-full bg-slate-900/90 hover:bg-slate-800 text-sky-400 hover:text-white border border-sky-500/40 shadow-xl shadow-black/50 backdrop-blur-md transition-all transform hover:scale-110 active:scale-95 cursor-pointer"
+        title="Volver al inicio"
+        aria-label="Volver al inicio"
+      >
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+        </svg>
+      </button>
+    </Transition>
+
+    <!-- Barra Rápida de Carrito Flotante en Móviles -->
+    <div 
+      v-if="isClientArea && cartStore.totalItems > 0"
+      class="sm:hidden fixed bottom-4 inset-x-3 z-30 bg-slate-950/95 backdrop-blur-md border border-sky-500/40 rounded-2xl p-2.5 shadow-2xl flex items-center justify-between shadow-black/80"
+    >
+      <div class="flex items-center gap-2.5 pl-1.5">
+        <span class="w-7 h-7 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center font-black text-xs font-mono">
+          {{ cartStore.totalItems }}
+        </span>
+        <div class="flex flex-col">
+          <span class="text-[10px] text-slate-400 font-medium leading-none">Mi Carrito</span>
+          <span class="text-xs font-black text-white font-mono leading-tight">${{ cartStore.total.toLocaleString('es-AR') }} ARS</span>
+        </div>
+      </div>
+      <button 
+        type="button"
+        @click="handleOpenCart"
+        class="bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-md cursor-pointer active:scale-95 flex items-center gap-1.5"
+      >
+        <span>Ver Pedido</span>
+        <span>→</span>
+      </button>
+    </div>
+
     <!-- Toasts Container -->
     <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
       <TransitionGroup name="toast">
@@ -661,6 +755,17 @@ const handleOpenCart = () => {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Fade Animations */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
 }
 
 /* Toast Animations */

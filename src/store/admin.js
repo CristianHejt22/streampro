@@ -3,7 +3,7 @@ import physicalCategoriesData from '../assets/physicalCategories.json'
 import physicalProductsData from '../assets/physicalProducts.json'
 import gamingCategoriesData from '../assets/gamingCategories.json'
 import gamingSubcategoriesData from '../assets/gamingSubcategories.json'
-import { loadDb, saveDb, DB_KEYS, clearDbAll, broadcastDbChange } from '../services/db'
+import { loadDb, saveDb, saveDbSilent, DB_KEYS, clearDbAll, broadcastDbChange } from '../services/db'
 import { parseBankEmail, matchTransferWithOrders } from '../services/bankEmailParser'
 import { deleteReceipt } from '../services/receiptCloudStorage'
 import { parseArgentinePrice } from '../utils/pricing'
@@ -6254,7 +6254,7 @@ export const useAdminStore = defineStore('admin', {
       })
 
       if (hasBackfill) {
-        this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
+        // this.persist(DB_KEYS.GIVEAWAY_ENTRIES)
       }
 
       return {
