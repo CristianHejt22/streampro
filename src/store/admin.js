@@ -6229,7 +6229,7 @@ export const useAdminStore = defineStore('admin', {
         if (lucky.length > initialLen) {
           hasBackfill = true
         }
-        e.luckyNumbers = lucky
+        // e.luckyNumbers no se muta en el store para evitar ciclos reactivos en templates
 
         const masked = maskPhonePublic(e.phone)
         lucky.forEach(ln => {
@@ -6715,8 +6715,9 @@ export const useAdminStore = defineStore('admin', {
       this.isLoadingGamingCatalog = true
       _gamingCatalogPromise = (async () => {
         try {
-          const module = await import('../assets/gamingProducts.json')
-          const fullData = module.default || module
+          const fullData = (Array.isArray(_loadedBaseGamingData) && _loadedBaseGamingData.length > 0)
+            ? _loadedBaseGamingData
+            : INITIAL_GAMING_PRODUCTS
           _loadedBaseGamingData = fullData
           this.gamingProducts = buildMergedGamingCatalog(fullData)
           this.isGamingCatalogLoaded = true

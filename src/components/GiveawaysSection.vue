@@ -103,7 +103,14 @@ const getDaysLeftLabel = (endDateStr) => {
   return days > 0 ? `Faltan ${days}d ${hrs}h` : `Últimas ${hrs}h`
 }
 
-const getSummary = (giveawayId) => adminStore.getGiveawayTicketSummary(giveawayId)
+const summariesByGiveaway = computed(() => {
+  const map = {}
+  for (const g of (visibleGiveaways.value || [])) {
+    map[g.id] = adminStore.getGiveawayTicketSummary(g.id)
+  }
+  return map
+})
+const getSummary = (giveawayId) => summariesByGiveaway.value[giveawayId] || adminStore.getGiveawayTicketSummary(giveawayId)
 
 const openParticipateModal = (g) => {
   hydrateFromSavedProfile()
@@ -367,8 +374,8 @@ const submitDiscountApplication = () => {
 
           <!-- Contadores Verificados -->
           <div class="flex items-center justify-between text-xs text-slate-400 bg-slate-950/70 px-3.5 py-2 rounded-xl border border-slate-800/80">
-            <span>👥 <strong class="text-white">{{ getSummary(g.id).uniqueParticipants }}</strong> participantes</span>
-            <span>🎟️ <strong class="text-fuchsia-300 font-mono">{{ getSummary(g.id).totalTickets }}</strong> tickets emitidos</span>
+            <span>👥 <strong class="text-white">{{ (summariesByGiveaway[g.id]?.uniqueParticipants) || 0 }}</strong> participantes</span>
+            <span>🎟️ <strong class="text-fuchsia-300 font-mono">{{ (summariesByGiveaway[g.id]?.totalTickets) || 0 }}</strong> tickets emitidos</span>
             <span>🏆 <strong class="text-amber-300">{{ g.winnersCount || 1 }}</strong> ganador(es)</span>
           </div>
 

@@ -94,10 +94,10 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 3500000,
+        maximumFileSizeToCacheInBytes: 2000000,
         navigateFallback: null,
         globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest}'],
-        globIgnores: ['**/catalog-gaming*.js'],
+        globIgnores: ['**/catalog-gaming*.js', '**/flyers/**'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('catalog-gaming'),
