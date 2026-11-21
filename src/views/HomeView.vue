@@ -8253,49 +8253,6 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Descripción en Móvil (Visible solo en pantallas pequeñas) -->
-        <p class="sm:hidden text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-xl border border-white/[0.06]">
-          {{ selectedGamingProduct.description }}
-        </p>
-
-        <!-- Especificaciones y Compatibilidad Multi-Dispositivo -->
-        <div class="bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-3.5 space-y-2">
-          <div class="flex items-center justify-between text-xs font-bold">
-            <span class="text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🎮</span> Dispositivos & Requisitos Compatibles
-            </span>
-            <span class="text-emerald-400 font-mono text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              ✓ 100% Original
-            </span>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[9px] uppercase font-bold text-slate-500 block">Plataforma</span>
-              <span class="font-bold text-white text-[11px] truncate block">{{ selectedGamingProduct.platform || 'Consola / PC' }}</span>
-            </div>
-            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[9px] uppercase font-bold text-slate-500 block">Jugadores</span>
-              <span class="font-bold text-white text-[11px] truncate block">Local & Online</span>
-            </div>
-            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[9px] uppercase font-bold text-slate-500 block">Descarga</span>
-              <span class="font-bold text-white text-[11px] truncate block">Store Oficial</span>
-            </div>
-            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-              <span class="text-[9px] uppercase font-bold text-slate-500 block">Entrega</span>
-              <span class="font-bold text-emerald-400 text-[11px] truncate block">⚡ 60-90 min</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Características destacadas -->
-        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800">
-          <div v-for="(feat, idx) in selectedGamingProduct.features" :key="idx" class="flex items-center gap-2 text-xs text-slate-300">
-            <span class="text-emerald-400 font-bold">✓</span>
-            <span class="truncate">{{ feat }}</span>
-          </div>
-        </div>
-
         <!-- Selector de Consola para Juegos Multiplataforma (PS5 vs PS4) -->
         <div v-if="selectedGamingProduct.platform && (selectedGamingProduct.platform.includes('/') || (selectedGamingProduct.platform.includes('PS4') && selectedGamingProduct.platform.includes('PS5')))" class="bg-slate-950/90 p-3.5 rounded-2xl border border-indigo-500/30 space-y-2">
           <div class="flex items-center justify-between">
@@ -8460,6 +8417,49 @@ const submitOrder = async () => {
               <span class="text-purple-400 font-black block mb-0.5">4. Descarga Directa</span>
               <span class="text-slate-400">Descargas desde la Biblioteca oficial de tu consola y listo para jugar.</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Descripción en Móvil (Visible solo en pantallas pequeñas) -->
+        <p class="sm:hidden text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-2.5 rounded-xl border border-white/[0.06]">
+          {{ selectedGamingProduct.description }}
+        </p>
+
+        <!-- Especificaciones y Compatibilidad Multi-Dispositivo -->
+        <div class="bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold">
+            <span class="text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>🎮</span> Dispositivos & Requisitos Compatibles
+            </span>
+            <span class="text-emerald-400 font-mono text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              ✓ 100% Original
+            </span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-[9px] uppercase font-bold text-slate-500 block">Plataforma</span>
+              <span class="font-bold text-white text-[11px] truncate block">{{ selectedGamingProduct.platform || 'Consola / PC' }}</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-[9px] uppercase font-bold text-slate-500 block">Jugadores</span>
+              <span class="font-bold text-white text-[11px] truncate block">Local & Online</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-[9px] uppercase font-bold text-slate-500 block">Descarga</span>
+              <span class="font-bold text-white text-[11px] truncate block">Store Oficial</span>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-[9px] uppercase font-bold text-slate-500 block">Entrega</span>
+              <span class="font-bold text-emerald-400 text-[11px] truncate block">⚡ 60-90 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Características destacadas -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-2xl border border-slate-800">
+          <div v-for="(feat, idx) in selectedGamingProduct.features" :key="idx" class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="text-emerald-400 font-bold">✓</span>
+            <span class="truncate">{{ feat }}</span>
           </div>
         </div>
 
