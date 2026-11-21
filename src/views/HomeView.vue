@@ -45,6 +45,13 @@ const isAdminUser = computed(() => {
   return false
 })
 
+// (getInitialClientForm & clientForm moved to top)
+
+// Determina si es venta directa oficial (sin intermediario) o referida por revendedor
+const isDirectSale = computed(() => {
+  return !clientForm.value.selectedResellerId || clientForm.value.selectedResellerId === 'DIRECT'
+})
+
 // Configuración de Tienda de Revendedor Activo y visibilidad categórica
 const currentReseller = computed(() => {
   if (isDirectSale.value) return null
@@ -1288,10 +1295,7 @@ onUnmounted(() => {
   }
 })
 
-// Determina si es venta directa oficial (sin intermediario) o referida por revendedor
-const isDirectSale = computed(() => {
-  return !clientForm.value.selectedResellerId || clientForm.value.selectedResellerId === 'DIRECT'
-})
+// (isDirectSale moved to top)
 
 // Datos del Revendedor Seleccionado ya computados en la cabecera del store
 
@@ -1341,6 +1345,17 @@ watch(isMercadoPagoAvailable, (avail) => {
 }, { immediate: true })
 
 // ==========================================
+// 3.5 Selección de Ofertas Gamer para Inicio
+const homeFeaturedGaming = computed(() => {
+  if (!isGamingNavVisible.value) return []
+  const list = adminStore.processedGamingProducts || []
+  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms || []
+  if (allowedPlatforms.length > 0) {
+    return list.filter(g => allowedPlatforms.some(plat => g.platform && g.platform.includes(plat))).slice(0, 4)
+  }
+  return list.slice(0, 4)
+})
+
 // CARTEL INTERACTIVO POPUP DE JUEGOS (1 O 2 AL DÍA)
 // ==========================================
 const showGamingAttentionPopup = ref(false)
@@ -2192,16 +2207,7 @@ const homeFeaturedPackages = computed(() => {
   }).slice(0, 3)
 })
 
-// 3.5 Selección de Ofertas Gamer para Inicio
-const homeFeaturedGaming = computed(() => {
-  if (!isGamingNavVisible.value) return []
-  const list = adminStore.processedGamingProducts || []
-  const allowedPlatforms = resellerShopConfig.value?.enabledGamingPlatforms || []
-  if (allowedPlatforms.length > 0) {
-    return list.filter(g => allowedPlatforms.some(plat => g.platform && g.platform.includes(plat))).slice(0, 4)
-  }
-  return list.slice(0, 4)
-})
+// (homeFeaturedGaming moved before popupFeaturedGames)
 
 // 4. Selección de Ofertas 3: Top 8 Productos Físicos con Descuento / Envío Gratis
 const homeFeaturedPhysicalDeals = computed(() => {
