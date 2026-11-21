@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAdminStore } from '../store/admin'
 
-const HomeView = () => import('../views/HomeView.vue')
+import HomeView from '../views/HomeView.vue'
 const CustomerPortal = () => import('../views/CustomerPortal.vue')
 const ResellerDashboard = () => import('../views/ResellerDashboard.vue')
 const AdminDashboard = () => import('../views/AdminDashboard.vue')
