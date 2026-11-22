@@ -1561,7 +1561,8 @@ const checkAndTriggerGamingPopup = () => {
         showClientGameInquiry.value ||
         showGamingDetailModal.value ||
         showSharePlaqueModal.value ||
-        showOrderSuccessModal.value
+        showOrderSuccessModal.value ||
+        showCustomerToolsModal.value
       ) {
         return
       }
