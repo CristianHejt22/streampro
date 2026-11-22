@@ -231,6 +231,17 @@ const activeGiveawaysCount = computed(() => {
   return (adminStore.activeGiveaways || []).length
 })
 
+const isTabActive = (tab) => {
+  const p = route.path
+  const sec = route.params.section
+  if (tab === 'home') return p === '/' || (route.params.shopSlug && !sec)
+  if (tab === 'streaming') return ['/suscripciones', '/streaming', '/digital'].includes(p) || sec === 'suscripciones'
+  if (tab === 'combos') return ['/combos', '/paquetes', '/ofertas'].includes(p) || sec === 'combos'
+  if (tab === 'juegos') return ['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(x => p === x || p.startsWith(x + '/')) || sec === 'juegos'
+  if (tab === 'sorteos') return ['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes(p) || sec === 'sorteos'
+  return false
+}
+
 const handleOpenCart = () => {
   cartStore.openDrawer()
 }
@@ -757,75 +768,110 @@ const handleOpenCart = () => {
       </button>
     </Transition>
 
-    <!-- Unified Mobile Bottom Dock (App-Style Navigation) -->
+    <!-- Dock de Navegación Inferior Móvil Premium (Estilo App Nativa con Safe-Area y SVGs) -->
     <nav 
       v-if="isClientArea"
-      class="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-white/[0.08] px-2 py-1.5 flex items-center justify-around shadow-[0_-8px_25px_rgba(0,0,0,0.7)]"
+      class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-[#060913]/92 backdrop-blur-2xl border-t border-white/[0.12] px-1.5 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] flex items-center justify-around gap-0.5 shadow-[0_-12px_35px_rgba(0,0,0,0.85)]"
     >
+      <!-- Resplandor ambiental superior -->
+      <div class="absolute -top-[1px] inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/50 via-indigo-500/50 to-transparent pointer-events-none"></div>
+
+      <!-- Tab: Inicio -->
       <RouterLink 
         :to="homeLink"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl cursor-pointer"
-        :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'text-sky-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="isTabActive('home') ? 'text-sky-300 font-black bg-white/[0.08] shadow-inner' : 'text-slate-400 hover:text-slate-200'"
       >
-        <span class="text-base leading-none">🌟</span>
-        <span>Inicio</span>
+        <span v-if="isTabActive('home')" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.9)]"></span>
+        <svg class="w-5 h-5 transition-transform duration-200" :class="isTabActive('home') ? 'scale-110 drop-shadow-[0_2px_8px_rgba(56,189,248,0.5)]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        <span class="text-[9px] leading-tight font-black tracking-tight">Inicio</span>
       </RouterLink>
 
+      <!-- Tab: Streaming -->
       <RouterLink 
         v-if="isStreamingNavVisible"
         :to="getAppSectionLink('suscripciones')"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl cursor-pointer"
-        :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'text-sky-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="isTabActive('streaming') ? 'text-cyan-300 font-black bg-white/[0.08] shadow-inner' : 'text-slate-400 hover:text-slate-200'"
       >
-        <span class="text-base leading-none">🎬</span>
-        <span>Streaming</span>
+        <span v-if="isTabActive('streaming')" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)]"></span>
+        <svg class="w-5 h-5 transition-transform duration-200" :class="isTabActive('streaming') ? 'scale-110 drop-shadow-[0_2px_8px_rgba(34,211,238,0.5)]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        <span class="text-[9px] leading-tight font-black tracking-tight">Streaming</span>
       </RouterLink>
 
+      <!-- Tab: Combos -->
       <RouterLink 
         v-if="isCombosNavVisible"
         :to="getAppSectionLink('combos')"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2 rounded-xl relative cursor-pointer"
-        :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'text-pink-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="isTabActive('combos') ? 'text-pink-300 font-black bg-white/[0.08] shadow-inner' : 'text-slate-400 hover:text-slate-200'"
       >
-        <span class="text-base leading-none">🎁</span>
-        <span>Combos</span>
-        <span v-if="activePackagesCount > 0" class="absolute top-0 right-1 w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
+        <span v-if="isTabActive('combos')" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-pink-400 shadow-[0_0_8px_rgba(244,114,182,0.9)]"></span>
+        <div class="relative">
+          <svg class="w-5 h-5 transition-transform duration-200" :class="isTabActive('combos') ? 'scale-110 drop-shadow-[0_2px_8px_rgba(244,114,182,0.5)]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 01-2-2V8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2m-14 0v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
+          </svg>
+          <span v-if="activePackagesCount > 0" class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-pink-500 ring-2 ring-slate-950 animate-pulse"></span>
+        </div>
+        <span class="text-[9px] leading-tight font-black tracking-tight">Combos</span>
       </RouterLink>
 
+      <!-- Tab: Juegos -->
       <RouterLink 
         v-if="isGamingNavVisible"
         :to="getAppSectionLink('juegos')"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2 rounded-xl cursor-pointer"
-        :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'text-indigo-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="isTabActive('juegos') ? 'text-indigo-300 font-black bg-white/[0.08] shadow-inner' : 'text-slate-400 hover:text-slate-200'"
       >
-        <span class="text-base leading-none">🎮</span>
-        <span>Juegos</span>
+        <span v-if="isTabActive('juegos')" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.9)]"></span>
+        <svg class="w-5 h-5 transition-transform duration-200" :class="isTabActive('juegos') ? 'scale-110 drop-shadow-[0_2px_8px_rgba(129,140,248,0.5)]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 12h4m-2-2v4m7-2h.01m2.99 0h.01M9 19l2.5-2h3L17 19a3 3 0 003-3V9a4 4 0 00-4-4H8a4 4 0 00-4 4v7a3 3 0 003 3z"/>
+        </svg>
+        <span class="text-[9px] leading-tight font-black tracking-tight">Juegos</span>
       </RouterLink>
 
+      <!-- Tab: Sorteos -->
       <RouterLink 
         :to="getAppSectionLink('sorteos')"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
-        :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'text-amber-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="isTabActive('sorteos') ? 'text-amber-300 font-black bg-white/[0.08] shadow-inner' : 'text-slate-400 hover:text-slate-200'"
       >
-        <span class="text-base leading-none">🎉</span>
-        <span>Sorteos</span>
-        <span v-if="activeGiveawaysCount > 0" class="absolute top-0 right-1 w-2 h-2 rounded-full bg-amber-400"></span>
+        <span v-if="isTabActive('sorteos')" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]"></span>
+        <div class="relative">
+          <svg class="w-5 h-5 transition-transform duration-200" :class="isTabActive('sorteos') ? 'scale-110 drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v5m-4 0h8m-9-9V6a2 2 0 012-2h6a2 2 0 012 2v5a5 5 0 01-10 0zm-3-3a2 2 0 002 2h1V6H4a2 2 0 00-2 2zm18 0a2 2 0 01-2 2h-1V6h1a2 2 0 012 2z"/>
+          </svg>
+          <span v-if="activeGiveawaysCount > 0" class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-slate-950"></span>
+        </div>
+        <span class="text-[9px] leading-tight font-black tracking-tight">Sorteos</span>
       </RouterLink>
 
-      <!-- Botón Carrito en Dock -->
+      <!-- Botón: Carrito Heroico en Dock -->
       <button 
         type="button"
         @click="handleOpenCart"
-        class="flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all py-1 px-2.5 rounded-xl relative cursor-pointer"
-        :class="cartStore.totalItems > 0 ? 'text-emerald-400 font-black scale-105' : 'text-slate-400 hover:text-white'"
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-1 px-1 rounded-2xl transition-all duration-200 relative cursor-pointer touch-manipulation select-none active:scale-90"
+        :class="cartStore.totalItems > 0 ? 'text-amber-300 font-black bg-gradient-to-b from-amber-500/25 to-orange-500/15 border border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'text-slate-400 hover:text-slate-200'"
       >
+        <span v-if="cartStore.totalItems > 0" class="absolute -top-1.5 w-6 h-0.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]"></span>
         <div class="relative">
-          <span class="text-base leading-none">🛒</span>
-          <span v-if="cartStore.totalItems > 0" class="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center font-mono shadow">
+          <svg class="w-5 h-5 transition-transform duration-200" :class="cartStore.totalItems > 0 ? 'scale-110 text-amber-300' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span 
+            v-if="cartStore.totalItems > 0" 
+            class="absolute -top-1.5 -right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center font-mono shadow-md animate-bounce ring-1 ring-slate-950"
+          >
             {{ cartStore.totalItems }}
           </span>
         </div>
-        <span>{{ cartStore.totalItems > 0 ? `${(cartStore.total / 1000).toFixed(0)}k` : 'Carrito' }}</span>
+        <span class="text-[9px] leading-tight font-black tracking-tight">
+          {{ cartStore.totalItems > 0 ? `$${Math.round(cartStore.total / 1000)}k` : 'Carrito' }}
+        </span>
       </button>
     </nav>
 
@@ -846,10 +892,10 @@ const handleOpenCart = () => {
       </TransitionGroup>
     </div>
 
-    <!-- BOTÓN FLOTANTE PERMANENTE: CARRITO VISIBLE (Desktop y Móvil) -->
+    <!-- BOTÓN FLOTANTE PERMANENTE: CARRITO VISIBLE (Solo Desktop para no tapar contenido en móviles) -->
     <div 
       v-if="isClientArea" 
-      class="fixed bottom-20 sm:bottom-6 right-3.5 sm:right-6 z-40 flex items-center gap-2 pointer-events-auto"
+      class="hidden sm:flex fixed sm:bottom-6 sm:right-6 z-40 items-center gap-2 pointer-events-auto"
     >
       <button 
         type="button"
