@@ -860,6 +860,7 @@ const formatDisplayGameTitle = (raw) => {
   let t = String(raw).trim()
   t = t.replace(/[™®©]/g, '')
   t = t.replace(/\s*-\s*-\s*$/g, '')
+  t = t.replace(/\s*[\(\[]\s*(PS5|PS4|PS3)(\s+Digital)?\s*[\)\]]/gi, '')
   t = t.replace(/\s+(PS5|PS4|PS3)\s+Digital\b/gi, '')
   t = t.replace(/\s+Digital\s+(PS5|PS4|PS3)\b/gi, '')
   t = t.replace(/\s*-\s*(ESPAÑOL LATINO|ESPAÑOL ESPAÑA|FULL ESPAÑOL|EN ESPAÑOL|SUB ESPAÑOL|VERSION ESPAÑOL|ESPAÑOL|SUBTITULADO)\s*$/gi, '')
