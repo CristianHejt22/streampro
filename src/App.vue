@@ -372,8 +372,8 @@ const handleOpenCart = () => {
               title="Abrir Carrito de Compras"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-              <span class="hidden sm:inline">Carrito</span>
-              <span v-if="cartStore.totalItems > 0" class="bg-amber-400 text-slate-950 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center font-mono animate-pulse shadow-sm">
+              <span class="font-black text-xs">Carrito</span>
+              <span v-if="cartStore.totalItems > 0" class="bg-amber-400 text-slate-950 text-[10px] font-black min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-mono animate-pulse shadow-sm">
                 {{ cartStore.totalItems }}
               </span>
             </button>
@@ -806,6 +806,42 @@ const handleOpenCart = () => {
           <p class="text-sm font-medium">{{ toast.message }}</p>
         </div>
       </TransitionGroup>
+    </div>
+
+    <!-- BOTÓN FLOTANTE PERMANENTE: CARRITO VISIBLE (Desktop y Móvil) -->
+    <div 
+      v-if="isClientArea" 
+      class="fixed bottom-20 sm:bottom-6 right-3.5 sm:right-6 z-40 flex items-center gap-2 pointer-events-auto"
+    >
+      <button 
+        type="button"
+        @click="handleOpenCart"
+        class="group relative bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl shadow-[0_8px_25px_rgba(245,158,11,0.5)] hover:shadow-[0_10px_30px_rgba(245,158,11,0.7)] flex items-center gap-2.5 transition-all transform hover:scale-105 active:scale-95 cursor-pointer border border-amber-200/50"
+        title="Abrir Carrito de Compras StreamePro"
+      >
+        <div class="relative flex items-center justify-center">
+          <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          <span 
+            v-if="cartStore.totalItems > 0" 
+            class="absolute -top-2.5 -right-2.5 bg-slate-950 text-amber-300 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center font-mono border-2 border-amber-400 shadow-md animate-bounce"
+          >
+            {{ cartStore.totalItems }}
+          </span>
+        </div>
+        <div class="flex flex-col items-start leading-none text-left">
+          <div class="flex items-center gap-1">
+            <span class="text-xs uppercase tracking-wider font-black">CARRITO</span>
+            <span v-if="cartStore.totalItems > 0" class="text-[10px] font-mono font-black bg-slate-950 text-emerald-400 px-1 rounded">
+              {{ cartStore.totalItems }}
+            </span>
+          </div>
+          <span class="text-[10px] font-mono font-bold text-slate-950 mt-0.5">
+            {{ cartStore.totalItems > 0 ? '$' + Math.round(cartStore.total).toLocaleString('es-AR') + ' ARS' : 'Ver Pedido' }}
+          </span>
+        </div>
+      </button>
     </div>
   </div>
 </template>

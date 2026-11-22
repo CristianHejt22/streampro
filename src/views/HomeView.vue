@@ -835,6 +835,20 @@ const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
 const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
 const selectedGameConsole = ref('PS5')
+const gameSelectedConsoles = ref({})
+const setGameConsole = (gameId, consoleType) => {
+  gameSelectedConsoles.value[gameId] = consoleType
+  selectedGameConsole.value = consoleType
+}
+const getGameSelectedConsole = (game, defaultVal = 'PS5') => {
+  if (!game) return defaultVal
+  if (gameSelectedConsoles.value[game.id]) return gameSelectedConsoles.value[game.id]
+  if (game.platform && game.platform.includes('PS5')) return 'PS5'
+  if (game.platform && game.platform.includes('PS4')) return 'PS4'
+  if (game.platform && game.platform.includes('PS3')) return 'PS3'
+  if (game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) return 'PC'
+  return defaultVal
+}
 
 const loadStoredGamingWishlist = () => {
   try {
@@ -1078,8 +1092,9 @@ const copyGameTechnicalSheet = (game) => {
 
 const addGameToCartFromCard = (game) => {
   const licenseType = getGameSelectedLicense(game.id)
-  cartStore.addGamingItem(game, licenseType, 1)
-  toast.add(`✓ "${game.title}" (${licenseType === 'primary' ? 'Cuenta Primaria' : 'Cuenta Secundaria'}) agregado al carrito`, 'success')
+  const chosenConsole = getGameSelectedConsole(game)
+  cartStore.addGamingItem(game, licenseType, 1, chosenConsole)
+  toast.add(`✓ "${game.title}" (${chosenConsole} · ${licenseType === 'primary' ? 'Primaria' : 'Secundaria'}) agregado al carrito`, 'success')
   cartStore.openDrawer()
 }
 
@@ -5701,6 +5716,34 @@ const submitOrder = async () => {
                 {{ game.title }}
               </h4>
 
+              <!-- Selector de Opciones de Consola (PS5 vs PS4) si es Dual-Gen -->
+              <div v-if="game.platform && game.platform.includes('PS4') && game.platform.includes('PS5')" class="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/90 rounded-xl border border-blue-500/30" @click.stop>
+                <button 
+                  type="button" 
+                  @click.stop="setGameConsole(game.id, 'PS5')"
+                  :class="[
+                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-bold text-[9px] sm:text-[10px] cursor-pointer',
+                    getGameSelectedConsole(game) === 'PS5' 
+                      ? 'bg-blue-600 text-white font-black shadow' 
+                      : 'text-slate-400 hover:text-white'
+                  ]"
+                >
+                  <span>⚡ PS5</span>
+                </button>
+                <button 
+                  type="button" 
+                  @click.stop="setGameConsole(game.id, 'PS4')"
+                  :class="[
+                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-bold text-[9px] sm:text-[10px] cursor-pointer',
+                    getGameSelectedConsole(game) === 'PS4' 
+                      ? 'bg-sky-600 text-white font-black shadow' 
+                      : 'text-slate-400 hover:text-white'
+                  ]"
+                >
+                  <span>🎮 PS4</span>
+                </button>
+              </div>
+
               <!-- Selector Compacto de Modalidad (Primaria vs Secundaria) -->
               <div class="space-y-1">
                 <!-- Caso PC Steam: Clave Digital -->
@@ -5784,7 +5827,7 @@ const submitOrder = async () => {
                 class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95"
                 title="Agregar al carrito de compras"
               >
-                <span>+ Carrito</span>
+                <span>🛒 +Carrito</span>
               </button>
             </div>
 
@@ -5792,10 +5835,11 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="openGamingDetail(game)"
-                class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-[10px] sm:text-xs py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                title="Ver sinopsis y características completas"
+                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[10px] sm:text-xs py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-500/40 hover:border-sky-400 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                title="Ver más opciones: consolas PS5/PS4, modalidades y ficha técnica"
               >
-                <span>👁️ Detalle</span>
+                <span>⚙️</span>
+                <span>+Opciones</span>
               </button>
               <button 
                 type="button" 
@@ -5803,7 +5847,7 @@ const submitOrder = async () => {
                 class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white text-[10px] sm:text-xs font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-400/40 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm group/btn"
                 title="Generar placa gamer en alta definición para compartir"
               >
-                <span class="text-sm group-hover/btn:scale-125 transition-transform">📤</span>
+                <span class="text-xs group-hover/btn:scale-125 transition-transform">📤</span>
                 <span class="hidden sm:inline">Placa</span>
               </button>
             </div>
@@ -8618,10 +8662,10 @@ const submitOrder = async () => {
             <button 
               type="button" 
               @click="addGameToCartFromModal"
-              class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              class="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-3 px-3 rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95 border border-amber-200/50"
               title="Agregar al carrito de compras"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+              <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
               <span>+ Carrito (${{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
             </button>
             <button 
