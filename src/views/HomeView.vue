@@ -834,6 +834,71 @@ const sharedSelectionProdIds = ref([])
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
 const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
+const showGamingShareModal = ref(false)
+const selectedGamingShareProduct = ref(null)
+
+const getGamingShareText = (game) => {
+  if (!game) return ''
+  const lic = getGameSelectedLicense(game.id)
+  const chosenConsole = getGameSelectedConsole(game)
+  const price = lic === 'primary' ? (game.effectivePrimaryPrice || game.baseCostPrimary) : (game.effectiveSecondaryPrice || game.baseCostSecondary)
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://streamepro.me'
+  const refCode = !isDirectSale.value && clientForm.value.selectedResellerId ? clientForm.value.selectedResellerId : ''
+  const shareUrl = refCode
+    ? `${origin}/juegos?g=${encodeURIComponent(game.slug || game.id)}&ref=${encodeURIComponent(refCode)}`
+    : `${origin}/juegos?g=${encodeURIComponent(game.slug || game.id)}`
+
+  return `🎮 *STREAMEPRO - OFERTA GAMER OFICIAL*\n\n` +
+    `🔥 *Juego:* ${game.title}\n` +
+    `🕹️ *Plataforma:* ${chosenConsole || game.platform || 'PS4 / PS5'}\n` +
+    `🔑 *Modalidad:* ${lic === 'primary' ? '⭐️ Cuenta Primaria (Juegas en tu usuario de siempre)' : '⚡️ Cuenta Secundaria (Juego oficial completo con 50% de ahorro)'}\n` +
+    `💰 *Precio Final:* ${price ? Number(price).toLocaleString('es-AR') : '0'} ARS (Sin 60% de impuestos bancarios)\n` +
+    `⚡ *Entrega:* 60 a 90 minutos garantizada\n` +
+    `🛡️ *Garantía:* Licencia original 100% permanente StreamePro\n\n` +
+    `👉 *Ver ficha y comprar aquí:*\n${shareUrl}`
+}
+
+const openGamingShareModal = (game) => {
+  selectedGamingShareProduct.value = game
+  showGamingShareModal.value = true
+}
+
+const shareGamingViaWhatsApp = (game) => {
+  const text = getGamingShareText(game)
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+  window.open(url, '_blank')
+}
+
+const copyGamingShareMessage = async (game) => {
+  const text = getGamingShareText(game)
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add('📋 ¡Mensaje completo copiado para compartir!', 'success')
+  } catch {
+    toast.add('No se pudo copiar el mensaje', 'error')
+  }
+}
+
+const shareGamingNative = async (game) => {
+  const text = getGamingShareText(game)
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://streamepro.me'
+  const shareUrl = `${origin}/juegos?g=${encodeURIComponent(game.slug || game.id)}`
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${game.title} - StreamePro Oficial`,
+        text: text,
+        url: shareUrl
+      })
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        copyGamingShareMessage(game)
+      }
+    }
+  } else {
+    copyGamingShareMessage(game)
+  }
+}
 const selectedGameConsole = ref('PS5')
 const gameSelectedConsoles = ref({})
 const setGameConsole = (gameId, consoleType) => {
@@ -5834,21 +5899,21 @@ const submitOrder = async () => {
             <div class="grid grid-cols-2 gap-1 sm:gap-1.5">
               <button 
                 type="button" 
-                @click.stop="openGamingDetail(game)"
-                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[10px] sm:text-xs py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-500/40 hover:border-sky-400 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
-                title="Ver más opciones: consolas PS5/PS4, modalidades y ficha técnica"
+                @click.stop="openGamingShareModal(game)"
+                class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white text-[10px] sm:text-xs font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-400/40 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm group/btn"
+                title="Compartir con el mensaje correspondiente a todas las funciones de difusión"
               >
-                <span>⚙️</span>
-                <span>+Opciones</span>
+                <span class="text-xs group-hover/btn:scale-125 transition-transform">📤</span>
+                <span>Compartir</span>
               </button>
               <button 
                 type="button" 
-                @click.stop="openSharePlaqueForGaming(game)"
-                class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white text-[10px] sm:text-xs font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-400/40 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm group/btn"
-                title="Generar placa gamer en alta definición para compartir"
+                @click.stop="openGamingDetail(game)"
+                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[10px] sm:text-xs py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-500/40 hover:border-sky-400 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                title="Ver +Info y opciones del juego: consolas PS5/PS4, modalidades y ficha técnica"
               >
-                <span class="text-xs group-hover/btn:scale-125 transition-transform">📤</span>
-                <span class="hidden sm:inline">Placa</span>
+                <span>ℹ️</span>
+                <span>+Info</span>
               </button>
             </div>
           </div>
@@ -8670,11 +8735,12 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button" 
-              @click="openSharePlaqueForGaming(selectedGamingProduct); showGamingDetailModal = false"
-              class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white font-bold py-2.5 sm:py-3 px-3 rounded-xl border border-indigo-500/30 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-              title="Abrir placa lista para compartir con logo oficial"
+              @click="openGamingShareModal(selectedGamingProduct)"
+              class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white font-bold py-2.5 sm:py-3 px-3 rounded-xl border border-sky-400/40 hover:border-sky-300 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              title="Abrir todas las funciones de compartir con el mensaje correspondiente"
             >
-              <span>📤 Placa</span>
+              <span>📤</span>
+              <span>Compartir</span>
             </button>
           </div>
           <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 pt-0.5">
@@ -8704,6 +8770,115 @@ const submitOrder = async () => {
               ]"
             >
               <span>{{ isGamingFavorite(selectedGamingProduct.id) ? '❤️ Guardado' : '🤍 Favorito' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL COMPLETO DE COMPARTIR VIDEOJUEGO (CON MENSAJE CORRESPONDIENTE Y TODAS LAS FUNCIONES) -->
+    <div v-if="showGamingShareModal && selectedGamingShareProduct" class="fixed inset-0 z-[85] flex items-center justify-center p-3 sm:p-5 pt-14 sm:pt-6 pb-6 overflow-y-auto bg-black/85 backdrop-blur-md animate-fade-in">
+      <div class="bg-[#0b0f19] border border-sky-500/40 rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-4 shadow-2xl relative">
+        <button @click="showGamingShareModal = false" type="button" class="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center text-sm font-bold transition-all cursor-pointer z-20" title="Cerrar">✕</button>
+
+        <div class="space-y-1 pr-10">
+          <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+            Funciones de Difusión StreamePro
+          </span>
+          <h3 class="text-lg sm:text-xl font-black text-white leading-tight">
+            Compartir Videojuego
+          </h3>
+          <p class="text-xs text-slate-400">
+            Difunde la oferta con el mensaje oficial formateado para WhatsApp y redes sociales.
+          </p>
+        </div>
+
+        <!-- Tarjeta Resumen del Juego -->
+        <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-2xl border border-white/10">
+          <div class="w-14 h-18 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-white/10">
+            <img :src="selectedGamingShareProduct.image" :alt="selectedGamingShareProduct.title" class="w-full h-full object-cover">
+          </div>
+          <div class="min-w-0 flex-1">
+            <h4 class="font-black text-white text-xs sm:text-sm truncate">{{ selectedGamingShareProduct.title }}</h4>
+            <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+              <span class="text-indigo-400 font-mono font-bold">{{ getGameSelectedConsole(selectedGamingShareProduct) }}</span>
+              <span>•</span>
+              <span class="text-sky-300 font-bold">{{ getGameSelectedLicense(selectedGamingShareProduct.id) === 'primary' ? 'Primaria' : 'Secundaria' }}</span>
+            </div>
+            <div class="text-emerald-400 font-mono font-black text-xs sm:text-sm mt-0.5">
+              ${{ (getGameSelectedLicense(selectedGamingShareProduct.id) === 'primary' ? selectedGamingShareProduct.effectivePrimaryPrice : selectedGamingShareProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS
+            </div>
+          </div>
+        </div>
+
+        <!-- Previsualización del Mensaje Correspondiente -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-300 flex items-center gap-1.5">
+              <span>💬</span> Mensaje Correspondiente Formateado:
+            </span>
+            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Listo para Enviar
+            </span>
+          </div>
+          <div class="bg-slate-950/90 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar select-all">
+{{ getGamingShareText(selectedGamingShareProduct) }}
+          </div>
+        </div>
+
+        <!-- Botones con Todas las Funciones de Compartir -->
+        <div class="space-y-2 pt-1">
+          <!-- 1. Enviar directo a WhatsApp -->
+          <button 
+            type="button" 
+            @click="shareGamingViaWhatsApp(selectedGamingShareProduct)"
+            class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 px-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs cursor-pointer active:scale-95"
+          >
+            <span>💬</span>
+            <span>Compartir por WhatsApp (Mensaje Listo)</span>
+          </button>
+
+          <div class="grid grid-cols-2 gap-2">
+            <!-- 2. Copiar mensaje completo -->
+            <button 
+              type="button" 
+              @click="copyGamingShareMessage(selectedGamingShareProduct)"
+              class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-bold py-2.5 px-3 rounded-xl border border-sky-500/30 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+            >
+              <span>📋</span>
+              <span>Copiar Mensaje</span>
+            </button>
+
+            <!-- 3. Copiar enlace -->
+            <button 
+              type="button" 
+              @click="copyGamingShareUrl(selectedGamingShareProduct)"
+              class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-bold py-2.5 px-3 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+            >
+              <span>🔗</span>
+              <span>Copiar Enlace</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <!-- 4. Compartir nativo en redes -->
+            <button 
+              type="button" 
+              @click="shareGamingNative(selectedGamingShareProduct)"
+              class="bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 hover:text-white font-bold py-2.5 px-3 rounded-xl border border-indigo-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+            >
+              <span>📱</span>
+              <span>Otras Apps / Redes</span>
+            </button>
+
+            <!-- 5. Generar Placa Oficial HD -->
+            <button 
+              type="button" 
+              @click="openSharePlaqueForGaming(selectedGamingShareProduct); showGamingShareModal = false"
+              class="bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-pink-300 hover:text-white font-black py-2.5 px-3 rounded-xl border border-pink-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+            >
+              <span>🖼️</span>
+              <span>Generar Placa HD</span>
             </button>
           </div>
         </div>
