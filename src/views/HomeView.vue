@@ -843,7 +843,7 @@ const applyCartPromoCode = () => {
 const selectedGamingCat = ref('Todas')
 const selectedGamingSubcat = ref('Todas')
 const gamingSearch = ref('')
-const gamingPlatformFilter = ref('ALL') // 'ALL' | 'PS5' | 'PS4'
+const gamingPlatformFilter = ref('PS5_PS4') // 'PS5_PS4' | 'PS5' | 'PS4' | 'DUAL' | 'PS3' | 'ALL'
 const gamingSortBy = ref('default') // 'default' | 'price_asc' | 'price_desc' | 'title_asc'
 const gamingPriceCeiling = ref('ALL') // 'ALL' | '15000' | '25000' | '40000'
 const onlyGamingFavorites = ref(false)
@@ -854,6 +854,57 @@ const selectedGamingProduct = ref(null)
 const showGamingDetailModal = ref(false)
 const showGamingShareModal = ref(false)
 const selectedGamingShareProduct = ref(null)
+
+const formatDisplayGameTitle = (raw) => {
+  if (!raw) return ''
+  let t = String(raw).trim()
+  t = t.replace(/[™®©]/g, '')
+  t = t.replace(/\s*-\s*-\s*$/g, '')
+  t = t.replace(/\s+(PS5|PS4|PS3)\s+Digital\b/gi, '')
+  t = t.replace(/\s+Digital\s+(PS5|PS4|PS3)\b/gi, '')
+  t = t.replace(/\s*-\s*(ESPAÑOL LATINO|ESPAÑOL ESPAÑA|FULL ESPAÑOL|EN ESPAÑOL|SUB ESPAÑOL|VERSION ESPAÑOL|ESPAÑOL|SUBTITULADO)\s*$/gi, '')
+  t = t.replace(/\s+(ESPAÑOL LATINO|ESPAÑOL ESPAÑA|FULL ESPAÑOL|EN ESPAÑOL|SUB ESPAÑOL|VERSION ESPAÑOL|ESPAÑOL|SUBTITULADO)\s*$/gi, '')
+  t = t.replace(/\s+(PS5|PS4|Ps3|PS3)\s*$/gi, '')
+  t = t.replace(/[\s-]+$/, '').trim()
+  return t
+}
+
+const getGameLanguageBadge = (raw) => {
+  if (!raw) return null
+  const s = String(raw)
+  if (/\b(ESPAÑOL LATINO|AUDIO LATINO|VOCES LATINO)\b/i.test(s)) return 'Español Latino'
+  if (/\b(SUBTITULADO|SUBTITULOS|SUB ESPAÑOL)\b/i.test(s)) return 'Subtitulado'
+  if (/\b(ESPAÑOL ESPAÑA|CASTELLANO)\b/i.test(s)) return 'Castellano'
+  if (/\b(ESPAÑOL|AUDIO ESPAÑOL|VOCES ESPAÑOL)\b/i.test(s)) return 'Español'
+  return null
+}
+
+const getGamePlatformBadge = (game) => {
+  if (!game || !game.platform) return { text: '🎮 Juego', badgeClass: 'bg-indigo-600/95 text-white' }
+  const p = game.platform
+  if (p.includes('PS4') && p.includes('PS5')) {
+    return { text: '⚡ PS5 / PS4', badgeClass: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-md border border-blue-400/40' }
+  }
+  if (p.includes('PS5')) {
+    return { text: '⚡ Solo PS5', badgeClass: 'bg-blue-600 text-white font-black shadow-md border border-blue-400/30' }
+  }
+  if (p.includes('PS4')) {
+    return { text: '🎮 Solo PS4', badgeClass: 'bg-sky-600 text-white font-black shadow-md border border-sky-400/30' }
+  }
+  if (p.includes('PS3')) {
+    return { text: '🕹️ PS3 Retro', badgeClass: 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md border border-amber-300' }
+  }
+  if (p.includes('Xbox')) {
+    return { text: '💚 ' + p, badgeClass: 'bg-emerald-600 text-white font-bold' }
+  }
+  if (p.includes('Switch')) {
+    return { text: '🔴 ' + p, badgeClass: 'bg-red-600 text-white font-bold' }
+  }
+  if (p.includes('PC') || p.includes('Steam')) {
+    return { text: '💻 ' + p, badgeClass: 'bg-purple-600 text-white font-bold' }
+  }
+  return { text: '🎮 ' + p, badgeClass: 'bg-indigo-600 text-white font-bold' }
+}
 
 const getGamingShareText = (game) => {
   if (!game) return ''
@@ -1057,7 +1108,24 @@ const filteredGamingProducts = computed(() => {
     }
 
     const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
-    const matchesPlatform = gamingPlatformFilter.value === 'ALL' || (game.platform && game.platform.includes(gamingPlatformFilter.value))
+    
+    let matchesPlatform = false
+    if (gamingPlatformFilter.value === 'ALL') {
+      matchesPlatform = true
+    } else if (gamingPlatformFilter.value === 'PS5_PS4') {
+      matchesPlatform = Boolean(game.platform && (game.platform.includes('PS5') || game.platform.includes('PS4')) && !game.platform.startsWith('PS3'))
+    } else if (gamingPlatformFilter.value === 'PS5') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS5'))
+    } else if (gamingPlatformFilter.value === 'PS4') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS4') && !game.platform.includes('PS5'))
+    } else if (gamingPlatformFilter.value === 'DUAL') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS4') && game.platform.includes('PS5'))
+    } else if (gamingPlatformFilter.value === 'PS3') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS3') && !game.platform.includes('PS4') && !game.platform.includes('PS5'))
+    } else {
+      matchesPlatform = Boolean(game.platform && game.platform.includes(gamingPlatformFilter.value))
+    }
+
     const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
     if (!matchesCat || !matchesSubcat || !matchesPlatform || !matchesQ) return false
 
@@ -1929,7 +1997,7 @@ const applyRouteParams = () => {
       if (route.query.lic && (route.query.lic === 'primary' || route.query.lic === 'secondary')) {
         setGameLicense(foundGame.id, route.query.lic)
       }
-      if (route.query.plat && ['PS5', 'PS4', 'PS3', 'Switch', 'Xbox', 'PC'].includes(String(route.query.plat))) {
+      if (route.query.plat && ['PS5_PS4', 'PS5', 'PS4', 'DUAL', 'PS3', 'Switch', 'Xbox', 'PC'].includes(String(route.query.plat))) {
         gamingPlatformFilter.value = String(route.query.plat)
       }
       openGamingDetail(foundGame)
@@ -1939,7 +2007,7 @@ const applyRouteParams = () => {
     }
   } else if (route.query.plat) {
     const platParam = String(route.query.plat).trim()
-    if (['PS5', 'PS4', 'PS3', 'Switch', 'Xbox', 'PC'].includes(platParam) && (storeSection.value === 'gaming' || route.query.sec === 'gaming')) {
+    if (['PS5_PS4', 'PS5', 'PS4', 'DUAL', 'PS3', 'Switch', 'Xbox', 'PC'].includes(platParam) && (storeSection.value === 'gaming' || route.query.sec === 'gaming')) {
       gamingPlatformFilter.value = platParam
     } else if (storeSection.value === 'digital' || route.query.sec === 'digital' || !route.query.sec) {
       storeSection.value = 'digital'
@@ -5725,54 +5793,124 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <!-- Filtro de Consola / Plataforma -->
-          <div class="flex items-center gap-1.5 p-1 bg-slate-950 rounded-2xl border border-indigo-500/30 overflow-x-auto no-scrollbar shrink-0 w-full md:w-auto">
+          <!-- Filtro de Consola / Plataforma (PS4 y PS5 Principales, PS3 Separado) -->
+          <div class="flex items-center gap-1.5 p-1 bg-slate-950/95 rounded-2xl border border-indigo-500/30 overflow-x-auto no-scrollbar shrink-0 w-full md:w-auto">
+            <!-- PS5 & PS4 Actuales (Catálogo Moderno Principal) -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'ALL'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all', gamingPlatformFilter === 'ALL' ? 'bg-indigo-500 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              @click="gamingPlatformFilter = 'PS5_PS4'"
+              :class="[
+                'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
+                gamingPlatformFilter === 'PS5_PS4' 
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-sky-300' 
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              ]"
+              title="Catálogo moderno oficial PlayStation 5 y PlayStation 4 (13.082 juegos)"
             >
-              Todas
+              <span>🎮</span>
+              <span>PS5 & PS4 (Actuales)</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full" :class="gamingPlatformFilter === 'PS5_PS4' ? 'bg-black/35 text-white font-black' : 'bg-slate-800 text-slate-300'">13K+</span>
             </button>
+
+            <!-- Solo PS5 -->
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PS5'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS5' ? 'bg-blue-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="[
+                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
+                gamingPlatformFilter === 'PS5' 
+                  ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30 ring-1 ring-blue-300' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              ]"
+              title="Ver títulos para PlayStation 5 (5.246 juegos)"
             >
-              <span>⚡</span> PS5
+              <span>⚡</span>
+              <span>Solo PS5</span>
             </button>
+
+            <!-- Solo PS4 -->
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PS4'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS4' ? 'bg-sky-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="[
+                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
+                gamingPlatformFilter === 'PS4' 
+                  ? 'bg-sky-600 text-white font-black shadow-md shadow-sky-500/30 ring-1 ring-sky-300' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              ]"
+              title="Ver títulos para PlayStation 4 (5.181 juegos)"
             >
-              <span>🎮</span> PS4
+              <span>🎮</span>
+              <span>Solo PS4</span>
             </button>
+
+            <!-- Dual-Gen -->
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'DUAL'"
+              :class="[
+                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
+                gamingPlatformFilter === 'DUAL' 
+                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-500/30 ring-1 ring-indigo-300' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              ]"
+              title="Juegos con versión dual tanto para PS4 como para PS5 (2.655 juegos)"
+            >
+              <span>🔄</span>
+              <span>Dual-Gen</span>
+            </button>
+
+            <!-- Separador Visual -->
+            <span class="h-5 w-px bg-white/20 shrink-0 mx-1"></span>
+
+            <!-- PS3 Retro Separado Aparte -->
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PS3'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PS3' ? 'bg-cyan-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="[
+                'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
+                gamingPlatformFilter === 'PS3' 
+                  ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30 ring-1 ring-amber-200' 
+                  : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30'
+              ]"
+              title="Catálogo Retro PlayStation 3 exclusivo para consolas PS3 (1.031 juegos)"
             >
-              <span>🕹️</span> PS3
+              <span>🕹️</span>
+              <span>PS3 (Retro Aparte)</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full" :class="gamingPlatformFilter === 'PS3' ? 'bg-black/35 text-slate-900 font-black' : 'bg-amber-400/20 text-amber-300 font-bold'">1.031</span>
             </button>
+
+            <!-- Separador Visual -->
+            <span class="h-5 w-px bg-white/20 shrink-0 mx-1"></span>
+
+            <!-- Todas las plataformas -->
+            <button 
+              type="button"
+              @click="gamingPlatformFilter = 'ALL'"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'ALL' ? 'bg-slate-700 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
+              title="Ver todo el catálogo combinado (15.328 títulos)"
+            >
+              🌐 Todas (15k+)
+            </button>
+
             <button 
               type="button"
               @click="gamingPlatformFilter = 'Xbox'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>💚</span> Xbox
             </button>
             <button 
               type="button"
               @click="gamingPlatformFilter = 'Switch'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'Switch' ? 'bg-red-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Switch' ? 'bg-red-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>🔴</span> Switch
             </button>
             <button 
               type="button"
               @click="gamingPlatformFilter = 'PC'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1', gamingPlatformFilter === 'PC' ? 'bg-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'PC' ? 'bg-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>💻</span> PC
             </button>
@@ -6026,6 +6164,36 @@ const submitOrder = async () => {
         </button>
       </div>
 
+      <!-- Banner Exclusivo Catálogo Retro PS3 (Separado de PS4 y PS5) -->
+      <div v-if="gamingPlatformFilter === 'PS3'" class="mb-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-950 to-amber-950/80 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3.5 text-center sm:text-left">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+            🕹️
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+              <h4 class="text-sm sm:text-base font-black text-amber-300">
+                Catálogo Retro PlayStation 3
+              </h4>
+              <span class="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow">
+                1.031 Títulos Exclusivos PS3
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 max-w-xl">
+              Juegos exclusivos para consolas <strong>PlayStation 3</strong> (no compatibles con PS4 ni PS5). Cuentas y licencias originales con entrega garantizada.
+            </p>
+          </div>
+        </div>
+        <button 
+          type="button"
+          @click="gamingPlatformFilter = 'PS5_PS4'"
+          class="shrink-0 px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-900/40 cursor-pointer transition-all flex items-center gap-2 active:scale-95 touch-manipulation"
+        >
+          <span>🎮</span>
+          <span>Ver Juegos PS5 & PS4</span>
+        </button>
+      </div>
+
       <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
         <div 
           v-for="game in paginatedGamingProducts" 
@@ -6054,11 +6222,10 @@ const submitOrder = async () => {
               >
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/50 z-[2] pointer-events-none"></div>
               
-              <!-- Badges Superiores & Botón Favoritos -->
+              <!-- Badges Superiores Dinámicos & Botón Favoritos -->
               <div class="absolute top-1.5 left-1.5 right-8 sm:top-2.5 sm:left-2.5 sm:right-11 flex items-center gap-1 flex-wrap z-[3]">
-                <span class="bg-indigo-600/95 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-md font-mono flex items-center gap-1">
-                  <span>{{ game.platform && game.platform.includes('PC') ? '💻' : (game.platform && game.platform.includes('Xbox') ? '💚' : (game.platform && game.platform.includes('Switch') ? '🔴' : '🎮')) }}</span>
-                  <span class="truncate max-w-[65px] sm:max-w-none">{{ game.platform }}</span>
+                <span :class="['text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-md', getGamePlatformBadge(game).badgeClass]">
+                  <span class="truncate max-w-[85px] sm:max-w-none">{{ getGamePlatformBadge(game).text }}</span>
                 </span>
                 <span v-if="game.badge" class="hidden sm:inline-block bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow truncate max-w-[90px]">
                   {{ game.badge }}
@@ -6088,20 +6255,34 @@ const submitOrder = async () => {
             </div>
 
             <!-- Contenido de la Tarjeta -->
-            <div class="p-2.5 sm:p-4 space-y-2 sm:space-y-3">
-              <h4 class="font-black text-white text-xs sm:text-base leading-tight group-hover:text-indigo-300 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]" :title="game.title">
-                {{ game.title }}
-              </h4>
+            <div class="p-2.5 sm:p-4 space-y-2 sm:space-y-2.5">
+              <!-- Título Limpio & Altura Homogénea (Alineación Perfecta en 2 Columnas Móviles y Desktop) -->
+              <div class="h-9 sm:h-11 flex items-start overflow-hidden">
+                <h4 class="font-black text-white text-xs sm:text-sm leading-snug group-hover:text-indigo-300 transition-colors line-clamp-2" :title="game.title">
+                  {{ formatDisplayGameTitle(game.title) }}
+                </h4>
+              </div>
+
+              <!-- Badges de Idioma y Meta -->
+              <div class="flex items-center gap-1.5 flex-wrap min-h-[1.25rem]">
+                <span v-if="getGameLanguageBadge(game.title)" class="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                  <span>🇪🇸</span>
+                  <span>{{ getGameLanguageBadge(game.title) }}</span>
+                </span>
+                <span class="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-wider truncate">
+                  {{ game.category }}
+                </span>
+              </div>
 
               <!-- Selector de Opciones de Consola (PS5 vs PS4) si es Dual-Gen -->
-              <div v-if="game.platform && game.platform.includes('PS4') && game.platform.includes('PS5')" class="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/90 rounded-xl border border-blue-500/30" @click.stop>
+              <div v-if="game.platform && game.platform.includes('PS4') && game.platform.includes('PS5')" class="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/95 rounded-xl border border-blue-500/30" @click.stop>
                 <button 
                   type="button" 
                   @click.stop="setGameConsole(game.id, 'PS5')"
                   :class="[
-                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-bold text-[9px] sm:text-[10px] cursor-pointer',
+                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer touch-manipulation',
                     getGameSelectedConsole(game) === 'PS5' 
-                      ? 'bg-blue-600 text-white font-black shadow' 
+                      ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30 ring-1 ring-blue-300' 
                       : 'text-slate-400 hover:text-white'
                   ]"
                 >
@@ -6111,9 +6292,9 @@ const submitOrder = async () => {
                   type="button" 
                   @click.stop="setGameConsole(game.id, 'PS4')"
                   :class="[
-                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-bold text-[9px] sm:text-[10px] cursor-pointer',
+                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer touch-manipulation',
                     getGameSelectedConsole(game) === 'PS4' 
-                      ? 'bg-sky-600 text-white font-black shadow' 
+                      ? 'bg-sky-600 text-white font-black shadow-md shadow-sky-500/30 ring-1 ring-sky-300' 
                       : 'text-slate-400 hover:text-white'
                   ]"
                 >
@@ -6129,8 +6310,8 @@ const submitOrder = async () => {
                 </div>
 
                 <!-- Caso PS3: Licencia Digital Completa -->
-                <div v-else-if="game.platform && game.platform.includes('PS3')" class="py-1 sm:py-1.5 px-1.5 sm:px-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-center">
-                  <span class="text-[10px] sm:text-xs font-bold text-cyan-300 block">🕹️ Licencia PS3</span>
+                <div v-else-if="game.platform && game.platform.includes('PS3')" class="py-1 sm:py-1.5 px-1.5 sm:px-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center">
+                  <span class="text-[10px] sm:text-xs font-black text-amber-300 block">🕹️ Licencia PS3 Original</span>
                 </div>
 
                 <!-- Caso Consolas: Cuenta Primaria vs Cuenta Secundaria -->
@@ -6139,28 +6320,36 @@ const submitOrder = async () => {
                     type="button" 
                     @click.stop="setGameLicense(game.id, 'primary')"
                     :class="[
-                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer',
+                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer touch-manipulation active:scale-95',
                       getGameSelectedLicense(game.id) === 'primary' 
-                        ? 'bg-indigo-600 text-white font-black shadow' 
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black shadow-md shadow-indigo-500/25 ring-1 ring-indigo-400/50' 
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
                     ]"
                   >
-                    <span class="text-[9px] sm:text-[11px] font-bold">Primaria</span>
-                    <span class="text-[9px] sm:text-[10px] font-mono font-bold text-emerald-300">${{ game.effectivePrimaryPrice ? Math.round(game.effectivePrimaryPrice / 1000) + 'k' : '0' }}</span>
+                    <span class="text-[9px] sm:text-[11px] font-black flex items-center gap-0.5">
+                      <span>👑</span> Primaria
+                    </span>
+                    <span class="text-[9px] sm:text-[10px] font-mono font-black text-emerald-300">
+                      ${{ game.effectivePrimaryPrice ? Math.round(game.effectivePrimaryPrice / 1000) + 'k' : '0' }}
+                    </span>
                   </button>
 
                   <button 
                     type="button" 
                     @click.stop="setGameLicense(game.id, 'secondary')"
                     :class="[
-                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer',
+                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer touch-manipulation active:scale-95',
                       getGameSelectedLicense(game.id) === 'secondary' 
-                        ? 'bg-amber-500 text-slate-950 font-black shadow' 
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/25 ring-1 ring-amber-300' 
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
                     ]"
                   >
-                    <span class="text-[9px] sm:text-[11px] font-bold">Secundaria</span>
-                    <span class="text-[9px] sm:text-[10px] font-mono font-bold text-emerald-300">${{ game.effectiveSecondaryPrice ? Math.round(game.effectiveSecondaryPrice / 1000) + 'k' : '0' }}</span>
+                    <span class="text-[9px] sm:text-[11px] font-black flex items-center gap-0.5">
+                      <span>⚡</span> Secundaria
+                    </span>
+                    <span class="text-[9px] sm:text-[10px] font-mono font-black text-emerald-300">
+                      ${{ game.effectiveSecondaryPrice ? Math.round(game.effectiveSecondaryPrice / 1000) + 'k' : '0' }}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -6198,18 +6387,20 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="buyGamingViaWhatsApp(game)"
-                class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95"
+                class="min-h-[36px] sm:min-h-[38px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
                 title="Comprar directo por WhatsApp"
               >
-                <span>⚡ Pedir</span>
+                <span class="text-xs">⚡</span>
+                <span>Pedir</span>
               </button>
               <button 
                 type="button" 
                 @click.stop="addGameToCartFromCard(game)"
-                class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 hover:from-indigo-400 hover:to-pink-400 text-white font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95"
+                class="min-h-[36px] sm:min-h-[38px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
                 title="Agregar al carrito de compras"
               >
-                <span>🛒 +Carrito</span>
+                <span class="text-xs">🛒</span>
+                <span>+Carrito</span>
               </button>
             </div>
 
@@ -6217,19 +6408,19 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="openGamingShareModal(game)"
-                class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white text-[10px] sm:text-xs font-black py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-400/40 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm group/btn"
-                title="Compartir con el mensaje correspondiente a todas las funciones de difusión"
+                class="min-h-[34px] sm:min-h-[36px] bg-slate-900/90 hover:bg-indigo-950/80 text-sky-200 hover:text-white text-[10px] sm:text-xs font-bold py-1 px-1.5 rounded-xl border border-sky-400/30 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 touch-manipulation select-none shadow-sm"
+                title="Compartir juego con opciones de difusión"
               >
-                <span class="text-xs group-hover/btn:scale-125 transition-transform">📤</span>
+                <span class="text-xs">📤</span>
                 <span>Compartir</span>
               </button>
               <button 
                 type="button" 
                 @click.stop="openGamingDetail(game)"
-                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white font-black text-[10px] sm:text-xs py-1.5 sm:py-2 px-1 sm:px-2 rounded-xl border border-sky-500/40 hover:border-sky-400 transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
-                title="Ver +Info y opciones del juego: consolas PS5/PS4, modalidades y ficha técnica"
+                class="min-h-[34px] sm:min-h-[36px] bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-white font-bold text-[10px] sm:text-xs py-1 px-1.5 rounded-xl border border-cyan-500/30 hover:border-cyan-400 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 touch-manipulation select-none shadow-sm"
+                title="Ver ficha técnica completa y opciones"
               >
-                <span>ℹ️</span>
+                <span class="text-xs">ℹ️</span>
                 <span>+Info</span>
               </button>
             </div>
@@ -6327,7 +6518,7 @@ const submitOrder = async () => {
         <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
           <button 
             type="button" 
-            @click="selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'ALL'; gamingPriceCeiling = 'ALL'; onlyGamingFavorites = false; gamingSortBy = 'default'"
+            @click="selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'; gamingSearch = ''; gamingPlatformFilter = 'PS5_PS4'; gamingPriceCeiling = 'ALL'; onlyGamingFavorites = false; gamingSortBy = 'default'"
             class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs cursor-pointer"
           >
             Restablecer Filtros
@@ -8663,9 +8854,12 @@ const submitOrder = async () => {
           </div>
           <div class="space-y-1.5 flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-1.5">
-              <span class="text-[10px] font-mono font-black bg-indigo-600 text-white px-2.5 py-0.5 rounded-full shadow flex items-center gap-1">
-                <span>{{ selectedGamingProduct.platform && selectedGamingProduct.platform.includes('PC') ? '💻' : (selectedGamingProduct.platform && selectedGamingProduct.platform.includes('Xbox') ? '💚' : (selectedGamingProduct.platform && selectedGamingProduct.platform.includes('Switch') ? '🔴' : '🎮')) }}</span>
-                <span>{{ selectedGamingProduct.platform }}</span>
+              <span :class="['text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full shadow flex items-center gap-1', getGamePlatformBadge(selectedGamingProduct).badgeClass]">
+                <span>{{ getGamePlatformBadge(selectedGamingProduct).text }}</span>
+              </span>
+              <span v-if="getGameLanguageBadge(selectedGamingProduct.title)" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                <span>🇪🇸</span>
+                <span>{{ getGameLanguageBadge(selectedGamingProduct.title) }}</span>
               </span>
               <span class="text-[10px] bg-slate-800 text-slate-200 border border-white/10 px-2 py-0.5 rounded-full font-bold">
                 {{ selectedGamingProduct.category }}
@@ -8675,7 +8869,7 @@ const submitOrder = async () => {
               </span>
             </div>
             <h3 class="text-lg sm:text-2xl font-black text-white leading-tight">
-              {{ selectedGamingProduct.title }}
+              {{ formatDisplayGameTitle(selectedGamingProduct.title) }}
             </h3>
             <div class="flex items-baseline gap-1.5 font-mono">
               <span class="text-xl sm:text-2xl font-black text-emerald-400">
@@ -9116,7 +9310,7 @@ const submitOrder = async () => {
             <img :src="selectedGamingShareProduct.image" :alt="selectedGamingShareProduct.title" class="w-full h-full object-cover">
           </div>
           <div class="min-w-0 flex-1">
-            <h4 class="font-black text-white text-xs sm:text-sm truncate">{{ selectedGamingShareProduct.title }}</h4>
+            <h4 class="font-black text-white text-xs sm:text-sm truncate">{{ formatDisplayGameTitle(selectedGamingShareProduct.title) }}</h4>
             <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
               <span class="text-indigo-400 font-mono font-bold">{{ getGameSelectedConsole(selectedGamingShareProduct) }}</span>
               <span>•</span>
