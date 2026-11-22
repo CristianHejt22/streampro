@@ -8,6 +8,7 @@ import { getRememberedSession } from './services/biometrics'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 
 const UserProfileModal = defineAsyncComponent(() => import('./components/UserProfileModal.vue'))
+const CustomerToolsHubModal = defineAsyncComponent(() => import('./components/CustomerToolsHubModal.vue'))
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,13 @@ const cartStore = useCartStore()
 
 const showProfileModal = ref(false)
 const savedUserName = ref('')
+const showCustomerToolsModal = ref(false)
+const customerToolsModalTab = ref('calculator')
+
+const openCustomerTools = (tab = 'calculator') => {
+  customerToolsModalTab.value = tab
+  showCustomerToolsModal.value = true
+}
 
 const checkSavedUser = () => {
   try {
@@ -334,6 +342,20 @@ const handleOpenCart = () => {
               </span>
             </RouterLink>
 
+            <!-- Botón Acceso Rápido a Centro de Herramientas & Calculadora -->
+            <button 
+              type="button"
+              @click="openCustomerTools('calculator')" 
+              class="px-3 py-1.5 rounded-xl text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 transition-all flex items-center gap-1.5 font-bold whitespace-nowrap cursor-pointer shadow-sm group" 
+              title="Calculadora de Ahorro, Rastreo de Órdenes y Herramientas"
+            >
+              <span class="group-hover:rotate-12 transition-transform">🔧</span>
+              <span>Herramientas</span>
+              <span class="bg-emerald-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full font-mono">
+                AHORRO
+              </span>
+            </button>
+
             <RouterLink 
               to="/portal" 
               class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.05] transition-all flex items-center gap-1.5 whitespace-nowrap" 
@@ -496,6 +518,19 @@ const handleOpenCart = () => {
               {{ activeGiveawaysCount }}
             </span>
           </RouterLink>
+
+          <!-- Acceso Rápido Móvil a Herramientas -->
+          <button 
+            type="button"
+            @click="openCustomerTools('calculator')" 
+            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 font-bold shadow-sm"
+          >
+            <span>🔧</span>
+            <span>Herramientas</span>
+            <span class="bg-emerald-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full font-mono">
+              PRO
+            </span>
+          </button>
         </div>
       </div>
     </header>
@@ -680,6 +715,9 @@ const handleOpenCart = () => {
 
     <!-- Modal de Mi Cuenta & Registro Rápido -->
     <UserProfileModal v-model="showProfileModal" @profileSaved="handleProfileSaved" />
+
+    <!-- Modal Centro de Herramientas & Calculadora StreamePro -->
+    <CustomerToolsHubModal v-model="showCustomerToolsModal" :initial-tab="customerToolsModalTab" />
 
     <!-- Banner & Acceso PWA / Notificaciones Push Multi-dispositivo -->
     <PwaInstallPrompt />

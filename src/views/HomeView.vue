@@ -15,10 +15,18 @@ const SharePlaqueModal = defineAsyncComponent(() => import('../components/ShareP
 const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
 const GiftCardModal = defineAsyncComponent(() => import('../components/GiftCardModal.vue'))
 const UserProfileModal = defineAsyncComponent(() => import('../components/UserProfileModal.vue'))
+const CustomerToolsHubModal = defineAsyncComponent(() => import('../components/CustomerToolsHubModal.vue'))
 
 const showUserProfileModal = ref(false)
 const openUserProfileModal = () => {
   showUserProfileModal.value = true
+}
+
+const showCustomerToolsModal = ref(false)
+const customerToolsModalTab = ref('calculator')
+const openCustomerToolsModal = (tab = 'calculator') => {
+  customerToolsModalTab.value = tab
+  showCustomerToolsModal.value = true
 }
 
 const route = useRoute()
@@ -3692,6 +3700,16 @@ const submitOrder = async () => {
             </span>
           </button>
 
+          <button 
+            type="button"
+            @click="openCustomerToolsModal('calculator')"
+            class="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-900/90 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            title="Calcular ahorro sin recargo bancario del 60%"
+          >
+            <span>🧮</span>
+            <span>Calculadora de Ahorro (-68%)</span>
+          </button>
+
           <a 
             :href="getWhatsAppContactUrl()"
             target="_blank"
@@ -3760,6 +3778,14 @@ const submitOrder = async () => {
             class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0 transition-all cursor-pointer"
           >
             <span>💳</span> Gift Cards 20%
+          </button>
+
+          <button
+            type="button"
+            @click="openCustomerToolsModal('calculator')"
+            class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1 shrink-0 transition-all cursor-pointer"
+          >
+            <span>🔧</span> Herramientas
           </button>
 
           <a 
@@ -3919,6 +3945,19 @@ const submitOrder = async () => {
             20% OFF
           </span>
         </button>
+
+        <!-- Pastilla de Acceso Rápido: Centro de Herramientas & Calculadora -->
+        <button 
+          type="button"
+          @click="openCustomerToolsModal('calculator')"
+          class="px-3.5 sm:px-4 py-2 rounded-xl text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 font-black text-xs transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm group"
+        >
+          <span class="group-hover:rotate-12 transition-transform">🔧</span>
+          <span>Herramientas & Ahorro</span>
+          <span class="bg-sky-400/20 text-sky-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-sky-400/30">
+            PRO
+          </span>
+        </button>
       </div>
 
       <!-- Badge de Tienda Oficial Verificada -->
@@ -4048,6 +4087,155 @@ const submitOrder = async () => {
               <span class="text-slate-500 group-hover:text-white group-hover:translate-x-1 transition-all">→</span>
             </div>
           </button>
+        </div>
+      </div>
+
+      <!-- 1.5 CENTRO DE HERRAMIENTAS INTELIGENTES & CALCULADORA STREAMEPRO -->
+      <div id="centro-herramientas" class="rounded-3xl glass-panel p-5 sm:p-8 border border-sky-500/30 shadow-2xl space-y-6 relative overflow-hidden bg-gradient-to-br from-slate-900/95 via-[#060e22] to-slate-900/95">
+        <div class="absolute -right-24 -top-24 w-80 h-80 bg-sky-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-24 -bottom-24 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Header del Centro de Herramientas -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-sky-500/25 shrink-0">
+              🔧
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl sm:text-2xl font-black text-white">Centro de Herramientas Inteligentes</h3>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  Suite Oficial
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">Calcula tu ahorro sin el 60% de impuestos bancarios, rastrea órdenes en vivo y asesórate con licencias gamer</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              type="button"
+              @click="openCustomerToolsModal('calculator')"
+              class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
+            >
+              <span>🧮</span>
+              <span>Abrir Calculadora Completa</span>
+            </button>
+            <button 
+              type="button"
+              @click="openCustomerToolsModal('tracker')"
+              class="px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <span>🔍</span>
+              <span>Rastrear Pedido</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Tarjetas de Herramientas Interactivas Directas -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 relative z-10">
+          
+          <!-- Herramienta 1: Calculadora de Ahorro -->
+          <div 
+            @click="openCustomerToolsModal('calculator')"
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-sky-500/30 hover:border-sky-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-2xl group-hover:scale-110 transition-transform">🧮</span>
+                <span class="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  -68% OFF
+                </span>
+              </div>
+              <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">
+                Calculadora de Ahorro
+              </h4>
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                Compara en segundos cuánto gastas con tarjetas bancarias (+60% impuestos) vs el precio final en pesos StreamePro.
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-sky-400">
+              <span>Calcular Ahorro</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- Herramienta 2: Rastreador de Pedidos & PIN -->
+          <div 
+            @click="openCustomerToolsModal('tracker')"
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-emerald-500/30 hover:border-emerald-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-2xl group-hover:scale-110 transition-transform">🔍</span>
+                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  En Vivo
+                </span>
+              </div>
+              <h4 class="text-sm font-black text-white group-hover:text-emerald-300 transition-colors">
+                Rastreador de Pedidos & PIN
+              </h4>
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                Ingresa tu número de orden o WhatsApp para verificar el estado de activación, tiempo SLA y soporte en turno.
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-400">
+              <span>Consultar Estado</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- Herramienta 3: Asistente Gamer de Licencias -->
+          <div 
+            @click="openCustomerToolsModal('gamer')"
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-indigo-500/30 hover:border-indigo-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-2xl group-hover:scale-110 transition-transform">🎮</span>
+                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  PS5 & PS4
+                </span>
+              </div>
+              <h4 class="text-sm font-black text-white group-hover:text-indigo-300 transition-colors">
+                Asistente Primaria vs Secundaria
+              </h4>
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                ¿Qué cuenta te conviene? Responde 3 preguntas y averigua la mejor opción según tu usuario, trofeos y presupuesto.
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-indigo-400">
+              <span>Hacer Diagnóstico</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- Herramienta 4: Garantía SLA & Seguridad -->
+          <div 
+            @click="openCustomerToolsModal('warranty')"
+            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-amber-500/30 hover:border-amber-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-2xl group-hover:scale-110 transition-transform">🛡️</span>
+                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  SLA 30 Días
+                </span>
+              </div>
+              <h4 class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">
+                Garantía 100% Reposición
+              </h4>
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                Cuentas legales con PIN privado, sin caídas ni bloqueos por IP, con respaldo técnico post-venta garantizado.
+              </p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-amber-400">
+              <span>Ver Pilares de Confianza</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -9171,6 +9359,13 @@ const submitOrder = async () => {
     <UserProfileModal
       v-model="showUserProfileModal"
       @openGiftCards="giftCardModalTab = 'create'; showGiftCardModal = true"
+    />
+
+    <!-- Modal Centro de Herramientas & Calculadora StreamePro -->
+    <CustomerToolsHubModal
+      v-model="showCustomerToolsModal"
+      :initial-tab="customerToolsModalTab"
+      @openCheckout="showCustomerToolsModal = false; showCheckoutModal = true"
     />
   </div>
 </template>
