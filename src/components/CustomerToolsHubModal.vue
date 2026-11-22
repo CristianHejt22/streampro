@@ -390,7 +390,7 @@ const copyText = (txt, msg) => {
       @click.self="closeModal"
     >
       <div 
-        class="relative w-full max-w-4xl my-auto rounded-3xl bg-slate-900/95 border border-white/10 shadow-[0_0_50px_rgba(56,189,248,0.15)] overflow-hidden flex flex-col max-h-[92vh]"
+        class="relative w-full max-w-4xl my-auto rounded-2xl sm:rounded-3xl bg-slate-900/95 border border-white/10 shadow-[0_0_50px_rgba(56,189,248,0.15)] overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[92vh]"
       >
         <!-- Ambient Top Neon Glow -->
         <div class="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-sky-400 via-indigo-500 to-amber-400"></div>
@@ -398,25 +398,25 @@ const copyText = (txt, msg) => {
         <div class="absolute -bottom-24 -left-24 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <!-- HEADER DEL MODAL -->
-        <div class="p-4 sm:p-6 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-slate-900/60 backdrop-blur-md">
-          <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500/20 via-indigo-500/20 to-purple-500/20 border border-sky-400/30 flex items-center justify-center text-2xl shadow-inner">
+        <div class="p-3.5 sm:p-6 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-slate-900/60 backdrop-blur-md">
+          <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-sky-500/20 via-indigo-500/20 to-purple-500/20 border border-sky-400/30 flex items-center justify-center text-lg sm:text-2xl shadow-inner shrink-0">
               🔧
             </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-lg sm:text-2xl font-black text-white tracking-tight">Centro de Herramientas StreamePro</h3>
-                <span class="hidden sm:inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-mono">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 sm:gap-2">
+                <h3 class="text-sm sm:text-2xl font-black text-white tracking-tight truncate">Centro de Herramientas</h3>
+                <span class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-mono shrink-0">
                   PRO SUITE
                 </span>
               </div>
-              <p class="text-xs text-slate-300 mt-0.5">Calculadoras inteligentes, rastreo de órdenes, licencias gamer y soporte SLA</p>
+              <p class="text-[11px] sm:text-xs text-slate-300 mt-0.5 line-clamp-1 sm:line-clamp-none">Calculadora inteligente, rastreo de órdenes, licencias gamer y garantía SLA</p>
             </div>
           </div>
 
           <button 
             @click="closeModal" 
-            class="w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all flex items-center justify-center border border-white/10 cursor-pointer shadow-sm"
+            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all flex items-center justify-center border border-white/10 cursor-pointer shadow-sm shrink-0 ml-2 touch-manipulation"
             aria-label="Cerrar modal"
           >
             ✕
@@ -424,21 +424,21 @@ const copyText = (txt, msg) => {
         </div>
 
         <!-- TABS DE NAVEGACIÓN DE HERRAMIENTAS -->
-        <div class="px-4 sm:px-6 pt-3 pb-2 border-b border-white/[0.06] bg-slate-950/40 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <div class="px-3 sm:px-6 pt-2.5 pb-2 border-b border-white/[0.06] bg-slate-950/40 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar touch-pan-x">
           <button 
             type="button"
             @click="activeTab = 'calculator'"
             :class="[
-              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border',
+              'px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border select-none touch-manipulation',
               activeTab === 'calculator'
                 ? 'bg-gradient-to-r from-sky-500/25 to-blue-600/25 text-sky-300 border-sky-400/50 shadow-md font-black'
                 : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/[0.04]'
             ]"
           >
             <span>🧮</span>
-            <span>Calculadora de Ahorro</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-black border border-emerald-500/30">
-              -68% OFF
+            <span>Calculadora</span>
+            <span class="text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-black border border-emerald-500/30">
+              -68%
             </span>
           </button>
 
@@ -446,22 +446,22 @@ const copyText = (txt, msg) => {
             type="button"
             @click="activeTab = 'tracker'"
             :class="[
-              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border',
+              'px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border select-none touch-manipulation',
               activeTab === 'tracker'
                 ? 'bg-gradient-to-r from-emerald-500/25 to-teal-600/25 text-emerald-300 border-emerald-400/50 shadow-md font-black'
                 : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/[0.04]'
             ]"
           >
             <span>🔍</span>
-            <span>Rastrear Pedido & PIN</span>
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Rastrear Pedido</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           </button>
 
           <button 
             type="button"
             @click="activeTab = 'gamer'"
             :class="[
-              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border',
+              'px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border select-none touch-manipulation',
               activeTab === 'gamer'
                 ? 'bg-gradient-to-r from-indigo-500/25 to-purple-600/25 text-indigo-300 border-indigo-400/50 shadow-md font-black'
                 : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/[0.04]'
@@ -469,7 +469,7 @@ const copyText = (txt, msg) => {
           >
             <span>🎮</span>
             <span>Asistente Gamer</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">
+            <span class="text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">
               PS5/PS4
             </span>
           </button>
@@ -478,45 +478,45 @@ const copyText = (txt, msg) => {
             type="button"
             @click="activeTab = 'warranty'"
             :class="[
-              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border',
+              'px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border select-none touch-manipulation',
               activeTab === 'warranty'
                 ? 'bg-gradient-to-r from-amber-500/25 to-orange-600/25 text-amber-300 border-amber-400/50 shadow-md font-black'
                 : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/[0.04]'
             ]"
           >
             <span>🛡️</span>
-            <span>Garantía & SLA 100%</span>
+            <span>Garantía & SLA</span>
           </button>
         </div>
 
         <!-- CUERPO PRINCIPAL DEL MODAL (SCROLLABLE) -->
-        <div class="p-4 sm:p-6 overflow-y-auto space-y-6">
+        <div class="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 overscroll-contain">
 
           <!-- ============================================== -->
           <!-- TAB 1: CALCULADORA DE AHORRO INTELIGENTE -->
           <!-- ============================================== -->
-          <div v-if="activeTab === 'calculator'" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-sky-950/30 border border-sky-500/25 rounded-2xl p-4">
+          <div v-if="activeTab === 'calculator'" class="space-y-4 sm:space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-3 bg-sky-950/30 border border-sky-500/25 rounded-xl sm:rounded-2xl p-3 sm:p-4">
               <div>
-                <h4 class="text-base font-black text-white flex items-center gap-2">
-                  <span>💡</span> ¿Cuánto gastas hoy vs cuánto pagas en StreamePro?
+                <h4 class="text-xs sm:text-base font-black text-white flex items-center gap-2">
+                  <span>💡</span> ¿Cuánto gastas hoy vs en StreamePro?
                 </h4>
-                <p class="text-xs text-slate-300 mt-0.5">
-                  En Argentina, contratar con tarjeta bancaria suma un <strong>60% de impuestos</strong>. En StreamePro abonas en pesos finales directos sin recargos.
+                <p class="text-[11px] sm:text-xs text-slate-300 mt-0.5">
+                  En Argentina, las tarjetas bancarias suman un <strong>60% de impuestos</strong>. En StreamePro abonas en pesos finales sin recargos.
                 </p>
               </div>
-              <div class="flex items-center gap-2 shrink-0">
+              <div class="grid grid-cols-2 gap-2 w-full sm:w-auto shrink-0">
                 <button 
                   type="button"
                   @click="selectAllServices(true)" 
-                  class="px-2.5 py-1 rounded-lg bg-slate-800 text-sky-300 text-xs font-bold hover:bg-slate-700 transition cursor-pointer"
+                  class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-sky-300 text-xs font-bold hover:bg-slate-700 transition cursor-pointer text-center touch-manipulation"
                 >
                   Marcar Todos
                 </button>
                 <button 
                   type="button"
                   @click="selectAllServices(false)" 
-                  class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold hover:bg-slate-700 transition cursor-pointer"
+                  class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold hover:bg-slate-700 transition cursor-pointer text-center touch-manipulation"
                 >
                   Limpiar
                 </button>
@@ -524,28 +524,28 @@ const copyText = (txt, msg) => {
             </div>
 
             <!-- Grilla interactiva de selección de plataformas -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div 
                 v-for="srv in availableServices"
                 :key="srv.id"
                 @click="toggleService(srv)"
                 :class="[
-                  'p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group relative overflow-hidden',
+                  'p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 group relative overflow-hidden touch-manipulation',
                   srv.selected 
                     ? 'bg-slate-800/90 border-sky-400/50 shadow-[0_0_20px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/30' 
                     : 'bg-slate-900/50 border-white/[0.06] hover:border-white/20 opacity-75 hover:opacity-100'
                 ]"
               >
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-slate-950/80 border border-white/10 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-950/80 border border-white/10 flex items-center justify-center text-lg sm:text-xl shrink-0 group-hover:scale-105 transition-transform">
                     {{ srv.icon }}
                   </div>
-                  <div>
+                  <div class="min-w-0">
                     <div class="flex items-center gap-1.5">
-                      <span class="text-xs font-black text-white group-hover:text-sky-300 transition-colors">{{ srv.name }}</span>
+                      <span class="text-xs font-black text-white group-hover:text-sky-300 transition-colors truncate">{{ srv.name }}</span>
                     </div>
-                    <span class="text-[10px] text-slate-400 font-mono">{{ srv.tag }}</span>
-                    <div class="flex items-center gap-2 mt-1 text-[11px]">
+                    <span class="text-[10px] text-slate-400 font-mono block truncate">{{ srv.tag }}</span>
+                    <div class="flex items-center gap-2 mt-0.5 text-[10px] sm:text-[11px] flex-wrap">
                       <span class="text-slate-400 line-through font-mono">Oficial: ${{ srv.officialPrice.toLocaleString('es-AR') }}</span>
                       <span class="text-emerald-400 font-bold font-mono">StreamePro: ${{ srv.storePrice.toLocaleString('es-AR') }}</span>
                     </div>
@@ -555,7 +555,7 @@ const copyText = (txt, msg) => {
                 <!-- Custom Checkbox Indicator -->
                 <div 
                   :class="[
-                    'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border transition-all font-bold text-xs',
+                    'w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 border transition-all font-bold text-xs ml-1',
                     srv.selected 
                       ? 'bg-sky-400 text-slate-950 border-sky-300 shadow-sm' 
                       : 'border-slate-700 bg-slate-950/60 text-transparent'
@@ -566,69 +566,69 @@ const copyText = (txt, msg) => {
               </div>
             </div>
 
-            <!-- DASHBOARD DE AHORRO CALCULADO -->
-            <div class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 p-5 shadow-2xl relative overflow-hidden">
+            <!-- DASHBOARD DE AHORRO CALCULADO (Adaptado: 2 columnas superiores + ahorro full width en móvil) -->
+            <div class="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 p-3.5 sm:p-5 shadow-2xl relative overflow-hidden">
               <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left items-center">
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4 text-left items-center">
                 <!-- Tarjeta 1: Precio Oficial Banco -->
-                <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-white/[0.06]">
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Oficial c/ Impuestos (60%)</span>
-                  <div class="text-xl sm:text-2xl font-black text-red-400 font-mono mt-1">
-                    ${{ totalOfficialMonthly.toLocaleString('es-AR') }} <span class="text-xs font-normal text-slate-400">/mes</span>
+                <div class="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-white/[0.06]">
+                  <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 line-clamp-1">Oficial (+60% imp.)</span>
+                  <div class="text-base sm:text-2xl font-black text-red-400 font-mono mt-0.5 sm:mt-1">
+                    ${{ totalOfficialMonthly.toLocaleString('es-AR') }} <span class="text-[10px] sm:text-xs font-normal text-slate-400">/mes</span>
                   </div>
-                  <span class="text-[10px] text-slate-500 block mt-0.5">Sujeto a tipo de cambio y recargos</span>
+                  <span class="text-[9px] sm:text-[10px] text-slate-500 block mt-0.5 line-clamp-1">Con recargos bancarios</span>
                 </div>
 
                 <!-- Tarjeta 2: Precio StreamePro -->
-                <div class="p-3.5 rounded-2xl bg-sky-950/40 border border-sky-500/30">
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-sky-300">Precio Final StreamePro</span>
-                  <div class="text-xl sm:text-2xl font-black text-sky-400 font-mono mt-1">
-                    ${{ totalStoreMonthly.toLocaleString('es-AR') }} <span class="text-xs font-normal text-sky-300">/mes</span>
+                <div class="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-sky-950/40 border border-sky-500/30">
+                  <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-300 line-clamp-1">Precio StreamePro</span>
+                  <div class="text-base sm:text-2xl font-black text-sky-400 font-mono mt-0.5 sm:mt-1">
+                    ${{ totalStoreMonthly.toLocaleString('es-AR') }} <span class="text-[10px] sm:text-xs font-normal text-sky-300">/mes</span>
                   </div>
-                  <span class="text-[10px] text-emerald-400 font-semibold block mt-0.5">0% impuestos bancarios extra</span>
+                  <span class="text-[9px] sm:text-[10px] text-emerald-400 font-semibold block mt-0.5 line-clamp-1">0% impuestos extra</span>
                 </div>
 
-                <!-- Tarjeta 3: Tu Ahorro Real -->
-                <div class="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/30 border border-emerald-400/50 shadow-lg">
+                <!-- Tarjeta 3: Tu Ahorro Real (2 cols en móvil, 1 col en desktop) -->
+                <div class="col-span-2 md:col-span-1 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/30 border border-emerald-400/50 shadow-lg">
                   <div class="flex items-center justify-between">
                     <span class="text-[10px] font-black uppercase tracking-wider text-emerald-300">🎉 Ahorro Mensual</span>
                     <span class="text-xs font-black px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 font-mono animate-pulse">
                       -{{ savingsPercentage }}%
                     </span>
                   </div>
-                  <div class="text-2xl sm:text-3xl font-black text-emerald-300 font-mono mt-1">
+                  <div class="text-xl sm:text-3xl font-black text-emerald-300 font-mono mt-0.5 sm:mt-1">
                     ${{ monthlySavings.toLocaleString('es-AR') }}
                   </div>
-                  <div class="text-[11px] font-bold text-amber-300 mt-1">
+                  <div class="text-[10px] sm:text-[11px] font-bold text-amber-300 mt-0.5 sm:mt-1">
                     🚀 ¡Ahorras ${{ annualSavings.toLocaleString('es-AR') }} al año!
                   </div>
                 </div>
               </div>
 
               <!-- BOTONES DE ACCIÓN RÁPIDA -->
-              <div class="mt-5 pt-4 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
-                <div class="text-xs text-slate-300 flex items-center gap-1.5">
+              <div class="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div class="text-[11px] sm:text-xs text-slate-300 flex items-center gap-1.5">
                   <span class="text-emerald-400">✓</span> Activación garantizada en 10m-60m con PIN propio
                 </div>
 
-                <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <button 
                     type="button"
                     @click="shareCalculatedBudgetWhatsApp"
-                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    class="px-3 sm:px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 touch-manipulation"
                   >
                     <span>💬</span>
-                    <span>Pedir por WhatsApp</span>
+                    <span class="truncate">WhatsApp</span>
                   </button>
 
                   <button 
                     type="button"
                     @click="addCalculatedComboToCart"
-                    class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-sky-500/20 active:scale-95"
+                    class="px-3 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-sky-500/20 active:scale-95 touch-manipulation"
                   >
                     <span>🛒</span>
-                    <span>Armar Combo en Carrito</span>
+                    <span class="truncate">Armar en Carrito</span>
                   </button>
                 </div>
               </div>
@@ -638,29 +638,29 @@ const copyText = (txt, msg) => {
           <!-- ============================================== -->
           <!-- TAB 2: RASTREADOR DE PEDIDOS & PIN -->
           <!-- ============================================== -->
-          <div v-if="activeTab === 'tracker'" class="space-y-6">
-            <div class="bg-gradient-to-r from-slate-900 to-emerald-950/30 border border-emerald-500/25 rounded-2xl p-4 sm:p-5">
-              <h4 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <div v-if="activeTab === 'tracker'" class="space-y-4 sm:space-y-6">
+            <div class="bg-gradient-to-r from-slate-900 to-emerald-950/30 border border-emerald-500/25 rounded-xl sm:rounded-2xl p-3.5 sm:p-5">
+              <h4 class="text-sm sm:text-lg font-black text-white flex items-center gap-2">
                 <span>🔍</span> Consulta el Estado de tu Entrega & Activación
               </h4>
-              <p class="text-xs text-slate-300 mt-1 max-w-xl">
-                Ingresa el número de pedido provisto al momento de la compra (ej: <code>#1024</code>) o tu número de WhatsApp para ver el estado en tiempo real.
+              <p class="text-[11px] sm:text-xs text-slate-300 mt-1 max-w-xl">
+                Ingresa el número de pedido (ej: <code>#1024</code>) o tu número de WhatsApp para ver el estado en tiempo real.
               </p>
 
               <!-- Search Bar -->
-              <div class="mt-4 flex flex-col sm:flex-row items-stretch gap-2">
+              <div class="mt-3.5 sm:mt-4 flex flex-col sm:flex-row items-stretch gap-2">
                 <div class="relative flex-1">
                   <input 
                     v-model="searchOrderQuery"
                     type="text" 
-                    placeholder="Ej: SP-1024 o tu número de WhatsApp..."
-                    class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-400 transition"
+                    placeholder="Ej: SP-1024 o tu WhatsApp..."
+                    class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-400 transition"
                     @keyup.enter="trackOrder"
                   />
                   <button 
                     v-if="searchOrderQuery" 
                     @click="searchOrderQuery = ''; searchPerformed = false; orderSearchResult = null"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer p-1"
                   >
                     ✕
                   </button>
@@ -669,7 +669,7 @@ const copyText = (txt, msg) => {
                 <button 
                   type="button"
                   @click="trackOrder"
-                  class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer active:scale-95 shrink-0"
+                  class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer active:scale-95 shrink-0 touch-manipulation"
                 >
                   <span>🔍</span>
                   <span>Rastrear Pedido</span>
@@ -678,30 +678,30 @@ const copyText = (txt, msg) => {
             </div>
 
             <!-- RESULTADO DE LA BÚSQUEDA -->
-            <div v-if="orderSearchResult && !orderSearchResult.notFound" class="rounded-3xl bg-slate-900/90 border border-emerald-500/40 p-5 space-y-4 shadow-xl">
+            <div v-if="orderSearchResult && !orderSearchResult.notFound" class="rounded-2xl sm:rounded-3xl bg-slate-900/90 border border-emerald-500/40 p-3.5 sm:p-5 space-y-3 sm:space-y-4 shadow-xl">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-white/[0.08]">
                 <div class="flex items-center gap-2.5">
                   <span class="text-2xl">📦</span>
                   <div>
-                    <h5 class="text-sm font-black text-white">{{ orderSearchResult.title }}</h5>
-                    <span class="text-[11px] font-mono text-slate-400">Orden ID: #{{ orderSearchResult.id }} · Fecha: {{ orderSearchResult.date }}</span>
+                    <h5 class="text-xs sm:text-sm font-black text-white">{{ orderSearchResult.title }}</h5>
+                    <span class="text-[10px] sm:text-[11px] font-mono text-slate-400">Orden ID: #{{ orderSearchResult.id }} · Fecha: {{ orderSearchResult.date }}</span>
                   </div>
                 </div>
 
-                <span class="text-xs font-bold px-3 py-1 rounded-full border" :class="getStatusBadge(orderSearchResult.status).class">
+                <span class="text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full border" :class="getStatusBadge(orderSearchResult.status).class">
                   {{ getStatusBadge(orderSearchResult.status).text }}
                 </span>
               </div>
 
               <!-- Detalle de Credenciales / Entrega -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-white/[0.06] space-y-1">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1">
+                <div class="p-3 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-white/[0.06] space-y-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Asignado</span>
                   <div class="text-xs font-bold text-sky-300 font-mono">{{ orderSearchResult.profileName }}</div>
                   <span class="text-[10px] text-slate-500">Exclusivo para tu uso personal</span>
                 </div>
 
-                <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-white/[0.06] space-y-1">
+                <div class="p-3 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-white/[0.06] space-y-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">PIN de Seguridad</span>
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-black text-amber-300 font-mono">
@@ -710,7 +710,7 @@ const copyText = (txt, msg) => {
                     <button 
                       type="button" 
                       @click="showPinCode = !showPinCode" 
-                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer touch-manipulation"
                     >
                       {{ showPinCode ? 'Ocultar' : 'Ver PIN' }}
                     </button>
@@ -718,7 +718,7 @@ const copyText = (txt, msg) => {
                       v-if="showPinCode"
                       type="button" 
                       @click="copyText(orderSearchResult.pin, 'PIN copiado')" 
-                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition cursor-pointer"
+                      class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition cursor-pointer touch-manipulation"
                     >
                       Copiar
                     </button>
@@ -727,62 +727,62 @@ const copyText = (txt, msg) => {
                 </div>
               </div>
 
-              <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
-                <span class="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                <span class="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1.5">
                   <span class="text-emerald-400">🛡️</span> Garantía 100% activa durante los 30 días de servicio
                 </span>
 
                 <button 
                   type="button" 
                   @click="consultWhatsAppOrder(orderSearchResult.id)" 
-                  class="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                  class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer touch-manipulation"
                 >
                   <span>💬</span>
-                  <span>Contactar a Operador de Turno</span>
+                  <span>Contactar Operador de Turno</span>
                 </button>
               </div>
             </div>
 
             <!-- RESULTADO: NO ENCONTRADO LOCALMENTE / CONSULTA EN VIVO -->
-            <div v-else-if="orderSearchResult && orderSearchResult.notFound" class="rounded-3xl bg-slate-900/60 border border-white/10 p-5 text-center space-y-3">
+            <div v-else-if="orderSearchResult && orderSearchResult.notFound" class="rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-white/10 p-4 sm:p-5 text-center space-y-2.5 sm:space-y-3">
               <span class="text-3xl">📡</span>
-              <h5 class="text-sm font-bold text-white">¿No encuentras tu orden en este navegador?</h5>
-              <p class="text-xs text-slate-300 max-w-md mx-auto">
+              <h5 class="text-xs sm:text-sm font-bold text-white">¿No encuentras tu orden en este navegador?</h5>
+              <p class="text-[11px] sm:text-xs text-slate-300 max-w-md mx-auto">
                 Si realizaste la compra recientemente desde otro dispositivo o directamente por WhatsApp, nuestro equipo de soporte puede verificarla de inmediato con tu comprobante.
               </p>
-              <div class="pt-2">
+              <div class="pt-1 sm:pt-2">
                 <button 
                   type="button"
                   @click="consultWhatsAppOrder(searchOrderQuery)"
-                  class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-black text-xs transition-all inline-flex items-center gap-2 shadow-lg cursor-pointer"
+                  class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-black text-xs transition-all inline-flex items-center justify-center gap-2 shadow-lg cursor-pointer touch-manipulation active:scale-95"
                 >
                   <span>💬</span>
-                  <span>Consultar Estado por WhatsApp Ahora</span>
+                  <span>Consultar Estado por WhatsApp</span>
                 </button>
               </div>
             </div>
 
             <!-- METRICAS DE CONFIANZA DEL SISTEMA DE ENTREGAS -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div class="p-3 rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
-                <span class="text-lg">⚡</span>
-                <div class="text-xs font-black text-white mt-1">10 a 60 min</div>
-                <span class="text-[10px] text-slate-400">Tiempo de Entrega</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-1 sm:pt-2">
+              <div class="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
+                <span class="text-base sm:text-lg">⚡</span>
+                <div class="text-[11px] sm:text-xs font-black text-white mt-0.5">10 a 60 min</div>
+                <span class="text-[9px] sm:text-[10px] text-slate-400">Tiempo Entrega</span>
               </div>
-              <div class="p-3 rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
-                <span class="text-lg">👨‍💻</span>
-                <div class="text-xs font-black text-emerald-300 mt-1">Activos</div>
-                <span class="text-[10px] text-slate-400">Operadores de Turno</span>
+              <div class="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
+                <span class="text-base sm:text-lg">👨‍💻</span>
+                <div class="text-[11px] sm:text-xs font-black text-emerald-300 mt-0.5">Activos</div>
+                <span class="text-[9px] sm:text-[10px] text-slate-400">Operadores Turno</span>
               </div>
-              <div class="p-3 rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
-                <span class="text-lg">🛡️</span>
-                <div class="text-xs font-black text-amber-300 mt-1">SLA 30 Días</div>
-                <span class="text-[10px] text-slate-400">Garantía Escrita</span>
+              <div class="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
+                <span class="text-base sm:text-lg">🛡️</span>
+                <div class="text-[11px] sm:text-xs font-black text-amber-300 mt-0.5">SLA 30 Días</div>
+                <span class="text-[9px] sm:text-[10px] text-slate-400">Garantía Escrita</span>
               </div>
-              <div class="p-3 rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
-                <span class="text-lg">🔒</span>
-                <div class="text-xs font-black text-sky-300 mt-1">100% Legal</div>
-                <span class="text-[10px] text-slate-400">PIN y Perfil Propio</span>
+              <div class="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-900/60 border border-white/[0.06] text-center">
+                <span class="text-base sm:text-lg">🔒</span>
+                <div class="text-[11px] sm:text-xs font-black text-sky-300 mt-0.5">100% Legal</div>
+                <span class="text-[9px] sm:text-[10px] text-slate-400">PIN y Perfil Propio</span>
               </div>
             </div>
           </div>
@@ -790,64 +790,64 @@ const copyText = (txt, msg) => {
           <!-- ============================================== -->
           <!-- TAB 3: ASISTENTE GAMER DE LICENCIAS -->
           <!-- ============================================== -->
-          <div v-if="activeTab === 'gamer'" class="space-y-6">
-            <div class="bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40 border border-indigo-500/30 rounded-2xl p-4 sm:p-5">
-              <h4 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <div v-if="activeTab === 'gamer'" class="space-y-4 sm:space-y-6">
+            <div class="bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40 border border-indigo-500/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5">
+              <h4 class="text-sm sm:text-lg font-black text-white flex items-center gap-2">
                 <span>🎮</span> Asistente Interactivo de Licencias Gamer (PS5 / PS4)
               </h4>
-              <p class="text-xs text-slate-300 mt-1">
-                Responde 3 preguntas rápidas para saber exactamente si te conviene adquirir una <strong>Cuenta Primaria</strong> o una <strong>Cuenta Secundaria</strong>.
+              <p class="text-[11px] sm:text-xs text-slate-300 mt-1">
+                Responde 3 preguntas rápidas para saber si te conviene adquirir una <strong>Cuenta Primaria</strong> o una <strong>Cuenta Secundaria</strong>.
               </p>
             </div>
 
             <!-- Wizard Questions -->
-            <div class="space-y-4">
+            <div class="space-y-3 sm:space-y-4">
               <!-- Pregunta 1: Consola -->
-              <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
+              <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
                 <span class="text-xs font-black text-slate-200">1. ¿En qué consola vas a jugar?</span>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
                   <button 
                     type="button" 
                     @click="gamerConsole = 'PS5'"
                     :class="[
-                      'py-2 rounded-xl text-xs font-bold border transition cursor-pointer',
+                      'py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold border transition cursor-pointer text-center truncate touch-manipulation',
                       gamerConsole === 'PS5' ? 'bg-sky-500/20 text-sky-300 border-sky-400 font-black' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
-                    ⚡ PlayStation 5
+                    ⚡ PS5
                   </button>
                   <button 
                     type="button" 
                     @click="gamerConsole = 'PS4'"
                     :class="[
-                      'py-2 rounded-xl text-xs font-bold border transition cursor-pointer',
+                      'py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold border transition cursor-pointer text-center truncate touch-manipulation',
                       gamerConsole === 'PS4' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400 font-black' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
-                    🎮 PlayStation 4
+                    🎮 PS4
                   </button>
                   <button 
                     type="button" 
                     @click="gamerConsole = 'BOTH'"
                     :class="[
-                      'py-2 rounded-xl text-xs font-bold border transition cursor-pointer',
+                      'py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold border transition cursor-pointer text-center truncate touch-manipulation',
                       gamerConsole === 'BOTH' ? 'bg-purple-500/20 text-purple-300 border-purple-400 font-black' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
-                    🔄 Ambas Consolas
+                    🔄 Ambas
                   </button>
                 </div>
               </div>
 
               <!-- Pregunta 2: Usuario y Trofeos -->
-              <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
-                <span class="text-xs font-black text-slate-200">2. ¿Querés jugar desde tu propio usuario de siempre y ganar trofeos?</span>
+              <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
+                <span class="text-xs font-black text-slate-200">2. ¿Querés jugar desde tu usuario de siempre y ganar trofeos?</span>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button 
                     type="button" 
                     @click="gamerUserPref = 'personal'"
                     :class="[
-                      'p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between',
+                      'p-2.5 sm:p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between touch-manipulation',
                       gamerUserPref === 'personal' ? 'bg-amber-500/20 text-amber-300 border-amber-400/50' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
@@ -855,35 +855,35 @@ const copyText = (txt, msg) => {
                       <div class="text-xs font-bold text-white">⭐ Sí, en mi usuario personal</div>
                       <div class="text-[10px] text-slate-400 mt-0.5">Quiero mis trofeos, amigos y progreso en mi ID</div>
                     </div>
-                    <span v-if="gamerUserPref === 'personal'" class="text-amber-400 text-sm font-bold">✓</span>
+                    <span v-if="gamerUserPref === 'personal'" class="text-amber-400 text-sm font-bold shrink-0 ml-2">✓</span>
                   </button>
 
                   <button 
                     type="button" 
                     @click="gamerUserPref = 'any'"
                     :class="[
-                      'p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between',
+                      'p-2.5 sm:p-3 rounded-xl text-left border transition cursor-pointer flex items-center justify-between touch-manipulation',
                       gamerUserPref === 'any' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/50' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
                     <div>
-                      <div class="text-xs font-bold text-white">⚡ No me importa, busco el menor precio</div>
+                      <div class="text-xs font-bold text-white">⚡ Busco el menor precio</div>
                       <div class="text-[10px] text-slate-400 mt-0.5">Puedo jugar en el perfil asignado para ahorrar</div>
                     </div>
-                    <span v-if="gamerUserPref === 'any'" class="text-indigo-400 text-sm font-bold">✓</span>
+                    <span v-if="gamerUserPref === 'any'" class="text-indigo-400 text-sm font-bold shrink-0 ml-2">✓</span>
                   </button>
                 </div>
               </div>
 
               <!-- Pregunta 3: Conexión a Internet -->
-              <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
+              <div class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2">
                 <span class="text-xs font-black text-slate-200">3. ¿Tienes conexión continua a internet?</span>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button 
                     type="button" 
                     @click="gamerConnection = 'always'"
                     :class="[
-                      'py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-left',
+                      'py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-left touch-manipulation',
                       gamerConnection === 'always' ? 'bg-sky-500/20 text-sky-300 border-sky-400' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
@@ -894,7 +894,7 @@ const copyText = (txt, msg) => {
                     type="button" 
                     @click="gamerConnection = 'offline'"
                     :class="[
-                      'py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-left',
+                      'py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-left touch-manipulation',
                       gamerConnection === 'offline' ? 'bg-sky-500/20 text-sky-300 border-sky-400' : 'bg-slate-950/60 text-slate-400 border-white/[0.06]'
                     ]"
                   >
@@ -905,31 +905,31 @@ const copyText = (txt, msg) => {
             </div>
 
             <!-- RESULTADO DEL DIAGNÓSTICO -->
-            <div class="rounded-3xl bg-slate-950/90 border border-indigo-500/40 p-5 space-y-4 shadow-2xl relative overflow-hidden">
+            <div class="rounded-2xl sm:rounded-3xl bg-slate-950/90 border border-indigo-500/40 p-3.5 sm:p-5 space-y-3 sm:space-y-4 shadow-2xl relative overflow-hidden">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full border" :class="gamerRecommendation.badgeClass">
+                <span class="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border" :class="gamerRecommendation.badgeClass">
                   {{ gamerRecommendation.badge }}
                 </span>
                 <span class="text-xs font-mono font-bold text-slate-400">{{ gamerConsole }}</span>
               </div>
 
               <div>
-                <h5 class="text-base font-black text-white">{{ gamerRecommendation.summary }}</h5>
-                <p class="text-xs text-slate-300 mt-1">{{ gamerRecommendation.idealFor }}</p>
+                <h5 class="text-sm sm:text-base font-black text-white">{{ gamerRecommendation.summary }}</h5>
+                <p class="text-[11px] sm:text-xs text-slate-300 mt-1">{{ gamerRecommendation.idealFor }}</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 <div 
                   v-for="(ben, idx) in gamerRecommendation.benefits" 
                   :key="idx" 
-                  class="flex items-center gap-2 text-xs text-slate-200 bg-slate-900/60 p-2.5 rounded-xl border border-white/[0.04]"
+                  class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-200 bg-slate-900/60 p-2 sm:p-2.5 rounded-xl border border-white/[0.04]"
                 >
-                  <span class="text-emerald-400 font-bold">✓</span>
+                  <span class="text-emerald-400 font-bold shrink-0">✓</span>
                   <span>{{ ben }}</span>
                 </div>
               </div>
 
-              <div class="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-white/[0.08]">
+              <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-white/[0.08]">
                 <div class="text-xs font-bold text-amber-300">
                   💰 {{ gamerRecommendation.saving }}
                 </div>
@@ -938,7 +938,7 @@ const copyText = (txt, msg) => {
                   <button 
                     type="button" 
                     @click="goToGamesCatalog(gamerRecommendation.type)"
-                    class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-black text-xs transition shadow-lg shadow-indigo-500/20 cursor-pointer active:scale-95"
+                    class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-black text-xs transition shadow-lg shadow-indigo-500/20 cursor-pointer active:scale-95 touch-manipulation text-center"
                   >
                     🎮 Ver Catálogo de Videojuegos →
                   </button>
@@ -950,38 +950,38 @@ const copyText = (txt, msg) => {
           <!-- ============================================== -->
           <!-- TAB 4: VALIDADOR DE GARANTÍA & SLA -->
           <!-- ============================================== -->
-          <div v-if="activeTab === 'warranty'" class="space-y-6">
-            <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-orange-950/40 border border-amber-500/30 rounded-2xl p-4 sm:p-5">
-              <h4 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <div v-if="activeTab === 'warranty'" class="space-y-4 sm:space-y-6">
+            <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-orange-950/40 border border-amber-500/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5">
+              <h4 class="text-sm sm:text-lg font-black text-white flex items-center gap-2">
                 <span>🛡️</span> Pilares de Garantía Oficial StreamePro
               </h4>
-              <p class="text-xs text-slate-300 mt-1">
+              <p class="text-[11px] sm:text-xs text-slate-300 mt-1">
                 Comercializamos únicamente perfiles originales, legales y con respaldo post-venta garantizado por escrito.
               </p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
               <div 
                 v-for="(p, idx) in guaranteePillars"
                 :key="idx"
-                class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-2 hover:border-amber-400/30 transition-all"
+                class="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-1.5 sm:space-y-2 hover:border-amber-400/30 transition-all"
               >
                 <div class="flex items-center gap-2.5">
-                  <span class="text-2xl">{{ p.icon }}</span>
+                  <span class="text-xl sm:text-2xl">{{ p.icon }}</span>
                   <h5 class="text-xs sm:text-sm font-black text-white">{{ p.title }}</h5>
                 </div>
-                <p class="text-xs text-slate-300 leading-relaxed">{{ p.desc }}</p>
+                <p class="text-[11px] sm:text-xs text-slate-300 leading-relaxed">{{ p.desc }}</p>
               </div>
             </div>
 
             <!-- Banner de Contacto Garantía Directa -->
-            <div class="rounded-2xl bg-slate-950/80 border border-white/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="rounded-xl sm:rounded-2xl bg-slate-950/80 border border-white/10 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <div class="text-xs font-bold text-white flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                   Canal de Garantía & Soporte Técnico 24/7
                 </div>
-                <p class="text-[11px] text-slate-400 mt-0.5">
+                <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
                   Si surge cualquier duda con tu suscripción o juego, nuestro equipo responde con máxima prioridad.
                 </p>
               </div>
@@ -990,7 +990,7 @@ const copyText = (txt, msg) => {
                 href="https://wa.me/5491136000000?text=Hola%20StreamePro,%20tengo%20una%20consulta%20sobre%20mi%20garant%C3%ADa"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-black text-xs flex items-center gap-2 transition cursor-pointer shrink-0"
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 touch-manipulation"
               >
                 <span>💬</span>
                 <span>Hablar con Soporte</span>
@@ -1001,16 +1001,16 @@ const copyText = (txt, msg) => {
         </div>
 
         <!-- FOOTER DEL MODAL -->
-        <div class="p-3.5 sm:p-4 border-t border-white/[0.08] bg-slate-950/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
-          <div class="flex items-center gap-2">
+        <div class="p-3 sm:p-4 border-t border-white/[0.08] bg-slate-950/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <div class="flex items-center gap-1.5 sm:gap-2">
             <span class="text-emerald-400">✓</span>
-            <span class="font-mono text-[11px]">StreamePro Enterprise v2.4</span>
+            <span class="font-mono text-[10px] sm:text-[11px]">StreamePro Enterprise v2.4</span>
           </div>
 
           <button 
             type="button"
             @click="closeModal"
-            class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition cursor-pointer"
+            class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition cursor-pointer active:scale-95 touch-manipulation"
           >
             Cerrar
           </button>

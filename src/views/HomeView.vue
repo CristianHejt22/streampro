@@ -4172,71 +4172,73 @@ const submitOrder = async () => {
       </div>
 
       <!-- 1.5 CENTRO DE HERRAMIENTAS INTELIGENTES & CALCULADORA STREAMEPRO -->
-      <div id="centro-herramientas" class="rounded-3xl glass-panel p-5 sm:p-8 border border-sky-500/30 shadow-2xl space-y-6 relative overflow-hidden bg-gradient-to-br from-slate-900/95 via-[#060e22] to-slate-900/95">
+      <div id="centro-herramientas" class="rounded-2xl sm:rounded-3xl glass-panel p-4 sm:p-8 border border-sky-500/30 shadow-2xl space-y-4 sm:space-y-6 relative overflow-hidden bg-gradient-to-br from-slate-900/95 via-[#060e22] to-slate-900/95">
         <div class="absolute -right-24 -top-24 w-80 h-80 bg-sky-500/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -left-24 -bottom-24 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Header del Centro de Herramientas -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-sky-500/25 shrink-0">
+        <!-- Header del Centro de Herramientas Adaptado a Móvil y Desktop -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 sm:gap-4 relative z-10">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center text-xl sm:text-2xl shadow-lg shadow-sky-500/25 shrink-0">
               🔧
             </div>
             <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-xl sm:text-2xl font-black text-white">Centro de Herramientas Inteligentes</h3>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-base sm:text-2xl font-black text-white tracking-tight">Centro de Herramientas Inteligentes</h3>
+                <span class="text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
                   Suite Oficial
                 </span>
               </div>
-              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">Calcula tu ahorro sin el 60% de impuestos bancarios, rastrea órdenes en vivo y asesórate con licencias gamer</p>
+              <p class="text-xs sm:text-sm text-slate-300 mt-0.5 line-clamp-2 sm:line-clamp-none">Calcula tu ahorro sin el 60% de impuestos bancarios, rastrea órdenes en vivo y asesórate con licencias gamer</p>
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="grid grid-cols-2 gap-2 w-full md:w-auto sm:flex sm:items-center">
             <button 
               type="button"
               @click="openCustomerToolsModal('calculator')"
-              class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
+              class="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer active:scale-95 touch-manipulation"
             >
               <span>🧮</span>
-              <span>Abrir Calculadora Completa</span>
+              <span class="truncate">Calculadora</span>
             </button>
             <button 
               type="button"
               @click="openCustomerToolsModal('tracker')"
-              class="px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              class="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 touch-manipulation"
             >
               <span>🔍</span>
-              <span>Rastrear Pedido</span>
+              <span class="truncate">Rastrear Pedido</span>
             </button>
           </div>
         </div>
 
-        <!-- 4 Tarjetas de Herramientas Interactivas Directas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 relative z-10">
+        <!-- 4 Tarjetas de Herramientas Interactivas (2 Columnas en Móviles, 4 en Desktop) -->
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 relative z-10">
           
           <!-- Herramienta 1: Calculadora de Ahorro -->
           <div 
             @click="openCustomerToolsModal('calculator')"
-            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-sky-500/30 hover:border-sky-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+            class="p-3 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-sky-500/30 hover:border-sky-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1 active:scale-95 touch-manipulation"
           >
             <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-2xl group-hover:scale-110 transition-transform">🧮</span>
-                <span class="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <span class="text-xl sm:text-2xl group-hover:scale-110 transition-transform">🧮</span>
+                <span class="text-[8px] sm:text-[9px] font-mono font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   -68% OFF
                 </span>
               </div>
-              <h4 class="text-sm font-black text-white group-hover:text-sky-300 transition-colors">
-                Calculadora de Ahorro
-              </h4>
-              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+              <div class="h-8 sm:h-auto flex items-start overflow-hidden">
+                <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-sky-300 transition-colors leading-snug line-clamp-2">
+                  Calculadora de Ahorro
+                </h4>
+              </div>
+              <p class="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-1.5 leading-relaxed line-clamp-2 sm:line-clamp-none">
                 Compara en segundos cuánto gastas con tarjetas bancarias (+60% impuestos) vs el precio final en pesos StreamePro.
               </p>
             </div>
-            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-sky-400">
-              <span>Calcular Ahorro</span>
+            <div class="mt-3 pt-2 sm:mt-4 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] sm:text-xs font-bold text-sky-400">
+              <span>Calcular</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>
           </div>
@@ -4244,25 +4246,27 @@ const submitOrder = async () => {
           <!-- Herramienta 2: Rastreador de Pedidos & PIN -->
           <div 
             @click="openCustomerToolsModal('tracker')"
-            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-emerald-500/30 hover:border-emerald-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+            class="p-3 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-emerald-500/30 hover:border-emerald-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1 active:scale-95 touch-manipulation"
           >
             <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-2xl group-hover:scale-110 transition-transform">🔍</span>
-                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+              <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <span class="text-xl sm:text-2xl group-hover:scale-110 transition-transform">🔍</span>
+                <span class="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   En Vivo
                 </span>
               </div>
-              <h4 class="text-sm font-black text-white group-hover:text-emerald-300 transition-colors">
-                Rastreador de Pedidos & PIN
-              </h4>
-              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+              <div class="h-8 sm:h-auto flex items-start overflow-hidden">
+                <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-emerald-300 transition-colors leading-snug line-clamp-2">
+                  Rastreador de Pedidos
+                </h4>
+              </div>
+              <p class="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-1.5 leading-relaxed line-clamp-2 sm:line-clamp-none">
                 Ingresa tu número de orden o WhatsApp para verificar el estado de activación, tiempo SLA y soporte en turno.
               </p>
             </div>
-            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-400">
-              <span>Consultar Estado</span>
+            <div class="mt-3 pt-2 sm:mt-4 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] sm:text-xs font-bold text-emerald-400">
+              <span>Consultar</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>
           </div>
@@ -4270,24 +4274,26 @@ const submitOrder = async () => {
           <!-- Herramienta 3: Asistente Gamer de Licencias -->
           <div 
             @click="openCustomerToolsModal('gamer')"
-            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-indigo-500/30 hover:border-indigo-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+            class="p-3 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-indigo-500/30 hover:border-indigo-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1 active:scale-95 touch-manipulation"
           >
             <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-2xl group-hover:scale-110 transition-transform">🎮</span>
-                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <span class="text-xl sm:text-2xl group-hover:scale-110 transition-transform">🎮</span>
+                <span class="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   PS5 & PS4
                 </span>
               </div>
-              <h4 class="text-sm font-black text-white group-hover:text-indigo-300 transition-colors">
-                Asistente Primaria vs Secundaria
-              </h4>
-              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+              <div class="h-8 sm:h-auto flex items-start overflow-hidden">
+                <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-indigo-300 transition-colors leading-snug line-clamp-2">
+                  Asistente Gamer
+                </h4>
+              </div>
+              <p class="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-1.5 leading-relaxed line-clamp-2 sm:line-clamp-none">
                 ¿Qué cuenta te conviene? Responde 3 preguntas y averigua la mejor opción según tu usuario, trofeos y presupuesto.
               </p>
             </div>
-            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-indigo-400">
-              <span>Hacer Diagnóstico</span>
+            <div class="mt-3 pt-2 sm:mt-4 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] sm:text-xs font-bold text-indigo-400">
+              <span>Diagnóstico</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>
           </div>
@@ -4295,24 +4301,26 @@ const submitOrder = async () => {
           <!-- Herramienta 4: Garantía SLA & Seguridad -->
           <div 
             @click="openCustomerToolsModal('warranty')"
-            class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-amber-500/30 hover:border-amber-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1"
+            class="p-3 sm:p-5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-amber-500/30 hover:border-amber-400/60 transition-all flex flex-col justify-between group cursor-pointer shadow-lg hover:-translate-y-1 active:scale-95 touch-manipulation"
           >
             <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-2xl group-hover:scale-110 transition-transform">🛡️</span>
-                <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <span class="text-xl sm:text-2xl group-hover:scale-110 transition-transform">🛡️</span>
+                <span class="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   SLA 30 Días
                 </span>
               </div>
-              <h4 class="text-sm font-black text-white group-hover:text-amber-300 transition-colors">
-                Garantía 100% Reposición
-              </h4>
-              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+              <div class="h-8 sm:h-auto flex items-start overflow-hidden">
+                <h4 class="text-xs sm:text-sm font-black text-white group-hover:text-amber-300 transition-colors leading-snug line-clamp-2">
+                  Garantía 100%
+                </h4>
+              </div>
+              <p class="text-[10px] sm:text-xs text-slate-300 mt-1 sm:mt-1.5 leading-relaxed line-clamp-2 sm:line-clamp-none">
                 Cuentas legales con PIN privado, sin caídas ni bloqueos por IP, con respaldo técnico post-venta garantizado.
               </p>
             </div>
-            <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-bold text-amber-400">
-              <span>Ver Pilares de Confianza</span>
+            <div class="mt-3 pt-2 sm:mt-4 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] sm:text-xs font-bold text-amber-400">
+              <span>Garantía</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>
           </div>
