@@ -25,6 +25,7 @@ const openUserProfileModal = () => {
 const showCustomerToolsModal = ref(false)
 const customerToolsModalTab = ref('calculator')
 const openCustomerToolsModal = (tab = 'calculator') => {
+  showGamingAttentionPopup.value = false
   customerToolsModalTab.value = tab
   showCustomerToolsModal.value = true
 }

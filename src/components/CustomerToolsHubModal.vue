@@ -386,7 +386,7 @@ const copyText = (txt, msg) => {
   <Transition name="fade">
     <div 
       v-if="modelValue" 
-      class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xl overflow-y-auto"
+      class="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xl overflow-y-auto"
       @click.self="closeModal"
     >
       <div 
