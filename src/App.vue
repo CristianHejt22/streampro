@@ -875,8 +875,8 @@ const handleOpenCart = () => {
       </button>
     </nav>
 
-    <!-- Toasts Container -->
-    <div class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
+    <!-- Toasts Container (Ajustado para flotar limpiamente sobre el dock en móviles) -->
+    <div class="fixed bottom-20 sm:bottom-6 right-3 sm:right-6 left-3 sm:left-auto z-[100] flex flex-col gap-2.5 pointer-events-none">
       <TransitionGroup name="toast">
         <div v-for="toast in toastStore.toasts" :key="toast.id" 
              class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl shadow-black/50 border min-w-[250px] transform transition-all duration-300"
