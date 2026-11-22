@@ -6715,9 +6715,8 @@ export const useAdminStore = defineStore('admin', {
       this.isLoadingGamingCatalog = true
       _gamingCatalogPromise = (async () => {
         try {
-          const fullData = (Array.isArray(_loadedBaseGamingData) && _loadedBaseGamingData.length > 0)
-            ? _loadedBaseGamingData
-            : INITIAL_GAMING_PRODUCTS
+          const module = await import('../assets/gamingProducts.json')
+          const fullData = module.default || module
           _loadedBaseGamingData = fullData
           this.gamingProducts = buildMergedGamingCatalog(fullData)
           this.isGamingCatalogLoaded = true

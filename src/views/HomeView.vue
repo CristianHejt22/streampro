@@ -913,6 +913,9 @@ const availableGamingSubcategories = computed(() => {
     else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
     else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
     else if (currentCat === 'PS3') matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
+    else if (currentCat === 'Xbox') matchesCat = Boolean(game.platform && game.platform.includes('Xbox')) || game.category === 'Xbox'
+    else if (currentCat === 'Nintendo Switch') matchesCat = Boolean(game.platform && game.platform.includes('Switch')) || game.category === 'Nintendo Switch'
+    else if (currentCat === 'PC') matchesCat = Boolean(game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) || game.category === 'PC'
     else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
     else matchesCat = game.category === currentCat
 
@@ -944,6 +947,12 @@ const filteredGamingProducts = computed(() => {
       matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
     } else if (selectedGamingCat.value === 'PS3') {
       matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
+    } else if (selectedGamingCat.value === 'Xbox') {
+      matchesCat = Boolean(game.platform && game.platform.includes('Xbox')) || game.category === 'Xbox'
+    } else if (selectedGamingCat.value === 'Nintendo Switch') {
+      matchesCat = Boolean(game.platform && game.platform.includes('Switch')) || game.category === 'Nintendo Switch'
+    } else if (selectedGamingCat.value === 'PC') {
+      matchesCat = Boolean(game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) || game.category === 'PC'
     } else if (selectedGamingCat.value === 'Lanzamientos') {
       matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
     } else {
@@ -5541,8 +5550,10 @@ const submitOrder = async () => {
                 <span>Placa Favoritos</span>
               </button>
 
-              <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap">
-                🎮 {{ filteredGamingProducts.length }} títulos
+              <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap flex items-center gap-1.5">
+                <span v-if="adminStore.isLoadingGamingCatalog" class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+                <span>🎮 {{ filteredGamingProducts.length.toLocaleString('es-AR') }} títulos</span>
+                <span v-if="adminStore.isLoadingGamingCatalog" class="text-[10px] text-indigo-400/80">(cargando biblioteca...)</span>
               </span>
 
               <button
@@ -5804,7 +5815,7 @@ const submitOrder = async () => {
           <span>Mostrando</span>
           <span class="font-bold text-white font-mono">{{ ((gamingCurrentPage - 1) * (gamingItemsPerPage === 'all' ? 160 : gamingItemsPerPage)) + 1 }} - {{ Math.min(gamingCurrentPage * (gamingItemsPerPage === 'all' ? 160 : gamingItemsPerPage), filteredGamingProducts.length) }}</span>
           <span>de</span>
-          <span class="font-bold text-indigo-400 font-mono">{{ filteredGamingProducts.length }}</span>
+          <span class="font-bold text-indigo-400 font-mono">{{ filteredGamingProducts.length.toLocaleString('es-AR') }}</span>
           <span>videojuegos</span>
         </div>
 
