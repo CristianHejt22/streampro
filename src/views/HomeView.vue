@@ -16,6 +16,7 @@ const GiveawaysSection = defineAsyncComponent(() => import('../components/Giveaw
 const GiftCardModal = defineAsyncComponent(() => import('../components/GiftCardModal.vue'))
 const UserProfileModal = defineAsyncComponent(() => import('../components/UserProfileModal.vue'))
 const CustomerToolsHubModal = defineAsyncComponent(() => import('../components/CustomerToolsHubModal.vue'))
+const GamerToolsModal = defineAsyncComponent(() => import('../components/GamerToolsModal.vue'))
 
 const showUserProfileModal = ref(false)
 const openUserProfileModal = () => {
@@ -28,6 +29,14 @@ const openCustomerToolsModal = (tab = 'calculator') => {
   showGamingAttentionPopup.value = false
   customerToolsModalTab.value = tab
   showCustomerToolsModal.value = true
+}
+
+const showGamerToolsModal = ref(false)
+const gamerToolsModalTab = ref('calculator')
+const openGamerToolsModal = (tab = 'calculator') => {
+  showGamingAttentionPopup.value = false
+  gamerToolsModalTab.value = tab
+  showGamerToolsModal.value = true
 }
 
 const route = useRoute()
@@ -1563,7 +1572,8 @@ const checkAndTriggerGamingPopup = () => {
         showGamingDetailModal.value ||
         showSharePlaqueModal.value ||
         showOrderSuccessModal.value ||
-        showCustomerToolsModal.value
+        showCustomerToolsModal.value ||
+        showGamerToolsModal.value
       ) {
         return
       }
@@ -5769,6 +5779,54 @@ const submitOrder = async () => {
           </div>
         </div>
 
+        <!-- BARRA DE HERRAMIENTAS Y UTILIDADES GAMER PRO -->
+        <div class="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-slate-950 to-purple-950/80 border border-indigo-400/40 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span class="text-xs font-black text-white uppercase tracking-wider font-mono">Herramientas Gamer:</span>
+            <span class="text-xs text-slate-300 hidden sm:inline">Calcula tu ahorro vs PS Store, consulta guías de instalación y resuelve tus licencias</span>
+          </div>
+
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full md:w-auto pb-1 md:pb-0">
+            <button 
+              type="button"
+              @click="openGamerToolsModal('calculator')"
+              class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 hover:from-blue-600/50 hover:to-indigo-600/50 text-indigo-300 hover:text-white border border-indigo-400/40 font-black text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm cursor-pointer"
+            >
+              <span>🧮</span>
+              <span>Calculadora vs PS Store</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">-60% OFF</span>
+            </button>
+
+            <button 
+              type="button"
+              @click="openGamerToolsModal('guide')"
+              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
+            >
+              <span>📖</span>
+              <span>Guía de Activación PS5/PS4</span>
+            </button>
+
+            <button 
+              type="button"
+              @click="openGamerToolsModal('comparison')"
+              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-purple-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
+            >
+              <span>⚖️</span>
+              <span>Primaria vs Secundaria</span>
+            </button>
+
+            <button 
+              type="button"
+              @click="openGamerToolsModal('warranty')"
+              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
+            >
+              <span>🛡️</span>
+              <span>Garantía Anti-Candado</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Buscador, Ordenamiento, Rango de Precio y Favoritos -->
         <div class="space-y-3 pt-3 border-t border-indigo-500/20">
           <!-- Fila 1: Buscador, Ordenamiento y Acciones Rápidas -->
@@ -5844,6 +5902,70 @@ const submitOrder = async () => {
                 <span>Carrito ({{ cartStore.totalItems }})</span>
               </button>
             </div>
+          </div>
+
+          <!-- Chips de Búsqueda Rápida y Filtros Inteligentes -->
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+            <span class="text-[10px] font-mono uppercase text-indigo-400 shrink-0 font-bold flex items-center gap-1">
+              <span>⚡</span> Atajos:
+            </span>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'FC 25'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'FC 25' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🔥 FC 25
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'GTA'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'GTA' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🚗 GTA V
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'God of War'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'God of War' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🪓 God of War
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'Spider-Man'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Spider-Man' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🕷️ Spider-Man
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'Mortal Kombat'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Mortal Kombat' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🐉 Mortal Kombat
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'Call of Duty'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Call of Duty' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🎯 Call of Duty
+            </button>
+            <button 
+              type="button" 
+              @click="gamingPriceCeiling = gamingPriceCeiling === '25000' ? 'ALL' : '25000'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingPriceCeiling === '25000' ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black' : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40']"
+            >
+              💰 Gangas &lt; $25k
+            </button>
+            <button 
+              v-if="gamingSearch || gamingPriceCeiling !== 'ALL'"
+              type="button" 
+              @click="gamingSearch = ''; gamingPriceCeiling = 'ALL'" 
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 bg-slate-800 text-slate-400 hover:text-white transition border border-white/10 cursor-pointer"
+            >
+              ✕ Limpiar
+            </button>
           </div>
 
           <!-- Fila 2: Selector de Categorías Horizontal -->
@@ -6046,9 +6168,14 @@ const submitOrder = async () => {
               <!-- Bloque Precio & Entrega Unificado -->
               <div class="flex items-center justify-between bg-slate-950/80 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-800/80">
                 <div class="min-w-0">
-                  <span class="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-wider block truncate">
-                    {{ getGameSelectedLicense(game.id) === 'primary' ? '⭐️ Tu Perfil' : '⚡️ Secundaria' }}
-                  </span>
+                  <div class="flex items-center gap-1">
+                    <span class="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-wider block truncate">
+                      {{ getGameSelectedLicense(game.id) === 'primary' ? '⭐ Tu Perfil' : '⚡ Secundaria' }}
+                    </span>
+                    <span class="text-[8px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-300 font-bold hidden sm:inline border border-emerald-500/30">
+                      -60% vs PS Store
+                    </span>
+                  </div>
                   <div class="flex items-baseline gap-0.5 sm:gap-1">
                     <span class="text-xs sm:text-lg font-black text-white font-mono truncate">
                       ${{ (getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString() }}
@@ -9368,6 +9495,12 @@ const submitOrder = async () => {
       v-model="showCustomerToolsModal"
       :initial-tab="customerToolsModalTab"
       @openCheckout="showCustomerToolsModal = false; showCheckoutModal = true"
+    />
+
+    <!-- Modal Suite de Herramientas Gaming & Calculadora vs PS Store -->
+    <GamerToolsModal
+      v-model="showGamerToolsModal"
+      :initial-tab="gamerToolsModalTab"
     />
   </div>
 </template>
