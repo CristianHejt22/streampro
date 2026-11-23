@@ -6617,44 +6617,26 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <!-- BOTONES DE ACCIÓN ADAPTABLES -->
-          <div class="p-2 sm:p-3 pt-0 space-y-1 sm:space-y-1.5" @click.stop>
-            <div class="grid grid-cols-2 gap-1 sm:gap-1.5">
-              <button 
-                type="button" 
-                @click.stop="buyGamingViaWhatsApp(game)"
-                class="min-h-[32px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1 px-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-emerald-950/60 border border-emerald-400/40 flex items-center justify-center gap-1 text-[10.5px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none whitespace-nowrap"
-                title="Comprar directo por WhatsApp con la modalidad elegida"
-              >
-                <span>💬</span>
-                <span>Pedir</span>
-              </button>
-              <button 
-                type="button" 
-                @click.stop="addGameToCartFromCard(game)"
-                class="min-h-[32px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1 px-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-amber-950/60 border border-amber-300/50 flex items-center justify-center gap-1 text-[10.5px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none whitespace-nowrap"
-                title="Agregar al carrito de compras"
-              >
-                <span class="text-xs">🛒</span>
-                <span>+Carrito</span>
-              </button>
-            </div>
-            <div class="grid grid-cols-2 gap-1 sm:gap-1.5">
-              <button 
-                type="button"
-                @click.stop="shareGamingViaWhatsApp(game)"
-                class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-white/10 hover:border-white/20 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                title="Compartir juego por WhatsApp"
-              >
-                <span>📤</span> Compartir
-              </button>
+          <!-- BOTONES DE ACCIÓN: +INFO/FICHA Y COMPARTIR DESTACADOS (CARRITO Y PEDIR EN VISTA RÁPIDA) -->
+          <div class="p-2 sm:p-2.5 pt-0" @click.stop>
+            <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
               <button 
                 type="button"
                 @click.stop="openGamingDetail(game)"
-                class="bg-slate-900/90 hover:bg-sky-950/60 text-sky-300 hover:text-sky-200 border border-sky-500/30 hover:border-sky-400/50 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
-                title="Ver ficha completa y características"
+                class="min-h-[34px] sm:min-h-[38px] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-500 hover:via-indigo-500 hover:to-violet-500 text-white font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-indigo-950/70 border border-indigo-400/40 flex items-center justify-center gap-1.5 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none group/info"
+                title="Ver ficha técnica completa, requisitos y opciones de compra"
               >
-                <span>ℹ️</span> +Info
+                <span class="text-xs sm:text-sm group-hover/info:scale-110 transition-transform">ℹ️</span>
+                <span class="tracking-tight font-black">+Info / Ficha</span>
+              </button>
+              <button 
+                type="button"
+                @click.stop="openGamingShareModal(game)"
+                class="min-h-[34px] sm:min-h-[38px] bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-white/10 hover:border-sky-400/50 font-bold py-1.5 px-2 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none group/share"
+                title="Compartir este juego por WhatsApp o redes sociales"
+              >
+                <span class="text-xs sm:text-sm group-hover/share:scale-110 transition-transform">📤</span>
+                <span class="font-bold">Compartir</span>
               </button>
             </div>
           </div>
@@ -9457,37 +9439,38 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- Botonera de Compra Sticky en Móvil y Adaptable en Desktop -->
-        <div class="sticky -bottom-4 sm:-bottom-6 -mx-4 sm:-mx-6 bg-[#0b0f19]/95 backdrop-blur-xl border-t border-indigo-500/30 p-3.5 sm:p-4 space-y-2 mt-4 shadow-[0_-10px_25px_rgba(0,0,0,0.8)] z-20">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <!-- Botonera de Compra Sticky en Móvil y Adaptable en Desktop: Pedir y Carrito Prominentes -->
+        <div class="sticky -bottom-4 sm:-bottom-6 -mx-4 sm:-mx-6 bg-[#0b0f19]/95 backdrop-blur-xl border-t border-indigo-500/30 p-3.5 sm:p-4 space-y-2.5 mt-4 shadow-[0_-10px_25px_rgba(0,0,0,0.8)] z-20">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
             <button 
               type="button" 
               @click="buyGamingViaWhatsApp(selectedGamingProduct); showGamingDetailModal = false"
-              class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
-              title="Comprar directo por WhatsApp"
+              class="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-3 px-4 rounded-xl shadow-lg shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95 border border-emerald-300/50"
+              title="Pedir directo por WhatsApp con la consola y modalidad elegidas"
             >
-              <span>⚡ Comprar por WhatsApp</span>
+              <span class="text-base">💬</span>
+              <span>Pedir por WhatsApp</span>
             </button>
             <button 
               type="button" 
               @click="addGameToCartFromModal"
-              class="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-3 px-3 rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95 border border-amber-200/50"
+              class="bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-3 px-4 rounded-xl shadow-xl shadow-amber-950/70 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95 border border-amber-200/60"
               title="Agregar al carrito de compras"
             >
-              <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-              <span>+ Carrito (${{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
+              <span class="text-base">🛒</span>
+              <span>+ Carrito ({{ (getGameSelectedLicense(selectedGamingProduct.id) === 'primary' ? selectedGamingProduct.effectivePrimaryPrice : selectedGamingProduct.effectiveSecondaryPrice)?.toLocaleString() }} ARS)</span>
             </button>
+          </div>
+          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 pt-0.5">
             <button 
               type="button" 
               @click="openGamingShareModal(selectedGamingProduct)"
-              class="bg-gradient-to-r from-indigo-600/30 via-blue-600/25 to-sky-600/30 hover:from-indigo-600/50 hover:to-sky-500/50 text-sky-200 hover:text-white font-bold py-2.5 sm:py-3 px-3 rounded-xl border border-sky-400/40 hover:border-sky-300 transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-              title="Abrir todas las funciones de compartir con el mensaje correspondiente"
+              class="flex-1 py-1.5 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-white/10 hover:border-sky-400/40 font-bold transition text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              title="Compartir con mensaje oficial formateado"
             >
               <span>📤</span>
               <span>Compartir</span>
             </button>
-          </div>
-          <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400 pt-0.5">
             <button
               type="button"
               @click="copyGameTechnicalSheet(selectedGamingProduct)"
