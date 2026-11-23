@@ -385,7 +385,7 @@ const openSharePlaqueForPhysical = (prod) => {
   showSharePlaqueModal.value = true
 }
 
-const openSharePlaqueForGaming = (game, licenseType = null) => {
+const openSharePlaqueForGaming = (game, licenseType = null, format = 'story') => {
   const lic = licenseType || getGameSelectedLicense(game.id)
   const chosenPrice = lic === 'primary'
     ? Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0)
@@ -393,6 +393,7 @@ const openSharePlaqueForGaming = (game, licenseType = null) => {
   sharePlaquePayload.value = {
     mode: 'single',
     productType: 'gaming',
+    format: format || 'story',
     id: game.id,
     licenseType: lic,
     title: game.title,
@@ -9587,27 +9588,39 @@ const submitOrder = async () => {
             </button>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <!-- 4. Compartir nativo en redes -->
+          <div class="grid grid-cols-2 gap-2">
+            <!-- 4. Compartir Historia 9:16 (Instagram & WhatsApp) -->
             <button 
               type="button" 
-              @click="shareGamingNative(selectedGamingShareProduct)"
-              class="bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 hover:text-white font-bold py-2.5 px-3 rounded-xl border border-indigo-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              @click="openSharePlaqueForGaming(selectedGamingShareProduct, null, 'story'); showGamingShareModal = false"
+              class="bg-gradient-to-r from-pink-600/30 via-purple-600/25 to-indigo-600/30 hover:from-pink-600/50 hover:to-indigo-600/50 text-pink-300 hover:text-white font-black py-2.5 px-3 rounded-xl border border-pink-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95 shadow"
+              title="Compartir en Historia 9:16 de Instagram o WhatsApp"
             >
-              <span>📱</span>
-              <span>Otras Apps / Redes</span>
+              <span class="text-sm">📱</span>
+              <span>Historia 9:16</span>
             </button>
 
-            <!-- 5. Generar Placa Oficial HD -->
+            <!-- 5. Compartir Post / Placa 1:1 (Feed & Grupos) -->
             <button 
               type="button" 
-              @click="openSharePlaqueForGaming(selectedGamingShareProduct); showGamingShareModal = false"
-              class="bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-pink-300 hover:text-white font-black py-2.5 px-3 rounded-xl border border-pink-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+              @click="openSharePlaqueForGaming(selectedGamingShareProduct, null, 'post'); showGamingShareModal = false"
+              class="bg-gradient-to-r from-cyan-600/30 via-blue-600/25 to-indigo-600/30 hover:from-cyan-600/50 hover:to-blue-600/50 text-cyan-300 hover:text-white font-black py-2.5 px-3 rounded-xl border border-cyan-500/40 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95 shadow"
+              title="Compartir como Post / Placa 1:1 en Facebook, Instagram y Grupos"
             >
-              <span>🖼️</span>
-              <span>Generar Placa HD</span>
+              <span class="text-sm">🖼️</span>
+              <span>Post / Placa 1:1</span>
             </button>
           </div>
+
+          <!-- 6. Compartir nativo en otras apps del teléfono -->
+          <button 
+            type="button" 
+            @click="shareGamingNative(selectedGamingShareProduct)"
+            class="w-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white font-bold py-2 px-3 rounded-xl border border-slate-700/80 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer active:scale-95"
+          >
+            <span>📲</span>
+            <span>Compartir en Otras Apps / Redes</span>
+          </button>
         </div>
       </div>
     </div>
