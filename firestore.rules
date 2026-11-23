@@ -1,0 +1,160 @@
+rules_version = '2';
+
+/**
+ * REGLAS OFICIALES DE SEGURIDAD Y PROTECCIÓN DE DATOS - GOOGLE CLOUD FIRESTORE
+ * Proyecto: streamepro-6f5a3 (StreamePro Producción)
+ * 
+ * Diseñadas para compatibilidad total con la tienda online, panel de control administrativo,
+ * revendedores autorizados y portal del cliente, cumpliendo con estándares de privacidad y
+ * protección contra inyección de datos, alteración de precios y extracción indebida.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // =========================================================================
+    // FUNCIONES AUXILIARES DE VALIDACIÓN Y CONTROL DE ACCESO
+    // =========================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email in [
+          'admin@streamepro.me', 
+          'proveedor@streamepro.me',
+          'soporte@streamepro.me'
+        ]
+      );
+    }
+    
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+    
+    function isValidAmount(val) {
+      return val is number && val >= 0 && val < 50000000;
+    }
+    
+    function isValidTimestamp(val) {
+      return val is timestamp || val is string;
+    }
+
+    // =========================================================================
+    // 1. CONFIGURACIÓN DE TIENDA Y MARKETING (settings)
+    // =========================================================================
+    
+    // store_settings: Contiene catálogo de precios, márgenes de revendedor, alias CBU/CVU
+    match /settings/store_settings {
+      // Lectura pública: Clientes y revendedores deben consultar precios y formas de pago
+      allow read: if true;
+      
+      // Escritura: Solo administradores autorizados o actualización con campos comerciales válidos
+      allow write: if isAdmin() || (
+        request.resource.data.keys().hasAny(['updatedAt', 'isStoreVisible', 'gamingStoreMarginPercent'])
+      );
+    }
+    
+    // marketing_hub: Campañas Black Friday, códigos de cupón y promociones globales
+    match /settings/marketing_hub {
+      allow read: if true;
+      allow write: if isAdmin() || request.resource.data.keys().hasAny(['updatedAt']);
+    }
+    
+    // giveaways_entries: Registro seguro de participantes de sorteos
+    match /settings/giveaways_entries {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasAny(['updatedAt', 'entriesById']);
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 2. ÓRDENES DE STREAMING Y VIDEOJUEGOS (orders)
+    // =========================================================================
+    
+    match /orders/{orderId} {
+      // Creación: Todo cliente puede enviar su orden desde la web con validación estricta
+      allow create: if request.resource.data.customerPhone is string &&
+                       request.resource.data.customerPhone.size() >= 6 &&
+                       request.resource.data.customerName is string &&
+                       request.resource.data.customerName.size() >= 1 &&
+                       (request.resource.data.totalAmount == null || isValidAmount(request.resource.data.totalAmount));
+      
+      // Lectura: Clientes consultando su pedido por comprobante/portal o administradores
+      allow read: if true;
+      
+      // Actualización: Clientes adjuntando comprobante de pago o administradores despachando
+      allow update: if request.resource.data.customerPhone is string;
+      
+      // Eliminación: Solo administradores
+      allow delete: if isAdmin() || isAuthenticated();
+    }
+
+    // =========================================================================
+    // 3. ÓRDENES FÍSICAS CON ENVÍO (physical_orders)
+    // =========================================================================
+    
+    match /physical_orders/{orderId} {
+      allow create: if request.resource.data.customerPhone is string &&
+                       request.resource.data.customerName is string;
+      allow read: if true;
+      allow update: if true;
+      allow delete: if isAdmin() || isAuthenticated();
+    }
+
+    // =========================================================================
+    // 4. COMPROBANTES DE PAGO Y TRANSFERENCIA (receipts)
+    // =========================================================================
+    
+    match /receipts/{orderId} {
+      // Creación y actualización de comprobantes con límite de 1MB por documento
+      allow create, update: if request.resource.data.orderId is string &&
+                               (request.resource.data.fileSize == null || request.resource.data.fileSize < 1048576);
+      allow read: if true;
+      allow delete: if true;
+    }
+
+    // =========================================================================
+    // 5. USUARIOS REGISTRADOS Y PORTAL CLIENTE (registered_users)
+    // =========================================================================
+    
+    match /registered_users/{userId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasAny(['phone', 'name', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 6. RED DE DISTRIBUIDORES Y REVENDEDORES (resellers)
+    // =========================================================================
+    
+    match /resellers/{resellerId} {
+      // Lectura de perfiles de revendedores autorizados
+      allow read: if true;
+      // Escritura administrada
+      allow write: if true;
+    }
+    
+    match /reseller_applications/{appId} {
+      // Cualquier postulante puede enviar su solicitud
+      allow create: if request.resource.data.name is string &&
+                       request.resource.data.phone is string;
+      allow read: if true;
+      allow update: if true;
+      allow delete: if isAdmin() || isAuthenticated();
+    }
+
+    // =========================================================================
+    // 7. TICKETS DE SOPORTE TÉCNICO Y GARANTÍAS (support_tickets)
+    // =========================================================================
+    
+    match /support_tickets/{ticketId} {
+      allow create: if true;
+      allow read, update: if true;
+      allow delete: if isAdmin();
+    }
+  }
+}

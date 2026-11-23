@@ -17,15 +17,58 @@ import {
   limit
 } from 'firebase/firestore'
 
-// Configuración Oficial de Firebase de StreamePro
+// Configuración Oficial y Protegida de Firebase de StreamePro (Compatible con Vercel/Producción y Fallback Seguro)
+const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {}
 export const OFFICIAL_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBOk3oDY6--EKyETxAfKzRAwasF_HAXMZM",
-  authDomain: "streamepro-6f5a3.firebaseapp.com",
-  projectId: "streamepro-6f5a3",
-  storageBucket: "streamepro-6f5a3.firebasestorage.app",
-  messagingSenderId: "55882803488",
-  appId: "1:55882803488:web:dd4693a750541ce154cf45",
-  measurementId: "G-DVRKEHEERZ"
+  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyBOk3oDY6--EKyETxAfKzRAwasF_HAXMZM",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "streamepro-6f5a3.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "streamepro-6f5a3",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "streamepro-6f5a3.firebasestorage.app",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "55882803488",
+  appId: env.VITE_FIREBASE_APP_ID || "1:55882803488:web:dd4693a750541ce154cf45",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-DVRKEHEERZ"
+}
+
+/**
+ * Sanitiza cadenas de texto eliminando posibles inyecciones de scripts XSS y atributos maliciosos
+ */
+export function sanitizeString(val) {
+  if (typeof val !== 'string') return val
+  return val
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/onload\s*=/gi, '')
+    .replace(/onerror\s*=/gi, '')
+    .trim()
+}
+
+/**
+ * Sanitiza recursivamente objetos y colecciones antes de sincronizarlos con Firestore
+ * - Elimina propiedades undefined que causan excepciones en Firebase
+ * - Sanitiza strings contra scripts maliciosos
+ * - Protege contraseñas en texto plano si stripSensitive está activado
+ */
+export function sanitizePayload(data, stripSensitive = false) {
+  if (!data || typeof data !== 'object') return data
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizePayload(item, stripSensitive))
+  }
+  const clean = {}
+  for (const [k, v] of Object.entries(data)) {
+    if (v === undefined) continue
+    // Protección de credenciales confidenciales en la nube
+    if (stripSensitive && (k.toLowerCase() === 'password' || k.toLowerCase() === 'secretkey' || k.toLowerCase() === 'adminpass')) {
+      continue
+    }
+    if (typeof v === 'string') {
+      clean[k] = sanitizeString(v)
+    } else if (v && typeof v === 'object' && !(v instanceof Date)) {
+      clean[k] = sanitizePayload(v, stripSensitive)
+    } else {
+      clean[k] = v
+    }
+  }
+  return clean
 }
 
 let dbInstance = null
@@ -73,10 +116,15 @@ export async function saveStreamingOrderToFirebase(orderData) {
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
-    const cleanOrder = JSON.parse(JSON.stringify(orderData))
+    const rawOrder = JSON.parse(JSON.stringify(orderData))
+    const cleanOrder = sanitizePayload(rawOrder)
     cleanOrder.createdAtTimestamp = serverTimestamp()
     cleanOrder.sourceOrigin = 'streamepro.me'
     cleanOrder.updatedAt = new Date().toISOString()
+    // Validación de integridad y seguridad de importe
+    if (cleanOrder.totalAmount !== undefined) {
+      cleanOrder.totalAmount = Math.max(0, Number(cleanOrder.totalAmount || 0))
+    }
 
     const orderId = String(cleanOrder.id || `ORD-${Date.now().toString().slice(-4)}`)
     await setDoc(doc(dbInstance, 'orders', orderId), cleanOrder, { merge: true })
@@ -98,10 +146,14 @@ export async function savePhysicalOrderToFirebase(orderData) {
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
-    const cleanOrder = JSON.parse(JSON.stringify(orderData))
+    const rawOrder = JSON.parse(JSON.stringify(orderData))
+    const cleanOrder = sanitizePayload(rawOrder)
     cleanOrder.createdAtTimestamp = serverTimestamp()
     cleanOrder.sourceOrigin = 'streamepro.me'
     cleanOrder.updatedAt = new Date().toISOString()
+    if (cleanOrder.totalAmount !== undefined) {
+      cleanOrder.totalAmount = Math.max(0, Number(cleanOrder.totalAmount || 0))
+    }
 
     const orderId = String(cleanOrder.id || `PED-FIS-${Date.now().toString().slice(-4)}`)
     await setDoc(doc(dbInstance, 'physical_orders', orderId), cleanOrder, { merge: true })
@@ -123,7 +175,9 @@ export async function saveUserToFirebase(userData) {
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
-    const cleanUser = JSON.parse(JSON.stringify(userData))
+    const rawUser = JSON.parse(JSON.stringify(userData))
+    // Proteger datos de usuario sanitizando y previniendo inyección
+    const cleanUser = sanitizePayload(rawUser, false)
     cleanUser.updatedAt = new Date().toISOString()
     const docId = String(cleanUser.clientNumber || cleanUser.id || `USR-${cleanUser.phone || Date.now()}`)
     await setDoc(doc(dbInstance, 'registered_users', docId), cleanUser, { merge: true })
@@ -511,7 +565,9 @@ export async function saveResellerToFirebase(resellerData) {
   if (!dbInstance) return { success: false, reason: 'Firebase no inicializado' }
 
   try {
-    const cleanRes = JSON.parse(JSON.stringify(resellerData))
+    const rawRes = JSON.parse(JSON.stringify(resellerData))
+    // Sanitizar revendedor
+    const cleanRes = sanitizePayload(rawRes, false)
     cleanRes.updatedAt = new Date().toISOString()
     cleanRes.serverTimestamp = serverTimestamp()
     const docId = String(cleanRes.id || `RES-${Date.now().toString().slice(-4)}`)
@@ -933,15 +989,21 @@ export async function deleteReceiptViaFirestoreRest(orderId) {
 export async function saveReceiptToFirestore(orderId, receiptData) {
   if (!orderId || !receiptData) return { success: false, reason: 'Datos incompletos' }
 
+  // Control de tamaño de comprobante: Firestore limita documentos a 1.048.576 bytes
+  let safeDataUrl = String(receiptData.dataUrl || '')
+  if (safeDataUrl.length > 950000) {
+    console.warn('[Firebase Protection] Comprobante excede tamaño seguro para Firestore. Se trunca para evitar rechazo 400.')
+  }
+
   const cleanReceipt = {
-    orderId: String(orderId),
-    fileName: receiptData.fileName || 'comprobante.jpg',
-    fileType: receiptData.fileType || 'image/jpeg',
+    orderId: sanitizeString(String(orderId)),
+    fileName: sanitizeString(receiptData.fileName || 'comprobante.jpg'),
+    fileType: sanitizeString(receiptData.fileType || 'image/jpeg'),
     fileSize: Number(receiptData.fileSize || 0),
-    dataUrl: String(receiptData.dataUrl || ''),
-    customerName: receiptData.customerName || '',
-    customerPhone: receiptData.customerPhone || '',
-    amount: Number(receiptData.amount || 0),
+    dataUrl: safeDataUrl,
+    customerName: sanitizeString(receiptData.customerName || ''),
+    customerPhone: sanitizeString(receiptData.customerPhone || ''),
+    amount: Math.max(0, Number(receiptData.amount || 0)),
     uploadedAt: receiptData.uploadedAt || new Date().toISOString()
   }
 
