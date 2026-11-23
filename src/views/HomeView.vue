@@ -858,9 +858,106 @@ const selectedGamingCat = ref('Todas')
 const selectedGamingSubcat = ref('Todas')
 const gamingSearch = ref('')
 const gamingPlatformFilter = ref('PS5_PS4') // 'PS5_PS4' | 'PS5' | 'PS4' | 'DUAL' | 'PS3' | 'ALL'
-const gamingSortBy = ref('default') // 'default' | 'price_asc' | 'price_desc' | 'title_asc'
+const gamingSortBy = ref('default') // 'default' | 'black_friday' | 'price_asc' | 'price_desc' | 'title_asc'
 const gamingPriceCeiling = ref('ALL') // 'ALL' | '15000' | '25000' | '40000'
 const onlyGamingFavorites = ref(false)
+const gamingOnlyBlackFriday = ref(false)
+const showSearchSuggestions = ref(false)
+
+// Normalizador de texto para búsqueda inteligente (sin tildes, sin signos raros)
+const normalizeSearchText = (str) => {
+  if (!str) return ''
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Diccionario Inteligente de Sinónimos, Siglas y Abreviaciones Gamer
+const GAMING_SEARCH_ALIASES = {
+  'fifa': ['ea sports fc', 'fc 24', 'fc 25', 'fc 26', 'fc 27', 'fifa'],
+  'fc': ['ea sports fc', 'fifa', 'futbol'],
+  'futbol': ['ea sports fc', 'fifa', 'efootball', 'pes'],
+  'soccer': ['ea sports fc', 'fifa', 'efootball'],
+  'gta': ['grand theft auto', 'gta', 'san andreas', 'vice city'],
+  'auto': ['grand theft auto', 'gta', 'need for speed', 'gran turismo'],
+  'cod': ['call of duty', 'black ops', 'modern warfare', 'warzone'],
+  'duty': ['call of duty'],
+  'gow': ['god of war', 'kratos', 'ragnarok'],
+  'kratos': ['god of war'],
+  'spiderman': ['spider man', 'spider-man', 'marvel s spider', 'miles morales'],
+  'spider': ['spider man', 'spider-man', 'miles morales'],
+  'pes': ['efootball', 'pro evolution soccer', 'pes'],
+  'efootball': ['efootball', 'pes'],
+  'dbz': ['dragon ball', 'sparking', 'kakarot', 'xenoverse', 'fighterz'],
+  'dragon': ['dragon ball', 'dragon age'],
+  'goku': ['dragon ball'],
+  're': ['resident evil', 'biohazard'],
+  'resident': ['resident evil'],
+  'tlou': ['the last of us', 'last of us'],
+  'last of us': ['the last of us'],
+  'rdr': ['red dead redemption', 'red dead'],
+  'mk': ['mortal kombat'],
+  'kombat': ['mortal kombat'],
+  'nfs': ['need for speed', 'unbound', 'heat'],
+  'ac': ['assassin s creed', 'assassins creed'],
+  'assassins': ['assassin s creed', 'assassins creed'],
+  'creed': ['assassin s creed', 'assassins creed'],
+  'bf': ['black friday', 'battlefield'],
+  'black friday': ['black friday'],
+  'crash': ['crash bandicoot'],
+  'sonic': ['sonic frontiers', 'sonic superstars', 'sonic the hedgehog'],
+  'elden': ['elden ring'],
+  'souls': ['dark souls', 'demon s souls', 'bloodborne', 'elden ring'],
+  'silent': ['silent hill'],
+  'hogwarts': ['hogwarts legacy', 'harry potter']
+}
+
+const ROMAN_NUM_MAP = {
+  '1': 'i', '2': 'ii', '3': 'iii', '4': 'iv', '5': 'v', '6': 'vi', '7': 'vii'
+}
+
+// Función central de búsqueda inteligente por nombre, plataforma y sinónimos
+const gameMatchesSmartSearch = (game, rawQuery) => {
+  if (!rawQuery) return true
+  const qNorm = normalizeSearchText(rawQuery)
+  if (!qNorm) return true
+
+  const titleNorm = normalizeSearchText(game.title)
+  const descNorm = normalizeSearchText(game.description || '')
+  const catNorm = normalizeSearchText(game.category || '')
+  const subcatNorm = normalizeSearchText(game.subcategory || '')
+  const platNorm = normalizeSearchText(game.platform || '')
+  const badgeNorm = normalizeSearchText(game.badge || '')
+
+  const fullGameText = `${titleNorm} ${platNorm} ${catNorm} ${subcatNorm} ${badgeNorm}`
+
+  // 1. Coincidencia directa completa en cualquier parte
+  if (fullGameText.includes(qNorm)) return true
+
+  // 2. Coincidencia token a token con expansión de sinónimos gamer
+  const tokens = qNorm.split(' ').filter(Boolean)
+  if (tokens.length === 0) return true
+
+  return tokens.every(token => {
+    if (fullGameText.includes(token)) return true
+
+    // Reemplazo de número arábigo a romano (ej: 5 -> v)
+    const roman = ROMAN_NUM_MAP[token]
+    if (roman && fullGameText.includes(' ' + roman + ' ')) return true
+
+    // Expansión mediante sinónimos gamer
+    const aliases = GAMING_SEARCH_ALIASES[token]
+    if (aliases && aliases.some(alias => fullGameText.includes(normalizeSearchText(alias)))) {
+      return true
+    }
+
+    return false
+  })
+}
 const sharedSelectionGameIds = ref([])
 const sharedSelectionProdIds = ref([])
 const gamingLicenseSelections = ref({}) // gameId -> 'primary' | 'secondary'
@@ -1062,30 +1159,105 @@ watch(selectedGamingCat, () => {
   selectedGamingSubcat.value = 'Todas'
 })
 
+// Total de ofertas Black Friday activas en catálogo
+const blackFridayGamesCount = computed(() => {
+  const list = adminStore.processedGamingProducts || []
+  return list.filter(g => g.isBlackFriday || g.badge?.includes('BLACK') || (g.offerPct && g.offerPct > 0)).length
+})
+
+// Categorías / Géneros limpios (sin mezclar consolas en géneros)
+const cleanGamingCategories = computed(() => {
+  return [
+    'Todas',
+    '🔥 Lanzamientos & Top',
+    'Acción & Aventura',
+    'Deportes & Fútbol',
+    'Lucha & Combate',
+    'Rol & Aventura',
+    'Survival Horror',
+    'Plataformas',
+    'Membresías'
+  ]
+})
+
+// Subcategorías dinámicas dependientes de la Plataforma y Categoría activa
 const availableGamingSubcategories = computed(() => {
   const currentCat = selectedGamingCat.value || 'Todas'
-  const map = adminStore.gamingSubcategories || {}
-  if (map[currentCat] && Array.isArray(map[currentCat]) && map[currentCat].length > 1) {
-    return map[currentCat]
-  }
+  const currentPlat = gamingPlatformFilter.value
   const set = new Set(['Todas'])
   const list = adminStore.processedGamingProducts || []
-  list.forEach(game => {
-    let matchesCat = false
-    if (currentCat === 'Todas' || !currentCat) matchesCat = true
-    else if (currentCat === 'PS5') matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
-    else if (currentCat === 'PS4') matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
-    else if (currentCat === 'PS3') matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
-    else if (currentCat === 'Xbox') matchesCat = Boolean(game.platform && game.platform.includes('Xbox')) || game.category === 'Xbox'
-    else if (currentCat === 'Nintendo Switch') matchesCat = Boolean(game.platform && game.platform.includes('Switch')) || game.category === 'Nintendo Switch'
-    else if (currentCat === 'PC') matchesCat = Boolean(game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) || game.category === 'PC'
-    else if (currentCat === 'Lanzamientos') matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('JUEGO DEL AÑO')))
-    else matchesCat = game.category === currentCat
 
-    if (matchesCat && game.subcategory) set.add(game.subcategory)
+  list.forEach(game => {
+    // 1. Filtro por plataforma activa
+    let matchesPlatform = false
+    if (currentPlat === 'ALL') {
+      matchesPlatform = true
+    } else if (currentPlat === 'PS5_PS4') {
+      matchesPlatform = Boolean(game.platform && (game.platform.includes('PS5') || game.platform.includes('PS4')) && !game.platform.startsWith('PS3'))
+    } else if (currentPlat === 'PS5') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS5'))
+    } else if (currentPlat === 'PS4') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS4') && !game.platform.includes('PS5'))
+    } else if (currentPlat === 'DUAL') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS4') && game.platform.includes('PS5'))
+    } else if (currentPlat === 'PS3') {
+      matchesPlatform = Boolean(game.platform && game.platform.includes('PS3') && !game.platform.includes('PS4') && !game.platform.includes('PS5'))
+    } else {
+      matchesPlatform = Boolean(game.platform && game.platform.includes(currentPlat))
+    }
+    if (!matchesPlatform) return
+
+    // 2. Filtro por género/categoría activa
+    let matchesCat = false
+    if (currentCat === 'Todas' || !currentCat) {
+      matchesCat = true
+    } else if (currentCat === '🔥 Lanzamientos & Top') {
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('TOP') || game.badge.includes('PLAYSTATION')))
+    } else if (currentCat === 'Acción & Aventura') {
+      matchesCat = game.category === 'Acción & Aventura'
+    } else if (currentCat === 'Deportes & Fútbol') {
+      matchesCat = game.category === 'Deportes' || Boolean(game.subcategory && (game.subcategory.includes('Fútbol') || game.subcategory.includes('Básquet') || game.subcategory.includes('Carreras')))
+    } else if (currentCat === 'Lucha & Combate') {
+      matchesCat = game.category === 'Lucha' || Boolean(game.subcategory && game.subcategory.includes('Combate'))
+    } else if (currentCat === 'Survival Horror') {
+      matchesCat = game.category === 'Survival Horror' || Boolean(game.subcategory && game.subcategory.includes('Zombies'))
+    } else if (currentCat === 'Rol & Aventura') {
+      matchesCat = game.category === 'Rol & Aventura' || Boolean(game.subcategory && game.subcategory.includes('Fantasía'))
+    } else if (currentCat === 'Plataformas') {
+      matchesCat = game.category === 'Plataformas' || Boolean(game.subcategory && game.subcategory.includes('Lego'))
+    } else if (currentCat === 'Membresías') {
+      matchesCat = game.category === 'Membresías' || Boolean(game.subcategory && game.subcategory.includes('PlayStation Plus'))
+    } else {
+      matchesCat = game.category === currentCat
+    }
+
+    if (matchesCat && game.subcategory) {
+      set.add(game.subcategory)
+    }
   })
+
   return Array.from(set)
 })
+
+// Sugerencias en tiempo real de búsqueda inteligente para dropdown interactivo
+const smartSearchSuggestions = computed(() => {
+  const q = gamingSearch.value.trim()
+  if (q.length < 2) return []
+  const list = adminStore.processedGamingProducts || []
+  const matches = []
+  for (const game of list) {
+    if (gameMatchesSmartSearch(game, q)) {
+      matches.push(game)
+      if (matches.length >= 5) break
+    }
+  }
+  return matches
+})
+
+const selectSearchSuggestion = (game) => {
+  showSearchSuggestions.value = false
+  openGamingDetail(game)
+}
 
 const filteredGamingProducts = computed(() => {
   if (!isGamingNavVisible.value) return []
@@ -1094,36 +1266,20 @@ const filteredGamingProducts = computed(() => {
   const ceiling = gamingPriceCeiling.value !== 'ALL' ? Number(gamingPriceCeiling.value) : 0
   const onlyFavs = onlyGamingFavorites.value
   const favSet = onlyFavs ? new Set(gamingWishlistIds.value) : null
-  const q = gamingSearch.value.toLowerCase().trim()
+  const q = gamingSearch.value.trim()
 
   const filtered = list.filter(game => {
     if (allowedPlatforms.length > 0 && !allowedPlatforms.some(plat => game.platform && game.platform.includes(plat))) return false
     if (sharedSelectionGameIds.value.length > 0 && !sharedSelectionGameIds.value.includes(game.id)) return false
     if (favSet && !favSet.has(game.id)) return false
 
-    let matchesCat = false
-    if (selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
-      matchesCat = true
-    } else if (selectedGamingCat.value === 'PS5') {
-      matchesCat = Boolean(game.platform && game.platform.includes('PS5'))
-    } else if (selectedGamingCat.value === 'PS4') {
-      matchesCat = Boolean(game.platform && game.platform.includes('PS4'))
-    } else if (selectedGamingCat.value === 'PS3') {
-      matchesCat = Boolean(game.platform && game.platform.includes('PS3'))
-    } else if (selectedGamingCat.value === 'Xbox') {
-      matchesCat = Boolean(game.platform && game.platform.includes('Xbox')) || game.category === 'Xbox'
-    } else if (selectedGamingCat.value === 'Nintendo Switch') {
-      matchesCat = Boolean(game.platform && game.platform.includes('Switch')) || game.category === 'Nintendo Switch'
-    } else if (selectedGamingCat.value === 'PC') {
-      matchesCat = Boolean(game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))) || game.category === 'PC'
-    } else if (selectedGamingCat.value === 'Lanzamientos') {
-      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('2024') || game.badge.includes('TOP') || game.badge.includes('MÁS VENDIDO') || game.badge.includes('FENÓMENO') || game.badge.includes('JUEGO DEL AÑO')))
-    } else {
-      matchesCat = game.category === selectedGamingCat.value
+    // Filtro especial BLACK FRIDAY
+    if (gamingOnlyBlackFriday.value) {
+      const isBf = Boolean(game.isBlackFriday || (game.badge && game.badge.includes('BLACK')) || (game.offerPct && game.offerPct > 0))
+      if (!isBf) return false
     }
 
-    const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
-    
+    // Filtro de Consola / Plataforma
     let matchesPlatform = false
     if (gamingPlatformFilter.value === 'ALL') {
       matchesPlatform = true
@@ -1140,17 +1296,58 @@ const filteredGamingProducts = computed(() => {
     } else {
       matchesPlatform = Boolean(game.platform && game.platform.includes(gamingPlatformFilter.value))
     }
+    if (!matchesPlatform) return false
 
-    const matchesQ = !q || game.title.toLowerCase().includes(q) || (game.description && game.description.toLowerCase().includes(q)) || (game.category && game.category.toLowerCase().includes(q)) || (game.subcategory && game.subcategory.toLowerCase().includes(q))
-    if (!matchesCat || !matchesSubcat || !matchesPlatform || !matchesQ) return false
+    // Filtro de Género / Categoría Limpia
+    let matchesCat = false
+    if (selectedGamingCat.value === 'Todas' || !selectedGamingCat.value) {
+      matchesCat = true
+    } else if (selectedGamingCat.value === '🔥 Lanzamientos & Top') {
+      matchesCat = Boolean(game.badge && (game.badge.includes('LANZAMIENTO') || game.badge.includes('PREVENTA') || game.badge.includes('2026') || game.badge.includes('2025') || game.badge.includes('TOP') || game.badge.includes('PLAYSTATION')))
+    } else if (selectedGamingCat.value === 'Acción & Aventura') {
+      matchesCat = game.category === 'Acción & Aventura'
+    } else if (selectedGamingCat.value === 'Deportes & Fútbol') {
+      matchesCat = game.category === 'Deportes' || Boolean(game.subcategory && (game.subcategory.includes('Fútbol') || game.subcategory.includes('Básquet') || game.subcategory.includes('Carreras')))
+    } else if (selectedGamingCat.value === 'Lucha & Combate') {
+      matchesCat = game.category === 'Lucha' || Boolean(game.subcategory && game.subcategory.includes('Combate'))
+    } else if (selectedGamingCat.value === 'Survival Horror') {
+      matchesCat = game.category === 'Survival Horror' || Boolean(game.subcategory && game.subcategory.includes('Zombies'))
+    } else if (selectedGamingCat.value === 'Rol & Aventura') {
+      matchesCat = game.category === 'Rol & Aventura' || Boolean(game.subcategory && game.subcategory.includes('Fantasía'))
+    } else if (selectedGamingCat.value === 'Plataformas') {
+      matchesCat = game.category === 'Plataformas' || Boolean(game.subcategory && game.subcategory.includes('Lego'))
+    } else if (selectedGamingCat.value === 'Membresías') {
+      matchesCat = game.category === 'Membresías' || Boolean(game.subcategory && game.subcategory.includes('PlayStation Plus'))
+    } else {
+      matchesCat = game.category === selectedGamingCat.value
+    }
+    if (!matchesCat) return false
 
+    // Filtro de Subcategoría Dinámica
+    const matchesSubcat = selectedGamingSubcat.value === 'Todas' || !selectedGamingSubcat.value || game.subcategory === selectedGamingSubcat.value
+    if (!matchesSubcat) return false
+
+    // Búsqueda Inteligente por Nombre y Sinónimos
+    if (!gameMatchesSmartSearch(game, q)) return false
+
+    // Filtro de Presupuesto
     if (ceiling > 0) {
       const refPrice = Number(game.effectivePrimaryPrice || game.effectiveSecondaryPrice || 0)
       if (!refPrice || refPrice > ceiling) return false
     }
+
     return true
   })
 
+  // Ordenamiento con opción Black Friday prioritaria
+  if (gamingSortBy.value === 'black_friday') {
+    return [...filtered].sort((a, b) => {
+      const aBf = Boolean(a.isBlackFriday || a.badge?.includes('BLACK')) ? 1 : 0
+      const bBf = Boolean(b.isBlackFriday || b.badge?.includes('BLACK')) ? 1 : 0
+      if (bBf !== aBf) return bBf - aBf
+      return (b.offerPct || 0) - (a.offerPct || 0)
+    })
+  }
   if (gamingSortBy.value === 'price_asc') {
     return [...filtered].sort((a, b) => Number(a.effectivePrimaryPrice || a.effectiveSecondaryPrice || 9999999) - Number(b.effectivePrimaryPrice || b.effectiveSecondaryPrice || 9999999))
   }
@@ -1163,7 +1360,7 @@ const filteredGamingProducts = computed(() => {
   return filtered
 })
 
-// Paginación y alto rendimiento del catálogo Gaming (1,160+ títulos)
+// Paginación y alto rendimiento del catálogo Gaming
 const gamingCurrentPage = ref(1)
 const gamingItemsPerPage = ref(24)
 
@@ -1203,7 +1400,7 @@ const changeGamingPage = (page) => {
   scrollToSection('videojuegos-digitales')
 }
 
-watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingSortBy, gamingPriceCeiling, onlyGamingFavorites, gamingItemsPerPage], () => {
+watch([selectedGamingCat, selectedGamingSubcat, gamingPlatformFilter, gamingSearch, gamingSortBy, gamingPriceCeiling, onlyGamingFavorites, gamingOnlyBlackFriday, gamingItemsPerPage], () => {
   gamingCurrentPage.value = 1
   if (!adminStore.isGamingCatalogLoaded) {
     adminStore.loadFullGamingCatalog().catch(() => {})
@@ -5915,54 +6112,58 @@ const submitOrder = async () => {
 
     <!-- ==================== SECCIÓN 2.5: VIDEOJUEGOS DIGITALES PS4 / PS5 (PÁGINA DEDICADA) ==================== -->
     <div v-else-if="currentPageSection === 'gaming'" id="videojuegos-digitales" class="space-y-6">
-      <!-- Header de Sección Oficial con Filtros por Plataforma y Categoría -->
-      <div class="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-purple-950/50 p-5 sm:p-6 rounded-3xl border border-indigo-500/30 shadow-2xl space-y-4">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div class="flex items-center gap-3.5">
-            <span class="text-4xl filter drop-shadow-md">🎮</span>
+      <!-- Header de Sección Oficial con Dependencias Claras: Consolas, Géneros y Búsqueda Inteligente -->
+      <div class="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/60 p-4 sm:p-6 rounded-3xl border border-indigo-500/30 shadow-2xl space-y-4">
+        <!-- Fila 1: Título Oficial + Selector de Consola (Nivel 1 de Dependencia) -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl sm:text-4xl filter drop-shadow-md shrink-0">🎮</span>
             <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-xl sm:text-2xl font-black text-white">Catálogo de Videojuegos Digitales Multiplataforma</h3>
-                <span class="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full uppercase">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-lg sm:text-2xl font-black text-white tracking-tight">Catálogo de Videojuegos Digitales Multiplataforma</h3>
+                <span class="text-[9px] sm:text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase">
                   StreamePro Oficial
                 </span>
+                <span v-if="gamingOnlyBlackFriday" class="text-[9px] sm:text-[10px] font-mono font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full uppercase animate-pulse shadow">
+                  🔥 OFERTAS BLACK FRIDAY
+                </span>
               </div>
-              <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
-                PS5, PS4, Nintendo Switch, Xbox & PC. Cuentas Primarias, Secundarias y Claves Originales en pesos argentinos sin impuestos sorpresas.
+              <p class="text-xs text-slate-300 mt-0.5">
+                Consolas PS5, PS4, Nintendo Switch, Xbox & PC. Licencias Oficiales con PIN privado y entrega garantizada en 60-90 min.
               </p>
             </div>
           </div>
 
-          <!-- Filtro de Consola / Plataforma (PS4 y PS5 Principales, PS3 Separado) -->
-          <div class="flex items-center gap-1.5 p-1 bg-slate-950/95 rounded-2xl border border-indigo-500/30 overflow-x-auto no-scrollbar shrink-0 w-full md:w-auto">
-            <!-- PS5 & PS4 Actuales (Catálogo Moderno Principal) -->
+          <!-- Nivel 1: Selector Principal de Consola / Plataforma -->
+          <div class="flex items-center gap-1.5 p-1 bg-slate-950/95 rounded-2xl border border-indigo-500/30 overflow-x-auto no-scrollbar shrink-0 w-full lg:w-auto">
+            <!-- PS5 & PS4 Actuales (Recomendado) -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'PS5_PS4'"
+              @click="gamingPlatformFilter = 'PS5_PS4'; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
                 gamingPlatformFilter === 'PS5_PS4' 
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-sky-300' 
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               ]"
-              title="Catálogo moderno oficial PlayStation 5 y PlayStation 4 (13.082 juegos)"
+              title="Catálogo moderno oficial PlayStation 5 y PlayStation 4"
             >
               <span>🎮</span>
-              <span>PS5 & PS4 (Actuales)</span>
+              <span>PS5 & PS4</span>
               <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full" :class="gamingPlatformFilter === 'PS5_PS4' ? 'bg-black/35 text-white font-black' : 'bg-slate-800 text-slate-300'">13K+</span>
             </button>
 
             <!-- Solo PS5 -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'PS5'"
+              @click="gamingPlatformFilter = 'PS5'; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
                 gamingPlatformFilter === 'PS5' 
                   ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30 ring-1 ring-blue-300' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               ]"
-              title="Ver títulos para PlayStation 5 (5.246 juegos)"
+              title="Títulos para PlayStation 5"
             >
               <span>⚡</span>
               <span>Solo PS5</span>
@@ -5971,14 +6172,14 @@ const submitOrder = async () => {
             <!-- Solo PS4 -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'PS4'"
+              @click="gamingPlatformFilter = 'PS4'; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
                 gamingPlatformFilter === 'PS4' 
                   ? 'bg-sky-600 text-white font-black shadow-md shadow-sky-500/30 ring-1 ring-sky-300' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               ]"
-              title="Ver títulos para PlayStation 4 (5.181 juegos)"
+              title="Títulos para PlayStation 4"
             >
               <span>🎮</span>
               <span>Solo PS4</span>
@@ -5987,33 +6188,33 @@ const submitOrder = async () => {
             <!-- Dual-Gen -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'DUAL'"
+              @click="gamingPlatformFilter = 'DUAL'; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
                 gamingPlatformFilter === 'DUAL' 
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-500/30 ring-1 ring-indigo-300' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               ]"
-              title="Juegos con versión dual tanto para PS4 como para PS5 (2.655 juegos)"
+              title="Versión Dual compatible con PS4 y PS5"
             >
               <span>🔄</span>
               <span>Dual-Gen</span>
             </button>
 
             <!-- Separador Visual -->
-            <span class="h-5 w-px bg-white/20 shrink-0 mx-1"></span>
+            <span class="h-5 w-px bg-white/20 shrink-0 mx-0.5"></span>
 
             <!-- PS3 Retro Separado Aparte -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'PS3'"
+              @click="gamingPlatformFilter = 'PS3'; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
                 gamingPlatformFilter === 'PS3' 
                   ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30 ring-1 ring-amber-200' 
                   : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30'
               ]"
-              title="Catálogo Retro PlayStation 3 exclusivo para consolas PS3 (1.031 juegos)"
+              title="Catálogo Retro PlayStation 3 exclusivo"
             >
               <span>🕹️</span>
               <span>PS3 (Retro Aparte)</span>
@@ -6021,35 +6222,35 @@ const submitOrder = async () => {
             </button>
 
             <!-- Separador Visual -->
-            <span class="h-5 w-px bg-white/20 shrink-0 mx-1"></span>
+            <span class="h-5 w-px bg-white/20 shrink-0 mx-0.5"></span>
 
             <!-- Todas las plataformas -->
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'ALL'"
+              @click="gamingPlatformFilter = 'ALL'; selectedGamingSubcat = 'Todas'"
               :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'ALL' ? 'bg-slate-700 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
-              title="Ver todo el catálogo combinado (15.328 títulos)"
+              title="Ver todo el catálogo combinado (15.491 títulos)"
             >
               🌐 Todas (15k+)
             </button>
 
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'Xbox'"
+              @click="gamingPlatformFilter = 'Xbox'; selectedGamingSubcat = 'Todas'"
               :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>💚</span> Xbox
             </button>
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'Switch'"
+              @click="gamingPlatformFilter = 'Switch'; selectedGamingSubcat = 'Todas'"
               :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Switch' ? 'bg-red-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>🔴</span> Switch
             </button>
             <button 
               type="button"
-              @click="gamingPlatformFilter = 'PC'"
+              @click="gamingPlatformFilter = 'PC'; selectedGamingSubcat = 'Todas'"
               :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'PC' ? 'bg-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
             >
               <span>💻</span> PC
@@ -6057,90 +6258,122 @@ const submitOrder = async () => {
           </div>
         </div>
 
-        <!-- BARRA DE HERRAMIENTAS Y UTILIDADES GAMER PRO -->
-        <div class="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-slate-950 to-purple-950/80 border border-indigo-400/40 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span class="text-xs font-black text-white uppercase tracking-wider font-mono">Herramientas Gamer:</span>
-            <span class="text-xs text-slate-300 hidden sm:inline">Calcula tu ahorro vs PS Store, consulta guías de instalación y resuelve tus licencias</span>
-          </div>
-
-          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full md:w-auto pb-1 md:pb-0">
-            <button 
-              type="button"
-              @click="openGamerToolsModal('calculator')"
-              class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 hover:from-blue-600/50 hover:to-indigo-600/50 text-indigo-300 hover:text-white border border-indigo-400/40 font-black text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm cursor-pointer"
-            >
-              <span>🧮</span>
-              <span>Calculadora vs PS Store</span>
-              <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">-60% OFF</span>
-            </button>
-
-            <button 
-              type="button"
-              @click="openGamerToolsModal('guide')"
-              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
-            >
-              <span>📖</span>
-              <span>Guía de Activación PS5/PS4</span>
-            </button>
-
-            <button 
-              type="button"
-              @click="openGamerToolsModal('comparison')"
-              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-purple-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
-            >
-              <span>⚖️</span>
-              <span>Primaria vs Secundaria</span>
-            </button>
-
-            <button 
-              type="button"
-              @click="openGamerToolsModal('warranty')"
-              class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 font-bold text-xs transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
-            >
-              <span>🛡️</span>
-              <span>Garantía Anti-Candado</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Buscador, Ordenamiento, Rango de Precio y Favoritos -->
+        <!-- Fila 2: Búsqueda Inteligente + Botón Destacado BLACK FRIDAY + Filtros Rápidos -->
         <div class="space-y-3 pt-3 border-t border-indigo-500/20">
-          <!-- Fila 1: Buscador, Ordenamiento y Acciones Rápidas -->
           <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+            <!-- Buscador Inteligente con Autocompletado y Sugerencias en Vivo -->
             <div class="relative flex-1 w-full">
-              <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               <input 
-                v-model="gamingSearch" 
+                v-model="gamingSearch"
+                @focus="showSearchSuggestions = gamingSearch.trim().length >= 2"
+                @input="showSearchSuggestions = gamingSearch.trim().length >= 2"
+                @keydown.esc="showSearchSuggestions = false"
                 type="text" 
-                placeholder="Buscar por juego (FC 25, GTA V, Spider-Man, Mortal Kombat, God of War)..." 
-                class="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl py-2.5 pl-10 pr-4 text-white placeholder:text-slate-500 text-xs sm:text-sm focus:border-indigo-400 outline-none"
+                placeholder="Búsqueda inteligente por nombre (ej: GTA 5, FIFA, Spider-Man, COD, God of War, MK)..." 
+                class="w-full bg-slate-950/90 border border-indigo-500/40 hover:border-indigo-400 focus:border-indigo-300 rounded-2xl py-2.5 pl-10 pr-9 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all shadow-inner"
               >
+              <!-- Botón limpiar búsqueda rápida -->
+              <button
+                v-if="gamingSearch"
+                type="button"
+                @click="gamingSearch = ''; showSearchSuggestions = false"
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-[10px] font-bold cursor-pointer"
+                title="Limpiar búsqueda"
+              >
+                ✕
+              </button>
+
+              <!-- Dropdown de Sugerencias Inteligentes en Tiempo Real -->
+              <div 
+                v-if="showSearchSuggestions && smartSearchSuggestions.length > 0" 
+                class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/98 backdrop-blur-2xl border-2 border-indigo-500/50 rounded-2xl p-2 shadow-2xl space-y-1 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div class="px-2.5 py-1 text-[11px] font-mono text-indigo-300 flex items-center justify-between border-b border-white/10 pb-1 mb-1">
+                  <span>💡 Coincidencias inteligentes ({{ filteredGamingProducts.length }} encontrados):</span>
+                  <button type="button" @click="showSearchSuggestions = false" class="text-slate-400 hover:text-white text-xs cursor-pointer">✕</button>
+                </div>
+                <div
+                  v-for="sugg in smartSearchSuggestions"
+                  :key="sugg.id"
+                  @click="selectSearchSuggestion(sugg)"
+                  class="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-indigo-600/20 hover:border-indigo-500/40 border border-transparent transition-all cursor-pointer group"
+                >
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <img :src="sugg.image" class="w-9 h-11 object-cover rounded-lg bg-slate-800 shrink-0" />
+                    <div class="min-w-0">
+                      <div class="text-xs font-black text-white group-hover:text-indigo-300 truncate">
+                        {{ formatDisplayGameTitle(sugg.title) }}
+                      </div>
+                      <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                        <span class="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold">{{ sugg.platform }}</span>
+                        <span v-if="sugg.isBlackFriday || sugg.badge?.includes('BLACK')" class="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-mono font-black text-[9px]">BLACK FRIDAY</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="text-xs font-mono font-black text-emerald-400">
+                      ${{ Number(sugg.effectivePrimaryPrice || sugg.baseCostPrimary || 0).toLocaleString('es-AR') }}
+                    </span>
+                    <span class="block text-[9px] text-slate-400 font-mono">Primaria</span>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-white/10 flex items-center justify-between px-2 text-[11px]">
+                  <span class="text-slate-400">Presiona <strong>Enter</strong> para ver todos</span>
+                  <button type="button" @click="showSearchSuggestions = false" class="text-sky-400 hover:underline font-bold cursor-pointer">
+                    Ver todos los {{ filteredGamingProducts.length }} títulos →
+                  </button>
+                </div>
+              </div>
             </div>
+
+            <!-- Botón Destacado BLACK FRIDAY + Filtros Complementarios -->
             <div class="flex flex-wrap items-center gap-2 shrink-0">
+              <!-- BOTÓN TOGGLE BLACK FRIDAY -->
+              <button
+                type="button"
+                @click="gamingOnlyBlackFriday = !gamingOnlyBlackFriday"
+                :class="[
+                  'px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-lg touch-manipulation',
+                  gamingOnlyBlackFriday
+                    ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-300'
+                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:text-white border border-amber-400/40 hover:bg-amber-500/30'
+                ]"
+                title="Filtrar únicamente ofertas especiales de Black Friday"
+              >
+                <span>🔥</span>
+                <span>BLACK FRIDAY</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold" :class="gamingOnlyBlackFriday ? 'bg-black/40 text-amber-200' : 'bg-amber-400/20 text-amber-300'">
+                  {{ blackFridayGamesCount }} Ofertas
+                </span>
+              </button>
+
+              <!-- Ordenamiento con opción Black Friday prioritaria -->
               <select
                 v-model="gamingSortBy"
                 class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
                 title="Ordenar catálogo"
               >
+                <option value="black_friday">🔥 Ofertas Black Friday</option>
                 <option value="default">✨ Destacados</option>
                 <option value="price_asc">🏷️ Menor Precio</option>
                 <option value="price_desc">💎 Mayor Precio</option>
                 <option value="title_asc">🔤 Alfabético (A-Z)</option>
               </select>
 
+              <!-- Presupuesto -->
               <select
                 v-model="gamingPriceCeiling"
                 class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
                 title="Filtrar por presupuesto"
               >
-                <option value="ALL">💰 Cualquier Precio</option>
+                <option value="ALL">💰 Presupuesto</option>
                 <option value="15000">Hasta $15.000</option>
                 <option value="25000">Hasta $25.000</option>
                 <option value="40000">Hasta $40.000</option>
               </select>
 
+              <!-- Favoritos -->
               <button
                 type="button"
                 @click="onlyGamingFavorites = !onlyGamingFavorites"
@@ -6152,47 +6385,45 @@ const submitOrder = async () => {
                 ]"
               >
                 <span>❤️</span>
-                <span>Favoritos ({{ gamingWishlistIds.length }})</span>
-              </button>
-              <button
-                v-if="gamingWishlistIds.length > 0"
-                type="button"
-                @click="openSharePlaqueForWishlist()"
-                class="px-3 py-2 rounded-xl text-xs font-bold border bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-200 hover:text-white border-indigo-500/35 transition cursor-pointer flex items-center gap-1"
-                title="Compartir tus juegos favoritos en una placa con logo"
-              >
-                <span>📤</span>
-                <span>Placa Favoritos</span>
+                <span>({{ gamingWishlistIds.length }})</span>
               </button>
 
+              <!-- Contador de Resultados -->
               <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap flex items-center gap-1.5">
                 <span v-if="adminStore.isLoadingGamingCatalog" class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
-                <span>🎮 {{ filteredGamingProducts.length.toLocaleString('es-AR') }} títulos</span>
-                <span v-if="adminStore.isLoadingGamingCatalog" class="text-[10px] text-indigo-400/80">(cargando biblioteca...)</span>
+                <span>🎮 {{ filteredGamingProducts.length.toLocaleString('es-AR') }}</span>
               </span>
 
+              <!-- Carrito -->
               <button
                 type="button"
                 @click="showCartDrawer = true"
                 class="px-3 py-2 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 text-slate-950 font-black text-xs shadow cursor-pointer flex items-center gap-1.5"
               >
                 <span>🛒</span>
-                <span>Carrito ({{ cartStore.totalItems }})</span>
+                <span>({{ cartStore.totalItems }})</span>
               </button>
             </div>
           </div>
 
-          <!-- Chips de Búsqueda Rápida y Filtros Inteligentes -->
+          <!-- Atajos Rápidos Inteligentes -->
           <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
             <span class="text-[10px] font-mono uppercase text-indigo-400 shrink-0 font-bold flex items-center gap-1">
               <span>⚡</span> Atajos:
             </span>
             <button 
               type="button" 
+              @click="gamingOnlyBlackFriday = true" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingOnlyBlackFriday ? 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow' : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20']"
+            >
+              🔥 Black Friday 2026
+            </button>
+            <button 
+              type="button" 
               @click="gamingSearch = 'FC 25'" 
               :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'FC 25' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
             >
-              🔥 FC 25
+              ⚽ FC 25 / FIFA
             </button>
             <button 
               type="button" 
@@ -6203,13 +6434,6 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button" 
-              @click="gamingSearch = 'God of War'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'God of War' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🪓 God of War
-            </button>
-            <button 
-              type="button" 
               @click="gamingSearch = 'Spider-Man'" 
               :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Spider-Man' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
             >
@@ -6217,10 +6441,10 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button" 
-              @click="gamingSearch = 'Mortal Kombat'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Mortal Kombat' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+              @click="gamingSearch = 'God of War'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'God of War' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
             >
-              🐉 Mortal Kombat
+              🪓 God of War
             </button>
             <button 
               type="button" 
@@ -6231,36 +6455,50 @@ const submitOrder = async () => {
             </button>
             <button 
               type="button" 
+              @click="gamingSearch = 'Mortal Kombat'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Mortal Kombat' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🐉 Mortal Kombat
+            </button>
+            <button 
+              type="button" 
+              @click="gamingSearch = 'Resident Evil'" 
+              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Resident Evil' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
+            >
+              🧟 Resident Evil
+            </button>
+            <button 
+              type="button" 
               @click="gamingPriceCeiling = gamingPriceCeiling === '25000' ? 'ALL' : '25000'" 
               :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingPriceCeiling === '25000' ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black' : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40']"
             >
               💰 Gangas &lt; $25k
             </button>
             <button 
-              v-if="gamingSearch || gamingPriceCeiling !== 'ALL'"
+              v-if="gamingSearch || gamingPriceCeiling !== 'ALL' || gamingOnlyBlackFriday || selectedGamingCat !== 'Todas' || selectedGamingSubcat !== 'Todas'"
               type="button" 
-              @click="gamingSearch = ''; gamingPriceCeiling = 'ALL'" 
+              @click="gamingSearch = ''; gamingPriceCeiling = 'ALL'; gamingOnlyBlackFriday = false; selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'" 
               class="px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 bg-slate-800 text-slate-400 hover:text-white transition border border-white/10 cursor-pointer"
             >
-              ✕ Limpiar
+              ✕ Limpiar Filtros
             </button>
           </div>
 
-          <!-- Fila 2: Selector de Categorías Horizontal -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+          <!-- Nivel 2 de Dependencia: Selector de Géneros Limpios -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar pt-1 border-t border-slate-800/80">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <span>📂</span>
-              <span>Categoría:</span>
+              <span>Género:</span>
             </span>
             <button 
-              v-for="cat in adminStore.gamingCategories" 
+              v-for="cat in cleanGamingCategories" 
               :key="cat"
               type="button"
-              @click="selectedGamingCat = cat"
+              @click="selectedGamingCat = cat; selectedGamingSubcat = 'Todas'"
               :class="[
                 'px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer shrink-0 active:scale-95',
                 selectedGamingCat === cat 
-                  ? 'bg-indigo-500 text-white border-indigo-400 font-black shadow-md shadow-indigo-500/20' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 font-black shadow-md shadow-indigo-500/25' 
                   : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
               ]"
             >
@@ -6268,7 +6506,7 @@ const submitOrder = async () => {
             </button>
           </div>
 
-          <!-- Fila 3: Selector de Subcategorías Dinámico -->
+          <!-- Nivel 3 de Dependencia: Subcategorías Dinámicas Reales -->
           <div v-if="availableGamingSubcategories.length > 1" class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar pt-2 border-t border-slate-800/60">
             <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <span>🏷️</span>
@@ -6290,6 +6528,62 @@ const submitOrder = async () => {
             </button>
           </div>
         </div>
+
+        <!-- Herramientas Gamer Pro Compactas -->
+        <div class="pt-2 border-t border-indigo-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 text-indigo-300 font-bold">
+            <span>🛠️</span>
+            <span>Herramientas & Asistencia Gamer:</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button 
+              type="button"
+              @click="openGamerToolsModal('calculator')"
+              class="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 hover:text-white border border-indigo-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>🧮</span> Calculadora vs PS Store (-60% OFF)
+            </button>
+            <button 
+              type="button"
+              @click="openGamerToolsModal('guide')"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>📖</span> Guía de Activación
+            </button>
+            <button 
+              type="button"
+              @click="openGamerToolsModal('comparison')"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-purple-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>⚖️</span> Primaria vs Secundaria
+            </button>
+            <button 
+              type="button"
+              @click="openGamerToolsModal('warranty')"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>🛡️</span> Garantía Anti-Candado
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Banner de Estado de Filtrado Black Friday Activo -->
+      <div v-if="gamingOnlyBlackFriday" class="p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-purple-500/20 border-2 border-amber-400/50 flex flex-wrap items-center justify-between gap-2 shadow-lg">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl animate-bounce">🔥</span>
+          <div>
+            <span class="text-xs font-black text-amber-300 uppercase tracking-wide">Modo Black Friday Activo</span>
+            <p class="text-[11px] text-slate-300">Mostrando {{ filteredGamingProducts.length }} títulos con precios especiales de Black Friday y hasta 60% OFF.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          @click="gamingOnlyBlackFriday = false"
+          class="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold border border-white/20 transition cursor-pointer"
+        >
+          Ver Todo el Catálogo
+        </button>
       </div>
 
       <!-- Cuadrícula de Juegos -->
