@@ -864,6 +864,40 @@ const onlyGamingFavorites = ref(false)
 const gamingOnlyBlackFriday = ref(false)
 const showSearchSuggestions = ref(false)
 
+// Cuenta regresiva oficial BLACK FRIDAY (Termina el 01/12)
+const blackFridayCountdown = ref('Terminan en 9 d 1 h (01/12)')
+const updateBlackFridayCountdown = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const target = new Date(year, 11, 1, 23, 59, 59) // 01/12 23:59:59
+  const diff = target - now
+  if (diff <= 0) {
+    blackFridayCountdown.value = '¡Últimas horas hoy! (01/12)'
+    return
+  }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  blackFridayCountdown.value = `Terminan en ${days} d ${hours} h (01/12)`
+}
+
+const showAdvancedGamingFilters = ref(true)
+
+const getGameOriginalStrikethroughPrice = (game, type = 'primary') => {
+  const current = Number(type === 'primary' ? (game.effectivePrimaryPrice || game.baseCostPrimary) : (game.effectiveSecondaryPrice || game.baseCostSecondary)) || 0
+  if (!current) return '0'
+  const discountPct = Number(game.offerPct) || (game.isBlackFriday ? 60 : 45)
+  const factor = Math.max(1.3, 1 / (1 - (discountPct / 100)))
+  const original = Math.round((current * factor) / 1000) * 1000
+  return original.toLocaleString('es-AR')
+}
+
+const getGameMercadoPagoPrice = (game) => {
+  const current = Number(game.effectivePrimaryPrice || game.baseCostPrimary || 0)
+  const mpPrice = Math.round((current * 1.08) / 100) * 100
+  return mpPrice.toLocaleString('es-AR')
+}
+
+
 // Normalizador de texto para búsqueda inteligente (sin tildes, sin signos raros)
 const normalizeSearchText = (str) => {
   if (!str) return ''
@@ -2311,6 +2345,8 @@ onMounted(() => {
   applyRouteParams()
   checkAndTriggerGamingPopup()
   window.addEventListener('open-black-friday-modal', openBlackFridayModal)
+  updateBlackFridayCountdown()
+  setInterval(updateBlackFridayCountdown, 60000)
 })
 
 watch([() => route.path, () => route.query], () => {
@@ -6111,157 +6147,152 @@ const submitOrder = async () => {
     </div>
 
     <!-- ==================== SECCIÓN 2.5: VIDEOJUEGOS DIGITALES PS4 / PS5 (PÁGINA DEDICADA) ==================== -->
-    <div v-else-if="currentPageSection === 'gaming'" id="videojuegos-digitales" class="space-y-6">
-      <!-- Header de Sección Oficial con Dependencias Claras: Consolas, Géneros y Búsqueda Inteligente -->
-      <div class="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/60 p-4 sm:p-6 rounded-3xl border border-indigo-500/30 shadow-2xl space-y-4">
-        <!-- Fila 1: Título Oficial + Selector de Consola (Nivel 1 de Dependencia) -->
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div class="flex items-center gap-3">
-            <span class="text-3xl sm:text-4xl filter drop-shadow-md shrink-0">🎮</span>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-lg sm:text-2xl font-black text-white tracking-tight">Catálogo de Videojuegos Digitales Multiplataforma</h3>
-                <span class="text-[9px] sm:text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase">
-                  StreamePro Oficial
-                </span>
-                <span v-if="gamingOnlyBlackFriday" class="text-[9px] sm:text-[10px] font-mono font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full uppercase animate-pulse shadow">
-                  🔥 OFERTAS BLACK FRIDAY
-                </span>
-              </div>
-              <p class="text-xs text-slate-300 mt-0.5">
-                Consolas PS5, PS4, Nintendo Switch, Xbox & PC. Licencias Oficiales con PIN privado y entrega garantizada en 60-90 min.
-              </p>
-            </div>
+    <div v-else-if="currentPageSection === 'gaming'" id="videojuegos-digitales" class="space-y-5">
+      
+      <!-- CINTA / BANNER SUPERIOR OFICIAL BLACK FRIDAY (PIXELEROS STYLE) -->
+      <div class="rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 border-2 border-amber-400/50 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden">
+        <div class="flex items-center gap-3 relative z-10">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl sm:text-2xl font-black shrink-0 shadow-lg shadow-amber-400/30">
+            🔥
           </div>
-
-          <!-- Nivel 1: Selector Principal de Consola / Plataforma -->
-          <div class="flex items-center gap-1.5 p-1 bg-slate-950/95 rounded-2xl border border-indigo-500/30 overflow-x-auto no-scrollbar shrink-0 w-full lg:w-auto">
-            <!-- PS5 & PS4 Actuales (Recomendado) -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'PS5_PS4'; selectedGamingSubcat = 'Todas'"
-              :class="[
-                'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
-                gamingPlatformFilter === 'PS5_PS4' 
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-sky-300' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              ]"
-              title="Catálogo moderno oficial PlayStation 5 y PlayStation 4"
-            >
-              <span>🎮</span>
-              <span>PS5 & PS4</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full" :class="gamingPlatformFilter === 'PS5_PS4' ? 'bg-black/35 text-white font-black' : 'bg-slate-800 text-slate-300'">13K+</span>
-            </button>
-
-            <!-- Solo PS5 -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'PS5'; selectedGamingSubcat = 'Todas'"
-              :class="[
-                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
-                gamingPlatformFilter === 'PS5' 
-                  ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30 ring-1 ring-blue-300' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              ]"
-              title="Títulos para PlayStation 5"
-            >
-              <span>⚡</span>
-              <span>Solo PS5</span>
-            </button>
-
-            <!-- Solo PS4 -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'PS4'; selectedGamingSubcat = 'Todas'"
-              :class="[
-                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
-                gamingPlatformFilter === 'PS4' 
-                  ? 'bg-sky-600 text-white font-black shadow-md shadow-sky-500/30 ring-1 ring-sky-300' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              ]"
-              title="Títulos para PlayStation 4"
-            >
-              <span>🎮</span>
-              <span>Solo PS4</span>
-            </button>
-
-            <!-- Dual-Gen -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'DUAL'; selectedGamingSubcat = 'Todas'"
-              :class="[
-                'px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', 
-                gamingPlatformFilter === 'DUAL' 
-                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-500/30 ring-1 ring-indigo-300' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              ]"
-              title="Versión Dual compatible con PS4 y PS5"
-            >
-              <span>🔄</span>
-              <span>Dual-Gen</span>
-            </button>
-
-            <!-- Separador Visual -->
-            <span class="h-5 w-px bg-white/20 shrink-0 mx-0.5"></span>
-
-            <!-- PS3 Retro Separado Aparte -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'PS3'; selectedGamingSubcat = 'Todas'"
-              :class="[
-                'px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer touch-manipulation', 
-                gamingPlatformFilter === 'PS3' 
-                  ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black shadow-lg shadow-amber-500/30 ring-1 ring-amber-200' 
-                  : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30'
-              ]"
-              title="Catálogo Retro PlayStation 3 exclusivo"
-            >
-              <span>🕹️</span>
-              <span>PS3 (Retro Aparte)</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full" :class="gamingPlatformFilter === 'PS3' ? 'bg-black/35 text-slate-900 font-black' : 'bg-amber-400/20 text-amber-300 font-bold'">1.031</span>
-            </button>
-
-            <!-- Separador Visual -->
-            <span class="h-5 w-px bg-white/20 shrink-0 mx-0.5"></span>
-
-            <!-- Todas las plataformas -->
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'ALL'; selectedGamingSubcat = 'Todas'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'ALL' ? 'bg-slate-700 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
-              title="Ver todo el catálogo combinado (15.491 títulos)"
-            >
-              🌐 Todas (15k+)
-            </button>
-
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'Xbox'; selectedGamingSubcat = 'Todas'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Xbox' ? 'bg-emerald-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
-            >
-              <span>💚</span> Xbox
-            </button>
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'Switch'; selectedGamingSubcat = 'Todas'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'Switch' ? 'bg-red-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
-            >
-              <span>🔴</span> Switch
-            </button>
-            <button 
-              type="button"
-              @click="gamingPlatformFilter = 'PC'; selectedGamingSubcat = 'Todas'"
-              :class="['px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer touch-manipulation', gamingPlatformFilter === 'PC' ? 'bg-purple-600 text-white font-black shadow' : 'text-slate-400 hover:text-white hover:bg-white/5']"
-            >
-              <span>💻</span> PC
-            </button>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+              <span class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider font-mono">
+                BLACK FRIDAY TERMINA:
+              </span>
+              <span class="text-xs sm:text-sm font-mono font-black text-white bg-black/60 px-3 py-1 rounded-xl border border-amber-400/50 shadow animate-pulse">
+                ⏳ {{ blackFridayCountdown }}
+              </span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-slate-300 mt-1 max-w-xl">
+              Aprovechá precios especiales en licencias 100% originales para PS5, PS4 y PS3 con hasta 80% OFF y entrega al instante.
+            </p>
           </div>
         </div>
 
-        <!-- Fila 2: Búsqueda Inteligente + Botón Destacado BLACK FRIDAY + Filtros Rápidos -->
-        <div class="space-y-3 pt-3 border-t border-indigo-500/20">
+        <div class="flex items-center gap-2 relative z-10 shrink-0">
+          <button
+            type="button"
+            @click="gamingOnlyBlackFriday = !gamingOnlyBlackFriday"
+            :class="[
+              'px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 touch-manipulation',
+              gamingOnlyBlackFriday 
+                ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 shadow-amber-500/40' 
+                : 'bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 hover:from-amber-300 hover:to-red-400 text-slate-950 shadow-md shadow-amber-950/40'
+            ]"
+          >
+            <span>⚡</span>
+            <span>{{ gamingOnlyBlackFriday ? 'Ver Todo el Catálogo' : 'Ver Solo Ofertas Black Friday' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- BARRA DE DEPENDENCIAS RÁPIDAS (PIXELEROS STYLE) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#0d0f15] rounded-2xl border border-zinc-800 shadow-lg">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
+          <!-- Todas -->
+          <button
+            type="button"
+            @click="gamingPlatformFilter = 'PS5_PS4'; selectedGamingCat = 'Todas'; gamingOnlyBlackFriday = false; gamingPriceCeiling = 'ALL'"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer touch-manipulation',
+              gamingPlatformFilter === 'PS5_PS4' && selectedGamingCat === 'Todas' && !gamingOnlyBlackFriday
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            Todas
+          </button>
+
+          <!-- PS5 -->
+          <button
+            type="button"
+            @click="gamingPlatformFilter = 'PS5'; selectedGamingCat = 'Todas'"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer touch-manipulation',
+              gamingPlatformFilter === 'PS5'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            PS5
+          </button>
+
+          <!-- PS4 -->
+          <button
+            type="button"
+            @click="gamingPlatformFilter = 'PS4'; selectedGamingCat = 'Todas'"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer touch-manipulation',
+              gamingPlatformFilter === 'PS4'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            PS4
+          </button>
+
+          <!-- Desde 50% OFF (Black Friday) -->
+          <button
+            type="button"
+            @click="gamingOnlyBlackFriday = !gamingOnlyBlackFriday"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 touch-manipulation',
+              gamingOnlyBlackFriday
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-amber-300 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            <span>🔥</span>
+            <span>Desde 50 % off</span>
+          </button>
+
+          <!-- Packs / Dual-Gen -->
+          <button
+            type="button"
+            @click="gamingPlatformFilter = 'DUAL'"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer touch-manipulation',
+              gamingPlatformFilter === 'DUAL'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            Packs / Dual
+          </button>
+
+          <!-- PS3 Retro Aparte -->
+          <button
+            type="button"
+            @click="gamingPlatformFilter = 'PS3'"
+            :class="[
+              'px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer touch-manipulation',
+              gamingPlatformFilter === 'PS3'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-md'
+                : 'bg-zinc-900/90 text-amber-400 hover:text-white hover:bg-zinc-800'
+            ]"
+          >
+            PS3 Retro
+          </button>
+        </div>
+
+        <!-- Botón Filtrar y Ordenar -->
+        <button
+          type="button"
+          @click="showAdvancedGamingFilters = !showAdvancedGamingFilters"
+          class="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ml-auto touch-manipulation"
+        >
+          <span>⚙️</span>
+          <span>Filtrar y ordenar</span>
+          <span class="text-xs">{{ showAdvancedGamingFilters ? '▲' : '▼' }}</span>
+        </button>
+      </div>
+
+      <!-- PANEL AVANZADO DESPLEGABLE: BUSCADOR INTELIGENTE, GÉNEROS Y SUBCATEGORÍAS -->
+      <Transition name="fade">
+        <div v-show="showAdvancedGamingFilters" class="bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/60 p-4 sm:p-6 rounded-3xl border border-indigo-500/30 shadow-2xl space-y-4">
+          <!-- Búsqueda Inteligente + Filtros -->
           <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
-            <!-- Buscador Inteligente con Autocompletado y Sugerencias en Vivo -->
             <div class="relative flex-1 w-full">
               <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               <input 
@@ -6270,10 +6301,9 @@ const submitOrder = async () => {
                 @input="showSearchSuggestions = gamingSearch.trim().length >= 2"
                 @keydown.esc="showSearchSuggestions = false"
                 type="text" 
-                placeholder="Búsqueda inteligente por nombre (ej: GTA 5, FIFA, Spider-Man, COD, God of War, MK)..." 
+                placeholder="Buscar oferta o juego (ej: GTA 5, FIFA, Spider-Man, COD, Mortal Kombat)..." 
                 class="w-full bg-slate-950/90 border border-indigo-500/40 hover:border-indigo-400 focus:border-indigo-300 rounded-2xl py-2.5 pl-10 pr-9 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all shadow-inner"
               >
-              <!-- Botón limpiar búsqueda rápida -->
               <button
                 v-if="gamingSearch"
                 type="button"
@@ -6284,7 +6314,7 @@ const submitOrder = async () => {
                 ✕
               </button>
 
-              <!-- Dropdown de Sugerencias Inteligentes en Tiempo Real -->
+              <!-- Dropdown de Sugerencias Inteligentes -->
               <div 
                 v-if="showSearchSuggestions && smartSearchSuggestions.length > 0" 
                 class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/98 backdrop-blur-2xl border-2 border-indigo-500/50 rounded-2xl p-2 shadow-2xl space-y-1 animate-in fade-in zoom-in-95 duration-150"
@@ -6318,37 +6348,11 @@ const submitOrder = async () => {
                     <span class="block text-[9px] text-slate-400 font-mono">Primaria</span>
                   </div>
                 </div>
-                <div class="pt-1.5 border-t border-white/10 flex items-center justify-between px-2 text-[11px]">
-                  <span class="text-slate-400">Presiona <strong>Enter</strong> para ver todos</span>
-                  <button type="button" @click="showSearchSuggestions = false" class="text-sky-400 hover:underline font-bold cursor-pointer">
-                    Ver todos los {{ filteredGamingProducts.length }} títulos →
-                  </button>
-                </div>
               </div>
             </div>
 
-            <!-- Botón Destacado BLACK FRIDAY + Filtros Complementarios -->
+            <!-- Controles Complementarios -->
             <div class="flex flex-wrap items-center gap-2 shrink-0">
-              <!-- BOTÓN TOGGLE BLACK FRIDAY -->
-              <button
-                type="button"
-                @click="gamingOnlyBlackFriday = !gamingOnlyBlackFriday"
-                :class="[
-                  'px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-lg touch-manipulation',
-                  gamingOnlyBlackFriday
-                    ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-300'
-                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:text-white border border-amber-400/40 hover:bg-amber-500/30'
-                ]"
-                title="Filtrar únicamente ofertas especiales de Black Friday"
-              >
-                <span>🔥</span>
-                <span>BLACK FRIDAY</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold" :class="gamingOnlyBlackFriday ? 'bg-black/40 text-amber-200' : 'bg-amber-400/20 text-amber-300'">
-                  {{ blackFridayGamesCount }} Ofertas
-                </span>
-              </button>
-
-              <!-- Ordenamiento con opción Black Friday prioritaria -->
               <select
                 v-model="gamingSortBy"
                 class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
@@ -6361,7 +6365,6 @@ const submitOrder = async () => {
                 <option value="title_asc">🔤 Alfabético (A-Z)</option>
               </select>
 
-              <!-- Presupuesto -->
               <select
                 v-model="gamingPriceCeiling"
                 class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none focus:border-indigo-400 cursor-pointer"
@@ -6373,7 +6376,6 @@ const submitOrder = async () => {
                 <option value="40000">Hasta $40.000</option>
               </select>
 
-              <!-- Favoritos -->
               <button
                 type="button"
                 @click="onlyGamingFavorites = !onlyGamingFavorites"
@@ -6388,103 +6390,13 @@ const submitOrder = async () => {
                 <span>({{ gamingWishlistIds.length }})</span>
               </button>
 
-              <!-- Contador de Resultados -->
               <span class="text-xs text-indigo-300 font-mono font-bold bg-slate-950 px-3 py-2 rounded-xl border border-indigo-500/30 whitespace-nowrap flex items-center gap-1.5">
-                <span v-if="adminStore.isLoadingGamingCatalog" class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
-                <span>🎮 {{ filteredGamingProducts.length.toLocaleString('es-AR') }}</span>
+                <span>🎮 {{ filteredGamingProducts.length.toLocaleString('es-AR') }} títulos</span>
               </span>
-
-              <!-- Carrito -->
-              <button
-                type="button"
-                @click="showCartDrawer = true"
-                class="px-3 py-2 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 text-slate-950 font-black text-xs shadow cursor-pointer flex items-center gap-1.5"
-              >
-                <span>🛒</span>
-                <span>({{ cartStore.totalItems }})</span>
-              </button>
             </div>
           </div>
 
-          <!-- Atajos Rápidos Inteligentes -->
-          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-            <span class="text-[10px] font-mono uppercase text-indigo-400 shrink-0 font-bold flex items-center gap-1">
-              <span>⚡</span> Atajos:
-            </span>
-            <button 
-              type="button" 
-              @click="gamingOnlyBlackFriday = true" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingOnlyBlackFriday ? 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow' : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20']"
-            >
-              🔥 Black Friday 2026
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'FC 25'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'FC 25' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              ⚽ FC 25 / FIFA
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'GTA'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'GTA' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🚗 GTA V
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'Spider-Man'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Spider-Man' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🕷️ Spider-Man
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'God of War'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'God of War' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🪓 God of War
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'Call of Duty'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Call of Duty' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🎯 Call of Duty
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'Mortal Kombat'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Mortal Kombat' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🐉 Mortal Kombat
-            </button>
-            <button 
-              type="button" 
-              @click="gamingSearch = 'Resident Evil'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingSearch === 'Resident Evil' ? 'bg-indigo-500 text-white border-indigo-400 font-black' : 'bg-slate-950/70 text-slate-300 border-white/10 hover:border-indigo-400/50']"
-            >
-              🧟 Resident Evil
-            </button>
-            <button 
-              type="button" 
-              @click="gamingPriceCeiling = gamingPriceCeiling === '25000' ? 'ALL' : '25000'" 
-              :class="['px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition border cursor-pointer', gamingPriceCeiling === '25000' ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black' : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40']"
-            >
-              💰 Gangas &lt; $25k
-            </button>
-            <button 
-              v-if="gamingSearch || gamingPriceCeiling !== 'ALL' || gamingOnlyBlackFriday || selectedGamingCat !== 'Todas' || selectedGamingSubcat !== 'Todas'"
-              type="button" 
-              @click="gamingSearch = ''; gamingPriceCeiling = 'ALL'; gamingOnlyBlackFriday = false; selectedGamingCat = 'Todas'; selectedGamingSubcat = 'Todas'" 
-              class="px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 bg-slate-800 text-slate-400 hover:text-white transition border border-white/10 cursor-pointer"
-            >
-              ✕ Limpiar Filtros
-            </button>
-          </div>
-
-          <!-- Nivel 2 de Dependencia: Selector de Géneros Limpios -->
+          <!-- Selector de Géneros Limpios -->
           <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar pt-1 border-t border-slate-800/80">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <span>📂</span>
@@ -6506,7 +6418,7 @@ const submitOrder = async () => {
             </button>
           </div>
 
-          <!-- Nivel 3 de Dependencia: Subcategorías Dinámicas Reales -->
+          <!-- Subcategorías Dinámicas -->
           <div v-if="availableGamingSubcategories.length > 1" class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar pt-2 border-t border-slate-800/60">
             <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <span>🏷️</span>
@@ -6528,122 +6440,48 @@ const submitOrder = async () => {
             </button>
           </div>
         </div>
+      </Transition>
 
-        <!-- Herramientas Gamer Pro Compactas -->
-        <div class="pt-2 border-t border-indigo-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div class="flex items-center gap-2 text-indigo-300 font-bold">
-            <span>🛠️</span>
-            <span>Herramientas & Asistencia Gamer:</span>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <button 
-              type="button"
-              @click="openGamerToolsModal('calculator')"
-              class="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 hover:text-white border border-indigo-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-            >
-              <span>🧮</span> Calculadora vs PS Store (-60% OFF)
-            </button>
-            <button 
-              type="button"
-              @click="openGamerToolsModal('guide')"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-            >
-              <span>📖</span> Guía de Activación
-            </button>
-            <button 
-              type="button"
-              @click="openGamerToolsModal('comparison')"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-purple-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-            >
-              <span>⚖️</span> Primaria vs Secundaria
-            </button>
-            <button 
-              type="button"
-              @click="openGamerToolsModal('warranty')"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-            >
-              <span>🛡️</span> Garantía Anti-Candado
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Banner de Estado de Filtrado Black Friday Activo -->
-      <div v-if="gamingOnlyBlackFriday" class="p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-purple-500/20 border-2 border-amber-400/50 flex flex-wrap items-center justify-between gap-2 shadow-lg">
-        <div class="flex items-center gap-2.5">
-          <span class="text-xl animate-bounce">🔥</span>
-          <div>
-            <span class="text-xs font-black text-amber-300 uppercase tracking-wide">Modo Black Friday Activo</span>
-            <p class="text-[11px] text-slate-300">Mostrando {{ filteredGamingProducts.length }} títulos con precios especiales de Black Friday y hasta 60% OFF.</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          @click="gamingOnlyBlackFriday = false"
-          class="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold border border-white/20 transition cursor-pointer"
-        >
-          Ver Todo el Catálogo
-        </button>
-      </div>
-
-      <!-- Cuadrícula de Juegos -->
-      <!-- Banner Selección Compartida Gaming -->
-      <div v-if="sharedSelectionGameIds.length > 0" class="mb-4 flex flex-wrap items-center justify-between gap-2 bg-indigo-500/15 border border-indigo-400/40 rounded-2xl px-4 py-3 text-xs">
-        <div class="flex items-center gap-2 text-indigo-200 font-bold">
-          <span>🎯</span>
-          <span>Mostrando selección compartida ({{ sharedSelectionGameIds.length }} títulos)</span>
-        </div>
-        <button type="button" @click="sharedSelectionGameIds = []" class="px-3 py-1 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-black cursor-pointer">
-          Ver todos los juegos
-        </button>
-      </div>
-
-      <!-- Banner Exclusivo Catálogo Retro PS3 (Separado de PS4 y PS5) -->
-      <div v-if="gamingPlatformFilter === 'PS3'" class="mb-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-950 to-amber-950/80 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3.5 text-center sm:text-left">
+      <!-- Banner Exclusivo Catálogo Retro PS3 -->
+      <div v-if="gamingPlatformFilter === 'PS3'" class="mb-2 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-950 to-amber-950/80 border border-amber-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
         <div class="flex items-center gap-3">
-          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+          <div class="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-2xl shrink-0">
             🕹️
           </div>
           <div>
             <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-              <h4 class="text-sm sm:text-base font-black text-amber-300">
-                Catálogo Retro PlayStation 3
-              </h4>
-              <span class="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow">
-                1.031 Títulos Exclusivos PS3
-              </span>
+              <h4 class="text-sm sm:text-base font-black text-amber-300">Catálogo Retro PlayStation 3</h4>
+              <span class="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">1.031 Títulos</span>
             </div>
-            <p class="text-xs text-slate-300 mt-1 max-w-xl">
-              Juegos exclusivos para consolas <strong>PlayStation 3</strong> (no compatibles con PS4 ni PS5). Cuentas y licencias originales con entrega garantizada.
-            </p>
+            <p class="text-xs text-slate-300 mt-0.5">Exclusivos para consolas PS3. Licencias originales con garantía oficial.</p>
           </div>
         </div>
         <button 
           type="button"
           @click="gamingPlatformFilter = 'PS5_PS4'"
-          class="shrink-0 px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-900/40 cursor-pointer transition-all flex items-center gap-2 active:scale-95 touch-manipulation"
+          class="shrink-0 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow cursor-pointer transition"
         >
-          <span>🎮</span>
-          <span>Ver Juegos PS5 & PS4</span>
+          <span>🎮</span> Ver Juegos PS5 & PS4
         </button>
       </div>
 
-      <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
+      <!-- CUADRÍCULA DE JUEGOS: CONTENEDORES CON STYLE PIXELEROS BLACK FRIDAY -->
+      <div v-if="filteredGamingProducts.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-3.5 md:gap-4">
         <div 
           v-for="game in paginatedGamingProducts" 
           :key="game.id"
           @click="openGamingDetail(game)"
-          class="bg-gradient-to-b from-slate-900/90 via-slate-900/80 to-slate-950/95 border border-white/[0.08] hover:border-indigo-500/60 rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between group cursor-pointer hover:shadow-indigo-500/10 hover:-translate-y-0.5"
+          class="bg-[#10121a] hover:bg-[#141722] border border-zinc-800/90 hover:border-amber-400/60 rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between group cursor-pointer hover:shadow-2xl hover:shadow-black/70 hover:-translate-y-1 relative"
         >
           <div>
-            <!-- Portada con Badge de Plataforma (Encuadre completo sin recortes + fondo ambiental) -->
-            <div class="relative w-full aspect-[4/5] sm:h-52 overflow-hidden bg-slate-950 flex items-center justify-center">
+            <!-- Portada de Juego (Pixeleros Style: Badges Oferta/Hot, Sticker Black y Carrito Flotante) -->
+            <div class="relative w-full aspect-square sm:aspect-[4/5] overflow-hidden bg-slate-950 flex items-center justify-center">
               <img
                 :src="game.image"
                 aria-hidden="true"
                 loading="lazy"
                 decoding="async"
-                class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-45 brightness-75 pointer-events-none select-none"
+                class="absolute inset-0 w-full h-full object-cover blur-md scale-125 opacity-35 brightness-75 pointer-events-none select-none"
                 @error="(e) => e.target.style.display = 'none'"
               >
               <img 
@@ -6651,215 +6489,163 @@ const submitOrder = async () => {
                 :alt="game.title" 
                 loading="lazy"
                 decoding="async"
-                class="relative z-[1] w-full h-full object-contain p-1.5 sm:p-2 drop-shadow-[0_10px_22px_rgba(0,0,0,0.85)] group-hover:scale-105 transition-transform duration-500"
+                class="relative z-[1] w-full h-full object-contain p-1.5 drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)] group-hover:scale-105 transition-transform duration-500"
                 @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&auto=format&fit=crop&q=80'"
               >
-              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/50 z-[2] pointer-events-none"></div>
-              
-              <!-- Badges Superiores Dinámicos & Botón Favoritos -->
-              <div class="absolute top-1.5 left-1.5 right-8 sm:top-2.5 sm:left-2.5 sm:right-11 flex items-center gap-1 flex-wrap z-[3]">
-                <span :class="['text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-md', getGamePlatformBadge(game).badgeClass]">
-                  <span class="truncate max-w-[85px] sm:max-w-none">{{ getGamePlatformBadge(game).text }}</span>
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40 z-[2] pointer-events-none"></div>
+
+              <!-- Badges Superiores Izquierdos: OFERTA + HOT -->
+              <div class="absolute top-2 left-2 flex items-center gap-1 z-[3]">
+                <span class="bg-red-600 text-white font-black text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider shadow">
+                  OFERTA
                 </span>
-                <span v-if="game.isBlackFriday || game.badge === 'BLACK FRIDAY'" class="bg-gradient-to-r from-red-600 via-amber-500 to-red-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border border-amber-300 animate-pulse flex items-center gap-1 shrink-0">
-                  <span>🔥</span>
-                  <span>BLACK FRIDAY</span>
-                </span>
-                <span v-else-if="game.badge" class="hidden sm:inline-block bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow truncate max-w-[90px]">
-                  {{ game.badge }}
+                <span class="bg-black/85 text-white font-bold text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider border border-white/10 shadow">
+                  HOT
                 </span>
               </div>
 
+              <!-- Botón Favoritos Superior Derecho (♡ / ❤️) -->
               <button
                 type="button"
                 @click.stop="toggleGamingFavorite(game.id)"
                 :class="[
-                  'absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border backdrop-blur-md shadow transition cursor-pointer active:scale-90 z-[3]',
+                  'absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border backdrop-blur-md shadow transition cursor-pointer active:scale-90 z-[3]',
                   isGamingFavorite(game.id)
                     ? 'bg-rose-500/90 border-rose-300 text-white'
-                    : 'bg-slate-950/75 border-white/15 text-slate-300 hover:text-rose-300'
+                    : 'bg-black/65 border-white/20 text-slate-300 hover:text-rose-300'
                 ]"
                 :title="isGamingFavorite(game.id) ? 'Quitar de Favoritos' : 'Guardar en Favoritos'"
               >
-                <span class="text-[11px] sm:text-xs">{{ isGamingFavorite(game.id) ? '❤️' : '🤍' }}</span>
+                <span class="text-xs sm:text-sm">{{ isGamingFavorite(game.id) ? '❤️' : '♡' }}</span>
               </button>
 
-              <!-- Categoría en Portada -->
-              <div class="absolute bottom-1.5 left-1.5 right-1.5 sm:bottom-2.5 sm:left-2.5 sm:right-2.5 flex items-center gap-1 z-[2]">
-                <span class="text-[8px] sm:text-[10px] bg-slate-900/90 backdrop-blur text-slate-200 px-1.5 sm:px-2 py-0.5 rounded-md border border-white/10 font-bold truncate">
-                  {{ game.category }}
+              <!-- Sticker Inferior Izquierdo BLACK -XX% -->
+              <div class="absolute bottom-2 left-2 z-[3] bg-red-600 text-white rounded px-1.5 py-0.5 flex flex-col items-center leading-none shadow-md shadow-red-950/50">
+                <span class="text-[7px] font-mono font-black tracking-widest text-white uppercase">BLACK</span>
+                <span class="text-[10px] sm:text-xs font-mono font-black text-white">
+                  -{{ game.offerPct || (game.isBlackFriday ? 60 : 50) }}%
                 </span>
               </div>
+
+              <!-- Botón Carrito Amarillo Flotante Inferior Derecho (🛒) -->
+              <button
+                type="button"
+                @click.stop="addGameToCartFromCard(game)"
+                class="absolute bottom-2 right-2 z-[3] w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center font-black text-sm sm:text-base shadow-lg transition active:scale-90 cursor-pointer"
+                title="Agregar al carrito"
+              >
+                🛒
+              </button>
             </div>
 
-            <!-- Contenido de la Tarjeta -->
-            <div class="p-2.5 sm:p-4 space-y-2 sm:space-y-2.5">
-              <!-- Título Limpio & Altura Homogénea (Alineación Perfecta en 2 Columnas Móviles y Desktop) -->
-              <div class="h-9 sm:h-11 flex items-start overflow-hidden">
-                <h4 class="font-black text-white text-xs sm:text-sm leading-snug group-hover:text-indigo-300 transition-colors line-clamp-2" :title="game.title">
+            <!-- Contenido de la Tarjeta Pixeleros Style -->
+            <div class="p-2.5 sm:p-3.5 space-y-2">
+              <!-- Plataforma: PS4 · PS5 -->
+              <div class="text-[10px] sm:text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+                {{ game.platform || 'PS4 · PS5' }}
+              </div>
+
+              <!-- Título del Juego -->
+              <div class="h-8 sm:h-9 flex items-start overflow-hidden">
+                <h4 class="font-black text-white text-xs sm:text-sm leading-snug group-hover:text-amber-400 transition-colors line-clamp-2" :title="game.title">
                   {{ formatDisplayGameTitle(game.title) }}
                 </h4>
               </div>
 
-              <!-- Badges de Idioma y Meta -->
-              <div class="flex items-center gap-1.5 flex-wrap min-h-[1.25rem]">
-                <span v-if="getGameLanguageBadge(game.title)" class="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                  <span>🇪🇸</span>
-                  <span>{{ getGameLanguageBadge(game.title) }}</span>
-                </span>
-                <span class="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-wider truncate">
-                  {{ game.category }}
-                </span>
-              </div>
-
-              <!-- Selector de Opciones de Consola (PS5 vs PS4) si es Dual-Gen -->
-              <div v-if="game.platform && game.platform.includes('PS4') && game.platform.includes('PS5')" class="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/95 rounded-xl border border-blue-500/30" @click.stop>
-                <button 
-                  type="button" 
-                  @click.stop="setGameConsole(game.id, 'PS5')"
+              <!-- Tabla de Precios Pixeleros Style (PRIMARIA / SECUNDARIA con tachados) -->
+              <div class="space-y-1 pt-1" @click.stop>
+                <!-- Fila PRIMARIA -->
+                <div 
+                  @click="setGameLicense(game.id, 'primary')"
                   :class="[
-                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer touch-manipulation',
-                    getGameSelectedConsole(game) === 'PS5' 
-                      ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30 ring-1 ring-blue-300' 
-                      : 'text-slate-400 hover:text-white'
+                    'flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer',
+                    getGameSelectedLicense(game.id) === 'primary' 
+                      ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
+                      : 'bg-black/30 border-white/5 hover:border-white/10'
                   ]"
                 >
-                  <span>⚡ PS5</span>
-                </button>
-                <button 
-                  type="button" 
-                  @click.stop="setGameConsole(game.id, 'PS4')"
+                  <span class="text-[10px] sm:text-[11px] font-mono font-bold text-slate-400">PRIMARIA</span>
+                  <div class="flex items-center gap-1.5 font-mono">
+                    <span class="text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'primary') }}</span>
+                    <span class="text-xs sm:text-sm font-black text-amber-300">${{ Number(game.effectivePrimaryPrice || game.baseCostPrimary || 0).toLocaleString('es-AR') }}</span>
+                  </div>
+                </div>
+
+                <!-- Fila SECUNDARIA -->
+                <div 
+                  @click="setGameLicense(game.id, 'secondary')"
                   :class="[
-                    'py-1 px-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer touch-manipulation',
-                    getGameSelectedConsole(game) === 'PS4' 
-                      ? 'bg-sky-600 text-white font-black shadow-md shadow-sky-500/30 ring-1 ring-sky-300' 
-                      : 'text-slate-400 hover:text-white'
+                    'flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer',
+                    getGameSelectedLicense(game.id) === 'secondary' 
+                      ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
+                      : 'bg-black/30 border-white/5 hover:border-white/10'
                   ]"
                 >
-                  <span>🎮 PS4</span>
-                </button>
-              </div>
-
-              <!-- Selector Compacto de Modalidad (Primaria vs Secundaria) -->
-              <div class="space-y-1">
-                <!-- Caso PC Steam: Clave Digital -->
-                <div v-if="game.platform && (game.platform.includes('PC') || game.platform.includes('Steam'))" class="py-1 sm:py-1.5 px-1.5 sm:px-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-center">
-                  <span class="text-[10px] sm:text-xs font-bold text-purple-300 block">🔑 Clave Steam</span>
-                </div>
-
-                <!-- Caso PS3: Licencia Digital Completa -->
-                <div v-else-if="game.platform && game.platform.includes('PS3')" class="py-1 sm:py-1.5 px-1.5 sm:px-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center">
-                  <span class="text-[10px] sm:text-xs font-black text-amber-300 block">🕹️ Licencia PS3 Original</span>
-                </div>
-
-                <!-- Caso Consolas: Cuenta Primaria vs Cuenta Secundaria -->
-                <div v-else class="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/90 rounded-xl border border-white/[0.08]" @click.stop>
-                  <button 
-                    type="button" 
-                    @click.stop="setGameLicense(game.id, 'primary')"
-                    :class="[
-                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer touch-manipulation active:scale-95',
-                      getGameSelectedLicense(game.id) === 'primary' 
-                        ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black shadow-md shadow-indigo-500/25 ring-1 ring-indigo-400/50' 
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    ]"
-                  >
-                    <span class="text-[9px] sm:text-[11px] font-black flex items-center gap-0.5">
-                      <span>👑</span> Primaria
-                    </span>
-                    <span class="text-[9px] sm:text-[10px] font-mono font-black text-emerald-300">
-                      ${{ game.effectivePrimaryPrice ? Math.round(game.effectivePrimaryPrice / 1000) + 'k' : '0' }}
-                    </span>
-                  </button>
-
-                  <button 
-                    type="button" 
-                    @click.stop="setGameLicense(game.id, 'secondary')"
-                    :class="[
-                      'py-1 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center cursor-pointer touch-manipulation active:scale-95',
-                      getGameSelectedLicense(game.id) === 'secondary' 
-                        ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/25 ring-1 ring-amber-300' 
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    ]"
-                  >
-                    <span class="text-[9px] sm:text-[11px] font-black flex items-center gap-0.5">
-                      <span>⚡</span> Secundaria
-                    </span>
-                    <span class="text-[9px] sm:text-[10px] font-mono font-black text-emerald-300">
-                      ${{ game.effectiveSecondaryPrice ? Math.round(game.effectiveSecondaryPrice / 1000) + 'k' : '0' }}
-                    </span>
-                  </button>
+                  <span class="text-[10px] sm:text-[11px] font-mono font-bold text-slate-400">SECUNDARIA</span>
+                  <div class="flex items-center gap-1.5 font-mono">
+                    <span class="text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'secondary') }}</span>
+                    <span class="text-xs sm:text-sm font-black text-amber-300">${{ Number(game.effectiveSecondaryPrice || game.baseCostSecondary || 0).toLocaleString('es-AR') }}</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Bloque Precio & Entrega Unificado -->
-              <div class="flex items-center justify-between bg-slate-950/80 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-800/80">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1">
-                    <span class="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-wider block truncate">
-                      {{ getGameSelectedLicense(game.id) === 'primary' ? '⭐ Tu Perfil' : '⚡ Secundaria' }}
-                    </span>
-                    <span class="text-[8px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-300 font-bold hidden sm:inline border border-emerald-500/30">
-                      -60% vs PS Store
-                    </span>
-                  </div>
-                  <div class="flex items-baseline gap-0.5 sm:gap-1">
-                    <span class="text-xs sm:text-lg font-black text-white font-mono truncate">
-                      ${{ (getGameSelectedLicense(game.id) === 'primary' ? game.effectivePrimaryPrice : game.effectiveSecondaryPrice)?.toLocaleString() }}
-                    </span>
-                    <span class="text-[8px] sm:text-[10px] text-slate-400 font-bold font-mono">ARS</span>
-                  </div>
+              <!-- Detalle de Pago & Mercado Pago -->
+              <div class="text-[9.5px] sm:text-[10px] text-slate-400 pt-0.5">
+                <span class="text-sky-400 font-medium">por transferencia</span>
+                <span class="block text-[9px] text-slate-400">Desde <strong class="text-sky-400 font-mono font-bold">${{ getGameMercadoPagoPrice(game) }}</strong> con Mercado Pago</span>
+              </div>
+
+              <!-- Entrega al instante & Fecha Límite -->
+              <div class="flex items-center justify-between pt-1.5 border-t border-white/5 text-[9.5px] sm:text-[10px]">
+                <div class="inline-flex items-center gap-1.5 bg-emerald-950/50 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Entrega al instante</span>
                 </div>
-                <div class="text-right shrink-0">
-                  <span class="text-[8px] sm:text-[9px] bg-emerald-500/15 text-emerald-400 font-bold px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
-                    🟢 60m
-                  </span>
+                <div class="text-zinc-400 text-[9.5px] sm:text-[10px] font-mono font-medium">
+                  Termina el 01/12
                 </div>
               </div>
             </div>
           </div>
 
           <!-- BOTONES DE ACCIÓN ADAPTABLES -->
-          <div class="p-2 sm:p-3.5 pt-0 space-y-1 sm:space-y-1.5" @click.stop>
+          <div class="p-2 sm:p-3 pt-0 space-y-1 sm:space-y-1.5" @click.stop>
             <div class="grid grid-cols-2 gap-1 sm:gap-1.5">
               <button 
                 type="button" 
                 @click.stop="buyGamingViaWhatsApp(game)"
-                class="min-h-[36px] sm:min-h-[38px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
                 title="Comprar directo por WhatsApp"
               >
-                <span class="text-xs">⚡</span>
+                <span>💬</span>
                 <span>Pedir</span>
               </button>
               <button 
                 type="button" 
                 @click.stop="addGameToCartFromCard(game)"
-                class="min-h-[36px] sm:min-h-[38px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
                 title="Agregar al carrito de compras"
               >
                 <span class="text-xs">🛒</span>
                 <span>+Carrito</span>
               </button>
             </div>
-
             <div class="grid grid-cols-2 gap-1 sm:gap-1.5">
               <button 
-                type="button" 
-                @click.stop="openGamingShareModal(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-slate-900/90 hover:bg-indigo-950/80 text-sky-200 hover:text-white text-[10px] sm:text-xs font-bold py-1 px-1.5 rounded-xl border border-sky-400/30 hover:border-sky-300 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 touch-manipulation select-none shadow-sm"
-                title="Compartir juego con opciones de difusión"
+                type="button"
+                @click.stop="shareGamingViaWhatsApp(game)"
+                class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                title="Compartir juego por WhatsApp"
               >
-                <span class="text-xs">📤</span>
-                <span>Compartir</span>
+                <span>📤</span> Compartir
               </button>
               <button 
-                type="button" 
+                type="button"
                 @click.stop="openGamingDetail(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-white font-bold text-[10px] sm:text-xs py-1 px-1.5 rounded-xl border border-cyan-500/30 hover:border-cyan-400 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 touch-manipulation select-none shadow-sm"
-                title="Ver ficha técnica completa y opciones"
+                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/20 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                title="Ver ficha completa y características"
               >
-                <span class="text-xs">ℹ️</span>
-                <span>+Info</span>
+                <span>ℹ️</span> +Info
               </button>
             </div>
           </div>
