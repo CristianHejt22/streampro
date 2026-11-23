@@ -6547,7 +6547,7 @@ const submitOrder = async () => {
               </div>
 
               <!-- Título del Juego -->
-              <div class="h-8 sm:h-9 flex items-start overflow-hidden">
+              <div class="min-h-[2.25rem] sm:min-h-[2.5rem] flex items-start overflow-hidden">
                 <h4 class="font-black text-white text-xs sm:text-sm leading-snug group-hover:text-amber-400 transition-colors line-clamp-2" :title="game.title">
                   {{ formatDisplayGameTitle(game.title) }}
                 </h4>
@@ -6606,11 +6606,11 @@ const submitOrder = async () => {
 
               <!-- Entrega al instante & Fecha Límite -->
               <div class="flex items-center justify-between pt-1.5 border-t border-white/5 text-[9.5px] sm:text-[10px]">
-                <div class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/35 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-black shadow-sm">
+                <div class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/35 rounded-full px-2 py-0.5 text-[8.5px] sm:text-[9.5px] font-black shadow-sm whitespace-nowrap shrink-0">
                   <span>⚡</span>
                   <span>60-90 min</span>
                 </div>
-                <div class="text-zinc-400 text-[9.5px] sm:text-[10px] font-mono font-medium">
+                <div class="text-zinc-400 text-[8.5px] sm:text-[9.5px] font-mono font-medium whitespace-nowrap">
                   Termina el 01/12
                 </div>
               </div>
@@ -6623,7 +6623,7 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="buyGamingViaWhatsApp(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/60 border border-emerald-400/40 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                class="min-h-[32px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1 px-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-emerald-950/60 border border-emerald-400/40 flex items-center justify-center gap-1 text-[10.5px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none whitespace-nowrap"
                 title="Comprar directo por WhatsApp con la modalidad elegida"
               >
                 <span>💬</span>
@@ -6632,7 +6632,7 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="addGameToCartFromCard(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/60 border border-amber-300/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                class="min-h-[32px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1 px-1.5 sm:px-2 rounded-xl transition-all shadow-md shadow-amber-950/60 border border-amber-300/50 flex items-center justify-center gap-1 text-[10.5px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none whitespace-nowrap"
                 title="Agregar al carrito de compras"
               >
                 <span class="text-xs">🛒</span>

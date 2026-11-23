@@ -297,7 +297,7 @@ const handleOpenCart = () => {
           </div>
 
           <!-- 3. Navegación Desktop para Clientes (lg / xl) -->
-          <nav v-if="isClientArea" class="hidden lg:flex items-center gap-1 text-xs font-bold bg-slate-900/60 backdrop-blur-xl p-1 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
+          <nav v-if="isClientArea" class="hidden xl:flex items-center gap-0.5 2xl:gap-1 text-xs font-bold bg-slate-900/70 backdrop-blur-xl p-1 rounded-2xl border border-white/[0.08] shadow-inner shrink-0">
             <RouterLink 
               :to="homeLink" 
               class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
@@ -473,90 +473,102 @@ const handleOpenCart = () => {
           </div>
         </div>
 
-        <!-- Tier 2 para Móviles y Tablets (< lg): Barra de Pestañas con Desplazamiento Horizontal Suave -->
-        <div v-if="isClientArea" class="lg:hidden mt-2 pt-2 border-t border-white/[0.06] flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-1">
-          <RouterLink 
-            :to="homeLink" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>🌟</span>
-            <span>Inicio</span>
-          </RouterLink>
-          
-          <RouterLink 
-            v-if="isStreamingNavVisible"
-            :to="getAppSectionLink('suscripciones')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>🎬</span>
-            <span>Suscripciones</span>
-          </RouterLink>
+                <!-- Tier 2 para Móviles y Tablets (< xl): Dock Flotante Adaptable con Desplazamiento Suave -->
+        <div v-if="isClientArea" class="xl:hidden mt-2 pt-1 border-t border-white/[0.06] flex items-center overflow-x-auto no-scrollbar py-0.5">
+          <div class="flex items-center gap-1 p-1 bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg overflow-x-auto no-scrollbar max-w-full">
+            <RouterLink 
+              :to="homeLink" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="($route.path === '/' || ($route.params.shopSlug && !$route.params.section)) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>🌟</span>
+              <span>Inicio</span>
+            </RouterLink>
+            
+            <RouterLink 
+              v-if="isStreamingNavVisible"
+              :to="getAppSectionLink('suscripciones')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>🎬</span>
+              <span>Suscripciones (8)</span>
+            </RouterLink>
 
-          <RouterLink 
-            v-if="isCombosNavVisible"
-            :to="getAppSectionLink('combos')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>🎁</span>
-            <span>Combos</span>
-            <span v-if="activePackagesCount > 0" class="bg-pink-400/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-pink-400/30">
-              {{ activePackagesCount }}
-            </span>
-          </RouterLink>
+            <RouterLink 
+              v-if="isCombosNavVisible"
+              :to="getAppSectionLink('combos')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="(['/combos', '/paquetes', '/ofertas'].includes($route.path) || $route.params.section === 'combos') ? 'bg-purple-500/20 text-pink-300 border border-purple-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>🎁</span>
+              <span>Combos</span>
+              <span v-if="activePackagesCount > 0" class="bg-pink-500/20 text-pink-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-pink-400/30">
+                {{ activePackagesCount }}
+              </span>
+            </RouterLink>
 
-          <RouterLink 
-            v-if="isGamingNavVisible"
-            :to="getAppSectionLink('juegos')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>🎮</span>
-            <span>Juegos</span>
-            <span class="bg-indigo-400/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-indigo-400/30">
-              +15K
-            </span>
-          </RouterLink>
-          
-          <RouterLink 
-            v-if="isPhysicalNavVisible"
-            :to="getAppSectionLink('tienda')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="(['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) || $route.params.section === 'tienda') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>📦</span>
-            <span>Físicos</span>
-            <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
-              {{ publicPhysicalCount }}
-            </span>
-          </RouterLink>
+            <RouterLink 
+              v-if="isGamingNavVisible"
+              :to="getAppSectionLink('juegos')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="(['/juegos', '/gaming', '/videojuegos', '/ps5', '/ps4', '/ps3', '/playstation'].some(p => $route.path === p || $route.path.startsWith(p + '/')) || $route.params.section === 'juegos') ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>🎮</span>
+              <span>Juegos PS4/PS5</span>
+              <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-indigo-400/30">
+                +15K
+              </span>
+            </RouterLink>
+            
+            <RouterLink 
+              v-if="isPhysicalNavVisible"
+              :to="getAppSectionLink('tienda')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="(['/tienda', '/catalogo', '/productos', '/p'].includes($route.path) || $route.params.section === 'tienda') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>📦</span>
+              <span>Físicos</span>
+              <span class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
+                {{ publicPhysicalCount }}
+              </span>
+            </RouterLink>
 
-          <RouterLink 
-            :to="getAppSectionLink('sorteos')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
-            :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'bg-slate-900/70 text-slate-300 border border-white/[0.06] hover:bg-slate-800'"
-          >
-            <span>🎉</span>
-            <span>Sorteos</span>
-            <span v-if="activeGiveawaysCount > 0" class="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-amber-400/30">
-              {{ activeGiveawaysCount }}
-            </span>
-          </RouterLink>
+            <RouterLink 
+              :to="getAppSectionLink('sorteos')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+              :class="(['/sorteos', '/sorteo', '/descuentos', '/embajadores'].includes($route.path) || $route.params.section === 'sorteos') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
+            >
+              <span>🎉</span>
+              <span>Sorteos</span>
+              <span v-if="activeGiveawaysCount > 0" class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono border border-amber-400/30">
+                {{ activeGiveawaysCount }}
+              </span>
+            </RouterLink>
 
-          <!-- Acceso Rápido Móvil a Herramientas -->
-          <button 
-            type="button"
-            @click="openCustomerTools('calculator')" 
-            class="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 font-bold shadow-sm"
-          >
-            <span>🔧</span>
-            <span>Herramientas</span>
-            <span class="bg-emerald-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full font-mono">
-              PRO
-            </span>
-          </button>
+            <!-- Acceso Rápido Móvil a Herramientas -->
+            <button 
+              type="button"
+              @click="openCustomerTools('calculator')" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-sky-300 font-bold text-xs shadow-sm group"
+            >
+              <span class="group-hover:rotate-12 transition-transform">🔧</span>
+              <span>Herramientas</span>
+              <span class="bg-sky-400/20 text-sky-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold border border-sky-400/30">
+                PRO
+              </span>
+            </button>
+
+            <!-- Acceso a Revendedores -->
+            <RouterLink 
+              to="/revendedores" 
+              class="px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap text-amber-300 hover:text-white hover:bg-amber-500/10"
+              active-class="!bg-amber-500/20 !text-amber-200 !border-amber-500/40 shadow-sm"
+            >
+              <span>🚀</span>
+              <span>Revendedores</span>
+            </RouterLink>
+          </div>
         </div>
       </div>
     </header>
