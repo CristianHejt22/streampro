@@ -706,6 +706,144 @@ async function scrapeFusionGames() {
 }
 
 /**
+ * 6. Pixeleros (https://pixeleros.com.ar/) — API Pública JSON & Ofertas Black Friday
+ */
+async function scrapePixeleros(psImageMap) {
+  log('Scrapeando catálogo y ofertas Black Friday de Pixeleros vía API oficial...')
+  try {
+    const res = await fetch('https://pixeleros.com.ar/api_public/catalogo.php?limit=5000', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(20000)
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    const data = json.data || []
+    const results = []
+
+    data.forEach((p, idx) => {
+      const rawTitle = sanitizeBrokenEncodingTitle(p.nombre || '')
+      if (!rawTitle) return
+
+      const plat = (p.plataforma || '').toLowerCase()
+      let platform = 'PS4 / PS5'
+      if (plat === 'ps5') platform = 'PS5'
+      else if (plat === 'ps4' && p.solo_ps4) platform = 'PS4'
+      else if (plat === 'ps3') platform = 'PS3'
+
+      const cPri = Number(p.precio_primaria_final || p.precio_primaria || 0)
+      const cSec = Number(p.precio_secundaria_final || p.precio_secundaria || 0)
+      if (cPri <= 0 && cSec <= 0) return
+
+      const norm = cleanTitleNormalization(rawTitle)
+      if (!norm) return
+
+      const isBlackFriday = Boolean(p.en_oferta || p.remate || (p.precios?.primaria?.oferta_pct > 0))
+      const offerPct = p.precios?.primaria?.oferta_pct || (isBlackFriday ? 25 : 0)
+      const bestImage = p.imagen || psImageMap?.get(norm) || FALLBACK_IMAGE
+
+      results.push({
+        id: `GAME-PIX-${p.id || idx + 1}`,
+        source: 'pixeleros',
+        title: rawTitle,
+        norm,
+        bucket: getPlatformBucket(platform, rawTitle),
+        platform,
+        costPrimary: cPri,
+        costSecondary: cSec || (supportsSecondary(platform) ? Math.round(cPri * 0.55) : 0),
+        isBlackFriday,
+        offerPct,
+        stock: p.stock ? `${p.stock.primaria_ps5 || 0} PS5 / ${p.stock.secundaria || 0} Sec` : 'Inmediato',
+        url: 'https://pixeleros.com.ar/',
+        image: bestImage
+      })
+    })
+
+    log(`✓ Pixeleros: ${results.length} videojuegos extraídos (${results.filter(r => r.isBlackFriday).length} ofertas Black Friday)`)
+    return results
+  } catch (e) {
+    log(`Advertencia Pixeleros: ${e.message}`)
+    return []
+  }
+}
+
+/**
+ * 7. Pale Games (https://palegames.mitiendanube.com/) — Catálogo MiTiendanube
+ */
+async function scrapePaleGames(psImageMap) {
+  log('Scrapeando catálogo de Pale Games vía Tiendanube...')
+  const results = []
+  const seenUrls = new Set()
+
+  try {
+    const pages = [1, 2, 3, 4, 5]
+    await runPool(pages, 3, async (page) => {
+      try {
+        const res = await fetch(`https://palegames.mitiendanube.com/productos/?page=${page}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          signal: AbortSignal.timeout(15000)
+        })
+        if (!res.ok) return
+        const html = await res.text()
+
+        const itemRegex = /<div[^>]*class="[^"]*js-product-container[^"]*"[^>]*data-variants="([^"]+)"[\s\S]*?<a[^>]*href="(https:\/\/palegames\.mitiendanube\.com\/productos\/[^"]+)"[^>]*title="([^"]+)"[\s\S]*?<img[^>]*src="([^"]+)"/gi
+        const matches = Array.from(html.matchAll(itemRegex))
+
+        matches.forEach((m) => {
+          const rawUrl = m[2].split('?')[0]
+          if (seenUrls.has(rawUrl)) return
+          seenUrls.add(rawUrl)
+
+          const rawTitle = sanitizeBrokenEncodingTitle(m[3] || '')
+          if (!rawTitle) return
+
+          let variants = []
+          try {
+            variants = JSON.parse(m[1].replace(/&quot;/g, '"'))
+          } catch {}
+
+          const primaryVar = variants[0] || {}
+          const secVar = variants[1] || {}
+
+          const cPri = Number(primaryVar.price_number || 0)
+          const cSec = Number(secVar.price_number || 0)
+          if (cPri <= 0 && cSec <= 0) return
+
+          let platform = 'PS4 / PS5'
+          if (/\bPS5\b/i.test(rawTitle)) platform = 'PS5'
+          else if (/\bPS4\b/i.test(rawTitle)) platform = 'PS4'
+          else if (/\bPS3\b/i.test(rawTitle)) platform = 'PS3'
+
+          const norm = cleanTitleNormalization(rawTitle)
+          if (!norm) return
+
+          const rawImg = m[4] || ''
+          const bestImage = rawImg.startsWith('http') ? rawImg : (psImageMap?.get(norm) || FALLBACK_IMAGE)
+
+          results.push({
+            id: `GAME-PALE-${results.length + 1}`,
+            source: 'palegames',
+            title: rawTitle,
+            norm,
+            bucket: getPlatformBucket(platform, rawTitle),
+            platform,
+            costPrimary: cPri,
+            costSecondary: cSec || (supportsSecondary(platform) ? Math.round(cPri * 0.55) : 0),
+            url: rawUrl,
+            image: bestImage
+          })
+        })
+      } catch {}
+    })
+
+    log(`✓ Pale Games: ${results.length} videojuegos extraídos`)
+    return results
+  } catch (e) {
+    log(`Advertencia Pale Games: ${e.message}`)
+    return []
+  }
+}
+
+/**
  * 6. Ofertas de escritorio .txt
  */
 function parseTxtOffers(psImageMap) {
@@ -810,18 +948,20 @@ export async function scrapeAndSyncGamingCatalog() {
   log('Iniciando scraping masivo multi-sitio SIN límites artificiales...')
 
   const existingCatalog = loadExistingCatalog()
-  const [dgsRes, apGames, jdaGames, ttgGames, fusionGames] = await Promise.all([
+  const [dgsRes, apGames, jdaGames, ttgGames, fusionGames, pixelerosGames, paleGames] = await Promise.all([
     scrapeDigitalGamesShop(),
     scrapeArgentinaPlay(),
     scrapeJuegosDigitalesArgentina(),
     scrapeTuTiendaGamer(),
-    scrapeFusionGames()
+    scrapeFusionGames(),
+    scrapePixeleros(null),
+    scrapePaleGames(null)
   ])
 
   const { catalog: dgsCatalog, imageMap: psImageMap } = dgsRes
   const txtGames = parseTxtOffers(psImageMap)
 
-  log(`Resumen fuentes: base=${existingCatalog.length}, DGS=${dgsCatalog.length}, ArgPlay=${apGames.length}, JDA=${jdaGames.length}, TTG=${ttgGames.length}, Fusion=${fusionGames.length}, TXT=${txtGames.length}`)
+  log(`Resumen fuentes: base=${existingCatalog.length}, DGS=${dgsCatalog.length}, ArgPlay=${apGames.length}, JDA=${jdaGames.length}, TTG=${ttgGames.length}, Fusion=${fusionGames.length}, Pixeleros=${pixelerosGames.length}, PaleGames=${paleGames.length}, TXT=${txtGames.length}`)
 
   const consolidatedMap = new Map()
   const bucketTokenIndexes = new Map()
@@ -901,7 +1041,8 @@ export async function scrapeAndSyncGamingCatalog() {
         providerName: sourceLabel,
         providerUrl: item.url || '',
         costPrimary: item.costPrimary || 0,
-        costSecondary: secCost
+        costSecondary: secCost,
+        ...(item.isBlackFriday ? { isBlackFriday: true, offerPct: item.offerPct || 25 } : {})
       }
 
       if (target) {
@@ -911,9 +1052,16 @@ export async function scrapeAndSyncGamingCatalog() {
           providerName: sourceLabel,
           providerUrl: provPayload.providerUrl || prev.providerUrl || '',
           costPrimary: Math.max(prev.costPrimary || prev.primaryPrice || 0, provPayload.costPrimary),
-          costSecondary: Math.max(prev.costSecondary || prev.secondaryPrice || 0, provPayload.costSecondary)
+          costSecondary: Math.max(prev.costSecondary || prev.secondaryPrice || 0, provPayload.costSecondary),
+          ...(provPayload.isBlackFriday ? { isBlackFriday: true, offerPct: provPayload.offerPct || 25 } : {})
         }
         target.image = chooseBestImage(target.image, item.image || psImageMap.get(item.norm))
+        if (item.isBlackFriday) {
+          target.isBlackFriday = true
+          if (!target.badge || target.badge === 'DISPONIBLE' || target.badge === 'OFERTA') {
+            target.badge = 'BLACK FRIDAY'
+          }
+        }
 
         // Combinar PS4 + PS5 cuando coinciden en bucket PlayStation
         if (bucket === 'ps' && item.platform && target.platform && !target.platform.includes(item.platform)) {
@@ -932,8 +1080,10 @@ export async function scrapeAndSyncGamingCatalog() {
           platform: item.platform || 'PS5',
           category,
           subcategory,
-          badge: inferBadge(item.title, item.platform),
+          badge: item.isBlackFriday ? 'BLACK FRIDAY' : inferBadge(item.title, item.platform),
           image: bestImg,
+          isBlackFriday: Boolean(item.isBlackFriday),
+          offerPct: item.offerPct || 0,
           providers: {
             [sourceKey]: provPayload
           }
@@ -951,11 +1101,13 @@ export async function scrapeAndSyncGamingCatalog() {
   upsertSourceItems(jdaGames, 'juegosdigitalesargentina', 'Juegos Digitales Argentina', 'GAME-JDA', true)
   upsertSourceItems(ttgGames, 'tutiendagamer', 'Tu Tienda Gamer', 'GAME-TTG', true)
   upsertSourceItems(fusionGames, 'fusiongames', 'Fusion Games', 'GAME-FUS', true)
+  upsertSourceItems(pixelerosGames, 'pixeleros', 'Pixeleros', 'GAME-PIX', true)
+  upsertSourceItems(paleGames, 'palegames', 'Pale Games', 'GAME-PALE', true)
   upsertSourceItems(txtGames, 'mayorista_txt', 'Lista Ofertas TXT', 'GAME-TXT', true)
   // DGS: agregar TODOS los 14,294 juegos (allowFuzzy=false evita colisiones en títulos cortos sobre 14k items y acelera a < 50ms)
   upsertSourceItems(dgsCatalog, 'digitalgamesshop', 'Digital Games Shop', 'GAME-DGS', false)
 
-  const BUILTIN_PROV_KEYS = new Set(['argentinaplay', 'juegosdigitalesargentina', 'digitalgamesshop', 'tutiendagamer', 'fusiongames', 'mayorista_txt'])
+  const BUILTIN_PROV_KEYS = new Set(['argentinaplay', 'juegosdigitalesargentina', 'digitalgamesshop', 'tutiendagamer', 'fusiongames', 'pixeleros', 'palegames', 'mayorista_txt'])
 
   // Pasada final compacta: Recalcular MAYOR COSTO y costo óptimo por título
   const compactList = Array.from(consolidatedMap.values()).map(game => {
@@ -974,7 +1126,8 @@ export async function scrapeAndSyncGamingCatalog() {
         ...(!BUILTIN_PROV_KEYS.has(k) && p.providerName ? { providerName: p.providerName } : {}),
         ...(cleanUrl ? { providerUrl: cleanUrl } : {}),
         costPrimary: cPri,
-        ...(cSec > 0 ? { costSecondary: cSec } : {})
+        ...(cSec > 0 ? { costSecondary: cSec } : {}),
+        ...(p.isBlackFriday ? { isBlackFriday: true, offerPct: p.offerPct || 25 } : {})
       }
       entries.push({ key: k, name: p.providerName || k, costPrimary: cPri, costSecondary: cSec })
     }
@@ -1003,6 +1156,12 @@ export async function scrapeAndSyncGamingCatalog() {
       subcategory: game.subcategory,
       badge: game.badge,
       image: game.image,
+      ...(game.isBlackFriday || Object.values(cleanProviders).some(p => p.isBlackFriday)
+        ? {
+            isBlackFriday: true,
+            offerPct: game.offerPct || (Object.values(cleanProviders).find(p => p.offerPct)?.offerPct) || 25
+          }
+        : {}),
       providers: cleanProviders,
       baseCostPrimary: maxPri,
       ...(maxSec > 0 ? { baseCostSecondary: maxSec } : {}),

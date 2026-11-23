@@ -31,6 +31,16 @@ const openCustomerToolsModal = (tab = 'calculator') => {
   showCustomerToolsModal.value = true
 }
 
+const isToolsHubExpanded = ref(true)
+const selectedQuickTool = ref('')
+const handleQuickToolSelect = (e) => {
+  const val = e.target.value
+  if (val) {
+    openCustomerToolsModal(val)
+    selectedQuickTool.value = ''
+  }
+}
+
 const showGamerToolsModal = ref(false)
 const gamerToolsModalTab = ref('calculator')
 const openGamerToolsModal = (tab = 'calculator') => {
@@ -639,6 +649,8 @@ const products = computed(() => {
     return {
       ...p,
       name: custom.name || p.name,
+      imageUrl: custom.imageUrl || custom.image || p.imageUrl || p.image,
+      image: custom.imageUrl || custom.image || p.image,
       badge: custom.badge || custom.quality || p.badge,
       deliveryTime: custom.deliveryBadge || custom.deliveryTime || p.deliveryTime,
       description: custom.description || p.description,
@@ -658,6 +670,8 @@ const products = computed(() => {
         name: platData.name || platKey,
         category: 'Streaming',
         platform: platKey,
+        imageUrl: platData.imageUrl || platData.image || '',
+        image: platData.imageUrl || platData.image || '',
         badge: platData.badge || platData.quality || '⭐ OFICIAL',
         deliveryTime: platData.deliveryBadge || platData.deliveryTime || '🟢 10-15m',
         specs: platData.quality || 'FULL HD / 4K',
@@ -4176,8 +4190,8 @@ const submitOrder = async () => {
         <div class="absolute -right-24 -top-24 w-80 h-80 bg-sky-500/15 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -left-24 -bottom-24 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Header del Centro de Herramientas Adaptado a Móvil y Desktop -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 sm:gap-4 relative z-10">
+        <!-- Header del Centro de Herramientas Adaptado con Desplegable Interactivo -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3.5 sm:gap-4 relative z-10">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center text-xl sm:text-2xl shadow-lg shadow-sky-500/25 shrink-0">
               🔧
@@ -4193,28 +4207,59 @@ const submitOrder = async () => {
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 w-full md:w-auto sm:flex sm:items-center">
-            <button 
-              type="button"
-              @click="openCustomerToolsModal('calculator')"
-              class="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer active:scale-95 touch-manipulation"
-            >
-              <span>🧮</span>
-              <span class="truncate">Calculadora</span>
-            </button>
-            <button 
-              type="button"
-              @click="openCustomerToolsModal('tracker')"
-              class="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 touch-manipulation"
-            >
-              <span>🔍</span>
-              <span class="truncate">Rastrear Pedido</span>
-            </button>
+          <!-- Controles de Desplegable & Accesos Directos -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            <!-- Desplegable Rápido de Herramientas -->
+            <div class="relative w-full sm:w-auto shrink-0">
+              <select 
+                v-model="selectedQuickTool" 
+                @change="handleQuickToolSelect"
+                class="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 text-sky-200 border border-sky-400/40 hover:border-sky-300 text-[11px] sm:text-xs font-bold py-2.5 px-3.5 pr-8 rounded-xl cursor-pointer outline-none shadow-md transition-all appearance-none touch-manipulation"
+                title="Desplegar herramienta específica"
+              >
+                <option value="">⚡ Desplegable de Herramientas...</option>
+                <option value="calculator">🧮 1. Calculadora de Ahorro (-68% OFF)</option>
+                <option value="tracker">🔍 2. Rastrear Pedido & PIN en Vivo</option>
+                <option value="gamer">🎮 3. Asistente Gamer (PS5 & PS4)</option>
+                <option value="warranty">🛡️ 4. Garantía Oficial & SLA 100%</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none text-xs">▼</span>
+            </div>
+
+            <!-- Botones de Acción Rápida (Calculadora y Rastrear) + Toggle de Desplegable -->
+            <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
+              <button 
+                type="button"
+                @click="openCustomerToolsModal('calculator')"
+                class="px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 font-black text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1 shadow-md shadow-sky-500/20 cursor-pointer active:scale-95 touch-manipulation"
+              >
+                <span>🧮</span>
+                <span class="truncate">Calculadora</span>
+              </button>
+              <button 
+                type="button"
+                @click="openCustomerToolsModal('tracker')"
+                class="px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm active:scale-95 touch-manipulation"
+              >
+                <span>🔍</span>
+                <span class="truncate">Rastrear</span>
+              </button>
+              <button 
+                type="button" 
+                @click="isToolsHubExpanded = !isToolsHubExpanded"
+                class="px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10 text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm active:scale-95 touch-manipulation"
+                :title="isToolsHubExpanded ? 'Ocultar panel desplegable' : 'Desplegar panel de herramientas'"
+              >
+                <span>{{ isToolsHubExpanded ? '▲' : '▼' }}</span>
+                <span class="truncate">{{ isToolsHubExpanded ? 'Ocultar' : 'Ver Todas' }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- 4 Tarjetas de Herramientas Interactivas (2 Columnas en Móviles, 4 en Desktop) -->
-        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 relative z-10">
+        <!-- 4 Tarjetas de Herramientas Interactivas (Desplegable con animación) -->
+        <Transition name="fade">
+          <div v-show="isToolsHubExpanded" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 relative z-10 pt-1">
           
           <!-- Herramienta 1: Calculadora de Ahorro -->
           <div 
@@ -4326,10 +4371,11 @@ const submitOrder = async () => {
           </div>
 
         </div>
+        </Transition>
       </div>
 
       <!-- 2. Selección de Ofertas 1: 🔥 Streaming Premium 4K Destacado -->
-      <div v-if="isStreamingNavVisible" class="space-y-4">
+      <div v-if="isStreamingNavVisible" class="space-y-4" data-nosnippet="true">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-sky-950/40 via-slate-900 to-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-500/30 shadow-lg">
           <div class="flex items-center gap-3">
             <span class="text-3xl">🎬</span>
@@ -4371,13 +4417,23 @@ const submitOrder = async () => {
             <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none bg-sky-400"></div>
 
             <div class="space-y-3.5">
-              <!-- Cabecera de Marca: Logo SVG, Badge Calidad 4K y SLA con punto verde activo -->
+              <!-- Cabecera de Marca: Logo SVG o Imagen Personalizada con nosnippet anti-baneo -->
               <div class="flex items-start justify-between gap-2.5">
                 <div class="flex items-center gap-3 min-w-0">
                   <div 
-                    class="w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0 group-hover:scale-105 transition-transform"
-                    v-html="getStreamingMeta(product.platform).iconSvg"
-                  ></div>
+                    class="w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0 group-hover:scale-105 transition-transform overflow-hidden"
+                  >
+                    <img 
+                      v-if="adminStore.pricingCatalog?.[product.platform]?.imageUrl || product.imageUrl" 
+                      :src="adminStore.pricingCatalog?.[product.platform]?.imageUrl || product.imageUrl" 
+                      alt="" 
+                      data-nosnippet="true" 
+                      rel="nofollow" 
+                      loading="lazy" 
+                      class="w-full h-full object-cover rounded-xl"
+                    />
+                    <div v-else class="w-full h-full flex items-center justify-center" v-html="getStreamingMeta(product.platform).iconSvg"></div>
+                  </div>
                   <div class="min-w-0">
                     <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block mb-1', getStreamingMeta(product.platform).badgeClass]">
                       {{ getStreamingMeta(product.platform).badge }}
@@ -5021,7 +5077,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- ==================== SECCIÓN 1: SUSCRIPCIONES DIGITALES (PÁGINA DEDICADA) ==================== -->
-    <div v-else-if="currentPageSection === 'digital'" id="suscripciones-digitales" class="space-y-6">
+    <div v-else-if="currentPageSection === 'digital'" id="suscripciones-digitales" class="space-y-6" data-nosnippet="true">
       <!-- Header de Sección Oficial con Filtros por Plataforma -->
       <div class="bg-gradient-to-r from-sky-950/50 via-slate-900 to-slate-950 p-4 sm:p-6 rounded-3xl border border-sky-500/30 shadow-xl space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -5237,9 +5293,19 @@ const submitOrder = async () => {
             <div class="flex items-start justify-between gap-2.5">
               <div class="flex items-center gap-3 min-w-0">
                 <div 
-                  class="w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0 group-hover:scale-105 transition-transform"
-                  v-html="getStreamingMeta(product.platform).iconSvg"
-                ></div>
+                  class="w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-950/90 border border-white/10 shadow-inner shrink-0 group-hover:scale-105 transition-transform overflow-hidden"
+                >
+                  <img 
+                    v-if="adminStore.pricingCatalog?.[product.platform]?.imageUrl || product.imageUrl" 
+                    :src="adminStore.pricingCatalog?.[product.platform]?.imageUrl || product.imageUrl" 
+                    alt="" 
+                    data-nosnippet="true" 
+                    rel="nofollow" 
+                    loading="lazy" 
+                    class="w-full h-full object-cover rounded-xl"
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center" v-html="getStreamingMeta(product.platform).iconSvg"></div>
+                </div>
                 <div class="min-w-0">
                   <span :class="['text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block mb-1', getStreamingMeta(product.platform).badgeClass]">
                     {{ getStreamingMeta(product.platform).badge }}
@@ -5443,7 +5509,7 @@ const submitOrder = async () => {
     </div>
 
     <!-- ==================== SECCIÓN 2: PAQUETES & COMBOS EN OFERTA (PÁGINA DEDICADA) ==================== -->
-    <div v-else-if="currentPageSection === 'packages'" id="paquetes-combos" class="space-y-6">
+    <div v-else-if="currentPageSection === 'packages'" id="paquetes-combos" class="space-y-6" data-nosnippet="true">
       <!-- Barra de Filtros Compacta para Combos -->
       <div class="flex items-center gap-3 p-1.5 bg-slate-900/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl w-full shadow-md">
         <div class="relative flex-1">
@@ -6236,7 +6302,11 @@ const submitOrder = async () => {
                 <span :class="['text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-md', getGamePlatformBadge(game).badgeClass]">
                   <span class="truncate max-w-[85px] sm:max-w-none">{{ getGamePlatformBadge(game).text }}</span>
                 </span>
-                <span v-if="game.badge" class="hidden sm:inline-block bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow truncate max-w-[90px]">
+                <span v-if="game.isBlackFriday || game.badge === 'BLACK FRIDAY'" class="bg-gradient-to-r from-red-600 via-amber-500 to-red-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border border-amber-300 animate-pulse flex items-center gap-1 shrink-0">
+                  <span>🔥</span>
+                  <span>BLACK FRIDAY</span>
+                </span>
+                <span v-else-if="game.badge" class="hidden sm:inline-block bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow truncate max-w-[90px]">
                   {{ game.badge }}
                 </span>
               </div>

@@ -4595,6 +4595,7 @@ const showEditPlatformModal = ref(false)
 const editPlatformForm = ref({
   key: '',
   name: '',
+  imageUrl: '',
   description: '',
   badge: '',
   deliveryBadge: '',
@@ -4610,6 +4611,7 @@ const openEditPlatformModal = (platKey, platData) => {
   editPlatformForm.value = {
     key: platKey,
     name: platData.name || platKey,
+    imageUrl: platData.imageUrl || platData.image || '',
     description: platData.description || '',
     badge: platData.badge || platData.quality || '4K ULTRA HD • HDR10',
     deliveryBadge: platData.deliveryBadge || platData.deliveryTime || '🟢 10-15m',
@@ -4629,6 +4631,7 @@ const submitUpdatePlatformInfo = () => {
     platformKey: editPlatformForm.value.key,
     data: {
       name: editPlatformForm.value.name.trim(),
+      imageUrl: (editPlatformForm.value.imageUrl || '').trim(),
       description: editPlatformForm.value.description.trim(),
       badge: editPlatformForm.value.badge.trim(),
       deliveryBadge: editPlatformForm.value.deliveryBadge.trim(),
@@ -4696,6 +4699,7 @@ const showAddPlatformModal = ref(false)
 const newPlatformForm = ref({
   key: '',
   name: '',
+  imageUrl: '',
   description: '',
   badge: '4K ULTRA HD • HDR10',
   deliveryBadge: '🟢 10-15m',
@@ -4719,6 +4723,7 @@ const submitAddPlatform = () => {
   const res = adminStore.addPlatform({
     key: newPlatformForm.value.key.trim(),
     name: newPlatformForm.value.name.trim(),
+    imageUrl: (newPlatformForm.value.imageUrl || '').trim(),
     description: newPlatformForm.value.description.trim(),
     badge: newPlatformForm.value.badge.trim() || '4K ULTRA HD • HDR10',
     deliveryBadge: newPlatformForm.value.deliveryBadge.trim() || '🟢 10-15m',
@@ -16217,6 +16222,24 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
           </div>
 
           <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">URL de Imagen / Logo / Flyer (Anti-Baneo Google)</label>
+            <div class="flex gap-2">
+              <input 
+                v-model="editPlatformForm.imageUrl" 
+                type="url" 
+                placeholder="https://ejemplo.com/flyer-streaming.webp" 
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none focus:border-indigo-400 font-mono text-[11px]"
+              >
+              <div v-if="editPlatformForm.imageUrl" class="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 flex items-center justify-center">
+                <img :src="editPlatformForm.imageUrl" alt="Preview" class="w-full h-full object-cover" @error="$event.target.style.display='none'">
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">
+              🔒 La visualización de esta imagen está protegida con <code class="text-indigo-400">data-nosnippet</code> para bloquear la lectura de Googlebot y evitar baneos en merchant/indexación.
+            </p>
+          </div>
+
+          <div>
             <label class="block font-bold uppercase text-slate-400 mb-1">Descripción / Subtítulo Oficial</label>
             <textarea 
               v-model="editPlatformForm.description" 
@@ -16359,6 +16382,22 @@ OFERTAS DESTACADAS HASTA EL DÍA 20/11/2026⚠️
               <label class="block font-bold uppercase text-slate-400 mb-1">Nombre Comercial</label>
               <input v-model="newPlatformForm.name" type="text" placeholder="Crunchyroll Mega Fan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none" required>
             </div>
+          </div>
+
+          <div>
+            <label class="block font-bold uppercase text-slate-400 mb-1">URL de Imagen / Logo / Flyer (Anti-Baneo Google)</label>
+            <div class="flex gap-2">
+              <input 
+                v-model="newPlatformForm.imageUrl" 
+                type="url" 
+                placeholder="https://ejemplo.com/flyer-streaming.webp" 
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white outline-none font-mono text-[11px]"
+              >
+              <div v-if="newPlatformForm.imageUrl" class="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 flex items-center justify-center">
+                <img :src="newPlatformForm.imageUrl" alt="Preview" class="w-full h-full object-cover" @error="$event.target.style.display='none'">
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Protegido con <code class="text-indigo-400">data-nosnippet</code> para bloqueo de Googlebot.</p>
           </div>
 
           <div>

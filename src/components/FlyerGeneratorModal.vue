@@ -636,6 +636,9 @@ const productImageCORS = computed(() => {
   if (customUploadImageUrl.value) {
     return customUploadImageUrl.value
   }
+  if (flyerProductType.value === 'individual' && currentPlatformData.value?.imageUrl) {
+    return getCORSImageUrl(currentPlatformData.value.imageUrl)
+  }
   if (flyerProductType.value === 'physical' && selectedPhysicalProduct.value?.image) {
     return getCORSImageUrl(selectedPhysicalProduct.value.image)
   }
@@ -649,8 +652,8 @@ const effectiveCoverImage = computed(() => {
   if (customUploadImageUrl.value) return customUploadImageUrl.value
   if (flyerProductType.value === 'gaming') return selectedGamingProduct.value?.image || ''
   if (flyerProductType.value === 'physical') return selectedPhysicalProduct.value?.image || ''
-  if (flyerProductType.value === 'combo') return selectedPackage.value?.image || ''
-  if (flyerProductType.value === 'individual') return currentPlatformData.value?.image || currentPlatformData.value?.cover || productImageCORS.value || ''
+  if (flyerProductType.value === 'combo') return selectedPackage.value?.imageUrl || selectedPackage.value?.image || ''
+  if (flyerProductType.value === 'individual') return currentPlatformData.value?.imageUrl || currentPlatformData.value?.image || currentPlatformData.value?.cover || productImageCORS.value || ''
   return productImageCORS.value || ''
 })
 

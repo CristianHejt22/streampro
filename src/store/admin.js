@@ -2735,7 +2735,7 @@ export const useAdminStore = defineStore('admin', {
       return { success: true }
     },
 
-    addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [], warranty = '' }) {
+    addPlatform({ key, name, plans, description = '', badge = '', deliveryBadge = '', highlights = [], warranty = '', imageUrl = '' }) {
       if (this.pricingCatalog[key]) return { error: 'La plataforma ya existe' }
       this.pricingCatalog = {
         ...this.pricingCatalog,
@@ -2746,6 +2746,7 @@ export const useAdminStore = defineStore('admin', {
           deliveryBadge: deliveryBadge || '🟢 10-15m',
           highlights: Array.isArray(highlights) ? highlights : [],
           warranty: warranty || 'Garantía oficial y soporte directo.',
+          imageUrl: imageUrl || '',
           plans: plans || {}
         }
       }

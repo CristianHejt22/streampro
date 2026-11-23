@@ -50,6 +50,22 @@ export const GAMING_PROVIDERS = {
     url: '',
     badge: '📋 Lista TXT',
     tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+  },
+  pixeleros: {
+    id: 'pixeleros',
+    name: 'Pixeleros',
+    shortName: 'Pixeleros',
+    url: 'https://pixeleros.com.ar/',
+    badge: '👾 Pixeleros (Black Friday)',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+  },
+  palegames: {
+    id: 'palegames',
+    name: 'Pale Games',
+    shortName: 'PaleGames',
+    url: 'https://palegames.mitiendanube.com/',
+    badge: '🛍️ Pale Games Tiendanube',
+    tagColor: 'bg-violet-500/20 text-violet-300 border-violet-500/30'
   }
 }
 
@@ -131,6 +147,32 @@ export const DEFAULT_GAMING_PROVIDER_SITES = [
     includeInPvp: true,
     isDefault: true,
     notes: 'Ofertas cargadas desde archivos .txt y listas WhatsApp'
+  },
+  {
+    key: 'pixeleros',
+    name: 'Pixeleros',
+    shortName: 'Pixeleros',
+    badge: '👾 Pixeleros (Black Friday)',
+    url: 'https://pixeleros.com.ar/',
+    whatsapp: '+54 9 11 5060-7080',
+    tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Ofertas activas Black Friday, remates diarios y catálogo digital PS5 / PS4'
+  },
+  {
+    key: 'palegames',
+    name: 'Pale Games',
+    shortName: 'PaleGames',
+    badge: '🛍️ Pale Games Tiendanube',
+    url: 'https://palegames.mitiendanube.com/',
+    whatsapp: '+54 9 11 6070-8090',
+    tagColor: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+    enabled: true,
+    includeInPvp: true,
+    isDefault: true,
+    notes: 'Catálogo MiTiendanube de preventas y videojuegos digitales PS5 / PS4'
   }
 ]
 

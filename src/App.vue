@@ -253,6 +253,14 @@ const handleOpenCart = () => {
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-accent/20 blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
 
+    <!-- Cinta Superior Oficial BLACK FRIDAY StreamePro -->
+    <div v-if="!isRecruitmentArea" class="px-bf-cinta px-bf-viva px-bf-lista" aria-hidden="true" style="--bf-t: 30s;">
+      <div class="px-bf-pista">
+        <span><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i></span>
+        <span><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i></span>
+      </div>
+    </div>
+
     <header v-if="!isRecruitmentArea" class="bg-[#030712]/90 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-30 transition-all shadow-lg shadow-black/20">
       <div class="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
         <!-- Fila Principal: Logo + Status + Acciones / Navegación -->
@@ -931,6 +939,66 @@ const handleOpenCart = () => {
 </template>
 
 <style>
+/* Cinta Animada Superior Black Friday StreamePro */
+.px-bf-cinta {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(90deg, #020617 0%, #061129 35%, #081a3d 50%, #061129 65%, #020617 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 16px rgba(56, 189, 248, 0.18), inset 0 -1px 0 rgba(251, 191, 36, 0.2);
+  padding: 0.35rem 0;
+  user-select: none;
+  z-index: 35;
+}
+
+.px-bf-pista {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: px-bf-slide var(--bf-t, 30s) linear infinite;
+}
+
+.px-bf-pista span {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.px-bf-pista b {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.7), 0 0 22px rgba(99, 102, 241, 0.5);
+  padding: 0 0.85rem;
+}
+
+.px-bf-pista i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24, 0 0 14px rgba(245, 158, 11, 0.85);
+  transform: rotate(45deg);
+  margin: 0 0.45rem;
+  border-radius: 1px;
+}
+
+@keyframes px-bf-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.px-bf-cinta:hover .px-bf-pista {
+  animation-play-state: paused;
+}
+
 /* Scrollbar invisible para pill-bar en móviles */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
