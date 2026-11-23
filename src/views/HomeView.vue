@@ -2675,7 +2675,7 @@ const physicalItemsPerPage = ref(16) // 12, 16, 24, 32, 48, 'all'
 const homeFeaturedCategories = computed(() => {
   const list = []
   if (isStreamingNavVisible.value) {
-    list.push({ id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: '8 Oficiales', path: '/suscripciones', desc: 'Max, Disney+, Prime Video, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' })
+    list.push({ id: 'digital', name: 'Suscripciones 4K', icon: '🎬', count: `${products.value?.length || 8} Oficiales`, path: '/suscripciones', desc: 'Max, Disney+, Prime Video, Spotify y más', badge: 'Entrega 10-15m', badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30' })
   }
   if (isGamingNavVisible.value) {
     list.push({ id: 'gaming', name: 'Juegos PS5/PS4/PS3', icon: '🎮', count: `${(adminStore.totalGamingProductsCount || 15328).toLocaleString('es-AR')} Títulos`, path: '/juegos', desc: 'Cuentas Primarias & Secundarias Oficiales', badge: 'PS Store Oficial', badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' })
@@ -4692,7 +4692,7 @@ const submitOrder = async () => {
             to="/suscripciones" 
             class="px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 font-black text-xs border border-sky-500/40 transition-all flex items-center gap-1.5 shadow-sm group shrink-0 cursor-pointer"
           >
-            <span>Ver todas las suscripciones (8)</span>
+            <span>Ver todas las suscripciones ({{ products.length }})</span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
           </RouterLink>
         </div>

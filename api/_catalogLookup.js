@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { OFFICIAL_COMBOS_CATALOG } from '../src/services/officialCombosData.js'
 
 let cachedGamingList = null
 let cachedPhysicalList = null
@@ -30,7 +31,7 @@ function getPhysicalList() {
 export const STREAMING_PLATFORMS_META = {
   Netflix: {
     name: 'Netflix Premium Ultra HD 4K',
-    minPrice: 7700,
+    minPrice: 8500,
     tag: 'STREAMING 4K HDR',
     accentHex: '#ef4444',
     bgGrad: ['#450a0a', '#090d16'],
@@ -62,7 +63,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Disney+': {
     name: 'Disney+ / Star+ Combo',
-    minPrice: 6500,
+    minPrice: 7200,
     tag: 'DISNEY & ESPN',
     accentHex: '#38bdf8',
     bgGrad: ['#082f49', '#090d16'],
@@ -70,7 +71,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   IPTV: {
     name: 'IPTV MagisTV Pro 1 Mes',
-    minPrice: 6500,
+    minPrice: 5500,
     tag: '+1200 CANALES FHD',
     accentHex: '#a855f7',
     bgGrad: ['#2e1065', '#090d16'],
@@ -78,7 +79,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Prime Video': {
     name: 'Amazon Prime Video 4K',
-    minPrice: 4800,
+    minPrice: 4200,
     tag: 'AMAZON 4K UHD',
     accentHex: '#06b6d4',
     bgGrad: ['#083344', '#090d16'],
@@ -86,7 +87,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'YouTube Premium': {
     name: 'YouTube Premium & Music',
-    minPrice: 4500,
+    minPrice: 4400,
     tag: 'SIN PUBLICIDAD',
     accentHex: '#f43f5e',
     bgGrad: ['#4c0519', '#090d16'],
@@ -94,11 +95,107 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Canva Pro': {
     name: 'Canva Pro Oficial',
-    minPrice: 4900,
+    minPrice: 4500,
     tag: 'DISEÑO PRO',
     accentHex: '#8b5cf6',
     bgGrad: ['#2e1065', '#090d16'],
     description: 'Plantillas ilimitadas, quitafondos con 1 clic y Kit de Marcas a tu correo.'
+  },
+  'Paramount+': {
+    name: 'Paramount+ Plan Estándar',
+    minPrice: 3800,
+    tag: 'FULL HD • PREMIER LEAGUE',
+    accentHex: '#2563eb',
+    bgGrad: ['#172554', '#090d16'],
+    description: 'Premier League en vivo, series exclusivas Showtime y cine de estreno en Full HD.'
+  },
+  'Crunchyroll': {
+    name: 'Crunchyroll Mega Fan',
+    minPrice: 3800,
+    tag: 'MEGA FAN • SIMULCAST ANIME',
+    accentHex: '#f97316',
+    bgGrad: ['#431407', '#090d16'],
+    description: 'Simulcast 1 hora tras Japón, anime en HD/4K sin anuncios y descargas offline.'
+  },
+  'ChatGPT Plus': {
+    name: 'ChatGPT Plus IA (GPT-4o)',
+    minPrice: 6500,
+    tag: 'GPT-4o • CANVAS & SORA',
+    accentHex: '#14b8a6',
+    bgGrad: ['#042f2e', '#090d16'],
+    description: 'Acceso prioritario a GPT-4o, herramientas interactivas Canvas y generación DALL-E.'
+  },
+  'CapCut Pro': {
+    name: 'CapCut Pro Edición Video',
+    minPrice: 3500,
+    tag: 'PRO EDICIÓN • SIN MARCA',
+    accentHex: '#0ea5e9',
+    bgGrad: ['#082f49', '#090d16'],
+    description: 'Efectos Pro, voz IA, filtros premium y exportación en 4K 60fps sin marca de agua.'
+  },
+  'Viki Rakuten': {
+    name: 'Viki Rakuten Pass Standard',
+    minPrice: 3800,
+    tag: 'KDRAMA • PASS STANDARD HD',
+    accentHex: '#06b6d4',
+    bgGrad: ['#083344', '#090d16'],
+    description: 'Los mejores doramas y cine asiático en Full HD sin anuncios y subtítulos en español.'
+  },
+  'ViX': {
+    name: 'ViX Premium Deportes & Novelas',
+    minPrice: 3800,
+    tag: 'VIX PREMIUM • LIGA MX & NOVELAS',
+    accentHex: '#ea580c',
+    bgGrad: ['#431407', '#090d16'],
+    description: 'Partidos en vivo de Liga MX, novelas completas y series en español sin anuncios.'
+  },
+  'DramaBox': {
+    name: 'DramaBox VIP Short Series',
+    minPrice: 3800,
+    tag: 'VIP SHORT DRAMA • DESBLOQUEADO',
+    accentHex: '#d946ef',
+    bgGrad: ['#4a044e', '#090d16'],
+    description: 'Miniseries cortas y dramas virales completos con episodios desbloqueados.'
+  },
+  'Pornhub': {
+    name: 'Pornhub Premium VIP',
+    minPrice: 4000,
+    tag: 'VIP PREMIUM • 4K ULTRA HD',
+    accentHex: '#eab308',
+    bgGrad: ['#422006', '#090d16'],
+    description: 'Contenido Premium exclusivo en 1080p y 4K sin anuncios y con total discreción.'
+  },
+  'Apple TV+': {
+    name: 'Apple TV+ 4K Original',
+    minPrice: 4900,
+    tag: '4K DOLBY VISION • ORIGINALS',
+    accentHex: '#a1a1aa',
+    bgGrad: ['#18181b', '#090d16'],
+    description: 'Cine y series galardonadas Apple Originals en 4K Dolby Vision y audio Atmos.'
+  },
+  'FreeReels': {
+    name: 'FreeReels VIP Drama',
+    minPrice: 3800,
+    tag: 'VIP DRAMA • EPISODIOS LIBRES',
+    accentHex: '#8b5cf6',
+    bgGrad: ['#2e1065', '#090d16'],
+    description: 'Novelas y dramas cortos con todos los episodios desbloqueados sin recargas.'
+  },
+  'NetShort': {
+    name: 'NetShort VIP Mini Series',
+    minPrice: 3800,
+    tag: 'VIP MINI SERIES • HD',
+    accentHex: '#db2777',
+    bgGrad: ['#500724', '#090d16'],
+    description: 'Miniseries románticas y de acción virales completas en Full HD.'
+  },
+  'ReelShort': {
+    name: 'ReelShort VIP Series',
+    minPrice: 3800,
+    tag: 'VIP PASE COMPLETO',
+    accentHex: '#4f46e5',
+    bgGrad: ['#1e1b4b', '#090d16'],
+    description: 'Pase VIP continuo para novelas y series breves sin cortes ni límites.'
   }
 }
 
@@ -128,6 +225,24 @@ export const DEFAULT_PACKAGES_META = {
       { platform: 'Spotify', planLabel: '1 Slot Familiar' }
     ]
   }
+}
+
+// Inicializar automáticamente todos los 32 combos oficiales en DEFAULT_PACKAGES_META
+if (Array.isArray(OFFICIAL_COMBOS_CATALOG)) {
+  OFFICIAL_COMBOS_CATALOG.forEach(c => {
+    if (c && c.id) {
+      DEFAULT_PACKAGES_META[c.id] = {
+        id: c.id,
+        title: c.title,
+        description: c.description || `Combo oficial con ${(c.services || []).map(s => s.platform || s).join(' + ')}.`,
+        badge: c.badge || 'COMBO OFICIAL',
+        originalPrice: c.originalPrice,
+        promoPrice: c.promoPrice,
+        image: c.image || 'https://streamepro.me/flyers/combos/combo-default.jpg',
+        services: c.services || []
+      }
+    }
+  })
 }
 
 export function normalizeImageUrl(rawUrl) {

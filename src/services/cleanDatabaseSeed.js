@@ -236,6 +236,162 @@ export const CLEAN_PRICING_CATALOG = {
         clientPrice: 4500
       }
     }
+  },
+  'Paramount+': {
+    name: 'Paramount+ Plan Estándar',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual (Full HD)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'Crunchyroll': {
+    name: 'Crunchyroll Mega Fan',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Mega Fan (HD / 4K)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'ChatGPT Plus': {
+    name: 'ChatGPT Plus IA',
+    plans: {
+      '1_perfil': {
+        label: '1 Acceso Plus IA (GPT-4o)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 3000,
+        resellerProfit: 3500,
+        clientPrice: 6500
+      }
+    }
+  },
+  'CapCut Pro': {
+    name: 'CapCut Pro Edición Video',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta Pro (1 Mes)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2000,
+        clientPrice: 3500
+      }
+    }
+  },
+  'Viki Rakuten': {
+    name: 'Viki Pass Standard',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Pass Standard HD',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'ViX': {
+    name: 'ViX Premium Deportes & Novelas',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Premium HD',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'DramaBox': {
+    name: 'DramaBox VIP Short Series',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Completa',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'Pornhub': {
+    name: 'Pornhub Premium VIP',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Privada',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2500,
+        clientPrice: 4000
+      }
+    }
+  },
+  'Apple TV+': {
+    name: 'Apple TV+ 4K Original',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual 4K',
+        units: 1,
+        type: 'perfil',
+        providerCost: 2000,
+        resellerProfit: 2900,
+        clientPrice: 4900
+      }
+    }
+  },
+  'FreeReels': {
+    name: 'FreeReels VIP Drama',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Desbloqueada',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'NetShort': {
+    name: 'NetShort VIP Mini Series',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Acceso Total',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
+  },
+  'ReelShort': {
+    name: 'ReelShort VIP Series',
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta Pase VIP',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800
+      }
+    }
   }
 };
 

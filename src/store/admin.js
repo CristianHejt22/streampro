@@ -634,6 +634,399 @@ export const DEFAULT_PLATFORM_PLANS = {
         clientPrice: 4500
       }
     }
+  },
+  'Paramount+': {
+    name: 'Paramount+ Plan Estándar',
+    quality: 'FULL HD 1080P',
+    deliveryTime: '🟢 10-15m',
+    badge: 'FULL HD • PREMIER LEAGUE',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Suscripción oficial a Paramount+ con acceso a Premier League en vivo, series exclusivas y producciones Showtime.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Premier League y deportes en directo',
+      'Perfil individual privado con PIN de 4 dígitos',
+      'Renovación mes a mes en la misma cuenta'
+    ],
+    highlights: [
+      'Premier League y deportes en directo',
+      'Perfil individual privado con PIN de 4 dígitos',
+      'Renovación mes a mes en la misma cuenta'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual (Full HD)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'FULL HD 1080P',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Resolución Full HD 1080p',
+          'PIN Privado de 4 dígitos',
+          'Premier League y eventos en vivo'
+        ]
+      }
+    }
+  },
+  'Crunchyroll': {
+    name: 'Crunchyroll Mega Fan',
+    quality: 'FULL HD • 4K',
+    deliveryTime: '🟢 10-15m',
+    badge: 'MEGA FAN • SIMULCAST ANIME',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Anime simulcast oficial 1 hora después de Japón, sin publicidad y con descargas offline.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Simulcast 1 hora tras emisión en Japón',
+      'Anime sin anuncios en toda la app y doblajes latinos',
+      'Perfil individual con PIN y descargas offline'
+    ],
+    highlights: [
+      'Simulcast 1 hora tras emisión en Japón',
+      'Anime sin anuncios en toda la app y doblajes latinos',
+      'Perfil individual con PIN y descargas offline'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Mega Fan (HD / 4K)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'FULL HD • 4K',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Catálogo completo sin anuncios',
+          'Simulcast 1 hora después de Japón',
+          'Descargas offline en móvil'
+        ]
+      }
+    }
+  },
+  'ChatGPT Plus': {
+    name: 'ChatGPT Plus IA',
+    quality: 'GPT-4o ULTIMATE',
+    deliveryTime: '🟢 10-15m',
+    badge: 'GPT-4o • CANVAS & SORA',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Inteligencia Artificial GPT-4o sin límites con Canvas, generación DALL-E y navegación web avanzada.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Acceso prioritario a GPT-4o y Canvas',
+      'Análisis avanzado de datos y generación DALL-E',
+      'Acceso de alta velocidad garantizado'
+    ],
+    highlights: [
+      'Acceso prioritario a GPT-4o y Canvas',
+      'Análisis avanzado de datos y generación DALL-E',
+      'Acceso de alta velocidad garantizado'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Acceso Plus IA (GPT-4o)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 3000,
+        resellerProfit: 3500,
+        clientPrice: 6500,
+        quality: 'GPT-4o ULTIMATE',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Modelo GPT-4o con velocidad prioritaria',
+          'Canvas interactivo para código y textos',
+          'Generación de imágenes DALL-E 3'
+        ]
+      }
+    }
+  },
+  'CapCut Pro': {
+    name: 'CapCut Pro Edición Video',
+    quality: '4K 60FPS PRO',
+    deliveryTime: '🟢 10-15m',
+    badge: 'PRO EDICIÓN • SIN MARCA',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Edición de video profesional con efectos VIP, voz IA y exportación sin marca de agua.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Exportación 4K 60fps sin marca de agua',
+      'Efectos, plantillas VIP y voz IA ilimitados',
+      'Activación directa y soporte garantizado'
+    ],
+    highlights: [
+      'Exportación 4K 60fps sin marca de agua',
+      'Efectos, plantillas VIP y voz IA ilimitados',
+      'Activación directa y soporte garantizado'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta Pro (1 Mes)',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2000,
+        clientPrice: 3500,
+        quality: '4K 60FPS PRO',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Sin marca de agua en videos',
+          'Todas las funciones y filtros Pro desbloqueados',
+          'Espacio en nube de CapCut incluido'
+        ]
+      }
+    }
+  },
+  'Viki Rakuten': {
+    name: 'Viki Pass Standard',
+    quality: 'FULL HD 1080P',
+    deliveryTime: '🟢 10-15m',
+    badge: 'KDRAMA • PASS STANDARD HD',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Los mejores doramas y dramas asiáticos en Full HD sin anuncios y subtítulos en español.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'K-dramas y cine asiático exclusivo',
+      'Transmisión en Full HD sin publicidad',
+      'Perfil individual privado con PIN'
+    ],
+    highlights: [
+      'K-dramas y cine asiático exclusivo',
+      'Transmisión en Full HD sin publicidad',
+      'Perfil individual privado con PIN'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Pass Standard HD',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'FULL HD 1080P',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Subtítulos oficiales en español',
+          'Sin publicidad durante los episodios',
+          'Acceso a producciones Viki Originals'
+        ]
+      }
+    }
+  },
+  'ViX': {
+    name: 'ViX Premium Deportes & Novelas',
+    quality: 'FULL HD 1080P',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIX PREMIUM • LIGA MX & NOVELAS',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Fútbol en vivo de Liga MX, novelas exclusivas y series en español sin cortes publicitarios.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Partidos en vivo de Liga MX y deportes premium',
+      'Novelas clásicas y estrenos exclusivos sin cortes',
+      'Perfil individual con PIN privado'
+    ],
+    highlights: [
+      'Partidos en vivo de Liga MX y deportes premium',
+      'Novelas clásicas y estrenos exclusivos sin cortes',
+      'Perfil individual con PIN privado'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil Premium HD',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'FULL HD 1080P',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Fútbol en directo y deportes en HD',
+          'Catálogo completo ViX Originales',
+          'PIN privado de 4 dígitos'
+        ]
+      }
+    }
+  },
+  'DramaBox': {
+    name: 'DramaBox VIP Short Series',
+    quality: 'VIP UNLIMITED HD',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIP SHORT DRAMA • DESBLOQUEADO',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Miniseries cortas y dramas virales completos con todos los episodios desbloqueados.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Miniseries cortas y dramas virales completos',
+      'Episodios desbloqueados sin límite de monedas',
+      'Acceso VIP continuo garantizado'
+    ],
+    highlights: [
+      'Miniseries cortas y dramas virales completos',
+      'Episodios desbloqueados sin límite de monedas',
+      'Acceso VIP continuo garantizado'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Completa',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'VIP UNLIMITED HD',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Todos los episodios liberados',
+          'Sin recarga de monedas',
+          'Miniseries virales en HD'
+        ]
+      }
+    }
+  },
+  'Pornhub': {
+    name: 'Pornhub Premium VIP',
+    quality: '4K ULTRA HD • 1080P',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIP PREMIUM • 4K ULTRA HD',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Acceso Premium completo a contenido adulto en 1080p y 4K sin publicidad y con total discreción.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Videos Premium en 1080p y 4K sin anuncios',
+      'Descargas offline y canales exclusivos',
+      'Privacidad y discreción 100% garantizada'
+    ],
+    highlights: [
+      'Videos Premium en 1080p y 4K sin anuncios',
+      'Descargas offline y canales exclusivos',
+      'Privacidad y discreción 100% garantizada'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Privada',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2500,
+        clientPrice: 4000,
+        quality: '4K ULTRA HD • 1080P',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Calidad 1080p y 4K sin publicidad',
+          'Descarga de videos para ver offline',
+          'Cuenta privada discreta'
+        ]
+      }
+    }
+  },
+  'Apple TV+': {
+    name: 'Apple TV+ 4K Original',
+    quality: '4K DOLBY VISION • ATMOS',
+    deliveryTime: '🟢 10-15m',
+    badge: '4K DOLBY VISION • ORIGINALS',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Producciones Apple Originals galardonadas con calidad 4K HDR y audio espacial Dolby Atmos.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: [
+      'Cine y series Apple Originals exclusivas',
+      'Calidad 4K Dolby Vision y audio Dolby Atmos',
+      'Perfil privado individual con PIN'
+    ],
+    highlights: [
+      'Cine y series Apple Originals exclusivas',
+      'Calidad 4K Dolby Vision y audio Dolby Atmos',
+      'Perfil privado individual con PIN'
+    ],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual 4K',
+        units: 1,
+        type: 'perfil',
+        providerCost: 2000,
+        resellerProfit: 2900,
+        clientPrice: 4900,
+        quality: '4K DOLBY VISION',
+        deliveryTime: '🟢 10-15m',
+        features: [
+          'Resolución 4K Dolby Vision',
+          'Audio Dolby Atmos espacial',
+          'Perfil propio con PIN'
+        ]
+      }
+    }
+  },
+  'FreeReels': {
+    name: 'FreeReels VIP Drama',
+    quality: 'VIP FULL HD',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIP DRAMA • EPISODIOS LIBRES',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Acceso VIP a episodios de novelas y dramas cortos sin recargas ni publicidad.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: ['Episodios desbloqueados', 'Sin publicidad', 'Acceso VIP directo'],
+    highlights: ['Episodios desbloqueados', 'Sin publicidad', 'Acceso VIP directo'],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Desbloqueada',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'VIP FULL HD',
+        deliveryTime: '🟢 10-15m'
+      }
+    }
+  },
+  'NetShort': {
+    name: 'NetShort VIP Mini Series',
+    quality: 'VIP FULL HD',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIP MINI SERIES • HD',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Miniseries dramáticas y de romance con temporadas completas desbloqueadas.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: ['Temporadas completas', 'Calidad Full HD', 'Pase VIP total'],
+    highlights: ['Temporadas completas', 'Calidad Full HD', 'Pase VIP total'],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta VIP Acceso Total',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'VIP FULL HD',
+        deliveryTime: '🟢 10-15m'
+      }
+    }
+  },
+  'ReelShort': {
+    name: 'ReelShort VIP Series',
+    quality: 'VIP FULL HD',
+    deliveryTime: '🟢 10-15m',
+    badge: 'VIP PASE COMPLETO',
+    deliveryBadge: '🟢 10-15m',
+    description: 'Pase VIP continuo para las historias y series de ReelShort más populares.',
+    warranty: 'Garantía Oficial StreamePro',
+    features: ['Series virales completas', 'Sin límite de monedas', 'Acceso permanente'],
+    highlights: ['Series virales completas', 'Sin límite de monedas', 'Acceso permanente'],
+    plans: {
+      '1_perfil': {
+        label: '1 Cuenta Pase VIP',
+        units: 1,
+        type: 'perfil',
+        providerCost: 1500,
+        resellerProfit: 2300,
+        clientPrice: 3800,
+        quality: 'VIP FULL HD',
+        deliveryTime: '🟢 10-15m'
+      }
+    }
   }
 }
 
@@ -750,6 +1143,13 @@ function getInitialProviderBankSetup() {
 export function sanitizePricingCatalog(catalog = {}) {
   if (!catalog || typeof catalog !== 'object') return catalog
   const sanitized = { ...catalog }
+
+  // 0. Sincronizar plataformas oficiales de DEFAULT_PLATFORM_PLANS faltantes en el catálogo persistido
+  Object.keys(DEFAULT_PLATFORM_PLANS).forEach(plat => {
+    if (!sanitized[plat]) {
+      sanitized[plat] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS[plat]))
+    }
+  })
 
   // 1. Asegurar contenedor independiente de 'Netflix Perfil Extra'
   if (!sanitized['Netflix Perfil Extra']) {

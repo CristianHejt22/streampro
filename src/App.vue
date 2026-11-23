@@ -223,6 +223,10 @@ const publicPhysicalCount = computed(() => {
   return (adminStore.physicalProducts || []).filter(p => !p.adminOnly && p.categoryId !== 'paginas').length
 })
 
+const activeStreamingCount = computed(() => {
+  return Object.keys(adminStore.pricingCatalog || {}).length || 8
+})
+
 const activePackagesCount = computed(() => {
   return (adminStore.packages || []).filter(p => p.active).length
 })
@@ -492,7 +496,7 @@ const handleOpenCart = () => {
               :class="(['/suscripciones', '/streaming', '/digital'].includes($route.path) || $route.params.section === 'suscripciones') ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'"
             >
               <span>🎬</span>
-              <span>Suscripciones (8)</span>
+              <span>Suscripciones ({{ activeStreamingCount }})</span>
             </RouterLink>
 
             <RouterLink 
