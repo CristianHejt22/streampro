@@ -31,7 +31,7 @@ const openCustomerToolsModal = (tab = 'calculator') => {
   showCustomerToolsModal.value = true
 }
 
-const isToolsHubExpanded = ref(true)
+const isToolsHubExpanded = ref(false)
 const selectedQuickTool = ref('')
 const handleQuickToolSelect = (e) => {
   const val = e.target.value
@@ -1528,6 +1528,7 @@ watch(isAnyModalOpen, (isOpen) => {
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
+  window.removeEventListener('open-black-friday-modal', openBlackFridayModal)
   }
 })
 
@@ -1664,7 +1665,7 @@ const checkAndTriggerGamingPopup = () => {
       data.count += 1
       data.lastShown = Date.now()
       localStorage.setItem(gamingPopupImpressionKey, JSON.stringify(data))
-    }, 7500)
+    }, 4500)
   } catch (_) {}
 }
 
@@ -1684,6 +1685,27 @@ const dismissGamingPopupForToday = () => {
 const handleGamingPopupExplore = () => {
   showGamingAttentionPopup.value = false
   navigateToSection('gaming')
+}
+
+const copyBlackFridayCoupon = () => {
+  try {
+    navigator.clipboard.writeText('BLACKPRO')
+    toast.add('¡Cupón BLACKPRO copiado! Disfrutá hasta 60% OFF en tu orden 🔥', 'success')
+  } catch (_) {
+    toast.add('Cupón de descuento: BLACKPRO', 'info')
+  }
+}
+
+const openBlackFridayModal = () => {
+  showGamingAttentionPopup.value = true
+}
+
+const handleBlackFridayWhatsApp = (itemTitle = '') => {
+  showGamingAttentionPopup.value = false
+  const mention = itemTitle ? ` por *${itemTitle}*` : ' por las ofertas activas'
+  const msg = `¡Hola ${resellerStoreName.value}! Vi la promo oficial de *BLACK FRIDAY* en la web y quiero aprovechar el cupón *BLACKPRO* con hasta 60% OFF${mention} 🎮🍿🔥`
+  const cleanPhone = effectiveDistributorPhone.value.replace(/[^0-9]/g, '') || '5492915658321'
+  window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 const handleGamingPopupWhatsApp = (gameTitle = '') => {
@@ -2091,6 +2113,7 @@ onMounted(() => {
   adminStore.initStoreSettingsSync().catch(() => {})
   applyRouteParams()
   checkAndTriggerGamingPopup()
+  window.addEventListener('open-black-friday-modal', openBlackFridayModal)
 })
 
 watch([() => route.path, () => route.query], () => {
@@ -3932,7 +3955,8 @@ const submitOrder = async () => {
     </div>
 
     <!-- Selector Principal de Sección: Barra Flotante de Categorías (Pill Dock) -->
-    <div id="secciones-catalogo" class="hidden md:flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3 pt-1">
+    <!-- Selector Principal de Sección: Barra Flotante de Categorías (Visible ÚNICAMENTE en la portada home, sin repetir en subpáginas) -->
+    <div v-if="currentPageSection === 'home'" id="secciones-catalogo" class="hidden md:flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3 pt-1">
       <div class="flex items-center gap-1 p-1 bg-slate-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-lg overflow-x-auto no-scrollbar max-w-full">
         <RouterLink 
           :to="getSectionLink('home')"
@@ -4070,6 +4094,47 @@ const submitOrder = async () => {
 
     <!-- ==================== VISTA 1: PÁGINA PRINCIPAL / SELECCIONES DE OFERTAS MÚLTIPLES ==================== -->
     <div v-if="currentPageSection === 'home'" id="pagina-principal-ofertas" class="space-y-12 sm:space-y-16">
+      <!-- 0. BANNER HERO OFICIAL BLACK FRIDAY 2026 STREAMEPRO -->
+      <div 
+        @click="openBlackFridayModal"
+        class="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-gradient-to-r from-[#0c0824] via-[#1a0f3d] to-[#120726] border-2 border-amber-400/40 hover:border-amber-400/80 shadow-[0_0_40px_rgba(245,158,11,0.25)] transition-all cursor-pointer group"
+      >
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700"></div>
+        <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700"></div>
+        
+        <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div class="space-y-2 max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-mono font-black tracking-wider uppercase">
+              <span class="animate-pulse">🔥</span>
+              <span>SEMANA BLACK FRIDAY · HASTA 60% OFF EN VIVO</span>
+            </div>
+            <h3 class="text-xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              Ahorro Extremo en <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-pink-400">Juegos PS5/PS4 y Streaming 4K</span>
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Disfrutá del cupón exclusivo <span class="bg-amber-400/20 text-amber-300 font-mono font-black px-2 py-0.5 rounded border border-amber-400/30">BLACKPRO</span> con licencias 100% oficiales, entrega express 60-90 min y garantía total de reposición.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            <button 
+              type="button" 
+              class="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 hover:from-amber-300 hover:to-pink-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/25 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer w-full sm:w-auto"
+            >
+              <span>🎁</span>
+              <span>Ver Ofertas & Cupón</span>
+            </button>
+            <RouterLink 
+              :to="getSectionLink('juegos')"
+              @click.stop
+              class="px-4 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+            >
+              <span>🎮</span>
+              <span>+15.000 Juegos</span>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
       <!-- 1. Teaser Curado de Rubros Destacados -->
       <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-white/[0.08] shadow-xl space-y-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -9488,79 +9553,105 @@ const submitOrder = async () => {
       @close="showSharePlaqueModal = false" 
     />
 
-    <!-- POPUP INTERACTIVO GAMING PARA CLIENTES (1 O 2 AL DÍA) -->
+    <!-- POPUP INTERACTIVO OFICIAL BLACK FRIDAY 2026 STREAMEPRO -->
     <div 
       v-if="showGamingAttentionPopup && isGamingNavVisible" 
-      class="fixed inset-0 z-[88] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
+      class="fixed inset-0 z-[88] flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
     >
-      <div class="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-indigo-950/60 to-slate-950 border border-indigo-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_0_60px_rgba(99,102,241,0.35)] overflow-hidden my-auto text-white space-y-4">
+      <div class="relative w-full max-w-lg bg-gradient-to-b from-[#0e0a24] via-[#150e33] to-[#0a071a] border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_0_80px_rgba(245,158,11,0.3)] overflow-hidden my-auto text-white space-y-4">
         
-        <!-- Efecto de resplandor decorativo de fondo -->
-        <div class="absolute -top-24 -right-24 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-24 -left-24 w-56 h-56 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Efectos de resplandor decorativo de fondo -->
+        <div class="absolute -top-24 -right-24 w-60 h-60 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-60 h-60 bg-fuchsia-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
         <!-- Botón cerrar X -->
         <button 
           @click="showGamingAttentionPopup = false" 
           type="button" 
-          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition cursor-pointer z-10"
-          title="Cerrar cartel"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition cursor-pointer z-10 border border-white/10"
+          title="Cerrar cartel de ofertas"
         >
           ✕
         </button>
 
-        <!-- Cabecera llamativa tipo cartel gamer -->
+        <!-- Cabecera llamativa Black Friday -->
         <div class="space-y-2 pr-8">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-[10px] font-mono font-black tracking-wider uppercase shadow animate-pulse">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-black tracking-wider uppercase shadow animate-pulse">
             <span>🔥</span>
-            <span>Atención Gamer · Entrega 60/90 min</span>
+            <span>SEMANA BLACK FRIDAY · HASTA 60% OFF EN VIVO</span>
           </div>
 
-          <h3 class="text-lg sm:text-2xl font-black text-white leading-tight tracking-tight">
-            ¿Buscás Juegos para <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-300 to-pink-400">PS5 o PS4</span>?
+          <h3 class="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
+            ¡Aprovechá Precios de <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-pink-400">Black Friday</span> en StreamePro!
           </h3>
           <p class="text-xs text-slate-300 leading-relaxed">
-            ¡Activá tus títulos favoritos hoy mismo con <strong class="text-white">licencias digitales 100% originales</strong>, garantía oficial y asistencia paso a paso!
+            Activá tus títulos favoritos de <strong class="text-white">PS5 y PS4</strong>, Combos Streaming 4K y saldo digital con garantía oficial y entrega express en 60-90 minutos.
           </p>
         </div>
 
-        <!-- Fila de Beneficios Rápidos -->
+        <!-- Card de Cupón de Descuento Exclusivo -->
+        <div class="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-purple-500/15 border border-amber-400/40 flex items-center justify-between gap-3 shadow-inner">
+          <div class="space-y-0.5">
+            <span class="text-[9px] font-mono uppercase tracking-wider text-amber-300 font-bold block">
+              🏷️ Cupón Exclusivo de Descuento
+            </span>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-lg sm:text-xl font-black text-amber-200 tracking-wider bg-black/40 px-2.5 py-0.5 rounded border border-amber-400/30">
+                BLACKPRO
+              </span>
+              <span class="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-400/30">
+                Hasta 60% OFF
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="copyBlackFridayCoupon"
+            class="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer shadow-md flex items-center gap-1.5 shrink-0"
+            title="Copiar cupón de descuento"
+          >
+            <span>📋</span>
+            <span>Copiar</span>
+          </button>
+        </div>
+
+        <!-- Fila de 4 Beneficios de Confianza -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono text-center">
-          <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/20 text-indigo-200">
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-amber-500/25 text-amber-200">
             <span class="block text-sm mb-0.5">⚡</span>
             <span class="font-bold block">60/90 Min</span>
-            <span class="text-[9px] text-slate-400">Entrega rápida</span>
+            <span class="text-[9px] text-slate-400">Entrega express</span>
           </div>
-          <div class="p-2 rounded-xl bg-slate-900/90 border border-emerald-500/20 text-emerald-200">
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-emerald-500/25 text-emerald-200">
             <span class="block text-sm mb-0.5">🛡️</span>
             <span class="font-bold block">Garantía</span>
             <span class="text-[9px] text-slate-400">100% Oficial</span>
           </div>
-          <div class="p-2 rounded-xl bg-slate-900/90 border border-amber-500/20 text-amber-200">
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/25 text-indigo-200">
             <span class="block text-sm mb-0.5">🎮</span>
-            <span class="font-bold block">Primarias</span>
-            <span class="text-[9px] text-slate-400">&amp; Secundarias</span>
+            <span class="font-bold block">+15.400</span>
+            <span class="text-[9px] text-slate-400">Juegos PS5/PS4</span>
           </div>
-          <div class="p-2 rounded-xl bg-slate-900/90 border border-sky-500/20 text-sky-200">
+          <div class="p-2 rounded-xl bg-slate-900/90 border border-pink-500/25 text-pink-200">
             <span class="block text-sm mb-0.5">💬</span>
             <span class="font-bold block">Asesoría</span>
             <span class="text-[9px] text-slate-400">WhatsApp 24/7</span>
           </div>
         </div>
 
-        <!-- Muestra interactiva de 3 juegos destacados -->
+        <!-- Muestra interactiva de 3 juegos destacados con oferta Black Friday -->
         <div class="space-y-1.5">
           <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
-            <span>🔥 Títulos Más Solicitados de la Semana:</span>
-            <span class="text-sky-400 font-mono text-[10px]">Stock Disponible</span>
+            <span>🔥 Títulos Más Pedidos de Black Friday:</span>
+            <span class="text-amber-400 font-mono text-[10px]">Stock Inmediato</span>
           </div>
           <div class="grid grid-cols-3 gap-2">
             <div 
               v-for="(game, idx) in popupFeaturedGames" 
               :key="idx"
-              @click="handleGamingPopupWhatsApp(game.title)"
-              class="group relative bg-slate-950/90 border border-slate-800 hover:border-indigo-400/60 rounded-2xl p-2 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-[1.02] shadow"
-              :title="`Consultar ${game.title} por WhatsApp`"
+              @click="handleBlackFridayWhatsApp(game.title)"
+              class="group relative bg-slate-950/90 border border-amber-500/20 hover:border-amber-400/70 rounded-2xl p-2 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-[1.02] shadow"
+              :title="`Pedir ${game.title} con cupón BLACKPRO`"
             >
               <div class="w-full aspect-[3/4] rounded-xl overflow-hidden bg-slate-900 mb-1.5 relative">
                 <img 
@@ -9571,15 +9662,18 @@ const submitOrder = async () => {
                   loading="lazy"
                 >
                 <div v-else class="w-full h-full flex items-center justify-center text-xl bg-indigo-950/50">🎮</div>
-                <span class="absolute top-1 left-1 text-[7px] font-mono font-black px-1 rounded bg-black/70 text-indigo-300 border border-indigo-500/30">
+                <span class="absolute top-1 left-1 text-[7px] font-mono font-black px-1 rounded bg-black/80 text-amber-300 border border-amber-500/30">
                   {{ game.platform || 'PS5/PS4' }}
                 </span>
+                <span class="absolute bottom-1 right-1 text-[6.5px] font-mono font-black px-1 rounded bg-amber-500 text-slate-950">
+                  BLACK FRIDAY
+                </span>
               </div>
-              <span class="text-[10px] font-black text-white line-clamp-1 group-hover:text-indigo-300 transition-colors">
+              <span class="text-[10px] font-black text-white line-clamp-1 group-hover:text-amber-300 transition-colors">
                 {{ game.title }}
               </span>
               <span class="text-[9px] text-emerald-400 font-mono font-bold mt-0.5">
-                Consultar 💬
+                Pedir Oferta 💬
               </span>
             </div>
           </div>
@@ -9588,24 +9682,24 @@ const submitOrder = async () => {
         <!-- Botonera de Acción Principal -->
         <div class="space-y-2 pt-1">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <!-- Botón 1: Explorar Catálogo Gamer -->
+            <!-- Botón 1: Explorar Catálogo Gamer con Descuento -->
             <button 
               type="button" 
               @click="handleGamingPopupExplore"
-              class="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/30 transition active:scale-95 cursor-pointer"
+              class="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 hover:from-amber-300 hover:to-pink-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 transition active:scale-95 cursor-pointer"
             >
-              <span>🎮</span>
-              <span>Ver Catálogo de Juegos</span>
+              <span>🔥</span>
+              <span>Ver Catálogo Black Friday</span>
             </button>
 
-            <!-- Botón 2: Pedir por WhatsApp Directo -->
+            <!-- Botón 2: Pedir por WhatsApp Directo con Cupón -->
             <button 
               type="button" 
-              @click="handleGamingPopupWhatsApp('')"
+              @click="handleBlackFridayWhatsApp('')"
               class="w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/30 transition active:scale-95 cursor-pointer"
             >
               <span>💬</span>
-              <span>Pedir Juego por WhatsApp</span>
+              <span>Pedir con Cupón WhatsApp</span>
             </button>
           </div>
 

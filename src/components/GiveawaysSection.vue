@@ -223,13 +223,17 @@ const submitDiscountApplication = () => {
         </div>
 
         <div class="flex flex-wrap gap-2.5 shrink-0">
+          <!-- Botón Sorteador en Vivo (SOLO ADMINISTRADOR) -->
           <button
+            v-if="adminStore.isAuthenticated"
             type="button"
             @click="showLiveDrawModal = true"
             class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5"
+            title="Herramienta de sorteo en vivo exclusiva para administradores"
           >
             <span>🎰</span>
             <span>Sorteador en Vivo (6 Dígitos)</span>
+            <span class="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-fuchsia-200 border border-fuchsia-300/30">ADMIN</span>
           </button>
           <button
             type="button"

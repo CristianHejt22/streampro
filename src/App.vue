@@ -254,10 +254,17 @@ const handleOpenCart = () => {
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
 
     <!-- Cinta Superior Oficial BLACK FRIDAY StreamePro -->
-    <div v-if="!isRecruitmentArea" class="px-bf-cinta px-bf-viva px-bf-lista" aria-hidden="true" style="--bf-t: 30s;">
+    <!-- Cinta Superior Oficial BLACK FRIDAY StreamePro (Interactiva con Apertura de Ofertas) -->
+    <div 
+      v-if="!isRecruitmentArea" 
+      class="px-bf-cinta px-bf-viva px-bf-lista cursor-pointer select-none group" 
+      style="--bf-t: 26s;"
+      @click="triggerBlackFridayPopup"
+      title="🔥 ¡Hacé clic para ver el catálogo y cupón BLACKPRO con hasta 60% OFF!"
+    >
       <div class="px-bf-pista">
-        <span><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i></span>
-        <span><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i><b>BLACK FRIDAY</b><i></i></span>
+        <span><b>🔥 BLACK FRIDAY HASTA 60% OFF</b><i></i><b>CUPÓN BLACKPRO</b><i></i><b>JUEGOS PS5/PS4</b><i></i><b>STREAMING 4K</b><i></i><b>ENTREGA 60-90 MIN</b><i></i><b>GARANTÍA TOTAL</b><i></i><b>STREAMEPRO OFICIAL</b><i></i></span>
+        <span><b>🔥 BLACK FRIDAY HASTA 60% OFF</b><i></i><b>CUPÓN BLACKPRO</b><i></i><b>JUEGOS PS5/PS4</b><i></i><b>STREAMING 4K</b><i></i><b>ENTREGA 60-90 MIN</b><i></i><b>GARANTÍA TOTAL</b><i></i><b>STREAMEPRO OFICIAL</b><i></i></span>
       </div>
     </div>
 
