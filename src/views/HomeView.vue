@@ -6165,7 +6165,7 @@ const submitOrder = async () => {
               </span>
             </div>
             <p class="text-[11px] sm:text-xs text-slate-300 mt-1 max-w-xl">
-              Aprovechá precios especiales en licencias 100% originales para PS5, PS4 y PS3 con hasta 80% OFF y entrega al instante.
+              Aprovechá precios especiales en licencias 100% originales para PS5, PS4 y PS3 con hasta 80% OFF y entrega garantizada en 60-90 min.
             </p>
           </div>
         </div>
@@ -6496,10 +6496,10 @@ const submitOrder = async () => {
 
               <!-- Badges Superiores Izquierdos: OFERTA + HOT -->
               <div class="absolute top-2 left-2 flex items-center gap-1 z-[3]">
-                <span class="bg-red-600 text-white font-black text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider shadow">
+                <span class="bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider shadow-md shadow-red-950/70 border border-red-400/30">
                   OFERTA
                 </span>
-                <span class="bg-black/85 text-white font-bold text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider border border-white/10 shadow">
+                <span class="bg-black/95 text-amber-300 font-black text-[8px] sm:text-[9.5px] px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider border border-amber-400/40 shadow-md">
                   HOT
                 </span>
               </div>
@@ -6509,7 +6509,7 @@ const submitOrder = async () => {
                 type="button"
                 @click.stop="toggleGamingFavorite(game.id)"
                 :class="[
-                  'absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border backdrop-blur-md shadow transition cursor-pointer active:scale-90 z-[3]',
+                  'absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border backdrop-blur-md shadow-md transition-all cursor-pointer active:scale-90 z-[3] hover:scale-110',
                   isGamingFavorite(game.id)
                     ? 'bg-rose-500/90 border-rose-300 text-white'
                     : 'bg-black/65 border-white/20 text-slate-300 hover:text-rose-300'
@@ -6520,8 +6520,8 @@ const submitOrder = async () => {
               </button>
 
               <!-- Sticker Inferior Izquierdo BLACK -XX% -->
-              <div class="absolute bottom-2 left-2 z-[3] bg-red-600 text-white rounded px-1.5 py-0.5 flex flex-col items-center leading-none shadow-md shadow-red-950/50">
-                <span class="text-[7px] font-mono font-black tracking-widest text-white uppercase">BLACK</span>
+              <div class="absolute bottom-2 left-2 z-[3] bg-gradient-to-b from-red-600 to-rose-700 text-white rounded-md px-1.5 sm:px-2 py-0.5 flex flex-col items-center leading-none shadow-xl shadow-black/80 border border-white/20 select-none">
+                <span class="text-[7px] font-mono font-black tracking-widest text-white/90 uppercase">BLACK</span>
                 <span class="text-[10px] sm:text-xs font-mono font-black text-white">
                   -{{ game.offerPct || (game.isBlackFriday ? 60 : 50) }}%
                 </span>
@@ -6531,18 +6531,19 @@ const submitOrder = async () => {
               <button
                 type="button"
                 @click.stop="addGameToCartFromCard(game)"
-                class="absolute bottom-2 right-2 z-[3] w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center font-black text-sm sm:text-base shadow-lg transition active:scale-90 cursor-pointer"
-                title="Agregar al carrito"
+                class="absolute bottom-2 right-2 z-[3] w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 hover:from-amber-300 hover:to-yellow-100 text-slate-950 flex items-center justify-center font-black text-sm sm:text-base shadow-xl shadow-amber-950/80 border border-amber-300/80 transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer group/cartbtn"
+                :title="`Agregar ${game.title} al carrito (${getGameSelectedLicense(game.id) === 'primary' ? 'Primaria' : 'Secundaria'})`"
               >
-                🛒
+                <span class="group-hover/cartbtn:scale-110 transition-transform">🛒</span>
               </button>
             </div>
 
             <!-- Contenido de la Tarjeta Pixeleros Style -->
             <div class="p-2.5 sm:p-3.5 space-y-2">
               <!-- Plataforma: PS4 · PS5 -->
-              <div class="text-[10px] sm:text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-                {{ game.platform || 'PS4 · PS5' }}
+              <div class="flex items-center gap-1.5 text-[9.5px] sm:text-[10.5px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                <span class="px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-[9px] sm:text-[10px]">🎮 {{ game.platform || 'PS4 · PS5' }}</span>
+                <span v-if="game.isBlackFriday || game.badge?.includes('BLACK')" class="px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[8.5px] font-black">BLACK WEEK</span>
               </div>
 
               <!-- Título del Juego -->
@@ -6552,20 +6553,24 @@ const submitOrder = async () => {
                 </h4>
               </div>
 
-              <!-- Tabla de Precios Pixeleros Style (PRIMARIA / SECUNDARIA con tachados) -->
+              <!-- Tabla de Precios Pixeleros Style (PRIMARIA / SECUNDARIA con tachados e indicador de selección) -->
               <div class="space-y-1 pt-1" @click.stop>
                 <!-- Fila PRIMARIA -->
                 <div 
                   @click="setGameLicense(game.id, 'primary')"
                   :class="[
-                    'flex items-center justify-between p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer',
+                    'flex items-center justify-between p-1 sm:p-1.5 rounded-xl border transition-all cursor-pointer',
                     getGameSelectedLicense(game.id) === 'primary' 
-                      ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
-                      : 'bg-black/30 border-white/5 hover:border-white/10'
+                      ? 'bg-amber-500/15 border-amber-400/60 shadow-md shadow-amber-950/30 ring-1 ring-amber-400/40' 
+                      : 'bg-black/35 border-white/5 hover:border-white/15 hover:bg-white/[0.03]'
                   ]"
+                  title="Elegir modalidad Cuenta Primaria"
                 >
-                  <span class="text-[8.5px] sm:text-[11px] font-mono font-bold text-slate-400">PRIMARIA</span>
-                  <div class="flex items-center gap-1 font-mono">
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="getGameSelectedLicense(game.id) === 'primary' ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'"></span>
+                    <span :class="getGameSelectedLicense(game.id) === 'primary' ? 'text-amber-300 font-black' : 'text-slate-400 font-bold'" class="text-[8.5px] sm:text-[10.5px] font-mono tracking-tight truncate">PRIMARIA</span>
+                  </div>
+                  <div class="flex items-center gap-1 font-mono shrink-0">
                     <span class="text-[8.5px] sm:text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'primary') }}</span>
                     <span class="text-[11px] sm:text-sm font-black text-amber-300">${{ Number(game.effectivePrimaryPrice || game.baseCostPrimary || 0).toLocaleString('es-AR') }}</span>
                   </div>
@@ -6575,14 +6580,18 @@ const submitOrder = async () => {
                 <div 
                   @click="setGameLicense(game.id, 'secondary')"
                   :class="[
-                    'flex items-center justify-between p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer',
+                    'flex items-center justify-between p-1 sm:p-1.5 rounded-xl border transition-all cursor-pointer',
                     getGameSelectedLicense(game.id) === 'secondary' 
-                      ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
-                      : 'bg-black/30 border-white/5 hover:border-white/10'
+                      ? 'bg-amber-500/15 border-amber-400/60 shadow-md shadow-amber-950/30 ring-1 ring-amber-400/40' 
+                      : 'bg-black/35 border-white/5 hover:border-white/15 hover:bg-white/[0.03]'
                   ]"
+                  title="Elegir modalidad Cuenta Secundaria (Ahorro)"
                 >
-                  <span class="text-[8.5px] sm:text-[11px] font-mono font-bold text-slate-400">SECUNDARIA</span>
-                  <div class="flex items-center gap-1 font-mono">
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="getGameSelectedLicense(game.id) === 'secondary' ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'"></span>
+                    <span :class="getGameSelectedLicense(game.id) === 'secondary' ? 'text-amber-300 font-black' : 'text-slate-400 font-bold'" class="text-[8.5px] sm:text-[10.5px] font-mono tracking-tight truncate">SECUNDARIA</span>
+                  </div>
+                  <div class="flex items-center gap-1 font-mono shrink-0">
                     <span class="text-[8.5px] sm:text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'secondary') }}</span>
                     <span class="text-[11px] sm:text-sm font-black text-amber-300">${{ Number(game.effectiveSecondaryPrice || game.baseCostSecondary || 0).toLocaleString('es-AR') }}</span>
                   </div>
@@ -6597,9 +6606,9 @@ const submitOrder = async () => {
 
               <!-- Entrega al instante & Fecha Límite -->
               <div class="flex items-center justify-between pt-1.5 border-t border-white/5 text-[9.5px] sm:text-[10px]">
-                <div class="inline-flex items-center gap-1.5 bg-emerald-950/50 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-medium">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>Entrega al instante</span>
+                <div class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/35 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-black shadow-sm">
+                  <span>⚡</span>
+                  <span>60-90 min</span>
                 </div>
                 <div class="text-zinc-400 text-[9.5px] sm:text-[10px] font-mono font-medium">
                   Termina el 01/12
@@ -6614,8 +6623,8 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="buyGamingViaWhatsApp(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
-                title="Comprar directo por WhatsApp"
+                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-emerald-950/60 border border-emerald-400/40 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                title="Comprar directo por WhatsApp con la modalidad elegida"
               >
                 <span>💬</span>
                 <span>Pedir</span>
@@ -6623,7 +6632,7 @@ const submitOrder = async () => {
               <button 
                 type="button" 
                 @click.stop="addGameToCartFromCard(game)"
-                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
+                class="min-h-[34px] sm:min-h-[36px] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-1.5 px-2 rounded-xl transition-all shadow-md shadow-amber-950/60 border border-amber-300/50 flex items-center justify-center gap-1 text-[11px] sm:text-xs cursor-pointer active:scale-95 touch-manipulation select-none"
                 title="Agregar al carrito de compras"
               >
                 <span class="text-xs">🛒</span>
@@ -6634,7 +6643,7 @@ const submitOrder = async () => {
               <button 
                 type="button"
                 @click.stop="shareGamingViaWhatsApp(game)"
-                class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border border-white/10 hover:border-white/20 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Compartir juego por WhatsApp"
               >
                 <span>📤</span> Compartir
@@ -6642,7 +6651,7 @@ const submitOrder = async () => {
               <button 
                 type="button"
                 @click.stop="openGamingDetail(game)"
-                class="bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/20 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                class="bg-slate-900/90 hover:bg-sky-950/60 text-sky-300 hover:text-sky-200 border border-sky-500/30 hover:border-sky-400/50 font-bold py-1 px-1.5 rounded-lg text-[10px] transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                 title="Ver ficha completa y características"
               >
                 <span>ℹ️</span> +Info
