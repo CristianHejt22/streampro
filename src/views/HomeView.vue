@@ -6558,16 +6558,16 @@ const submitOrder = async () => {
                 <div 
                   @click="setGameLicense(game.id, 'primary')"
                   :class="[
-                    'flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer',
+                    'flex items-center justify-between p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer',
                     getGameSelectedLicense(game.id) === 'primary' 
                       ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
                       : 'bg-black/30 border-white/5 hover:border-white/10'
                   ]"
                 >
-                  <span class="text-[10px] sm:text-[11px] font-mono font-bold text-slate-400">PRIMARIA</span>
-                  <div class="flex items-center gap-1.5 font-mono">
-                    <span class="text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'primary') }}</span>
-                    <span class="text-xs sm:text-sm font-black text-amber-300">${{ Number(game.effectivePrimaryPrice || game.baseCostPrimary || 0).toLocaleString('es-AR') }}</span>
+                  <span class="text-[8.5px] sm:text-[11px] font-mono font-bold text-slate-400">PRIMARIA</span>
+                  <div class="flex items-center gap-1 font-mono">
+                    <span class="text-[8.5px] sm:text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'primary') }}</span>
+                    <span class="text-[11px] sm:text-sm font-black text-amber-300">${{ Number(game.effectivePrimaryPrice || game.baseCostPrimary || 0).toLocaleString('es-AR') }}</span>
                   </div>
                 </div>
 
@@ -6575,16 +6575,16 @@ const submitOrder = async () => {
                 <div 
                   @click="setGameLicense(game.id, 'secondary')"
                   :class="[
-                    'flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer',
+                    'flex items-center justify-between p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer',
                     getGameSelectedLicense(game.id) === 'secondary' 
                       ? 'bg-amber-500/10 border-amber-400/50 shadow-inner' 
                       : 'bg-black/30 border-white/5 hover:border-white/10'
                   ]"
                 >
-                  <span class="text-[10px] sm:text-[11px] font-mono font-bold text-slate-400">SECUNDARIA</span>
-                  <div class="flex items-center gap-1.5 font-mono">
-                    <span class="text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'secondary') }}</span>
-                    <span class="text-xs sm:text-sm font-black text-amber-300">${{ Number(game.effectiveSecondaryPrice || game.baseCostSecondary || 0).toLocaleString('es-AR') }}</span>
+                  <span class="text-[8.5px] sm:text-[11px] font-mono font-bold text-slate-400">SECUNDARIA</span>
+                  <div class="flex items-center gap-1 font-mono">
+                    <span class="text-[8.5px] sm:text-[10px] line-through text-slate-500">${{ getGameOriginalStrikethroughPrice(game, 'secondary') }}</span>
+                    <span class="text-[11px] sm:text-sm font-black text-amber-300">${{ Number(game.effectiveSecondaryPrice || game.baseCostSecondary || 0).toLocaleString('es-AR') }}</span>
                   </div>
                 </div>
               </div>
