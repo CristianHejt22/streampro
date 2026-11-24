@@ -16,8 +16,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 4300,
-        resellerProfit: 4200,
-        clientPrice: 8500
+        resellerProfit: 3400,
+        clientPrice: 7700
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -140,8 +140,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 5200,
-        clientPrice: 7200
+        resellerProfit: 4500,
+        clientPrice: 6500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -169,8 +169,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'dispositivo',
         providerCost: 2000,
-        resellerProfit: 3500,
-        clientPrice: 5500
+        resellerProfit: 4500,
+        clientPrice: 6500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -198,8 +198,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 2700,
-        clientPrice: 4200
+        resellerProfit: 3300,
+        clientPrice: 4800
       },
       '3_dispositivos': {
         label: '3 Pantallas Simultáneas',
@@ -219,8 +219,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 2900,
-        clientPrice: 4400
+        resellerProfit: 3000,
+        clientPrice: 4500
       }
     }
   },
@@ -232,8 +232,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 2500,
-        clientPrice: 4500
+        resellerProfit: 2900,
+        clientPrice: 4900
       }
     }
   },

@@ -375,8 +375,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 4300,
-        resellerProfit: 4200,
-        clientPrice: 8500,
+        resellerProfit: 3400,
+        clientPrice: 7700,
         quality: '4K ULTRA HD • HDR10',
         deliveryTime: '🟢 10-15m',
         features: [
@@ -538,8 +538,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 5200,
-        clientPrice: 7200
+        resellerProfit: 4500,
+        clientPrice: 6500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -567,8 +567,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'dispositivo',
         providerCost: 2000,
-        resellerProfit: 3500,
-        clientPrice: 5500
+        resellerProfit: 4500,
+        clientPrice: 6500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -596,8 +596,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 2700,
-        clientPrice: 4200
+        resellerProfit: 3300,
+        clientPrice: 4800
       },
       '3_dispositivos': {
         label: '3 Pantallas Simultáneas',
@@ -617,8 +617,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 2900,
-        clientPrice: 4400
+        resellerProfit: 3000,
+        clientPrice: 4500
       }
     }
   },
@@ -630,8 +630,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 2500,
-        clientPrice: 4500
+        resellerProfit: 2900,
+        clientPrice: 4900
       }
     }
   },
@@ -1159,13 +1159,13 @@ export function sanitizePricingCatalog(catalog = {}) {
     delete sanitized.Netflix.plans.perfil_extra
   }
 
-  // 2. Migrar ÚNICAMENTE precios por defecto obsoletos (ej. 7700 -> 8500, 6300 -> 7200) si NO fueron editados por el admin
+  // 2. Preservar precios oficiales anteriores de suscripciones para 1 perfil / pantalla
   if (sanitized.Netflix?.plans?.['1_perfil']) {
     const p = sanitized.Netflix.plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 7700 || !p.clientPrice)) {
-      p.clientPrice = 8500
+    if (!p.isCustomPrice && (p.clientPrice === 8500 || !p.clientPrice)) {
+      p.clientPrice = 7700
       p.providerCost = 4300
-      p.resellerProfit = 4200
+      p.resellerProfit = 3400
       p.label = p.label || '1 Perfil Ultra HD 4K (1 Dispositivo)'
     }
   }
@@ -1182,21 +1182,51 @@ export function sanitizePricingCatalog(catalog = {}) {
 
   if (sanitized['Disney+']?.plans?.['1_perfil']) {
     const p = sanitized['Disney+'].plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 6300 || !p.clientPrice)) {
-      p.clientPrice = 7200
+    if (!p.isCustomPrice && (p.clientPrice === 7200 || p.clientPrice === 6300 || !p.clientPrice)) {
+      p.clientPrice = 6500
       p.providerCost = 2000
-      p.resellerProfit = 5200
+      p.resellerProfit = 4500
       p.label = p.label || '1 Perfil individual (Premium con ESPN)'
     }
   }
 
   if (sanitized['Prime Video']?.plans?.['1_perfil']) {
     const p = sanitized['Prime Video'].plans['1_perfil']
-    if (!p.isCustomPrice && (!p.clientPrice || p.providerCost === 2800)) {
-      p.clientPrice = p.clientPrice || 4200
+    if (!p.isCustomPrice && (p.clientPrice === 4200 || !p.clientPrice || p.providerCost === 2800)) {
+      p.clientPrice = 4800
       p.providerCost = 1500
-      p.resellerProfit = 2700
+      p.resellerProfit = 3300
       p.label = p.label || '1 Perfil 4K (1 Pantalla HD)'
+    }
+  }
+
+  if (sanitized.IPTV?.plans?.['1_perfil']) {
+    const p = sanitized.IPTV.plans['1_perfil']
+    if (!p.isCustomPrice && (p.clientPrice === 5500 || !p.clientPrice)) {
+      p.clientPrice = 6500
+      p.providerCost = 2000
+      p.resellerProfit = 4500
+      p.label = p.label || '1 Dispositivo / Pantalla'
+    }
+  }
+
+  if (sanitized['YouTube Premium']?.plans?.['1_perfil']) {
+    const p = sanitized['YouTube Premium'].plans['1_perfil']
+    if (!p.isCustomPrice && (p.clientPrice === 4400 || !p.clientPrice)) {
+      p.clientPrice = 4500
+      p.providerCost = 1500
+      p.resellerProfit = 3000
+      p.label = p.label || '1 Slot Familiar Individual'
+    }
+  }
+
+  if (sanitized['Canva Pro']?.plans?.['1_perfil']) {
+    const p = sanitized['Canva Pro'].plans['1_perfil']
+    if (!p.isCustomPrice && (p.clientPrice === 4500 || !p.clientPrice)) {
+      p.clientPrice = 4900
+      p.providerCost = 2000
+      p.resellerProfit = 2900
+      p.label = p.label || 'Activación a tu Correo Personal (1 Año)'
     }
   }
 

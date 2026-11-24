@@ -31,7 +31,7 @@ function getPhysicalList() {
 export const STREAMING_PLATFORMS_META = {
   Netflix: {
     name: 'Netflix Premium Ultra HD 4K',
-    minPrice: 8500,
+    minPrice: 7700,
     tag: 'STREAMING 4K HDR',
     accentHex: '#ef4444',
     bgGrad: ['#450a0a', '#090d16'],
@@ -63,7 +63,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Disney+': {
     name: 'Disney+ / Star+ Combo',
-    minPrice: 7200,
+    minPrice: 6500,
     tag: 'DISNEY & ESPN',
     accentHex: '#38bdf8',
     bgGrad: ['#082f49', '#090d16'],
@@ -71,7 +71,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   IPTV: {
     name: 'IPTV MagisTV Pro 1 Mes',
-    minPrice: 5500,
+    minPrice: 6500,
     tag: '+1200 CANALES FHD',
     accentHex: '#a855f7',
     bgGrad: ['#2e1065', '#090d16'],
@@ -79,7 +79,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Prime Video': {
     name: 'Amazon Prime Video 4K',
-    minPrice: 4200,
+    minPrice: 4800,
     tag: 'AMAZON 4K UHD',
     accentHex: '#06b6d4',
     bgGrad: ['#083344', '#090d16'],
@@ -87,7 +87,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'YouTube Premium': {
     name: 'YouTube Premium & Music',
-    minPrice: 4400,
+    minPrice: 4500,
     tag: 'SIN PUBLICIDAD',
     accentHex: '#f43f5e',
     bgGrad: ['#4c0519', '#090d16'],
@@ -95,7 +95,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Canva Pro': {
     name: 'Canva Pro Oficial',
-    minPrice: 4500,
+    minPrice: 4900,
     tag: 'DISEÑO PRO',
     accentHex: '#8b5cf6',
     bgGrad: ['#2e1065', '#090d16'],
