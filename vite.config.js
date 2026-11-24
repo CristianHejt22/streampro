@@ -16,10 +16,19 @@ function devApiPlugin() {
 
         if (url === '/api/sync-gaming') {
           try {
-            const { scrapeAndSyncGamingCatalog } = await import('./scripts/sync-gaming-catalog.js')
-            const result = await scrapeAndSyncGamingCatalog()
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify(result))
+            const parsedUrl = new URL(req.url, 'http://localhost')
+            req.query = Object.fromEntries(parsedUrl.searchParams.entries())
+            const { default: handler } = await import('./api/sync-gaming.js')
+            const fakeRes = {
+              setHeader(k, v) { res.setHeader(k, v) },
+              status(code) { res.statusCode = code; return this },
+              json(data) {
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify(data))
+              },
+              end(data) { res.end(data) }
+            }
+            await handler(req, fakeRes)
           } catch (e) {
             res.statusCode = 500
             res.setHeader('Content-Type', 'application/json')

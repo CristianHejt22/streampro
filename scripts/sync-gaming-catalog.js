@@ -303,7 +303,7 @@ async function scrapeDigitalGamesShop() {
 }
 
 /**
- * 2. Argentina Play — Paginación profunda TiendaNube (?results_only=true&limit=48)
+ * 2. Argentina Play — Paginación paralela TiendaNube (?results_only=true&limit=48)
  */
 async function scrapeArgentinaPlay() {
   log('Scrapeando catálogo completo de Argentina Play (PS5/PS4/PS3/PC/Plus/Preventas)...')
@@ -318,86 +318,106 @@ async function scrapeArgentinaPlay() {
 
   const mergedByKey = new Map()
 
-  for (const cat of categories) {
+  const parseArgPlayPage = (html, cat) => {
+    const blocks = html.split('js-item-product')
+    if (blocks.length <= 1) return { pageSig: '', items: [] }
+
+    let pageSig = ''
+    const extracted = []
+    for (let i = 1; i < blocks.length; i++) {
+      const b = blocks[i]
+      const hrefRaw = b.match(/href="(https:\/\/www\.argentinaplay\.com\.ar\/productos\/[^"]+)"/i)?.[1] || ''
+      const href = hrefRaw.split('?')[0]
+      if (!href) continue
+      if (i === 1) pageSig = href
+
+      const rawTitle = sanitizeBrokenEncodingTitle(
+        b.match(/js-item-name[^>]*>([\s\S]*?)<\/div>/i)?.[1]?.replace(/<[^>]+>/g, '')
+        || b.match(/title="([^"]+)"/i)?.[1]
+        || ''
+      )
+      if (!rawTitle || isPhysicalHardwareOrAccessory(rawTitle, href)) continue
+
+      const priceStr = b.match(/js-price-display[^>]*>([\s\S]*?)<\/span>/i)?.[1]
+        || b.match(/\$[\d.]+(?:,\d{2})?/)?.[0]
+        || ''
+      const price = parseArsPrice(priceStr)
+      if (price <= 100) continue
+
+      let img = b.match(/data-srcset="([^",\s]+)/i)?.[1]
+        || b.match(/srcset="([^",\s]+)/i)?.[1]
+        || b.match(/src="(https?:\/\/[^"]+|\/\/acdn[^"]+)"/i)?.[1]
+        || ''
+      if (img.startsWith('//')) img = `https:${img}`
+
+      const isSecondary = /\bsecundari[oa]\b/i.test(rawTitle) || /secundari[oa]/i.test(href)
+      const cleanDisplayTitle = stripTitleNoiseForMatch(rawTitle) || rawTitle
+      const norm = cleanTitleNormalization(cleanDisplayTitle)
+      if (!norm) continue
+
+      extracted.push({ rawTitle, cleanDisplayTitle, norm, href, img, price, isSecondary, platform: cat.platform })
+    }
+    return { pageSig, items: extracted }
+  }
+
+  await Promise.all(categories.map(async (cat) => {
     let prevSig = ''
-    for (let page = 1; page <= 65; page++) {
-      const url = `https://www.argentinaplay.com.ar/${cat.slug}/page/${page}/?results_only=true&limit=48`
-      try {
-        const res = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(15000)
-        })
-        if (!res.ok) break
-        const html = await res.text()
-        const blocks = html.split('js-item-product')
-        if (blocks.length <= 1) break
+    let batchStart = 1
+    while (batchStart <= 65) {
+      const pageNums = []
+      for (let p = batchStart; p < batchStart + 5 && p <= 65; p++) pageNums.push(p)
 
-        let pageSig = ''
-        let pageAdded = 0
-        for (let i = 1; i < blocks.length; i++) {
-          const b = blocks[i]
-          const hrefRaw = b.match(/href="(https:\/\/www\.argentinaplay\.com\.ar\/productos\/[^"]+)"/i)?.[1] || ''
-          const href = hrefRaw.split('?')[0]
-          if (!href) continue
-          if (i === 1) pageSig = href
+      const batchResults = await Promise.all(pageNums.map(async (page) => {
+        const url = `https://www.argentinaplay.com.ar/${cat.slug}/page/${page}/?results_only=true&limit=48`
+        try {
+          const res = await fetch(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+            signal: AbortSignal.timeout(12000)
+          })
+          if (!res.ok) return { page, stop: true, pageSig: '', items: [] }
+          const html = await res.text()
+          return { page, stop: false, ...parseArgPlayPage(html, cat) }
+        } catch (e) {
+          log(`Fallo parcial Argentina Play (${cat.slug} p${page}): ${e.message}`)
+          return { page, stop: true, pageSig: '', items: [] }
+        }
+      }))
 
-          const rawTitle = sanitizeBrokenEncodingTitle(
-            b.match(/js-item-name[^>]*>([\s\S]*?)<\/div>/i)?.[1]?.replace(/<[^>]+>/g, '')
-            || b.match(/title="([^"]+)"/i)?.[1]
-            || ''
-          )
-          if (!rawTitle || isPhysicalHardwareOrAccessory(rawTitle, href)) continue
-
-          // Evitar combos de dinero/tarjetas o regalos físicos si no corresponde, pero sí mantener juegos/plus
-          const priceStr = b.match(/js-price-display[^>]*>([\s\S]*?)<\/span>/i)?.[1]
-            || b.match(/\$[\d.]+(?:,\d{2})?/)?.[0]
-            || ''
-          const price = parseArsPrice(priceStr)
-          if (price <= 100) continue
-
-          let img = b.match(/data-srcset="([^",\s]+)/i)?.[1]
-            || b.match(/srcset="([^",\s]+)/i)?.[1]
-            || b.match(/src="(https?:\/\/[^"]+|\/\/acdn[^"]+)"/i)?.[1]
-            || ''
-          if (img.startsWith('//')) img = `https:${img}`
-
-          const isSecondary = /\bsecundari[oa]\b/i.test(rawTitle) || /secundari[oa]/i.test(href)
-          const cleanDisplayTitle = stripTitleNoiseForMatch(rawTitle) || rawTitle
-          const norm = cleanTitleNormalization(cleanDisplayTitle)
-          if (!norm) continue
-
-          const bucket = getPlatformBucket(cat.platform, cleanDisplayTitle)
-          const key = `${bucket}::${norm}`
+      let shouldStop = false
+      for (const pageRes of batchResults) {
+        if (pageRes.stop || !pageRes.pageSig || pageRes.pageSig === prevSig || pageRes.items.length === 0) {
+          shouldStop = true
+          break
+        }
+        prevSig = pageRes.pageSig
+        pageRes.items.forEach(item => {
+          const bucket = getPlatformBucket(item.platform, item.cleanDisplayTitle)
+          const key = `${bucket}::${item.norm}`
           const existing = mergedByKey.get(key) || {
             source: 'argentinaplay',
-            title: cleanDisplayTitle,
-            norm,
+            title: item.cleanDisplayTitle,
+            norm: item.norm,
             bucket,
-            platform: cat.platform,
+            platform: item.platform,
             costPrimary: 0,
             costSecondary: 0,
-            url: href,
-            image: img
+            url: item.href,
+            image: item.img
           }
-          if (isSecondary && supportsSecondary(cat.platform)) {
-            existing.costSecondary = Math.max(existing.costSecondary || 0, price)
+          if (item.isSecondary && supportsSecondary(item.platform)) {
+            existing.costSecondary = Math.max(existing.costSecondary || 0, item.price)
           } else {
-            existing.costPrimary = Math.max(existing.costPrimary || 0, price)
-            existing.url = href
-            if (img) existing.image = img
+            existing.costPrimary = Math.max(existing.costPrimary || 0, item.price)
+            existing.url = item.href
+            if (item.img) existing.image = item.img
           }
           mergedByKey.set(key, existing)
-          pageAdded++
-        }
-
-        if (!pageSig || pageSig === prevSig || pageAdded === 0) break
-        prevSig = pageSig
-      } catch (e) {
-        log(`Fallo parcial Argentina Play (${cat.slug} p${page}): ${e.message}`)
-        break
+        })
       }
+      if (shouldStop) break
+      batchStart += 5
     }
-  }
+  }))
 
   const results = Array.from(mergedByKey.values()).filter(x => x.costPrimary > 0 || x.costSecondary > 0)
   log(`✓ Argentina Play: ${results.length} títulos consolidados (Primaria/Secundaria)`)
@@ -405,11 +425,11 @@ async function scrapeArgentinaPlay() {
 }
 
 /**
- * 3. Juegos Digitales Argentina — Paginación completa todas las consolas
+ * 3. Juegos Digitales Argentina — Paginación completa o segmentada por categoría/offset
  */
-async function scrapeJuegosDigitalesArgentina() {
-  log('Scrapeando catálogo completo de Juegos Digitales Argentina (PS5/PS4/PS3/Switch/Xbox/Plus)...')
-  const categories = [
+async function scrapeJuegosDigitalesArgentina({ catFilter = null, pageStart = 0, pageLimit = 0, concurrency = 10 } = {}) {
+  log(`Scrapeando Juegos Digitales Argentina (cat=${catFilter || 'ALL'}, start=${pageStart}, limit=${pageLimit || 'ALL'})...`)
+  const allCategories = [
     { slug: 'juegos-digitales-ps5', platform: 'PS5' },
     { slug: 'juegos-digitales-ps4', platform: 'PS4' },
     { slug: 'juegos-digitales-ps3', platform: 'PS3' },
@@ -419,7 +439,12 @@ async function scrapeJuegosDigitalesArgentina() {
     { slug: 'membresias', platform: 'PS4 / PS5' }
   ]
 
+  const categories = catFilter
+    ? allCategories.filter(c => c.slug === catFilter)
+    : allCategories
+
   const mergedByKey = new Map()
+  let totalPagesAvailable = 0
 
   const parseJdaPageHtml = (html, defaultPlatform) => {
     const blocks = html.split(/<div[^>]*class="[^"]*\bproduct-col\b[^"]*"/i)
@@ -476,28 +501,37 @@ async function scrapeJuegosDigitalesArgentina() {
     mergedByKey.set(key, existing)
   }
 
-  for (const cat of categories) {
+  await Promise.all(categories.map(async (cat) => {
     try {
       const baseUrl = `https://juegosdigitalesargentina.com/categorias/${cat.slug}`
       const res0 = await fetch(baseUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(12000)
       })
-      if (!res0.ok) continue
+      if (!res0.ok) return
       const html0 = await res0.text()
-      parseJdaPageHtml(html0, cat.platform).forEach(upsertJda)
+      if (pageStart === 0) {
+        parseJdaPageHtml(html0, cat.platform).forEach(upsertJda)
+      }
 
       const offsets = [...html0.matchAll(new RegExp(`/categorias/${cat.slug}/(\\d+)`, 'gi'))].map(m => Number(m[1]))
       const maxOffset = offsets.length ? Math.max(...offsets) : 0
-      const pageOffsets = []
+      const allOffsets = [0]
       for (let off = 24; off <= maxOffset; off += 24) {
-        pageOffsets.push(off)
+        allOffsets.push(off)
+      }
+      totalPagesAvailable += allOffsets.length
+
+      let targetOffsets = allOffsets.slice(1) // page 0 already parsed if pageStart === 0
+      if (pageLimit > 0) {
+        const end = pageStart + pageLimit
+        targetOffsets = allOffsets.slice(Math.max(1, pageStart), end)
       }
 
-      await runPool(pageOffsets, 8, async (off) => {
+      await runPool(targetOffsets, concurrency, async (off) => {
         const res = await fetch(`${baseUrl}/${off}`, {
           headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(15000)
+          signal: AbortSignal.timeout(10000)
         })
         if (!res.ok) return
         const html = await res.text()
@@ -506,19 +540,20 @@ async function scrapeJuegosDigitalesArgentina() {
     } catch (e) {
       log(`Fallo parcial JDA (${cat.slug}): ${e.message}`)
     }
-  }
+  }))
 
   const results = Array.from(mergedByKey.values()).filter(x => x.costPrimary > 0 || x.costSecondary > 0)
-  log(`✓ Juegos Digitales Argentina: ${results.length} títulos extraídos (PS5/PS4/PS3/Switch/Xbox/Plus)`)
+  log(`✓ Juegos Digitales Argentina: ${results.length} títulos extraídos (${totalPagesAvailable} pág. totales)`)
+  results._totalPagesAvailable = totalPagesAvailable
   return results
 }
 
 /**
- * 4. Tu Tienda Gamer — API JSON /v4/product/category (con Cookie + CSRF)
+ * 4. Tu Tienda Gamer — API JSON paralela /v4/product/category (con Cookie + CSRF)
  */
-async function scrapeTuTiendaGamer() {
-  log('Scrapeando catálogo completo de Tu Tienda Gamer vía API JSON...')
-  const baseCategories = [
+async function scrapeTuTiendaGamer({ catFilter = null } = {}) {
+  log(`Scrapeando catálogo de Tu Tienda Gamer vía API JSON (cat=${catFilter || 'ALL'})...`)
+  const allCategories = [
     { slug: 'juegos-ps5', platform: 'PS5' },
     { slug: 'juegos-ps4', platform: 'PS4' },
     { slug: 'juegos-ps3', platform: 'PS3' },
@@ -527,16 +562,20 @@ async function scrapeTuTiendaGamer() {
     { slug: 'juegos-pc', platform: 'PC' },
     { slug: 'nintendo-switch', platform: 'Nintendo Switch' }
   ]
+  const baseCategories = catFilter
+    ? allCategories.filter(c => c.slug === catFilter)
+    : allCategories
+
   const gamesMap = new Map()
 
-  for (const cat of baseCategories) {
+  await Promise.all(baseCategories.map(async (cat) => {
     const catUrl = `https://tutiendagamer.com.ar/${cat.slug}`
     try {
       const res1 = await fetch(catUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(12000)
       })
-      if (!res1.ok) continue
+      if (!res1.ok) return
       const setCookies = typeof res1.headers.getSetCookie === 'function' ? res1.headers.getSetCookie() : []
       const cookieHeader = setCookies.map(c => c.split(';')[0]).join('; ')
       const html = await res1.text()
@@ -544,82 +583,98 @@ async function scrapeTuTiendaGamer() {
         || html.match(/csrf_token\s*=\s*['"]([^'"]+)['"]/i)?.[1]
         || ''
       const idsMatch = html.match(/var\s+ids\s*=\s*(\[[^\]]+\])/i)?.[1]
-      if (!idsMatch) continue
+      if (!idsMatch) return
       const idsArr = JSON.parse(idsMatch)
       const qs = idsArr.map(id => `filter_categories[]=${id}`).join('&')
 
-      for (let page = 0; page < 80; page++) {
-        const apiRes = await fetch(`https://tutiendagamer.com.ar/v4/product/category?filter_page=${page}&filter_order=4&${qs}`, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': csrf,
-            'Cookie': cookieHeader,
-            'Referer': catUrl
-          },
-          signal: AbortSignal.timeout(15000)
-        })
-        if (!apiRes.ok) break
-        const payload = await apiRes.json()
-        const items = payload?.data || []
-        if (!Array.isArray(items) || items.length === 0) break
-
-        items.forEach(item => {
-          if (item.p_desactivado) return
-          const rawTitle = sanitizeBrokenEncodingTitle(item.p_nombre || '')
-          const slug = String(item.p_link || '').trim()
-          const prodUrl = slug ? `https://tutiendagamer.com.ar/${cat.slug}/${slug}` : catUrl
-          if (!rawTitle || isPhysicalHardwareOrAccessory(rawTitle, prodUrl)) return
-
-          let pricePrimary = (item.p_oferta === 1 && Number(item.p_precio_oferta) > 0)
-            ? Number(item.p_precio_oferta)
-            : Number(item.p_precio || 0)
-          let priceSecondary = 0
-
-          if (Array.isArray(item.stock)) {
-            item.stock.forEach(s => {
-              const sPrice = (s.s_oferta === 1 && Number(s.s_precio_oferta) > 0) ? Number(s.s_precio_oferta) : Number(s.s_precio || 0)
-              const attrStr = JSON.stringify(s.valoratributo || '').toLowerCase()
-              if (sPrice > 100 && attrStr.includes('secundar') && supportsSecondary(cat.platform)) {
-                priceSecondary = priceSecondary ? Math.min(priceSecondary, sPrice) : sPrice
-              } else if (sPrice > 100 && attrStr.includes('primar')) {
-                pricePrimary = sPrice
-              }
+      let page = 0
+      while (page < 80) {
+        const pageBatch = [page, page + 1, page + 2, page + 3, page + 4, page + 5, page + 6, page + 7]
+        const responses = await Promise.all(pageBatch.map(async (pNum) => {
+          try {
+            const apiRes = await fetch(`https://tutiendagamer.com.ar/v4/product/category?filter_page=${pNum}&filter_order=4&${qs}`, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf,
+                'Cookie': cookieHeader,
+                'Referer': catUrl
+              },
+              signal: AbortSignal.timeout(12000)
             })
+            if (!apiRes.ok) return []
+            const payload = await apiRes.json()
+            return Array.isArray(payload?.data) ? payload.data : []
+          } catch {
+            return []
           }
+        }))
 
-          if (pricePrimary <= 100) return
-
-          const imgPath = item.imagenes?.[0]?.i_link || ''
-          const img = imgPath
-            ? (imgPath.startsWith('http') ? imgPath : `https://d22fxaf9t8d39k.cloudfront.net/${imgPath}`)
-            : ''
-
-          const cleanTitle = stripTitleNoiseForMatch(rawTitle) || rawTitle
-          const norm = cleanTitleNormalization(cleanTitle)
-          if (!norm) return
-          const bucket = getPlatformBucket(cat.platform, cleanTitle)
-          const mapKey = `${bucket}::${norm}`
-
-          if (!gamesMap.has(mapKey)) {
-            gamesMap.set(mapKey, {
-              source: 'tutiendagamer',
-              title: cleanTitle,
-              norm,
-              bucket,
-              platform: cat.platform,
-              costPrimary: pricePrimary,
-              costSecondary: priceSecondary,
-              url: prodUrl,
-              image: img
-            })
+        let stopCat = false
+        for (const items of responses) {
+          if (!items.length) {
+            stopCat = true
+            break
           }
-        })
+          items.forEach(item => {
+            if (item.p_desactivado) return
+            const rawTitle = sanitizeBrokenEncodingTitle(item.p_nombre || '')
+            const slug = String(item.p_link || '').trim()
+            const prodUrl = slug ? `https://tutiendagamer.com.ar/${cat.slug}/${slug}` : catUrl
+            if (!rawTitle || isPhysicalHardwareOrAccessory(rawTitle, prodUrl)) return
+
+            let pricePrimary = (item.p_oferta === 1 && Number(item.p_precio_oferta) > 0)
+              ? Number(item.p_precio_oferta)
+              : Number(item.p_precio || 0)
+            let priceSecondary = 0
+
+            if (Array.isArray(item.stock)) {
+              item.stock.forEach(s => {
+                const sPrice = (s.s_oferta === 1 && Number(s.s_precio_oferta) > 0) ? Number(s.s_precio_oferta) : Number(s.s_precio || 0)
+                const attrStr = JSON.stringify(s.valoratributo || '').toLowerCase()
+                if (sPrice > 100 && attrStr.includes('secundar') && supportsSecondary(cat.platform)) {
+                  priceSecondary = priceSecondary ? Math.min(priceSecondary, sPrice) : sPrice
+                } else if (sPrice > 100 && attrStr.includes('primar')) {
+                  pricePrimary = sPrice
+                }
+              })
+            }
+
+            if (pricePrimary <= 100) return
+
+            const imgPath = item.imagenes?.[0]?.i_link || ''
+            const img = imgPath
+              ? (imgPath.startsWith('http') ? imgPath : `https://d22fxaf9t8d39k.cloudfront.net/${imgPath}`)
+              : ''
+
+            const cleanTitle = stripTitleNoiseForMatch(rawTitle) || rawTitle
+            const norm = cleanTitleNormalization(cleanTitle)
+            if (!norm) return
+            const bucket = getPlatformBucket(cat.platform, cleanTitle)
+            const mapKey = `${bucket}::${norm}`
+
+            if (!gamesMap.has(mapKey)) {
+              gamesMap.set(mapKey, {
+                source: 'tutiendagamer',
+                title: cleanTitle,
+                norm,
+                bucket,
+                platform: cat.platform,
+                costPrimary: pricePrimary,
+                costSecondary: priceSecondary,
+                url: prodUrl,
+                image: img
+              })
+            }
+          })
+        }
+        if (stopCat) break
+        page += 8
       }
     } catch (e) {
       log(`Fallo parcial TTG (${cat.slug}): ${e.message}`)
     }
-  }
+  }))
 
   const games = Array.from(gamesMap.values())
   log(`✓ Tu Tienda Gamer: ${games.length} juegos digitales extraídos sin accesorios`)
@@ -775,12 +830,12 @@ async function scrapePaleGames(psImageMap) {
   const seenUrls = new Set()
 
   try {
-    const pages = [1, 2, 3, 4, 5]
-    await runPool(pages, 3, async (page) => {
+    const pages = Array.from({ length: 12 }, (_, i) => i + 1)
+    await runPool(pages, 4, async (page) => {
       try {
         const res = await fetch(`https://palegames.mitiendanube.com/productos/?page=${page}`, {
           headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(15000)
+          signal: AbortSignal.timeout(12000)
         })
         if (!res.ok) return
         const html = await res.text()
@@ -841,6 +896,111 @@ async function scrapePaleGames(psImageMap) {
     log(`Advertencia Pale Games: ${e.message}`)
     return []
   }
+}
+
+/**
+ * 8. Scraper genérico para webs personalizadas agregadas por Admin (WooCommerce / Tiendanube / Shopify)
+ */
+async function scrapeCustomGamingSite(customUrl, sourceKey = 'custom', sourceLabel = 'Sitio Personalizado') {
+  if (!customUrl || !/^https?:\/\//i.test(customUrl)) return []
+  const origin = new URL(customUrl).origin
+  const results = []
+  const seen = new Set()
+
+  const addItem = (rawTitle, price, img = '', prodUrl = customUrl, isSec = false) => {
+    const cleanTitle = stripTitleNoiseForMatch(rawTitle) || sanitizeBrokenEncodingTitle(rawTitle)
+    if (!cleanTitle || price <= 100 || isPhysicalHardwareOrAccessory(cleanTitle, prodUrl)) return
+    const norm = cleanTitleNormalization(cleanTitle)
+    if (!norm) return
+    let platform = 'PS4 / PS5'
+    if (/\bPS5\b/i.test(rawTitle)) platform = 'PS5'
+    else if (/\bPS4\b/i.test(rawTitle)) platform = 'PS4'
+    else if (/\bPS3\b/i.test(rawTitle)) platform = 'PS3'
+    else if (/\bxbox\b/i.test(rawTitle)) platform = 'Xbox'
+    else if (/\bswitch\b/i.test(rawTitle)) platform = 'Nintendo Switch'
+    else if (/\b(pc|steam)\b/i.test(rawTitle)) platform = 'PC'
+
+    const bucket = getPlatformBucket(platform, cleanTitle)
+    const mapKey = `${bucket}::${norm}`
+    if (seen.has(mapKey)) return
+    seen.add(mapKey)
+
+    results.push({
+      source: sourceKey,
+      providerName: sourceLabel,
+      title: cleanTitle,
+      norm,
+      bucket,
+      platform,
+      costPrimary: isSec ? 0 : price,
+      costSecondary: isSec ? price : (supportsSecondary(platform) ? Math.round(price * 0.55) : 0),
+      url: prodUrl,
+      image: img
+    })
+  }
+
+  // Intentar WooCommerce Store API primero
+  try {
+    const wcRes = await fetch(`${origin}/wp-json/wc/store/v1/products?per_page=100&page=1`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(8000)
+    })
+    if (wcRes.ok) {
+      const totalPages = Math.min(8, Math.max(1, Number(wcRes.headers.get('x-wp-totalpages')) || 1))
+      const processWc = (arr) => {
+        if (!Array.isArray(arr)) return
+        arr.forEach(item => {
+          const minor = Number(item.prices?.currency_minor_unit ?? 2)
+          const price = Math.round((Number(item.prices?.price || 0)) / (10 ** minor))
+          addItem(item.name || '', price, item.images?.[0]?.src || '', item.permalink || customUrl)
+        })
+      }
+      processWc(await wcRes.json())
+      for (let p = 2; p <= totalPages; p++) {
+        const r = await fetch(`${origin}/wp-json/wc/store/v1/products?per_page=100&page=${p}`, { signal: AbortSignal.timeout(7000) }).catch(() => null)
+        if (r?.ok) processWc(await r.json())
+      }
+      if (results.length > 0) return results
+    }
+  } catch {}
+
+  // Intentar Shopify products.json
+  try {
+    const shRes = await fetch(`${origin}/products.json?limit=250`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(7000)
+    })
+    if (shRes.ok) {
+      const shData = await shRes.json().catch(() => null)
+      const prods = shData?.products || []
+      if (Array.isArray(prods) && prods.length > 0) {
+        prods.forEach(p => {
+          const price = Math.round(Number(p.variants?.[0]?.price || 0))
+          addItem(p.title || '', price, p.images?.[0]?.src || '', `${origin}/products/${p.handle || ''}`)
+        })
+        if (results.length > 0) return results
+      }
+    }
+  } catch {}
+
+  // Intentar TiendaNube / HTML genérico
+  try {
+    const basePageUrl = customUrl.includes('?') ? `${customUrl}&results_only=true&limit=48` : `${customUrl.replace(/\/$/, '')}/?results_only=true&limit=48`
+    const tnRes = await fetch(basePageUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) })
+    if (tnRes.ok) {
+      const html = await tnRes.text()
+      const blocks = html.split(/js-item-product|js-product-container/i)
+      for (let i = 1; i < blocks.length; i++) {
+        const b = blocks[i]
+        const href = b.match(/href="(https?:\/\/[^"]+)"/i)?.[1]?.split('?')[0] || customUrl
+        const title = b.match(/js-item-name[^>]*>([\s\S]*?)<\/div>/i)?.[1]?.replace(/<[^>]+>/g, '') || b.match(/title="([^"]+)"/i)?.[1] || ''
+        const priceStr = b.match(/js-price-display[^>]*>([\s\S]*?)<\/span>/i)?.[1] || b.match(/\$[\d.]+(?:,\d{2})?/)?.[0] || ''
+        addItem(title, parseArsPrice(priceStr), b.match(/src="(https?:\/\/[^"]+)"/i)?.[1] || '', href)
+      }
+    }
+  } catch {}
+
+  return results
 }
 
 /**
@@ -944,14 +1104,61 @@ function chooseBestImage(currentImg, candidateImg) {
   return currentImg
 }
 
-export async function scrapeAndSyncGamingCatalog() {
-  log('Iniciando scraping masivo multi-sitio SIN límites artificiales...')
+export async function scrapeSingleGamingProvider(sourceKey, { cat = null, pageStart = 0, pageLimit = 0, customUrl = '', sourceLabel = '' } = {}) {
+  const key = String(sourceKey || '').toLowerCase().trim()
+  if (key === 'digitalgamesshop') {
+    const res = await scrapeDigitalGamesShop()
+    return { success: true, scrapedLive: true, source: 'digitalgamesshop', sourceLabel: 'Digital Games Shop', count: res.catalog.length, items: res.catalog }
+  }
+  if (key === 'argentinaplay') {
+    const items = await scrapeArgentinaPlay()
+    return { success: true, scrapedLive: true, source: 'argentinaplay', sourceLabel: 'Argentina Play', count: items.length, items }
+  }
+  if (key === 'juegosdigitalesargentina') {
+    const items = await scrapeJuegosDigitalesArgentina({ catFilter: cat, pageStart: Number(pageStart) || 0, pageLimit: Number(pageLimit) || 0, concurrency: 12 })
+    return {
+      success: true,
+      scrapedLive: true,
+      source: 'juegosdigitalesargentina',
+      sourceLabel: 'Juegos Digitales Argentina',
+      cat: cat || 'ALL',
+      totalPages: items._totalPagesAvailable || 0,
+      count: items.length,
+      items
+    }
+  }
+  if (key === 'tutiendagamer') {
+    const items = await scrapeTuTiendaGamer({ catFilter: cat })
+    return { success: true, scrapedLive: true, source: 'tutiendagamer', sourceLabel: 'Tu Tienda Gamer', cat: cat || 'ALL', count: items.length, items }
+  }
+  if (key === 'fusiongames') {
+    const items = await scrapeFusionGames()
+    return { success: true, scrapedLive: true, source: 'fusiongames', sourceLabel: 'Fusion Games', count: items.length, items }
+  }
+  if (key === 'pixeleros') {
+    const items = await scrapePixeleros(null)
+    return { success: true, scrapedLive: true, source: 'pixeleros', sourceLabel: 'Pixeleros', count: items.length, items }
+  }
+  if (key === 'palegames') {
+    const items = await scrapePaleGames(null)
+    return { success: true, scrapedLive: true, source: 'palegames', sourceLabel: 'Pale Games', count: items.length, items }
+  }
+  if (customUrl) {
+    const label = sourceLabel || key || 'Sitio Personalizado'
+    const items = await scrapeCustomGamingSite(customUrl, key || 'custom', label)
+    return { success: true, scrapedLive: true, source: key || 'custom', sourceLabel: label, count: items.length, items }
+  }
+  return { success: false, error: `Proveedor no soportado: ${sourceKey}`, items: [] }
+}
+
+export async function scrapeAndSyncGamingCatalog({ writeFiles = !process.env.VERCEL } = {}) {
+  log(`Iniciando scraping masivo multi-sitio (writeFiles=${writeFiles})...`)
 
   const existingCatalog = loadExistingCatalog()
   const [dgsRes, apGames, jdaGames, ttgGames, fusionGames, pixelerosGames, paleGames] = await Promise.all([
     scrapeDigitalGamesShop(),
     scrapeArgentinaPlay(),
-    scrapeJuegosDigitalesArgentina(),
+    scrapeJuegosDigitalesArgentina({ concurrency: 12 }),
     scrapeTuTiendaGamer(),
     scrapeFusionGames(),
     scrapePixeleros(null),
@@ -1023,6 +1230,9 @@ export async function scrapeAndSyncGamingCatalog() {
     return next
   }
 
+  // Registro por juego de qué proveedores ya se refrescaron en ESTA corrida (evita bloquear bajadas de precio)
+  const freshSourcesUpdated = new Map()
+
   const upsertSourceItems = (items, sourceKey, sourceLabel, idPrefix, allowFuzzy = true) => {
     let matched = 0
     let added = 0
@@ -1047,13 +1257,33 @@ export async function scrapeAndSyncGamingCatalog() {
 
       if (target) {
         if (!target.providers) target.providers = {}
+        let updatedSet = freshSourcesUpdated.get(target)
+        if (!updatedSet) {
+          updatedSet = new Set()
+          freshSourcesUpdated.set(target, updatedSet)
+        }
+        const isFirstWriteForSourceThisRun = !updatedSet.has(sourceKey)
+        updatedSet.add(sourceKey)
+
         const prev = target.providers[sourceKey] || {}
-        target.providers[sourceKey] = {
-          providerName: sourceLabel,
-          providerUrl: provPayload.providerUrl || prev.providerUrl || '',
-          costPrimary: Math.max(prev.costPrimary || prev.primaryPrice || 0, provPayload.costPrimary),
-          costSecondary: Math.max(prev.costSecondary || prev.secondaryPrice || 0, provPayload.costSecondary),
-          ...(provPayload.isBlackFriday ? { isBlackFriday: true, offerPct: provPayload.offerPct || 25 } : {})
+        if (isFirstWriteForSourceThisRun) {
+          target.providers[sourceKey] = {
+            providerName: sourceLabel,
+            providerUrl: provPayload.providerUrl || prev.providerUrl || '',
+            costPrimary: provPayload.costPrimary > 0 ? provPayload.costPrimary : (prev.costPrimary || prev.primaryPrice || 0),
+            costSecondary: provPayload.costSecondary > 0 ? provPayload.costSecondary : (prev.costSecondary || prev.secondaryPrice || 0),
+            ...(provPayload.isBlackFriday ? { isBlackFriday: true, offerPct: provPayload.offerPct || 25 } : {})
+          }
+        } else {
+          target.providers[sourceKey] = {
+            providerName: sourceLabel,
+            providerUrl: provPayload.providerUrl || prev.providerUrl || '',
+            costPrimary: Math.max(prev.costPrimary || prev.primaryPrice || 0, provPayload.costPrimary),
+            costSecondary: Math.max(prev.costSecondary || prev.secondaryPrice || 0, provPayload.costSecondary),
+            ...((prev.isBlackFriday || provPayload.isBlackFriday)
+              ? { isBlackFriday: true, offerPct: Math.max(prev.offerPct || 0, provPayload.offerPct || 0) || 25 }
+              : {})
+          }
         }
         target.image = chooseBestImage(target.image, item.image || psImageMap.get(item.norm))
         if (item.isBlackFriday) {
@@ -1240,15 +1470,21 @@ export async function scrapeAndSyncGamingCatalog() {
     formattedSubcats[k] = Array.from(v)
   }
 
-  fs.writeFileSync(TARGET_GAMING_PRODUCTS_FILE, JSON.stringify(compactList), 'utf-8')
-  fs.writeFileSync(TARGET_GAMING_CATEGORIES_FILE, JSON.stringify(categoriesList), 'utf-8')
-  fs.writeFileSync(TARGET_GAMING_SUBCATS_FILE, JSON.stringify(formattedSubcats), 'utf-8')
+  if (writeFiles) {
+    fs.writeFileSync(TARGET_GAMING_PRODUCTS_FILE, JSON.stringify(compactList), 'utf-8')
+    fs.writeFileSync(TARGET_GAMING_CATEGORIES_FILE, JSON.stringify(categoriesList), 'utf-8')
+    fs.writeFileSync(TARGET_GAMING_SUBCATS_FILE, JSON.stringify(formattedSubcats), 'utf-8')
 
-  const sizeMb = (fs.statSync(TARGET_GAMING_PRODUCTS_FILE).size / (1024 * 1024)).toFixed(2)
-  log(`✓ Archivo guardado: ${TARGET_GAMING_PRODUCTS_FILE} (${compactList.length} juegos, ${sizeMb} MB)`)
+    const sizeMb = (fs.statSync(TARGET_GAMING_PRODUCTS_FILE).size / (1024 * 1024)).toFixed(2)
+    log(`✓ Archivo guardado: ${TARGET_GAMING_PRODUCTS_FILE} (${compactList.length} juegos, ${sizeMb} MB)`)
+  } else {
+    log(`✓ Modo serverless (writeFiles=false): ${compactList.length} juegos listos en memoria`)
+  }
 
   return {
     success: true,
+    scrapedLive: true,
+    timestamp: new Date().toISOString(),
     count: compactList.length,
     products: compactList,
     categories: categoriesList,

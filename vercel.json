@@ -7,6 +7,10 @@
       "memory": 1024,
       "maxDuration": 15,
       "includeFiles": "api/fonts/*.woff"
+    },
+    "api/sync-gaming.js": {
+      "memory": 1024,
+      "maxDuration": 60
     }
   },
   "headers": [

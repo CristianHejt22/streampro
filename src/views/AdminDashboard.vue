@@ -3264,13 +3264,20 @@ const lastGamingScrapeDisplay = computed(() => {
   }
 })
 
+const gamingScrapeStatusText = ref('')
+
 const handleScrapeAndSyncGamingWebs = async () => {
   isSyncingGaming.value = true
+  gamingScrapeStatusText.value = 'Iniciando...'
   // Forzar inmediatamente que el Mayor Costo quede visible en pantalla
   onlyHighestCostProvider.value = true
 
   try {
-    const res = await adminStore.syncGamingFromApi()
+    const res = await adminStore.syncGamingFromApi((prog) => {
+      if (prog && prog.total > 0) {
+        gamingScrapeStatusText.value = `${prog.completed}/${prog.total} (${prog.currentLabel || 'Webs'})`
+      }
+    })
     const nowStr = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
     lastGamingScrapeLocal.value = nowStr
     try {
@@ -3278,8 +3285,13 @@ const handleScrapeAndSyncGamingWebs = async () => {
     } catch {}
 
     if (res.success) {
+      const updated = Number(res.updatedGames || 0)
+      const up = Number(res.priceIncreased || 0)
+      const down = Number(res.priceDecreased || 0)
+      const added = Number(res.newlyAdded || 0)
+      const sitesOk = Array.isArray(res.sourcesSucceeded) ? res.sourcesSucceeded.length : 0
       toast.add(
-        `¡Scrapeo completado! ${res.count || adminStore.processedGamingProducts.length} videojuegos sincronizados con las webs. Mayor Costo de Proveedor fijado y visible en pantalla.`,
+        `¡Re-scrapeo en vivo (${sitesOk} webs)! ${updated} precios actualizados (↑${up} / ↓${down})${added > 0 ? ` y ${added} nuevos` : ''} en ${res.count || adminStore.processedGamingProducts.length} juegos.`,
         'success'
       )
     } else {
@@ -3289,6 +3301,7 @@ const handleScrapeAndSyncGamingWebs = async () => {
     toast.add('Error al scrapear y actualizar proveedores gaming: ' + (err.message || ''), 'error')
   } finally {
     isSyncingGaming.value = false
+    gamingScrapeStatusText.value = ''
   }
 }
 
@@ -11282,7 +11295,7 @@ const deletePackageItem = (pkgId) => {
               class="text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95"
             >
               <span :class="{'animate-spin inline-block': isSyncingGaming}">🕷️</span>
-              <span>{{ isSyncingGaming ? 'Scrapeando...' : 'Re-scrapear Webs' }}</span>
+              <span>{{ isSyncingGaming ? (gamingScrapeStatusText || 'Scrapeando...') : 'Re-scrapear Webs' }}</span>
             </button>
           </div>
         </div>

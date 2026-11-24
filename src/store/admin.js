@@ -17,6 +17,13 @@ import {
   buildDiscountProgramFormalities
 } from '../utils/marketing'
 import { GAMING_PROVIDERS, DEFAULT_GAMING_PROVIDER_SITES, INITIAL_GAMING_PRODUCTS, processGamingProduct, deduplicateGamingProducts } from '../services/gamingProductsData'
+import {
+  fetchLiveGamingScrapes,
+  mergeLiveScrapedBatchesIntoCatalog,
+  saveLiveGamingCatalogToIdb,
+  loadLiveGamingCatalogFromIdb,
+  computeBundleSignature
+} from '../services/gamingCatalogSync'
 import { applyGamingBatchUpdate } from '../services/gamingListParser'
 import { CLEAN_PRICING_CATALOG, createStarterAccountForPlatform, getCleanStarterInventory, applyPristineDatabase } from '../services/cleanDatabaseSeed'
 import { getFreshOfficialCombos, calculatePackageFromCatalog } from '../services/officialCombosData'
@@ -257,6 +264,36 @@ export const DEFAULT_PRODUCTION_GIVEAWAYS = [
   }
 ]
 
+function buildProviderDiffEntry(currProv = {}, baseProv = null) {
+  const cPri = Number(currProv.costPrimary || currProv.primaryPrice || 0)
+  const cSec = Number(currProv.costSecondary || currProv.secondaryPrice || 0)
+  if (!baseProv) {
+    return {
+      ...(currProv.providerName ? { providerName: currProv.providerName } : {}),
+      ...(currProv.providerUrl ? { providerUrl: currProv.providerUrl } : {}),
+      costPrimary: cPri,
+      ...(cSec > 0 ? { costSecondary: cSec } : {}),
+      ...(currProv.available === false ? { available: false } : {}),
+      ...(currProv.isBlackFriday ? { isBlackFriday: true, offerPct: currProv.offerPct || 25 } : {})
+    }
+  }
+  const bPri = Number(baseProv.costPrimary || baseProv.primaryPrice || 0)
+  const bSec = Number(baseProv.costSecondary || baseProv.secondaryPrice || 0)
+  const sameAvail = (currProv.available !== false) === (baseProv.available !== false)
+  const sameBf = Boolean(currProv.isBlackFriday) === Boolean(baseProv.isBlackFriday) && Number(currProv.offerPct || 0) === Number(baseProv.offerPct || 0)
+  const sameUrl = (currProv.providerUrl || '') === (baseProv.providerUrl || '')
+  if (cPri === bPri && cSec === bSec && sameAvail && sameBf && sameUrl) {
+    return null
+  }
+  return {
+    costPrimary: cPri,
+    ...(cSec > 0 ? { costSecondary: cSec } : {}),
+    ...(currProv.available === false ? { available: false } : {}),
+    ...(currProv.isBlackFriday ? { isBlackFriday: true, offerPct: currProv.offerPct || 25 } : {}),
+    ...(!sameUrl && currProv.providerUrl ? { providerUrl: currProv.providerUrl } : {})
+  }
+}
+
 function buildGamingDiffs(currentList = [], baseList = []) {
   const baseArr = Array.isArray(baseList) ? baseList : []
   const currArr = Array.isArray(currentList) ? currentList : []
@@ -281,8 +318,17 @@ function buildGamingDiffs(currentList = [], baseList = []) {
     }
     if (item.title && item.title !== base.title) diff.title = item.title
     if (item.platform && item.platform !== base.platform) diff.platform = item.platform
-    if (JSON.stringify(item.providers || {}) !== JSON.stringify(base.providers || {})) {
-      diff.providers = item.providers
+
+    const currProvs = item.providers || {}
+    const baseProvs = base.providers || {}
+    const changedProvs = {}
+    for (const [pk, pv] of Object.entries(currProvs)) {
+      if (!pv) continue
+      const pDiff = buildProviderDiffEntry(pv, baseProvs[pk] || null)
+      if (pDiff) changedProvs[pk] = pDiff
+    }
+    if (Object.keys(changedProvs).length > 0) {
+      diff.providers = changedProvs
     }
     if (Object.keys(diff).length > 0) patches[item.id] = diff
   })
@@ -295,12 +341,59 @@ function buildGamingDiffs(currentList = [], baseList = []) {
   return { patches, customGames, deletedIds }
 }
 
+function capOverridesForCloud(overrides, maxBytes = 620000) {
+  if (!overrides || typeof overrides !== 'object') return overrides
+  const serialized = JSON.stringify(overrides)
+  if (serialized.length <= maxBytes) return overrides
+
+  // Conservar siempre ediciones manuales, juegos personalizados y eliminados, más parches prioritarios dentro del límite Firestore
+  const allPatches = overrides.patches || {}
+  const priorityEntries = []
+  const regularEntries = []
+  for (const [id, p] of Object.entries(allPatches)) {
+    if (p?.customPrimaryPrice || p?.customSecondaryPrice || p?.preferredFulfillmentProvider || p?.title || String(id).startsWith('GAME-0') || String(id).startsWith('GAME-1')) {
+      priorityEntries.push([id, p])
+    } else {
+      regularEntries.push([id, p])
+    }
+  }
+  const cappedPatches = {}
+  let approxSize = JSON.stringify({
+    customGames: (overrides.customGames || []).slice(0, 120),
+    deletedIds: overrides.deletedIds || []
+  }).length
+  for (const [id, p] of [...priorityEntries, ...regularEntries]) {
+    const chunkLen = id.length + JSON.stringify(p).length + 6
+    if (approxSize + chunkLen > maxBytes) break
+    cappedPatches[id] = p
+    approxSize += chunkLen
+  }
+  return {
+    patches: cappedPatches,
+    customGames: (overrides.customGames || []).slice(0, 120),
+    deletedIds: overrides.deletedIds || []
+  }
+}
+
 function persistGamingCatalogDeltas(currentList, baseList) {
   const referenceBase = (Array.isArray(baseList) && baseList.length > 0)
     ? baseList
     : (_loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
   const payload = buildGamingDiffs(currentList, referenceBase)
   saveDb(DB_KEYS.GAMING_OVERRIDES, payload)
+}
+
+function mergeProviderPatchMap(baseProviders = {}, patchProviders = null) {
+  if (!patchProviders || typeof patchProviders !== 'object') return baseProviders
+  const merged = { ...(baseProviders || {}) }
+  for (const [pk, pv] of Object.entries(patchProviders)) {
+    if (!pv) continue
+    merged[pk] = {
+      ...(merged[pk] || {}),
+      ...pv
+    }
+  }
+  return merged
 }
 
 function buildMergedGamingCatalog(baseList) {
@@ -330,7 +423,12 @@ function buildMergedGamingCatalog(baseList) {
   baseArr.forEach(b => {
     if (deletedSet.has(b.id)) return
     const p = patches[b.id]
-    merged.push(p ? { ...b, ...p, providers: p.providers || b.providers } : { ...b })
+    if (!p) {
+      merged.push({ ...b })
+      return
+    }
+    const mergedProviders = p.providers ? mergeProviderPatchMap(b.providers, p.providers) : b.providers
+    merged.push({ ...b, ...p, providers: mergedProviders })
   })
   customGames.forEach(cg => {
     if (cg && cg.id && !merged.some(m => m.id === cg.id)) {
@@ -2579,7 +2677,7 @@ export const useAdminStore = defineStore('admin', {
       return this.isPhysicalStoreVisible
     },
     persistStoreSettings() {
-      const overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
+      const overrides = capOverridesForCloud(loadDb(DB_KEYS.GAMING_OVERRIDES, null))
 
       // Extraer personalizaciones de productos físicos modificados para sincronizar en la nube
       const physicalOverrides = (Array.isArray(this.physicalProducts) ? this.physicalProducts : [])
@@ -2704,11 +2802,16 @@ export const useAdminStore = defineStore('admin', {
         }
         if (Array.isArray(cloudSettings.gamingProviderSites) && cloudSettings.gamingProviderSites.length > 0) {
           this.gamingProviderSites = cloudSettings.gamingProviderSites
+          this.ensureGamingProviderSitesLoaded()
           saveDb(DB_KEYS.GAMING_PROVIDER_SITES, this.gamingProviderSites)
           marginChanged = true
         }
         if (cloudSettings.gamingOverrides && typeof cloudSettings.gamingOverrides === 'object') {
           saveDb(DB_KEYS.GAMING_OVERRIDES, cloudSettings.gamingOverrides)
+          if (this.isGamingCatalogLoaded && Array.isArray(_loadedBaseGamingData) && _loadedBaseGamingData.length > 0) {
+            this.gamingProducts = buildMergedGamingCatalog(_loadedBaseGamingData)
+            this.totalCatalogGamingCount = this.gamingProducts.length
+          }
           marginChanged = true
         }
         if (marginChanged) {
@@ -2860,7 +2963,7 @@ export const useAdminStore = defineStore('admin', {
       this.persistStoreSettings()
       broadcastDbChange('ALL', { timestamp: Date.now() })
       try {
-        const overrides = loadDb(DB_KEYS.GAMING_OVERRIDES, null)
+        const overrides = capOverridesForCloud(loadDb(DB_KEYS.GAMING_OVERRIDES, null))
         const physicalOverrides = (Array.isArray(this.physicalProducts) ? this.physicalProducts : [])
           .filter(p => p.isCustom || p.adminOnly || p.updatedAt || p.source !== 'revende.com.ar')
         
@@ -7206,7 +7309,15 @@ export const useAdminStore = defineStore('admin', {
           const module = await import('../assets/gamingProducts.json')
           const fullData = module.default || module
           _loadedBaseGamingData = fullData
-          this.gamingProducts = buildMergedGamingCatalog(fullData)
+          const bundleSig = computeBundleSignature(fullData)
+          const idbSnap = await loadLiveGamingCatalogFromIdb()
+          const sourceBase = (idbSnap && Array.isArray(idbSnap.products) && idbSnap.products.length > 0 && idbSnap.bundleSignature === bundleSig)
+            ? idbSnap.products
+            : fullData
+          if (idbSnap?.scrapedAtMs && idbSnap.bundleSignature === bundleSig && !this.lastGamingScrapeTime) {
+            this.lastGamingScrapeTime = new Date(idbSnap.scrapedAtMs).toISOString()
+          }
+          this.gamingProducts = buildMergedGamingCatalog(sourceBase)
           this.isGamingCatalogLoaded = true
           this.totalCatalogGamingCount = this.gamingProducts.length
           this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
@@ -7263,46 +7374,53 @@ export const useAdminStore = defineStore('admin', {
       return { error: 'El archivo JSON no contiene una lista válida de videojuegos.' }
     },
 
-    async syncGamingFromApi() {
+    async syncGamingFromApi(onProgress = null) {
       try {
-        const res = await fetch('/api/sync-gaming?scrape=true')
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-          this.gamingProducts = data.products
-          this.isGamingCatalogLoaded = true
-          this.totalCatalogGamingCount = data.products.length
-          this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
-          this.lastGamingScrapeTime = new Date().toISOString()
-          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
-          invalidateGamingCache()
-          this.persist(DB_KEYS.GAMING_PRODUCTS)
-          if (Array.isArray(data.categories) && data.categories.length > 0) {
-            this.gamingCategories = data.categories
-            this.persist(DB_KEYS.GAMING_CATEGORIES)
-          }
-          if (data.subcategories && typeof data.subcategories === 'object') {
-            this.gamingSubcategories = data.subcategories
-            this.persist(DB_KEYS.GAMING_SUBCATEGORIES)
-          }
-          return { success: true, count: data.products.length, timestamp: this.lastGamingScrapeTime }
+        await this.ensureGamingProductsLoaded()
+        const scrapeRes = await fetchLiveGamingScrapes(this.gamingProviderSites, onProgress)
+        if (!scrapeRes || !Array.isArray(scrapeRes.batches) || scrapeRes.batches.length === 0) {
+          throw new Error('No se pudo obtener respuesta en vivo de las webs proveedoras. Verifica conexión e intenta nuevamente.')
         }
-        throw new Error(data.error || 'Respuesta inválida de la API de videojuegos')
+
+        const { updatedCatalog, stats } = mergeLiveScrapedBatchesIntoCatalog(
+          this.gamingProducts,
+          scrapeRes.batches,
+          this.gamingProviderSites
+        )
+
+        this.gamingProducts = updatedCatalog
+        this.isGamingCatalogLoaded = true
+        this.totalCatalogGamingCount = updatedCatalog.length
+        this._gamingCatalogVersion = (this._gamingCatalogVersion || 0) + 1
+        this.lastGamingScrapeTime = new Date().toISOString()
+        saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
+        invalidateGamingCache()
+
+        const baseSig = computeBundleSignature(_loadedBaseGamingData || INITIAL_GAMING_PRODUCTS)
+        await saveLiveGamingCatalogToIdb(updatedCatalog, baseSig, {
+          sourcesSucceeded: scrapeRes.sourcesSucceeded,
+          stats
+        })
+        this.persist(DB_KEYS.GAMING_PRODUCTS)
+
+        return {
+          success: true,
+          scrapedLive: true,
+          count: updatedCatalog.length,
+          updatedGames: stats.updatedGames,
+          priceIncreased: stats.priceIncreased,
+          priceDecreased: stats.priceDecreased,
+          newlyAdded: stats.newlyAdded,
+          sourcesSucceeded: scrapeRes.sourcesSucceeded,
+          sourcesFailed: scrapeRes.sourcesFailed,
+          timestamp: this.lastGamingScrapeTime
+        }
       } catch (err) {
-        console.warn('Sync API gaming falló o entorno estático, aplicando catálogo base sincronizado...', err)
-        if (_loadedBaseGamingData && _loadedBaseGamingData.length > 0) {
-          const res = this.updateGamingProductsFromJson(_loadedBaseGamingData, gamingCategoriesData, gamingSubcategoriesData)
-          this.lastGamingScrapeTime = new Date().toISOString()
-          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
-          return { ...res, fallback: true, count: _loadedBaseGamingData.length, timestamp: this.lastGamingScrapeTime }
+        console.warn('[syncGamingFromApi] Error durante el re-scrapeo en vivo:', err)
+        return {
+          success: false,
+          error: err?.message || 'No se pudo conectar en vivo con los proveedores gaming'
         }
-        try {
-          const loaded = await this.loadFullGamingCatalog()
-          this.lastGamingScrapeTime = new Date().toISOString()
-          saveDb(DB_KEYS.GAMING_LAST_SCRAPE, this.lastGamingScrapeTime)
-          return { success: true, count: loaded.length, fallback: true, timestamp: this.lastGamingScrapeTime }
-        } catch {}
-        return { error: err.message || 'No se pudo conectar con los proveedores gaming' }
       }
     },
 
