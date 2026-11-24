@@ -199,6 +199,87 @@ export const STREAMING_PLATFORMS_META = {
   }
 }
 
+export const STREAMING_PLANS_FALLBACK = {
+  Netflix: {
+    '1_perfil': { label: '1 Perfil Ultra HD 4K (1 Dispositivo)', units: 1, providerCost: 4300, resellerProfit: 4200, clientPrice: 8500 },
+    '2_dispositivos': { label: '2 Dispositivos simultáneos', units: 2, providerCost: 12000, resellerProfit: 3000, clientPrice: 15000 },
+    '3_dispositivos': { label: '3 Dispositivos simultáneos', units: 3, providerCost: 17000, resellerProfit: 3800, clientPrice: 20800 },
+    '4_dispositivos': { label: '4 Dispositivos simultáneos (Cuenta Completa)', units: 4, providerCost: 26000, resellerProfit: 2100, clientPrice: 28100 }
+  },
+  'Netflix Perfil Extra': {
+    'perfil_extra': { label: '1 Perfil Extra (Sin Bloqueo de Hogar)', units: 1, providerCost: 8000, resellerProfit: 2000, clientPrice: 10000 }
+  },
+  Max: {
+    '1_perfil': { label: '1 Perfil individual', units: 1, providerCost: 2000, resellerProfit: 4000, clientPrice: 6000 },
+    '2_dispositivos': { label: '2 Dispositivos simultáneos', units: 2, providerCost: 6000, resellerProfit: 1500, clientPrice: 8000 },
+    '3_dispositivos': { label: '3 Dispositivos simultáneos', units: 3, providerCost: 8000, resellerProfit: 1800, clientPrice: 12000 },
+    '4_dispositivos': { label: '4 Dispositivos (Familia)', units: 4, providerCost: 13000, resellerProfit: 2200, clientPrice: 15200 }
+  },
+  Spotify: {
+    '1_perfil': { label: '1 Slot / Perfil individual', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 },
+    '2_dispositivos': { label: '2 Slots Familiares', units: 2, providerCost: 4800, resellerProfit: 2000, clientPrice: 6800 },
+    '4_dispositivos': { label: '4 Slots Familiares', units: 4, providerCost: 9000, resellerProfit: 3500, clientPrice: 12500 }
+  },
+  'Disney+': {
+    '1_perfil': { label: '1 Perfil individual (Premium con ESPN)', units: 1, providerCost: 2000, resellerProfit: 5200, clientPrice: 7200 },
+    '2_dispositivos': { label: '2 Dispositivos simultáneos', units: 2, providerCost: 8000, resellerProfit: 2300, clientPrice: 12300 },
+    '4_dispositivos': { label: '4 Dispositivos simultáneos', units: 4, providerCost: 15000, resellerProfit: 4500, clientPrice: 19500 }
+  },
+  'Disney+ (Copia)': {
+    '1_perfil': { label: '1 Perfil individual', units: 1, providerCost: 3000, resellerProfit: 900, clientPrice: 3900 },
+    '2_dispositivos': { label: '2 Dispositivos simultáneos', units: 2, providerCost: 3400, resellerProfit: 1400, clientPrice: 6000 },
+    '4_dispositivos': { label: '4 Dispositivos simultáneos', units: 4, providerCost: 15000, resellerProfit: 4500, clientPrice: 19500 }
+  },
+  IPTV: {
+    '1_perfil': { label: '1 Dispositivo / Pantalla', units: 1, providerCost: 3500, resellerProfit: 3500, clientPrice: 7000 },
+    '2_dispositivos': { label: '2 Dispositivos simultáneos', units: 2, providerCost: 6500, resellerProfit: 3000, clientPrice: 9500 },
+    '3_dispositivos': { label: '3 Dispositivos simultáneos', units: 3, providerCost: 9000, resellerProfit: 4000, clientPrice: 13000 }
+  },
+  'Prime Video': {
+    '1_perfil': { label: '1 Perfil 4K (1 Pantalla HD)', units: 1, providerCost: 1500, resellerProfit: 2700, clientPrice: 4200 },
+    '3_dispositivos': { label: '3 Pantallas Simultáneas', units: 3, providerCost: 7000, resellerProfit: 2800, clientPrice: 9800 }
+  },
+  'YouTube Premium': {
+    '1_perfil': { label: '1 Slot Familiar Individual', units: 1, providerCost: 1500, resellerProfit: 2900, clientPrice: 4400 }
+  },
+  'Canva Pro': {
+    '1_perfil': { label: 'Activación a tu Correo Personal (1 Año)', units: 1, providerCost: 2000, resellerProfit: 2500, clientPrice: 4500 }
+  },
+  'Paramount+': {
+    '1_perfil': { label: '1 Perfil individual (Full HD)', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'Crunchyroll': {
+    '1_perfil': { label: '1 Perfil Mega Fan (HD / 4K)', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'ChatGPT Plus': {
+    '1_perfil': { label: '1 Acceso Plus IA (GPT-4o)', units: 1, providerCost: 3000, resellerProfit: 3500, clientPrice: 6500 }
+  },
+  'CapCut Pro': {
+    '1_perfil': { label: '1 Cuenta Pro (1 Mes)', units: 1, providerCost: 1500, resellerProfit: 2000, clientPrice: 3500 }
+  },
+  'Viki Rakuten': {
+    '1_perfil': { label: '1 Perfil Pass Standard HD', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'ViX': {
+    '1_perfil': { label: '1 Perfil Premium HD', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'DramaBox': {
+    '1_perfil': { label: '1 Cuenta VIP Completa', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'Pornhub': {
+    '1_perfil': { label: '1 Cuenta VIP Privada', units: 1, providerCost: 1500, resellerProfit: 2500, clientPrice: 4000 }
+  },
+  'FreeReels': {
+    '1_perfil': { label: '1 Cuenta VIP Desbloqueada', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'NetShort': {
+    '1_perfil': { label: '1 Cuenta VIP Acceso Total', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  },
+  'ReelShort': {
+    '1_perfil': { label: '1 Cuenta Pase VIP', units: 1, providerCost: 1500, resellerProfit: 2300, clientPrice: 3800 }
+  }
+}
+
 export const DEFAULT_PACKAGES_META = {
   'PKG-101': {
     id: 'PKG-101',
