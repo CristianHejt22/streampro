@@ -386,6 +386,7 @@ export async function fetchLiveGamingScrapes(providerSites = [], onProgress = nu
   const batches = []
   const sourcesSucceeded = new Set()
   const sourcesFailed = new Set()
+  const sourcesBlocked = new Set()
 
   const emitProgress = (currentLabel) => {
     if (typeof onProgress === 'function') {
@@ -394,12 +395,18 @@ export async function fetchLiveGamingScrapes(providerSites = [], onProgress = nu
         total: totalJobs,
         currentLabel,
         sourcesSucceeded: Array.from(sourcesSucceeded),
-        sourcesFailed: Array.from(sourcesFailed)
+        sourcesFailed: Array.from(sourcesFailed),
+        sourcesBlocked: Array.from(sourcesBlocked)
       })
     }
   }
 
   const runJob = async (job) => {
+    if (sourcesBlocked.has(job.sourceKey)) {
+      completedJobs++
+      emitProgress(job.label || job.sourceLabel)
+      return
+    }
     emitProgress(job.label || job.sourceLabel)
     try {
       const res = await fetch(`/api/sync-gaming?scrape=true&${job.query}`, {
@@ -407,6 +414,10 @@ export async function fetchLiveGamingScrapes(providerSites = [], onProgress = nu
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
+      if (json?.blockedByOrigin) {
+        sourcesBlocked.add(job.sourceKey)
+        return
+      }
       if (!json || !json.scrapedLive || !Array.isArray(json.items)) {
         throw new Error(json?.error || 'Sin respuesta en vivo')
       }
@@ -453,7 +464,8 @@ export async function fetchLiveGamingScrapes(providerSites = [], onProgress = nu
   return {
     batches,
     sourcesSucceeded: Array.from(sourcesSucceeded),
-    sourcesFailed: Array.from(sourcesFailed).filter(k => !sourcesSucceeded.has(k))
+    sourcesFailed: Array.from(sourcesFailed).filter(k => !sourcesSucceeded.has(k) && !sourcesBlocked.has(k)),
+    sourcesBlocked: Array.from(sourcesBlocked).filter(k => !sourcesSucceeded.has(k))
   }
 }
 

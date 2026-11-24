@@ -3290,8 +3290,10 @@ const handleScrapeAndSyncGamingWebs = async () => {
       const down = Number(res.priceDecreased || 0)
       const added = Number(res.newlyAdded || 0)
       const sitesOk = Array.isArray(res.sourcesSucceeded) ? res.sourcesSucceeded.length : 0
+      const blockedList = Array.isArray(res.sourcesBlocked) ? res.sourcesBlocked : []
+      const blockedNote = blockedList.length > 0 ? ` (${blockedList.join(', ')} con protección anti-bot en cloud; mantiene últimos precios sincronizados)` : ''
       toast.add(
-        `¡Re-scrapeo en vivo (${sitesOk} webs)! ${updated} precios actualizados (↑${up} / ↓${down})${added > 0 ? ` y ${added} nuevos` : ''} en ${res.count || adminStore.processedGamingProducts.length} juegos.`,
+        `¡Re-scrapeo en vivo (${sitesOk} webs)! ${updated} precios actualizados (↑${up} / ↓${down})${added > 0 ? ` y ${added} nuevos` : ''} en ${res.count || adminStore.processedGamingProducts.length} juegos.${blockedNote}`,
         'success'
       )
     } else {

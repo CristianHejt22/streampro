@@ -7413,6 +7413,7 @@ export const useAdminStore = defineStore('admin', {
           newlyAdded: stats.newlyAdded,
           sourcesSucceeded: scrapeRes.sourcesSucceeded,
           sourcesFailed: scrapeRes.sourcesFailed,
+          sourcesBlocked: scrapeRes.sourcesBlocked,
           timestamp: this.lastGamingScrapeTime
         }
       } catch (err) {

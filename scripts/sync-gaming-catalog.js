@@ -445,6 +445,7 @@ async function scrapeJuegosDigitalesArgentina({ catFilter = null, pageStart = 0,
 
   const mergedByKey = new Map()
   let totalPagesAvailable = 0
+  let blockedHttpStatus = 0
 
   const parseJdaPageHtml = (html, defaultPlatform) => {
     const blocks = html.split(/<div[^>]*class="[^"]*\bproduct-col\b[^"]*"/i)
@@ -505,11 +506,24 @@ async function scrapeJuegosDigitalesArgentina({ catFilter = null, pageStart = 0,
     try {
       const baseUrl = `https://juegosdigitalesargentina.com/categorias/${cat.slug}`
       const res0 = await fetch(baseUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8'
+        },
         signal: AbortSignal.timeout(12000)
       })
-      if (!res0.ok) return
+      if (!res0.ok) {
+        if (res0.status === 403 || res0.status === 503 || res0.status === 429) {
+          blockedHttpStatus = res0.status
+        }
+        return
+      }
       const html0 = await res0.text()
+      if (!html0.includes('product-col') && /Just a moment|cf-browser-verification|Attention Required|Cloudflare/i.test(html0)) {
+        blockedHttpStatus = 403
+        return
+      }
       if (pageStart === 0) {
         parseJdaPageHtml(html0, cat.platform).forEach(upsertJda)
       }
@@ -543,8 +557,9 @@ async function scrapeJuegosDigitalesArgentina({ catFilter = null, pageStart = 0,
   }))
 
   const results = Array.from(mergedByKey.values()).filter(x => x.costPrimary > 0 || x.costSecondary > 0)
-  log(`✓ Juegos Digitales Argentina: ${results.length} títulos extraídos (${totalPagesAvailable} pág. totales)`)
+  log(`✓ Juegos Digitales Argentina: ${results.length} títulos extraídos (${totalPagesAvailable} pág. totales${blockedHttpStatus ? `, bloqueado HTTP ${blockedHttpStatus}` : ''})`)
   results._totalPagesAvailable = totalPagesAvailable
+  results._blockedHttpStatus = results.length === 0 ? blockedHttpStatus : 0
   return results
 }
 
@@ -1116,9 +1131,12 @@ export async function scrapeSingleGamingProvider(sourceKey, { cat = null, pageSt
   }
   if (key === 'juegosdigitalesargentina') {
     const items = await scrapeJuegosDigitalesArgentina({ catFilter: cat, pageStart: Number(pageStart) || 0, pageLimit: Number(pageLimit) || 0, concurrency: 12 })
+    const blocked = Boolean(items._blockedHttpStatus)
     return {
       success: true,
-      scrapedLive: true,
+      scrapedLive: !blocked,
+      blockedByOrigin: blocked,
+      httpStatus: items._blockedHttpStatus || 200,
       source: 'juegosdigitalesargentina',
       sourceLabel: 'Juegos Digitales Argentina',
       cat: cat || 'ALL',
