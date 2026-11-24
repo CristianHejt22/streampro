@@ -5040,12 +5040,12 @@ const removeServiceFromPackage = (index) => {
 // y costo mayorista de referencia tomado de la lista subida
 const COMBO_STREAMING_REFERENCE = {
   'Netflix': { cost: 4300, regular: 8500 },
-  'Netflix Perfil Extra': { cost: 4500, regular: 6500 },
+  'Netflix Perfil Extra': { cost: 8000, regular: 10000 },
   'Prime Video': { cost: 1500, regular: 4200 },
   'Spotify': { cost: 1500, regular: 3800 },
   'Disney+': { cost: 2000, regular: 7200 },
   'Max': { cost: 2000, regular: 6000 },
-  'IPTV': { cost: 2000, regular: 5500 },
+  'IPTV': { cost: 3500, regular: 7000 },
   'YouTube': { cost: 1500, regular: 4400 },
   'YouTube Premium': { cost: 1500, regular: 4400 },
   'ChatGPT Plus': { cost: 3000, regular: 6500 },

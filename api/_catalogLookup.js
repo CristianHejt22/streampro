@@ -31,7 +31,7 @@ function getPhysicalList() {
 export const STREAMING_PLATFORMS_META = {
   Netflix: {
     name: 'Netflix Premium Ultra HD 4K',
-    minPrice: 7700,
+    minPrice: 8500,
     tag: 'STREAMING 4K HDR',
     accentHex: '#ef4444',
     bgGrad: ['#450a0a', '#090d16'],
@@ -39,7 +39,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Netflix Perfil Extra': {
     name: 'Netflix Perfil Extra (Sin Bloqueo)',
-    minPrice: 6500,
+    minPrice: 10000,
     tag: '⭐ SIN BLOQUEO DE HOGAR',
     accentHex: '#f43f5e',
     bgGrad: ['#4c0519', '#090d16'],
@@ -63,15 +63,23 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Disney+': {
     name: 'Disney+ / Star+ Combo',
-    minPrice: 6500,
+    minPrice: 7200,
     tag: 'DISNEY & ESPN',
     accentHex: '#38bdf8',
     bgGrad: ['#082f49', '#090d16'],
     description: 'Todo Disney, Pixar, Marvel, Star Wars y fútbol ESPN en vivo con PIN.'
   },
+  'Disney+ (Copia)': {
+    name: 'Disney+ Standar',
+    minPrice: 3900,
+    tag: 'Standar con anuncio',
+    accentHex: '#38bdf8',
+    bgGrad: ['#082f49', '#090d16'],
+    description: 'Suscripción Disney+ Estándar oficial por perfil o dispositivos con reposición garantizada.'
+  },
   IPTV: {
-    name: 'IPTV MagisTV Pro 1 Mes',
-    minPrice: 6500,
+    name: 'IPTV Pro',
+    minPrice: 7000,
     tag: '+1200 CANALES FHD',
     accentHex: '#a855f7',
     bgGrad: ['#2e1065', '#090d16'],
@@ -79,7 +87,7 @@ export const STREAMING_PLATFORMS_META = {
   },
   'Prime Video': {
     name: 'Amazon Prime Video 4K',
-    minPrice: 4800,
+    minPrice: 4200,
     tag: 'AMAZON 4K UHD',
     accentHex: '#06b6d4',
     bgGrad: ['#083344', '#090d16'],
@@ -87,15 +95,15 @@ export const STREAMING_PLATFORMS_META = {
   },
   'YouTube Premium': {
     name: 'YouTube Premium & Music',
-    minPrice: 4500,
+    minPrice: 4400,
     tag: 'SIN PUBLICIDAD',
     accentHex: '#f43f5e',
     bgGrad: ['#4c0519', '#090d16'],
     description: 'Videos sin anuncios, reproducción en segundo plano y YouTube Music.'
   },
   'Canva Pro': {
-    name: 'Canva Pro Oficial',
-    minPrice: 4900,
+    name: 'Canva Pro Diseño & Productividad',
+    minPrice: 4500,
     tag: 'DISEÑO PRO',
     accentHex: '#8b5cf6',
     bgGrad: ['#2e1065', '#090d16'],
@@ -164,14 +172,6 @@ export const STREAMING_PLATFORMS_META = {
     accentHex: '#eab308',
     bgGrad: ['#422006', '#090d16'],
     description: 'Contenido Premium exclusivo en 1080p y 4K sin anuncios y con total discreción.'
-  },
-  'Apple TV+': {
-    name: 'Apple TV+ 4K Original',
-    minPrice: 4900,
-    tag: '4K DOLBY VISION • ORIGINALS',
-    accentHex: '#a1a1aa',
-    bgGrad: ['#18181b', '#090d16'],
-    description: 'Cine y series galardonadas Apple Originals en 4K Dolby Vision y audio Atmos.'
   },
   'FreeReels': {
     name: 'FreeReels VIP Drama',

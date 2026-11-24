@@ -15,8 +15,8 @@ export const STORE_STREAMING_UNIT_PRICES = {
   },
   "Netflix Perfil Extra": {
     "name": "Netflix Perfil Extra (Sin Bloqueo)",
-    "unitPrice": 6500,
-    "cost": 4500
+    "unitPrice": 10000,
+    "cost": 8000
   },
   "Disney+": {
     "name": "Disney+ Premium con ESPN",
@@ -44,9 +44,9 @@ export const STORE_STREAMING_UNIT_PRICES = {
     "cost": 3000
   },
   "IPTV": {
-    "name": "IPTV MagisTV Pro",
-    "unitPrice": 5500,
-    "cost": 2000
+    "name": "IPTV Pro",
+    "unitPrice": 7000,
+    "cost": 3500
   },
   "YouTube": {
     "name": "YouTube Premium & Music",
@@ -72,11 +72,6 @@ export const STORE_STREAMING_UNIT_PRICES = {
     "name": "Paramount+ Plan Estándar",
     "unitPrice": 3800,
     "cost": 1500
-  },
-  "Apple TV+": {
-    "name": "Apple TV+ 4K Original",
-    "unitPrice": 4900,
-    "cost": 2000
   },
   "Vix Premium": {
     "name": "VIX Premium Deportes & Novelas",

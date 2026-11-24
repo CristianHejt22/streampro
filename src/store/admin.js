@@ -365,20 +365,23 @@ export const DEFAULT_PLATFORM_PLANS = {
       'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
     ],
     highlights: [
-      'PIN Privado: 4 dígitos exclusivo.',
-      'Sin bloqueo hogar: En Argentina (actualizar hogar).',
-      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
+      '4K ULTRA HD • HDR10',
+      'PIN Privado de 4 dígitos',
+      'Renovación mes a mes misma cuenta (COMPLETAS).',
+      'Individuales recambiable.'
     ],
+    warranty: 'Garantía oficial y soporte directo.',
     plans: {
       '1_perfil': {
         label: '1 Perfil Ultra HD 4K (1 Dispositivo)',
         units: 1,
         type: 'perfil',
         providerCost: 4300,
-        resellerProfit: 3400,
-        clientPrice: 7700,
+        resellerProfit: 4200,
+        clientPrice: 8500,
         quality: '4K ULTRA HD • HDR10',
         deliveryTime: '🟢 10-15m',
+        description: '4K ULTRA HD • HDR10',
         features: [
           '4K ULTRA HD • HDR10',
           'PIN Privado de 4 dígitos',
@@ -389,25 +392,25 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 10000,
+        providerCost: 12000,
         resellerProfit: 3000,
-        clientPrice: 13000
+        clientPrice: 15000
       },
       '3_dispositivos': {
         label: '3 Dispositivos simultáneos',
         units: 3,
         type: 'dispositivo',
-        providerCost: 14500,
-        resellerProfit: 4000,
-        clientPrice: 18500
+        providerCost: 17000,
+        resellerProfit: 3800,
+        clientPrice: 20800
       },
       '4_dispositivos': {
         label: '4 Dispositivos simultáneos (Cuenta Completa)',
         units: 4,
         type: 'dispositivo',
-        providerCost: 18500,
-        resellerProfit: 5500,
-        clientPrice: 24000
+        providerCost: 26000,
+        resellerProfit: 2100,
+        clientPrice: 28100
       }
     }
   },
@@ -418,46 +421,34 @@ export const DEFAULT_PLATFORM_PLANS = {
     badge: '⭐ SIN BLOQUEO DE HOGAR',
     deliveryBadge: '🟢 10-15m',
     description: '1 Perfil Extra oficial sin bloqueo de hogar en Argentina. PIN Privado de 4 dígitos y renovación mes a mes en la misma cuenta.',
-    warranty: 'Garantía Oficial Netflix Argentina',
+    warranty: 'Garantía total de 30 días y soporte inmediato.',
     features: [
-      'PIN Privado: 4 dígitos exclusivo.',
-      'Sin bloqueo hogar: En Argentina (Smart TV directa).',
-      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
+      'Sin bloqueo de hogar en Argentina (Smart TV directa)',
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K ULTRA HD • HDR10',
+      'Renovación mes a mes en la misma cuenta'
     ],
     highlights: [
-      'PIN Privado: 4 dígitos exclusivo.',
-      'Sin bloqueo hogar: En Argentina (Smart TV directa).',
-      'Renovación mensual: Misma cuenta mes a mes (Modificación de cuenta).'
+      'Sin bloqueo de hogar en Smart TV',
+      'PIN Privado de 4 dígitos exclusivo',
+      'Calidad 4K Ultra HD • HDR10',
+      'Renovación mes a mes misma cuenta'
     ],
     plans: {
       'perfil_extra': {
         label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
         units: 1,
         type: 'perfil_extra',
-        providerCost: 4500,
+        providerCost: 8000,
         resellerProfit: 2000,
-        clientPrice: 6500,
+        clientPrice: 10000,
+        isCustomPrice: true,
         quality: '4K ULTRA HD • HDR10',
         deliveryTime: '🟢 10-15m',
+        description: 'Sin bloqueo de hogar en Argentina (Smart TV)',
         features: [
           'Sin bloqueo de hogar en Argentina (Smart TV)',
           'PIN Privado de 4 dígitos',
-          'Calidad 4K ULTRA HD • HDR10',
-          'Renovación mes a mes misma cuenta'
-        ]
-      },
-      '2_perfiles_extra': {
-        label: '2 Perfiles Extra (2 Dispositivos)',
-        units: 2,
-        type: 'perfil_extra',
-        providerCost: 9000,
-        resellerProfit: 4000,
-        clientPrice: 13000,
-        quality: '4K ULTRA HD • HDR10',
-        deliveryTime: '🟢 10-15m',
-        features: [
-          'Sin bloqueo de hogar en Argentina (Smart TV)',
-          '2 Pines Privados de 4 dígitos',
           'Calidad 4K ULTRA HD • HDR10',
           'Renovación mes a mes misma cuenta'
         ]
@@ -479,25 +470,25 @@ export const DEFAULT_PLATFORM_PLANS = {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 7800,
-        resellerProfit: 2700,
-        clientPrice: 10500
+        providerCost: 6000,
+        resellerProfit: 1500,
+        clientPrice: 8000
       },
       '3_dispositivos': {
         label: '3 Dispositivos simultáneos',
         units: 3,
         type: 'dispositivo',
-        providerCost: 11000,
-        resellerProfit: 3500,
-        clientPrice: 14500
+        providerCost: 8000,
+        resellerProfit: 1800,
+        clientPrice: 12000
       },
       '4_dispositivos': {
         label: '4 Dispositivos (Familia)',
         units: 4,
         type: 'dispositivo',
-        providerCost: 14000,
-        resellerProfit: 4500,
-        clientPrice: 18500
+        providerCost: 13000,
+        resellerProfit: 2200,
+        clientPrice: 15200
       }
     }
   },
@@ -538,16 +529,16 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 4500,
-        clientPrice: 6500
+        resellerProfit: 5200,
+        clientPrice: 7200
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 8200,
-        resellerProfit: 2600,
-        clientPrice: 10800
+        providerCost: 8000,
+        resellerProfit: 2300,
+        clientPrice: 12300
       },
       '4_dispositivos': {
         label: '4 Dispositivos simultáneos',
@@ -560,15 +551,19 @@ export const DEFAULT_PLATFORM_PLANS = {
     }
   },
   IPTV: {
-    name: 'IPTV MagisTV Pro',
+    name: 'IPTV Pro',
+    badge: '4K ULTRA HD • HDR10',
+    deliveryBadge: '🟢 10-15m',
+    warranty: 'Garantía oficial y reposición 100% activa durante los 30 días.',
     plans: {
       '1_perfil': {
         label: '1 Dispositivo / Pantalla',
         units: 1,
         type: 'dispositivo',
-        providerCost: 2000,
-        resellerProfit: 4500,
-        clientPrice: 6500
+        providerCost: 3500,
+        resellerProfit: 3500,
+        clientPrice: 7000,
+        isCustomPrice: true
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -596,8 +591,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 3300,
-        clientPrice: 4800
+        resellerProfit: 2700,
+        clientPrice: 4200
       },
       '3_dispositivos': {
         label: '3 Pantallas Simultáneas',
@@ -617,8 +612,8 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 3000,
-        clientPrice: 4500
+        resellerProfit: 2900,
+        clientPrice: 4400
       }
     }
   },
@@ -630,8 +625,42 @@ export const DEFAULT_PLATFORM_PLANS = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 2900,
-        clientPrice: 4900
+        resellerProfit: 2500,
+        clientPrice: 4500
+      }
+    }
+  },
+  'Disney+ (Copia)': {
+    name: 'Disney+ Standar',
+    badge: 'Standar con anuncio',
+    deliveryBadge: '🟢 10-15m',
+    warranty: 'Garantía oficial y reposición 100% activa durante los 30 días.',
+    description: '',
+    highlights: [],
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual',
+        units: 1,
+        type: 'perfil',
+        providerCost: 3000,
+        resellerProfit: 900,
+        clientPrice: 3900
+      },
+      '2_dispositivos': {
+        label: '2 Dispositivos simultáneos',
+        units: 2,
+        type: 'dispositivo',
+        providerCost: 3400,
+        resellerProfit: 1400,
+        clientPrice: 6000
+      },
+      '4_dispositivos': {
+        label: '4 Dispositivos simultáneos',
+        units: 4,
+        type: 'dispositivo',
+        providerCost: 15000,
+        resellerProfit: 4500,
+        clientPrice: 19500
       }
     }
   },
@@ -923,42 +952,6 @@ export const DEFAULT_PLATFORM_PLANS = {
       }
     }
   },
-  'Apple TV+': {
-    name: 'Apple TV+ 4K Original',
-    quality: '4K DOLBY VISION • ATMOS',
-    deliveryTime: '🟢 10-15m',
-    badge: '4K DOLBY VISION • ORIGINALS',
-    deliveryBadge: '🟢 10-15m',
-    description: 'Producciones Apple Originals galardonadas con calidad 4K HDR y audio espacial Dolby Atmos.',
-    warranty: 'Garantía Oficial StreamePro',
-    features: [
-      'Cine y series Apple Originals exclusivas',
-      'Calidad 4K Dolby Vision y audio Dolby Atmos',
-      'Perfil privado individual con PIN'
-    ],
-    highlights: [
-      'Cine y series Apple Originals exclusivas',
-      'Calidad 4K Dolby Vision y audio Dolby Atmos',
-      'Perfil privado individual con PIN'
-    ],
-    plans: {
-      '1_perfil': {
-        label: '1 Perfil individual 4K',
-        units: 1,
-        type: 'perfil',
-        providerCost: 2000,
-        resellerProfit: 2900,
-        clientPrice: 4900,
-        quality: '4K DOLBY VISION',
-        deliveryTime: '🟢 10-15m',
-        features: [
-          'Resolución 4K Dolby Vision',
-          'Audio Dolby Atmos espacial',
-          'Perfil propio con PIN'
-        ]
-      }
-    }
-  },
   'FreeReels': {
     name: 'FreeReels VIP Drama',
     quality: 'VIP FULL HD',
@@ -1139,7 +1132,7 @@ function getInitialProviderBankSetup() {
   return { accounts: savedAccounts, info: synchronizedBankInfo }
 }
 
-// Función para garantizar que todos los precios base de 1 pantalla coincidan exactamente con lo establecido
+// Función para restaurar y sanear precios oficiales de catálogo + plataformas faltantes de combos
 export function sanitizePricingCatalog(catalog = {}) {
   if (!catalog || typeof catalog !== 'object') return catalog
   const sanitized = { ...catalog }
@@ -1151,82 +1144,146 @@ export function sanitizePricingCatalog(catalog = {}) {
     }
   })
 
-  // 1. Asegurar contenedor independiente de 'Netflix Perfil Extra'
+  // Eliminar Apple TV+ si quedó de una sincronización previa (no aparece en combos)
+  if (sanitized['Apple TV+']) {
+    delete sanitized['Apple TV+']
+  }
+
+  // 1. Asegurar contenedor independiente de 'Netflix Perfil Extra' SOLO 1 dispositivo ($10.000)
   if (!sanitized['Netflix Perfil Extra']) {
     sanitized['Netflix Perfil Extra'] = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra']))
   }
   if (sanitized.Netflix?.plans?.perfil_extra) {
     delete sanitized.Netflix.plans.perfil_extra
   }
-
-  // 2. Preservar precios oficiales anteriores de suscripciones para 1 perfil / pantalla
-  if (sanitized.Netflix?.plans?.['1_perfil']) {
-    const p = sanitized.Netflix.plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 8500 || !p.clientPrice)) {
-      p.clientPrice = 7700
-      p.providerCost = 4300
-      p.resellerProfit = 3400
-      p.label = p.label || '1 Perfil Ultra HD 4K (1 Dispositivo)'
-    }
+  if (sanitized['Netflix Perfil Extra']?.plans?.['2_perfiles_extra']) {
+    delete sanitized['Netflix Perfil Extra'].plans['2_perfiles_extra']
   }
-
   if (sanitized['Netflix Perfil Extra']?.plans?.['perfil_extra']) {
     const p = sanitized['Netflix Perfil Extra'].plans['perfil_extra']
-    if (!p.isCustomPrice && (!p.clientPrice || p.clientPrice === 5500)) {
-      p.clientPrice = 6500
-      p.providerCost = 4500
+    if (!p.clientPrice || p.clientPrice === 6500 || p.clientPrice === 5500) {
+      p.clientPrice = 10000
+      p.providerCost = 8000
       p.resellerProfit = 2000
+      p.units = 1
+      p.type = 'perfil_extra'
+      p.isCustomPrice = true
       p.label = p.label || '1 Perfil Extra (Sin Bloqueo de Hogar)'
+    }
+  } else if (sanitized['Netflix Perfil Extra']) {
+    sanitized['Netflix Perfil Extra'].plans = JSON.parse(JSON.stringify(DEFAULT_PLATFORM_PLANS['Netflix Perfil Extra'].plans))
+  }
+
+  // 2. Restaurar precios exactos cuando existan valores desactualizados o pisados
+  if (sanitized.Netflix?.plans) {
+    const p1 = sanitized.Netflix.plans['1_perfil']
+    if (p1 && (!p1.clientPrice || p1.clientPrice === 7700)) {
+      p1.clientPrice = 8500
+      p1.providerCost = 4300
+      p1.resellerProfit = 4200
+    }
+    const p2 = sanitized.Netflix.plans['2_dispositivos']
+    if (p2 && p2.clientPrice === 13000) {
+      p2.clientPrice = 15000
+      p2.providerCost = 12000
+      p2.resellerProfit = 3000
+    }
+    const p3 = sanitized.Netflix.plans['3_dispositivos']
+    if (p3 && p3.clientPrice === 18500) {
+      p3.clientPrice = 20800
+      p3.providerCost = 17000
+      p3.resellerProfit = 3800
+    }
+    const p4 = sanitized.Netflix.plans['4_dispositivos']
+    if (p4 && p4.clientPrice === 24000) {
+      p4.clientPrice = 28100
+      p4.providerCost = 26000
+      p4.resellerProfit = 2100
     }
   }
 
-  if (sanitized['Disney+']?.plans?.['1_perfil']) {
-    const p = sanitized['Disney+'].plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 7200 || p.clientPrice === 6300 || !p.clientPrice)) {
-      p.clientPrice = 6500
-      p.providerCost = 2000
-      p.resellerProfit = 4500
-      p.label = p.label || '1 Perfil individual (Premium con ESPN)'
+  if (sanitized.Max?.plans) {
+    const p1 = sanitized.Max.plans['1_perfil']
+    if (p1 && !p1.clientPrice) {
+      p1.clientPrice = 6000
+      p1.providerCost = 2000
+      p1.resellerProfit = 4000
+    }
+    const p2 = sanitized.Max.plans['2_dispositivos']
+    if (p2 && p2.clientPrice === 10500) {
+      p2.clientPrice = 8000
+      p2.providerCost = 6000
+      p2.resellerProfit = 1500
+    }
+    const p3 = sanitized.Max.plans['3_dispositivos']
+    if (p3 && p3.clientPrice === 14500) {
+      p3.clientPrice = 12000
+      p3.providerCost = 8000
+      p3.resellerProfit = 1800
+    }
+    const p4 = sanitized.Max.plans['4_dispositivos']
+    if (p4 && p4.clientPrice === 18500) {
+      p4.clientPrice = 15200
+      p4.providerCost = 13000
+      p4.resellerProfit = 2200
+    }
+  }
+
+  if (sanitized['Disney+']?.plans) {
+    const p1 = sanitized['Disney+'].plans['1_perfil']
+    if (p1 && (p1.clientPrice === 6500 || p1.clientPrice === 6300 || !p1.clientPrice)) {
+      p1.clientPrice = 7200
+      p1.providerCost = 2000
+      p1.resellerProfit = 5200
+    }
+    const p2 = sanitized['Disney+'].plans['2_dispositivos']
+    if (p2 && p2.clientPrice === 10800) {
+      p2.clientPrice = 12300
+      p2.providerCost = 8000
+      p2.resellerProfit = 2300
     }
   }
 
   if (sanitized['Prime Video']?.plans?.['1_perfil']) {
     const p = sanitized['Prime Video'].plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 4200 || !p.clientPrice || p.providerCost === 2800)) {
-      p.clientPrice = 4800
+    if (!p.clientPrice || p.clientPrice === 4800 || p.providerCost === 2800) {
+      p.clientPrice = 4200
       p.providerCost = 1500
-      p.resellerProfit = 3300
-      p.label = p.label || '1 Perfil 4K (1 Pantalla HD)'
+      p.resellerProfit = 2700
     }
   }
 
   if (sanitized.IPTV?.plans?.['1_perfil']) {
     const p = sanitized.IPTV.plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 5500 || !p.clientPrice)) {
-      p.clientPrice = 6500
-      p.providerCost = 2000
-      p.resellerProfit = 4500
+    if (!p.clientPrice || p.clientPrice === 5500 || p.clientPrice === 6500) {
+      p.clientPrice = 7000
+      p.providerCost = 3500
+      p.resellerProfit = 3500
+      p.isCustomPrice = true
       p.label = p.label || '1 Dispositivo / Pantalla'
+    }
+    if (sanitized.IPTV.name === 'IPTV MagisTV Pro') {
+      sanitized.IPTV.name = 'IPTV Pro'
+      sanitized.IPTV.badge = sanitized.IPTV.badge || '4K ULTRA HD • HDR10'
+      sanitized.IPTV.deliveryBadge = sanitized.IPTV.deliveryBadge || '🟢 10-15m'
     }
   }
 
   if (sanitized['YouTube Premium']?.plans?.['1_perfil']) {
     const p = sanitized['YouTube Premium'].plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 4400 || !p.clientPrice)) {
-      p.clientPrice = 4500
+    if (!p.clientPrice || p.clientPrice === 4500) {
+      p.clientPrice = 4400
       p.providerCost = 1500
-      p.resellerProfit = 3000
-      p.label = p.label || '1 Slot Familiar Individual'
+      p.resellerProfit = 2900
     }
   }
 
   if (sanitized['Canva Pro']?.plans?.['1_perfil']) {
     const p = sanitized['Canva Pro'].plans['1_perfil']
-    if (!p.isCustomPrice && (p.clientPrice === 4500 || !p.clientPrice)) {
-      p.clientPrice = 4900
+    if (!p.clientPrice || p.clientPrice === 4900) {
+      p.clientPrice = 4500
       p.providerCost = 2000
-      p.resellerProfit = 2900
-      p.label = p.label || 'Activación a tu Correo Personal (1 Año)'
+      p.resellerProfit = 2500
     }
   }
 

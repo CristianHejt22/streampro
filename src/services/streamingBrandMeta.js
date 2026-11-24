@@ -216,17 +216,17 @@ export const STREAMING_BRAND_METADATA = {
     warranty: 'Garantía Oficial StreamePro',
     highlights: ['Videos Premium en 1080p y 4K sin publicidad', 'Descargas offline y canales exclusivos', 'Discreción y privacidad absoluta 100% garantizada']
   },
-  'Apple TV+': {
-    badge: '4K DOLBY VISION • ORIGINALS',
+  'Disney+ (Copia)': {
+    badge: 'Standar con anuncio',
     deliveryBadge: '🟢 10-15m',
-    badgeClass: 'bg-zinc-400/15 text-zinc-200 border-zinc-400/30',
-    accentGlow: 'hover:shadow-[0_0_30px_rgba(161,161,170,0.22)]',
-    borderClass: 'border-white/[0.08] hover:border-zinc-400/50',
-    gradientBg: 'from-zinc-950 via-slate-900/90 to-slate-950',
-    accentColor: 'text-zinc-300',
-    iconSvg: `<svg class="w-5 h-5 text-zinc-300" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.9.04-2 .6-2.63 1.34-.56.64-1.05 1.69-.92 2.72.99.08 2.02-.45 2.63-1.19z"/></svg>`,
-    warranty: 'Garantía Oficial StreamePro',
-    highlights: ['Series y películas galardonadas Apple Originals', 'Calidad 4K HDR con sonido envolvente Dolby Atmos', 'Perfil privado con PIN exclusivo']
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    accentGlow: 'hover:shadow-[0_0_30px_rgba(0,168,255,0.22)]',
+    borderClass: 'border-white/[0.08] hover:border-sky-500/50',
+    gradientBg: 'from-blue-950/30 via-slate-900/90 to-slate-950',
+    accentColor: 'text-sky-300',
+    iconSvg: `<svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6.2 4.5 2.4 7.4-6.2-4.5-6.2 4.5 2.4-7.4-6.2-4.5h7.6z"/></svg>`,
+    warranty: 'Garantía oficial y reposición 100% activa durante los 30 días.',
+    highlights: ['Disney + Pixar + Marvel', 'Perfil individual con PIN', 'Garantía 30 días StreamePro']
   },
   'FreeReels': {
     badge: 'VIP DRAMA • EPISODIOS LIBRES',

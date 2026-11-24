@@ -16,32 +16,32 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 4300,
-        resellerProfit: 3400,
-        clientPrice: 7700
+        resellerProfit: 4200,
+        clientPrice: 8500
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 10000,
+        providerCost: 12000,
         resellerProfit: 3000,
-        clientPrice: 13000
+        clientPrice: 15000
       },
       '3_dispositivos': {
         label: '3 Dispositivos simultáneos',
         units: 3,
         type: 'dispositivo',
-        providerCost: 14500,
-        resellerProfit: 4000,
-        clientPrice: 18500
+        providerCost: 17000,
+        resellerProfit: 3800,
+        clientPrice: 20800
       },
       '4_dispositivos': {
         label: '4 Dispositivos simultáneos (Cuenta Completa)',
         units: 4,
         type: 'dispositivo',
-        providerCost: 18500,
-        resellerProfit: 5500,
-        clientPrice: 24000
+        providerCost: 26000,
+        resellerProfit: 2100,
+        clientPrice: 28100
       }
     }
   },
@@ -52,17 +52,9 @@ export const CLEAN_PRICING_CATALOG = {
         label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
         units: 1,
         type: 'perfil_extra',
-        providerCost: 4500,
+        providerCost: 8000,
         resellerProfit: 2000,
-        clientPrice: 6500
-      },
-      '2_perfiles_extra': {
-        label: '2 Perfiles Extra (2 Dispositivos)',
-        units: 2,
-        type: 'perfil_extra',
-        providerCost: 9000,
-        resellerProfit: 4000,
-        clientPrice: 13000
+        clientPrice: 10000
       }
     }
   },
@@ -81,25 +73,25 @@ export const CLEAN_PRICING_CATALOG = {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 7800,
-        resellerProfit: 2700,
-        clientPrice: 10500
+        providerCost: 6000,
+        resellerProfit: 1500,
+        clientPrice: 8000
       },
       '3_dispositivos': {
         label: '3 Dispositivos simultáneos',
         units: 3,
         type: 'dispositivo',
-        providerCost: 11000,
-        resellerProfit: 3500,
-        clientPrice: 14500
+        providerCost: 8000,
+        resellerProfit: 1800,
+        clientPrice: 12000
       },
       '4_dispositivos': {
         label: '4 Dispositivos (Familia)',
         units: 4,
         type: 'dispositivo',
-        providerCost: 14000,
-        resellerProfit: 4500,
-        clientPrice: 18500
+        providerCost: 13000,
+        resellerProfit: 2200,
+        clientPrice: 15200
       }
     }
   },
@@ -140,16 +132,16 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 4500,
-        clientPrice: 6500
+        resellerProfit: 5200,
+        clientPrice: 7200
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
         units: 2,
         type: 'dispositivo',
-        providerCost: 8200,
-        resellerProfit: 2600,
-        clientPrice: 10800
+        providerCost: 8000,
+        resellerProfit: 2300,
+        clientPrice: 12300
       },
       '4_dispositivos': {
         label: '4 Dispositivos simultáneos',
@@ -162,15 +154,15 @@ export const CLEAN_PRICING_CATALOG = {
     }
   },
   IPTV: {
-    name: 'IPTV MagisTV Pro',
+    name: 'IPTV Pro',
     plans: {
       '1_perfil': {
         label: '1 Dispositivo / Pantalla',
         units: 1,
         type: 'dispositivo',
-        providerCost: 2000,
-        resellerProfit: 4500,
-        clientPrice: 6500
+        providerCost: 3500,
+        resellerProfit: 3500,
+        clientPrice: 7000
       },
       '2_dispositivos': {
         label: '2 Dispositivos simultáneos',
@@ -198,8 +190,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 3300,
-        clientPrice: 4800
+        resellerProfit: 2700,
+        clientPrice: 4200
       },
       '3_dispositivos': {
         label: '3 Pantallas Simultáneas',
@@ -219,8 +211,8 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 1500,
-        resellerProfit: 3000,
-        clientPrice: 4500
+        resellerProfit: 2900,
+        clientPrice: 4400
       }
     }
   },
@@ -232,8 +224,37 @@ export const CLEAN_PRICING_CATALOG = {
         units: 1,
         type: 'perfil',
         providerCost: 2000,
-        resellerProfit: 2900,
-        clientPrice: 4900
+        resellerProfit: 2500,
+        clientPrice: 4500
+      }
+    }
+  },
+  'Disney+ (Copia)': {
+    name: 'Disney+ Standar',
+    plans: {
+      '1_perfil': {
+        label: '1 Perfil individual',
+        units: 1,
+        type: 'perfil',
+        providerCost: 3000,
+        resellerProfit: 900,
+        clientPrice: 3900
+      },
+      '2_dispositivos': {
+        label: '2 Dispositivos simultáneos',
+        units: 2,
+        type: 'dispositivo',
+        providerCost: 3400,
+        resellerProfit: 1400,
+        clientPrice: 6000
+      },
+      '4_dispositivos': {
+        label: '4 Dispositivos simultáneos',
+        units: 4,
+        type: 'dispositivo',
+        providerCost: 15000,
+        resellerProfit: 4500,
+        clientPrice: 19500
       }
     }
   },
@@ -338,19 +359,6 @@ export const CLEAN_PRICING_CATALOG = {
         providerCost: 1500,
         resellerProfit: 2500,
         clientPrice: 4000
-      }
-    }
-  },
-  'Apple TV+': {
-    name: 'Apple TV+ 4K Original',
-    plans: {
-      '1_perfil': {
-        label: '1 Perfil individual 4K',
-        units: 1,
-        type: 'perfil',
-        providerCost: 2000,
-        resellerProfit: 2900,
-        clientPrice: 4900
       }
     }
   },

@@ -10,6 +10,7 @@ import { getRememberedSession } from '../services/biometrics'
 import { TRUST_METRICS } from '../services/customerReviewsData'
 import { computeReferrerRewardBreakdown, normalizePromoCode } from '../utils/marketing'
 import { parseComboDevices, formatComboDevicesLabel } from '../services/officialCombosData'
+import { getStreamingBrandMeta } from '../services/streamingBrandMeta'
 
 const SharePlaqueModal = defineAsyncComponent(() => import('../components/SharePlaqueModal.vue'))
 const GiveawaysSection = defineAsyncComponent(() => import('../components/GiveawaysSection.vue'))
@@ -273,7 +274,7 @@ const STREAMING_BRAND_METADATA = {
 }
 
 const getStreamingMeta = (platform) => {
-  const base = STREAMING_BRAND_METADATA[platform] || {
+  const base = STREAMING_BRAND_METADATA[platform] || getStreamingBrandMeta(platform) || {
     badge: 'CALIDAD PREMIUM',
     deliveryBadge: '🟢 10-15m',
     badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
@@ -574,12 +575,12 @@ const defaultBaseProducts = [
     ],
     plans: PLATFORM_PLANS['Netflix Perfil Extra']?.plans || {
       'perfil_extra': {
-        label: '1 Perfil Extra (Sin Bloqueo)',
+        label: '1 Perfil Extra (Sin Bloqueo de Hogar)',
         units: 1,
         type: 'perfil_extra',
-        providerCost: 4500,
+        providerCost: 8000,
         resellerProfit: 2000,
-        clientPrice: 6500
+        clientPrice: 10000
       }
     }
   },
@@ -5420,7 +5421,7 @@ const submitOrder = async () => {
             <span class="ml-1 text-[10px] font-mono opacity-80">({{ products.length }})</span>
           </button>
           <button 
-            v-for="plat in ['Netflix', 'Netflix Perfil Extra', 'Spotify', 'Max', 'Disney+', 'IPTV', 'Prime Video', 'YouTube Premium', 'Canva Pro']" 
+            v-for="plat in products.map(p => p.platform)" 
             :key="plat"
             type="button"
             @click="digitalPlatformFilter = digitalPlatformFilter === plat ? 'All' : plat"
@@ -5431,8 +5432,8 @@ const submitOrder = async () => {
                 : 'bg-slate-900 text-slate-300 hover:text-white border border-white/10 hover:bg-slate-800'
             ]"
           >
-            <span>{{ plat === 'Netflix' ? '🍿' : plat === 'Netflix Perfil Extra' ? '⭐' : plat === 'Spotify' ? '🎧' : plat === 'Max' ? '🎬' : plat === 'Disney+' ? '✨' : plat === 'IPTV' ? '📺' : plat === 'Prime Video' ? '📦' : plat === 'YouTube Premium' ? '▶️' : '🎨' }}</span>
-            <span>{{ plat }}</span>
+            <span>{{ plat === 'Netflix' ? '🍿' : plat === 'Netflix Perfil Extra' ? '⭐' : plat === 'Spotify' ? '🎧' : plat === 'Max' ? '🎬' : (plat === 'Disney+' || plat === 'Disney+ (Copia)') ? '✨' : plat === 'IPTV' ? '📺' : plat === 'Prime Video' ? '📦' : plat === 'YouTube Premium' ? '▶️' : plat === 'Canva Pro' ? '🎨' : plat === 'ChatGPT Plus' ? '🤖' : plat === 'Crunchyroll' ? '🍥' : plat === 'CapCut Pro' ? '✂️' : plat === 'Paramount+' ? '⛰️' : plat === 'Pornhub' ? '🔞' : '🎬' }}</span>
+            <span>{{ plat === 'Disney+ (Copia)' ? (adminStore.pricingCatalog?.[plat]?.name || 'Disney+ Standar') : plat }}</span>
           </button>
         </div>
       </div>
